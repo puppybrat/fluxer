@@ -2,6 +2,7 @@
 
 import styles from '@app/features/channel/components/ChannelLayout.module.css';
 import {useChannelThemeStyle} from '@app/features/channel/hooks/useChannelThemeStyle';
+import ChannelThemes from '@app/features/channel/state/ChannelThemes';
 import Channels from '@app/features/channel/state/Channels';
 import Guilds from '@app/features/guild/state/Guilds';
 import {useParams} from '@app/features/platform/components/router/RouterReact';
@@ -11,9 +12,6 @@ import {SmileySadIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import {useRef} from 'react';
 import type {ReactNode} from 'react';
-
-// TODO(channel-themes): Replace with per-channel CSS sourced from the channel-themes state store once built.
-const CHANNEL_THEME_STUB_CSS = ':root { --background-secondary-lighter: oklch(22% 0.2 300); }';
 
 const CHANNEL_DESCRIPTOR = msg({
 	message: 'Channel',
@@ -32,7 +30,7 @@ export const ChannelLayout = observer(({children}: ChannelLayoutProps) => {
 	const {i18n} = useLingui();
 	const {guildId: routeGuildId, channelId} = useParams() as {guildId?: string; channelId: string};
 	const containerRef = useRef<HTMLElement>(null);
-	useChannelThemeStyle(containerRef, CHANNEL_THEME_STUB_CSS);
+	useChannelThemeStyle(containerRef, ChannelThemes.getThemeCss(channelId));
 	const channel = Channels.getChannel(channelId);
 	const guildId = routeGuildId || channel?.guildId;
 	const guild = guildId ? Guilds.getGuild(guildId) : null;
