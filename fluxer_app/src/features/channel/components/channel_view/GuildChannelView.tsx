@@ -17,6 +17,8 @@ import {ChannelSearchResults} from '@app/features/channel/components/ChannelSear
 import {ChannelTextarea} from '@app/features/channel/components/ChannelTextarea';
 import {ChannelCompactCallSurface} from '@app/features/channel/components/channel_view/ChannelCompactCallSurface';
 import {ChannelViewScaffold} from '@app/features/channel/components/channel_view/ChannelViewScaffold';
+// LOCAL-ONLY: SelectModePanel is a local-only addition — exclude from upstream sync.
+import {SelectModePanel} from '@app/features/channel/components/channel_view/SelectModePanel';
 import {useChannelSearchState} from '@app/features/channel/components/channel_view/useChannelSearchState';
 import {useVoiceCallChromePinState} from '@app/features/channel/components/channel_view/useVoiceCallChromePinState';
 import {MatureContentChannelGate} from '@app/features/channel/components/MatureContentChannelGate';
@@ -26,6 +28,8 @@ import {useChannelMemberListVisibility} from '@app/features/channel/hooks/useCha
 import {useChannelSearchVisibility} from '@app/features/channel/hooks/useChannelSearchVisibility';
 import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
+// LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
+import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 import DeveloperOptions from '@app/features/devtools/state/DeveloperOptions';
 import GuildMatureContentAgree, {MatureContentGateReason} from '@app/features/guild/state/GuildMatureContentAgree';
@@ -518,6 +522,8 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 							guild={guild}
 							data-flx="channel.channel-view.guild-channel-view.channel-members--2"
 						/>
+					) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
+						<SelectModePanel guild={guild} channel={channel} />
 					) : null
 				}
 				showMemberListDivider={shouldRenderMemberList && !isSearchActive}
@@ -574,6 +580,8 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 						guild={guild}
 						data-flx="channel.channel-view.guild-channel-view.channel-members"
 					/>
+				) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
+					<SelectModePanel guild={guild} channel={channel} />
 				) : null
 			}
 			showMemberListDivider={shouldRenderMemberList && !isSearchActive}
