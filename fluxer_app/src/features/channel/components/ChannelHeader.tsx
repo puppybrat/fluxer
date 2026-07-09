@@ -41,6 +41,8 @@ import {CreateDMModal} from '@app/features/channel/components/modals/CreateDMMod
 import {EditGroupModal} from '@app/features/channel/components/modals/EditGroupModal';
 import type {Channel} from '@app/features/channel/models/Channel';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
+// LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
+import SelectMode from '@app/features/channel/state/SelectMode';
 import {isGroupDmFull} from '@app/features/channel/utils/GroupDmUtils';
 import {
 	ADD_TO_FAVORITES_DESCRIPTOR,
@@ -94,6 +96,7 @@ import {RelationshipTypes} from '@fluxer/constants/src/UserConstants';
 import {useLingui} from '@lingui/react/macro';
 import {
 	ArrowLeftIcon,
+	ArrowsLeftRightIcon,
 	CaretRightIcon,
 	EyeSlashIcon,
 	ListIcon,
@@ -295,6 +298,15 @@ export const ChannelHeader = observer(
 			}
 			LayoutCommands.toggleMembers(!isMembersOpen);
 		}, [isMembersOpen, canFitMemberList, memberListChannelId, memberListUsesChannelOverride]);
+		// LOCAL-ONLY: SelectMode toggle handler — exclude from upstream sync.
+		const handleToggleSelectMode = useCallback(() => {
+			if (!channel) return;
+			if (SelectMode.isActive && SelectMode.channelId === channel.id) {
+				SelectMode.deactivate();
+			} else {
+				SelectMode.activate(channel.id);
+			}
+		}, [channel]);
 		useEffect(() => {
 			const handleChannelDetailsOpen = (payload?: unknown) => {
 				const {initialTab} = (payload ?? {}) as {initialTab?: 'members' | 'pins'};
@@ -983,6 +995,21 @@ export const ChannelHeader = observer(
 									aria-pressed={isMembersToggleOpen}
 									keybindAction="chat_toggle_member_list"
 									data-flx="channel.channel-header.channel-header-icon.toggle-members"
+								/>
+							)}
+							{/* LOCAL-ONLY: SelectMode toggle — exclude from upstream sync. */}
+							{showMembersToggle && !isMobile && channel && isGuildChannel && (
+								<ChannelHeaderIcon
+									icon={ArrowsLeftRightIcon}
+									isSelected={SelectMode.isActive && SelectMode.channelId === channel.id}
+									label={
+										SelectMode.isActive && SelectMode.channelId === channel.id
+											? 'Close relocation mode'
+											: 'Relocate messages'
+									}
+									onClick={handleToggleSelectMode}
+									aria-pressed={SelectMode.isActive && SelectMode.channelId === channel.id}
+									data-flx="channel.channel-header.channel-header-icon.toggle-select-mode"
 								/>
 							)}
 							{!isMobile && channel && !isPersonalNotes && (
