@@ -36,7 +36,23 @@ export function configureMiddleware(routes: HonoApp, options: MiddlewarePipeline
 	routes.use('/webhooks/:webhook_id/:token/messages/:message_id', cors({origins: '*'}));
 	applyMiddlewareStack(routes, {
 		requestId: {},
-		cors: {origins: corsOrigins, exposedHeaders: [HttpHeaders.X_FLUXER_VERSION]},
+		cors: {
+			origins: corsOrigins,
+			// Local-only: explicitly allow the custom x-fluxer-* headers sent by the web
+			// client (auth platform header, sudo mode JWT, feature flags) in addition to
+			// the middleware's built-in defaults (Content-Type, Authorization, etc).
+			allowedHeaders: [
+				'Content-Type',
+				'Authorization',
+				'X-Requested-With',
+				'Accept-Language',
+				'X-Request-ID',
+				'X-Fluxer-Platform',
+				HttpHeaders.X_FLUXER_SUDO_MODE_JWT,
+				'X-Fluxer-Features',
+			],
+			exposedHeaders: [HttpHeaders.X_FLUXER_VERSION],
+		},
 		skipLogger: true,
 		skipErrorHandler: true,
 	});
