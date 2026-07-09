@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use crate::bootstrap::{build_bootstrap_script, inject_bootstrap};
+use crate::config::AppProxyConfig;
 use crate::csp::{RuntimeCspSources, build_csp, generate_nonce};
 use crate::discovery_cache::DiscoveryResponse;
 use crate::geoip::build_geoip_response;
@@ -120,7 +121,8 @@ async fn serve_spa_index(state: &AppState, headers: &HeaderMap, request_path: &s
         .unwrap_or("");
     let csp = build_csp(&state.config.csp, &nonce, &runtime_csp_sources);
     let geoip = build_geoip_response(state.geoip.lookup(headers));
-    let script_tag = build_bootstrap_script(&state.config, &discovery, &geoip, &nonce);
+    let bootstrap_discovery = apply_bootstrap_endpoint_overrides(&discovery, &state.config);
+    let script_tag = build_bootstrap_script(&state.config, &bootstrap_discovery, &geoip, &nonce);
 
     if let Some(snapshot) = should_serve_frozen(&time_freeze) {
         let frozen_html = String::from_utf8_lossy(&snapshot.index_html);
@@ -190,6 +192,7 @@ fn build_runtime_csp_sources(state: &AppState, discovery: &DiscoveryResponse) ->
         static_cdn_endpoint: discovery_endpoint(discovery, "static_cdn")
             .or_else(|| state.config.static_cdn_endpoint.clone()),
         media_endpoint: discovery_endpoint(discovery, "media"),
+        gateway_endpoint: discovery_endpoint(discovery, "gateway"),
         s3_public_endpoint: state.config.s3_public_endpoint.clone(),
         s3_uploads_bucket: Some(state.config.s3_uploads_bucket.clone()),
     }
@@ -204,6 +207,43 @@ fn discovery_endpoint(discovery: &DiscoveryResponse, key: &str) -> Option<String
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
+}
+
+// Local-only: the upstream API always reports its own FLUXER_BASE_DOMAIN (e.g.
+// https://chat.obyr.us/api) in the discovery response, since it has no way to know which
+// origin actually served this page. When app-proxy serves the page from a different origin
+// (e.g. the fluxer-dev.obyr.us dev proxy), an absolute cross-origin api/api_client makes the
+// frontend's RestTransport treat every API call as cross-origin and drop the Authorization
+// header, breaking auth. bootstrap_api_endpoint is already configured to a same-origin value
+// (typically "/api") for exactly this case, so use it to override api and api_client before
+// embedding the bootstrap JSON. api_public is intentionally left alone unless
+// bootstrap_api_public_endpoint is explicitly set, since it's used to build copy-pastable
+// webhook URLs that must stay absolute to work outside the browser.
+fn apply_bootstrap_endpoint_overrides(
+    discovery: &DiscoveryResponse,
+    config: &AppProxyConfig,
+) -> DiscoveryResponse {
+    if config.bootstrap_api_endpoint.trim().is_empty() {
+        return discovery.clone();
+    }
+
+    let mut overridden = discovery.clone();
+    if let Some(endpoints) = overridden
+        .data
+        .get_mut("endpoints")
+        .and_then(|value| value.as_object_mut())
+    {
+        let api_endpoint = serde_json::Value::String(config.bootstrap_api_endpoint.clone());
+        endpoints.insert("api".to_owned(), api_endpoint.clone());
+        endpoints.insert("api_client".to_owned(), api_endpoint);
+        if let Some(api_public_endpoint) = &config.bootstrap_api_public_endpoint {
+            endpoints.insert(
+                "api_public".to_owned(),
+                serde_json::Value::String(api_public_endpoint.clone()),
+            );
+        }
+    }
+    overridden
 }
 
 async fn load_spa_index_html(state: &AppState) -> Result<String, Response> {
