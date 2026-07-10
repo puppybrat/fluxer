@@ -23,9 +23,9 @@ import type {Guild} from '@app/features/guild/models/Guild';
 import Guilds from '@app/features/guild/state/Guilds';
 import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {Button} from '@app/features/ui/button/Button';
+import {Combobox, type ComboboxOption} from '@app/features/ui/components/form/FormCombobox';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {useLingui} from '@lingui/react/macro';
-import {XIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import {useEffect, useState} from 'react';
 
@@ -76,28 +76,28 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
         SelectMode.setDestChannelId(null);
     };
 
+    // LOCAL-ONLY: dropdown options for the styled Combobox selects below — exclude from upstream sync.
+    const destGuildOptions: Array<ComboboxOption> = [
+        {value: DMS_DEST_VALUE, label: 'Direct Messages'},
+        ...guilds.map((g) => ({value: g.id, label: g.name || ''})),
+    ];
+    const destChannelOptions: Array<ComboboxOption> = destChannels.map((c) => ({
+        value: c.id,
+        label: destGuildId === DMS_DEST_VALUE ? ChannelUtils.getDMDisplayName(c) : `#${c.name}`,
+    }));
+
     // LOCAL-ONLY: message previews for the anchor/head sections — exclude from upstream sync.
     const anchorPreview = getMessagePreview(SelectMode.channelId, SelectMode.anchorId);
     const headPreview = getMessagePreview(SelectMode.channelId, SelectMode.headId);
     const canReset = SelectMode.anchorId != null || SelectMode.headId != null;
 
     return (
-        <OutlineFrame hideTopBorder sides={{left: false}}>
+        <OutlineFrame hideTopBorder>
             <div className={styles.container} data-flx="channel.channel-view.select-mode-panel.container">
                 <div className={styles.header} data-flx="channel.channel-view.select-mode-panel.header">
                     <span className={styles.title} data-flx="channel.channel-view.select-mode-panel.title">
                         Relocate Messages
                     </span>
-                    <Button
-                        type="button"
-                        square
-                        icon={<XIcon data-flx="channel.channel-view.select-mode-panel.close-icon" />}
-                        aria-label="Close relocation panel"
-                        variant="secondary"
-                        small
-                        onClick={SelectMode.deactivate}
-                        data-flx="channel.channel-view.select-mode-panel.close-button"
-                    />
                 </div>
 
                 <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.anchor-section">
@@ -179,56 +179,24 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                     Reset selection
                 </Button>
 
-                <div
-                    className={styles.section}
-                    data-flx="channel.channel-view.select-mode-panel.dest-server-section"
-                >
-                    <label
-                        className={styles.fieldLabel}
-                        htmlFor="select-mode-dest-server"
-                        data-flx="channel.channel-view.select-mode-panel.dest-server-label"
-                    >
-                        Destination server
-                    </label>
-                    <select
-                        id="select-mode-dest-server"
-                        className={styles.select}
-                        value={destGuildId ?? ''}
-                        onChange={(e) => handleDestGuildChange(e.target.value)}
-                        data-flx="channel.channel-view.select-mode-panel.dest-server-select"
-                    >
-                        <option value={DMS_DEST_VALUE}>Direct Messages</option>
-                        {guilds.map((g) => (
-                            <option key={g.id} value={g.id}>
-                                {g.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <Combobox
+                    id="select-mode-dest-server"
+                    label="Destination server"
+                    value={destGuildId ?? ''}
+                    options={destGuildOptions}
+                    onChange={handleDestGuildChange}
+                    data-flx="channel.channel-view.select-mode-panel.dest-server-select"
+                />
 
-                <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.dest-section">
-                    <label
-                        className={styles.fieldLabel}
-                        htmlFor="select-mode-dest"
-                        data-flx="channel.channel-view.select-mode-panel.dest-label"
-                    >
-                        Destination channel
-                    </label>
-                    <select
-                        id="select-mode-dest"
-                        className={styles.select}
-                        value={SelectMode.destChannelId ?? ''}
-                        onChange={(e) => SelectMode.setDestChannelId(e.target.value || null)}
-                        data-flx="channel.channel-view.select-mode-panel.dest-select"
-                    >
-                        <option value="">Pick a channel…</option>
-                        {destChannels.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {destGuildId === DMS_DEST_VALUE ? ChannelUtils.getDMDisplayName(c) : `#${c.name}`}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <Combobox
+                    id="select-mode-dest"
+                    label="Destination channel"
+                    value={SelectMode.destChannelId ?? ''}
+                    options={destChannelOptions}
+                    onChange={(value) => SelectMode.setDestChannelId(value || null)}
+                    placeholder="Pick a channel…"
+                    data-flx="channel.channel-view.select-mode-panel.dest-select"
+                />
 
                 {SelectMode.result != null && (
                     <div className={styles.success} data-flx="channel.channel-view.select-mode-panel.success">
