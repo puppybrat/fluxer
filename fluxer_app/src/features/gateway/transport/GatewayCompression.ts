@@ -155,7 +155,7 @@ export class GatewayCompression {
 }
 
 export function getPreferredCompression(): CompressionType {
-	return 'zstd-stream';
+	return (process.env.NODE_ENV === 'development' ? 'none' : 'zstd-stream');
 }
 
 export function isCompressionSupported(type: CompressionType): boolean {

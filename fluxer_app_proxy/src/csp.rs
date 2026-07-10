@@ -8,6 +8,7 @@ use reqwest::Url;
 pub struct RuntimeCspSources {
     pub static_cdn_endpoint: Option<String>,
     pub media_endpoint: Option<String>,
+    pub gateway_endpoint: Option<String>,
     pub s3_public_endpoint: Option<String>,
     pub s3_uploads_bucket: Option<String>,
 }
@@ -131,6 +132,7 @@ fn build_csp_directives(
     let mut connect = vec!["'self'".to_owned(), "data:".to_owned()];
     extend_from(&mut connect, config.connect_src.as_deref(), CONNECT_SOURCES);
     extend_runtime_sources(&mut connect, runtime_sources, true, true);
+    push_endpoint_source(&mut connect, runtime_sources.gateway_endpoint.as_deref());
     extend_runtime_s3_sources(&mut connect, runtime_sources);
     directives.push(format!("connect-src {}", connect.join(" ")));
 

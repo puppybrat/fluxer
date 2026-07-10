@@ -17,22 +17,45 @@ import styles from '@app/features/channel/components/channel_view/SelectModePane
 import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
 import SelectMode from '@app/features/channel/state/SelectMode';
+import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 import type {Guild} from '@app/features/guild/models/Guild';
+import Guilds from '@app/features/guild/state/Guilds';
 import {Button} from '@app/features/ui/button/Button';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {XIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
+import {useEffect, useState} from 'react';
+
+const DMS_DEST_VALUE = 'dms';
 
 interface SelectModePanelProps {
-    guild: Guild;
+    guild?: Guild | null;
     channel: Channel;
 }
 
 export const SelectModePanel = observer(function SelectModePanel({guild, channel}: SelectModePanelProps) {
-    const guildChannels = Channels.getGuildChannels(guild.id);
-    const textChannels = guildChannels.filter(
-        (c) => c.type === ChannelTypes.GUILD_TEXT && c.id !== channel.id,
+    const [destGuildId, setDestGuildId] = useState<string | typeof DMS_DEST_VALUE | null>(
+        guild ? guild.id : DMS_DEST_VALUE,
     );
+
+    useEffect(() => {
+        setDestGuildId(guild ? guild.id : DMS_DEST_VALUE);
+    }, [guild]);
+
+    const guilds = Guilds.getGuilds();
+    const destChannels =
+        destGuildId != null && destGuildId !== DMS_DEST_VALUE
+            ? Channels.getGuildChannels(destGuildId).filter(
+                  (c) => c.type === ChannelTypes.GUILD_TEXT && c.id !== channel.id,
+              )
+            : destGuildId === DMS_DEST_VALUE
+              ? Channels.dmChannels.filter((c) => c.id !== channel.id)
+              : [];
+
+    const handleDestGuildChange = (value: string) => {
+        setDestGuildId(value === DMS_DEST_VALUE ? DMS_DEST_VALUE : value || null);
+        SelectMode.setDestChannelId(null);
+    };
 
     return (
         <OutlineFrame hideTopBorder sides={{left: false}}>
@@ -101,6 +124,33 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                     )}
                 </div>
 
+                <div
+                    className={styles.section}
+                    data-flx="channel.channel-view.select-mode-panel.dest-server-section"
+                >
+                    <label
+                        className={styles.fieldLabel}
+                        htmlFor="select-mode-dest-server"
+                        data-flx="channel.channel-view.select-mode-panel.dest-server-label"
+                    >
+                        Destination server
+                    </label>
+                    <select
+                        id="select-mode-dest-server"
+                        className={styles.select}
+                        value={destGuildId ?? ''}
+                        onChange={(e) => handleDestGuildChange(e.target.value)}
+                        data-flx="channel.channel-view.select-mode-panel.dest-server-select"
+                    >
+                        <option value={DMS_DEST_VALUE}>Direct Messages</option>
+                        {guilds.map((g) => (
+                            <option key={g.id} value={g.id}>
+                                {g.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
                 <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.dest-section">
                     <label
                         className={styles.fieldLabel}
@@ -117,9 +167,9 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         data-flx="channel.channel-view.select-mode-panel.dest-select"
                     >
                         <option value="">Pick a channel…</option>
-                        {textChannels.map((c) => (
+                        {destChannels.map((c) => (
                             <option key={c.id} value={c.id}>
-                                #{c.name}
+                                {destGuildId === DMS_DEST_VALUE ? ChannelUtils.getDMDisplayName(c) : `#${c.name}`}
                             </option>
                         ))}
                     </select>

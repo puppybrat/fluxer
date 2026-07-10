@@ -998,7 +998,7 @@ export const ChannelHeader = observer(
 								/>
 							)}
 							{/* LOCAL-ONLY: SelectMode toggle — exclude from upstream sync. */}
-							{showMembersToggle && !isMobile && channel && isGuildChannel && (
+							{!isMobile && channel && (isGuildChannel || isDM || isGroupDM) && (
 								<ChannelHeaderIcon
 									icon={ArrowsLeftRightIcon}
 									isSelected={SelectMode.isActive && SelectMode.channelId === channel.id}

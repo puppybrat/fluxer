@@ -28,6 +28,8 @@ import {
 	VIEW_INCOMING_CALL_DESCRIPTOR,
 } from '@app/features/channel/components/channel_view/dm_channel_view/shared';
 import {useCompactCallBannerResize} from '@app/features/channel/components/channel_view/dm_channel_view/useCompactCallBannerResize';
+// LOCAL-ONLY: SelectModePanel is a local-only addition — exclude from upstream sync.
+import {SelectModePanel} from '@app/features/channel/components/channel_view/SelectModePanel';
 import {useCallHeaderState} from '@app/features/channel/components/channel_view/useCallHeaderState';
 import {useChannelSearchState} from '@app/features/channel/components/channel_view/useChannelSearchState';
 import {useVoiceCallChromePinState} from '@app/features/channel/components/channel_view/useVoiceCallChromePinState';
@@ -36,6 +38,8 @@ import {useMessagesBottomBarVisibility} from '@app/features/channel/components/M
 import {useChannelMemberListVisibility} from '@app/features/channel/hooks/useChannelMemberListVisibility';
 import {useChannelSearchVisibility} from '@app/features/channel/hooks/useChannelSearchVisibility';
 import Channels from '@app/features/channel/state/Channels';
+// LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
+import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 import {INCOMING_CALL_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {useMemberListVisible} from '@app/features/member/hooks/useMemberListVisible';
@@ -518,6 +522,8 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 						</div>
 					) : shouldRenderMemberList ? (
 						<ChannelMembers channel={channel} data-flx="channel.channel-view.dm-channel-view.channel-members" />
+					) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
+						<SelectModePanel channel={channel} />
 					) : null
 				}
 				chatAreaInert={isCompactCallChatSuppressed}
