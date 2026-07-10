@@ -820,6 +820,18 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 		astNodes.length === 1 &&
 		astNodes[0].type === NodeType.Link &&
 		!message.suppressEmbeds;
+	// LOCAL-ONLY: SelectMode range highlight — exclude from upstream sync.
+	const isInSelectRange = useMemo(() => {
+		if (!SelectMode.isActive || SelectMode.channelId !== channel.id) {
+			return false;
+		}
+		const {startMessageId, endMessageId} = SelectMode;
+		if (startMessageId == null || endMessageId == null) {
+			return false;
+		}
+		const mid = BigInt(message.id);
+		return mid >= BigInt(startMessageId) && mid <= BigInt(endMessageId);
+	}, [channel.id, message.id, SelectMode.isActive, SelectMode.channelId, SelectMode.startMessageId, SelectMode.endMessageId]);
 	const shouldDisableHoverBackground = (prefersReducedMotion && !isEditing) || readonlyPreview;
 	const isKeyboardFocused = keyboardModeEnabled && isFocusedWithin;
 	const shouldApplySpacing = !shouldGroup && !removeTopSpacing && previewContext !== MessagePreviewContext.LIST_POPOUT;
@@ -855,6 +867,8 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 				isKeyboardFocused && styles.keyboardFocused,
 				isKeyboardFocused && 'keyboard-focus-active',
 				shouldApplySpacing && previewContext && styles.messagePreviewSpacing,
+				// LOCAL-ONLY: SelectMode range highlight — exclude from upstream sync.
+				!previewContext && isInSelectRange && styles.messageSelectRange,
 			),
 		[
 			messageDisplayCompact,
@@ -876,6 +890,7 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 			shouldHideContent,
 			isKeyboardFocused,
 			shouldApplySpacing,
+			isInSelectRange,
 		],
 	);
 	const shouldShowActionBar = useMemo(

@@ -59,6 +59,13 @@
     padding: 2px 0;
 }
 
+.preview {
+    font-size: 11px;
+    opacity: 0.6;
+    word-break: break-word;
+    padding: 2px 0;
+}
+
 .select {
     width: 100%;
     padding: 6px 8px;

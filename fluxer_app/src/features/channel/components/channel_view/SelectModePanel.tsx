@@ -20,6 +20,7 @@ import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 import type {Guild} from '@app/features/guild/models/Guild';
 import Guilds from '@app/features/guild/state/Guilds';
+import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {Button} from '@app/features/ui/button/Button';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {XIcon} from '@phosphor-icons/react';
@@ -27,6 +28,21 @@ import {observer} from 'mobx-react-lite';
 import {useEffect, useState} from 'react';
 
 const DMS_DEST_VALUE = 'dms';
+const PREVIEW_MAX_LENGTH = 80;
+
+// LOCAL-ONLY: message preview helper for the anchor/head sections below — exclude from upstream sync.
+function getMessagePreview(channelId: string | null, messageId: string | null): string | null {
+    if (channelId == null || messageId == null) {
+        return null;
+    }
+    const message = MessagingMessages.getMessages(channelId).get(messageId);
+    if (!message || !message.content) {
+        return null;
+    }
+    return message.content.length > PREVIEW_MAX_LENGTH
+        ? `${message.content.slice(0, PREVIEW_MAX_LENGTH)}...`
+        : message.content;
+}
 
 interface SelectModePanelProps {
     guild?: Guild | null;
@@ -57,6 +73,11 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
         SelectMode.setDestChannelId(null);
     };
 
+    // LOCAL-ONLY: message previews for the anchor/head sections — exclude from upstream sync.
+    const anchorPreview = getMessagePreview(SelectMode.channelId, SelectMode.anchorId);
+    const headPreview = getMessagePreview(SelectMode.channelId, SelectMode.headId);
+    const canReset = SelectMode.anchorId != null || SelectMode.headId != null;
+
     return (
         <OutlineFrame hideTopBorder sides={{left: false}}>
             <div className={styles.container} data-flx="channel.channel-view.select-mode-panel.container">
@@ -84,12 +105,22 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         Anchor message
                     </span>
                     {SelectMode.anchorId != null ? (
-                        <span
-                            className={styles.idValue}
-                            data-flx="channel.channel-view.select-mode-panel.anchor-value"
-                        >
-                            {SelectMode.anchorId}
-                        </span>
+                        <>
+                            <span
+                                className={styles.idValue}
+                                data-flx="channel.channel-view.select-mode-panel.anchor-value"
+                            >
+                                {SelectMode.anchorId}
+                            </span>
+                            {anchorPreview != null && (
+                                <span
+                                    className={styles.preview}
+                                    data-flx="channel.channel-view.select-mode-panel.anchor-preview"
+                                >
+                                    {anchorPreview}
+                                </span>
+                            )}
+                        </>
                     ) : (
                         <span
                             className={styles.placeholder}
@@ -108,12 +139,22 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         Head message
                     </span>
                     {SelectMode.headId != null ? (
-                        <span
-                            className={styles.idValue}
-                            data-flx="channel.channel-view.select-mode-panel.head-value"
-                        >
-                            {SelectMode.headId}
-                        </span>
+                        <>
+                            <span
+                                className={styles.idValue}
+                                data-flx="channel.channel-view.select-mode-panel.head-value"
+                            >
+                                {SelectMode.headId}
+                            </span>
+                            {headPreview != null && (
+                                <span
+                                    className={styles.preview}
+                                    data-flx="channel.channel-view.select-mode-panel.head-preview"
+                                >
+                                    {headPreview}
+                                </span>
+                            )}
+                        </>
                     ) : (
                         <span
                             className={styles.placeholder}
@@ -123,6 +164,17 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         </span>
                     )}
                 </div>
+
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={SelectMode.reset}
+                    disabled={!canReset}
+                    small
+                    data-flx="channel.channel-view.select-mode-panel.reset-button"
+                >
+                    Reset selection
+                </Button>
 
                 <div
                     className={styles.section}
