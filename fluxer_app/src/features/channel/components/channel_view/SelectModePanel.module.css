@@ -21,7 +21,7 @@
 }
 
 /* Passed as the Scroller's className — matches .memberListScroller exactly. */
-.scroller {
+.scrollerPadding {
     flex: 1;
     min-height: 0;
     background-color: var(--background-secondary-lighter);

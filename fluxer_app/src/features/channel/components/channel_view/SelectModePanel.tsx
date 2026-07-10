@@ -24,6 +24,7 @@ import Guilds from '@app/features/guild/state/Guilds';
 import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {Button} from '@app/features/ui/button/Button';
 import {Combobox, type ComboboxOption} from '@app/features/ui/components/form/FormCombobox';
+import {Scroller} from '@app/features/ui/components/Scroller';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
@@ -95,12 +96,16 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
         <OutlineFrame hideTopBorder>
             {/*
              * LOCAL-ONLY: structure mirrors MemberListContainer.tsx — an <aside> for
-             * layout/background (overflow: hidden, no padding) wrapping a scrollable
-             * content div (.scroller) that carries the actual padding — exclude from
-             * upstream sync.
+             * layout/background (overflow: hidden, no padding) wrapping the same
+             * Scroller component the Members panel uses, which carries the actual
+             * padding via its className — exclude from upstream sync.
              */}
             <aside className={styles.container} data-flx="channel.channel-view.select-mode-panel.container">
-                <div className={styles.scroller} data-flx="channel.channel-view.select-mode-panel.scroller">
+                <Scroller
+                    className={styles.scrollerPadding}
+                    contentClassName={styles.scrollerContent}
+                    data-flx="channel.channel-view.select-mode-panel.scroller"
+                >
                     <div className={styles.header} data-flx="channel.channel-view.select-mode-panel.header">
                         <span className={styles.title} data-flx="channel.channel-view.select-mode-panel.title">
                             Relocate Messages
@@ -280,7 +285,7 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                             </div>
                         )}
                     </div>
-                </div>
+                </Scroller>
             </aside>
         </OutlineFrame>
     );
