@@ -8,6 +8,8 @@ import {MessageActionBottomSheet} from '@app/features/channel/components/Message
 import {requestDeleteMessage} from '@app/features/channel/components/MessageActionUtils';
 import {MessageViewContextProvider} from '@app/features/channel/components/MessageViewContext';
 import type {Channel} from '@app/features/channel/models/Channel';
+// LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
+import SelectMode from '@app/features/channel/state/SelectMode';
 import DeveloperOptions from '@app/features/devtools/state/DeveloperOptions';
 import {parse} from '@app/features/messaging/components/markdown/renderers';
 import {MarkdownContext} from '@app/features/messaging/components/markdown/renderers/RendererTypes';
@@ -397,6 +399,44 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 			requestDeleteMessage(message, i18n, bypassConfirm);
 		},
 		[i18n, message],
+	);
+	// LOCAL-ONLY: SelectMode click-to-select handling — exclude from upstream sync.
+	// Returns true if the click was consumed by select mode, so the caller can skip other row click behavior.
+	const handleSelectModeClick = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>): boolean => {
+			if (!SelectMode.isActive || SelectMode.channelId !== channel.id) {
+				return false;
+			}
+			if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) {
+				return false;
+			}
+			const target = event.target;
+			if (target instanceof Element && target.closest('a, button, [role="button"], input, textarea, [data-user-id]')) {
+				return false;
+			}
+			const selection = window.getSelection();
+			if (selection && selection.toString().length > 0) {
+				return false;
+			}
+			event.preventDefault();
+			if (SelectMode.anchorId == null || SelectMode.headId != null) {
+				SelectMode.setAnchor(message.id);
+			} else {
+				SelectMode.setHead(message.id);
+			}
+			return true;
+		},
+		[channel.id, message.id],
+	);
+	// LOCAL-ONLY: SelectMode click-to-select handling — exclude from upstream sync.
+	const handleRowClick = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>) => {
+			if (handleSelectModeClick(event)) {
+				return;
+			}
+			handleAltClick(event);
+		},
+		[handleSelectModeClick, handleAltClick],
 	);
 	const handleContextMenu = useCallback(
 		(event: React.MouseEvent) => {
@@ -897,7 +937,7 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 					className={messageClasses}
 					ref={messageRef}
 					onClickCapture={handleClickCapture}
-					onClick={handleAltClick}
+					onClick={handleRowClick}
 					onKeyDown={handleAltKeyDown}
 					onFocus={handleFocusWithin}
 					onBlur={handleBlurWithin}
@@ -907,7 +947,7 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 					onTouchMove={handleLongPressMove}
 					onTouchCancel={handleLongPressEnd}
 					style={articleStyle}
-					data-flx="channel.message.article.alt-click"
+					data-flx="channel.message.article.row-click"
 				>
 					{messageComponent}
 					{shouldRenderInlineActionBar &&
