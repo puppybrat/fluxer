@@ -2,6 +2,8 @@
  * LOCAL-ONLY: This file is a local-only addition to fluxer_api and will never exist upstream.
  * It implements the storage layer for /channels/relocate-messages — an admin endpoint that
  * moves a contiguous range of messages from one channel to another by rewriting fluxer_kv rows.
+ * It also writes a relocate audit log entry (RelocateLog table) after a successful move, read
+ * back by GET /channels/relocate-log.
  *
  * Known limitations (not fixed here):
  *  - Meilisearch search index is NOT updated; search results for moved messages will be stale
@@ -14,7 +16,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import * as BucketUtils from '@fluxer/snowflake/src/SnowflakeBuckets';
-import type {ChannelID, MessageID} from '../../../BrandedTypes';
+import type {ChannelID, MessageID, UserID} from '../../../BrandedTypes';
 import {BatchBuilder, fetchMany, fetchOne, upsertOne} from '../../../database/CassandraQueryExecution';
 import {Db} from '../../../database/CassandraTypes';
 import type {ChannelMessageBucketRow, ChannelStateRow, MessageReactionRow, MessageRow} from '../../../database/types/MessageTypes';
@@ -27,6 +29,8 @@ import {
 	Messages,
 	MessagesByAuthorV2,
 	MessageReactions,
+	RelocateLog,
+	type RelocateLogRow,
 } from '../../../Tables';
 
 const FETCH_MESSAGES_IN_BUCKET = Messages.select({
@@ -73,11 +77,15 @@ export class MessageRelocationRepository {
 		destChannelId,
 		startMessageId,
 		endMessageId,
+		userId,
+		logId,
 	}: {
 		sourceChannelId: ChannelID;
 		destChannelId: ChannelID;
 		startMessageId: MessageID;
 		endMessageId: MessageID;
+		userId: UserID;
+		logId: bigint;
 	}): Promise<{movedCount: number}> {
 		if (startMessageId > endMessageId) {
 			return {movedCount: 0};
@@ -263,7 +271,23 @@ export class MessageRelocationRepository {
 			await this.advanceChannelStateLastMessageIfNewer(destChannelId, maxMovedMessageId, maxMovedBucket);
 		}
 
+		await this.writeRelocateLogEntry({
+			log_id: logId,
+			performed_by: userId,
+			source_channel_id: sourceChannelId,
+			dest_channel_id: destChannelId,
+			start_message_id: startMessageId,
+			end_message_id: endMessageId,
+			moved_count: movedCount,
+			created_at: new Date(),
+		});
+
 		return {movedCount};
+	}
+
+	// LOCAL-ONLY: relocate audit log write — exclude from upstream sync.
+	private async writeRelocateLogEntry(row: RelocateLogRow): Promise<void> {
+		await upsertOne(RelocateLog.upsertAll(row));
 	}
 
 	private async reconcileSourceChannelState(channelId: ChannelID): Promise<void> {

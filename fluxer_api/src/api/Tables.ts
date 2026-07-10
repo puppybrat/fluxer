@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {AttachmentID, ChannelID, GuildID, MemeID, PasswordResetToken, UserID} from './BrandedTypes';
+import type {AttachmentID, ChannelID, GuildID, MemeID, MessageID, PasswordResetToken, UserID} from './BrandedTypes';
 import {defineTable} from './database/CassandraTableDsl';
 import {
 	ADMIN_ARCHIVE_COLUMNS,
@@ -657,6 +657,35 @@ export const AttachmentLookup = defineTable<AttachmentLookupRow, 'channel_id' | 
 	columns: ATTACHMENT_LOOKUP_COLUMNS,
 	primaryKey: ['channel_id', 'attachment_id', 'filename'],
 });
+
+// LOCAL-ONLY: RelocateLog is a local-only addition for the relocate audit log feature — exclude from upstream sync.
+export interface RelocateLogRow {
+	log_id: bigint;
+	performed_by: UserID;
+	source_channel_id: ChannelID;
+	dest_channel_id: ChannelID;
+	start_message_id: MessageID;
+	end_message_id: MessageID;
+	moved_count: number;
+	created_at: Date;
+}
+
+const RELOCATE_LOG_COLUMNS = [
+	'log_id',
+	'performed_by',
+	'source_channel_id',
+	'dest_channel_id',
+	'start_message_id',
+	'end_message_id',
+	'moved_count',
+	'created_at',
+] as const satisfies ReadonlyArray<keyof RelocateLogRow>;
+export const RelocateLog = defineTable<RelocateLogRow, 'log_id'>({
+	name: 'relocate_log',
+	columns: RELOCATE_LOG_COLUMNS,
+	primaryKey: ['log_id'],
+});
+
 export const RecentMentions = defineTable<RecentMentionRow, 'user_id' | 'message_id'>({
 	name: 'recent_mentions',
 	columns: RECENT_MENTION_COLUMNS,
