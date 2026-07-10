@@ -22,6 +22,29 @@ interface RelocateResponse {
     movedCount: number;
 }
 
+// LOCAL-ONLY: shape of GET /channels/relocate-log entries — exclude from upstream sync.
+export interface RelocateLogEntry {
+    logId: string;
+    performedBy: {
+        id: string;
+        displayName: string | null;
+    };
+    sourceChannel: {
+        id: string;
+        name: string | null;
+    };
+    destChannel: {
+        id: string;
+        name: string | null;
+    };
+    startMessageId: string;
+    endMessageId: string;
+    movedCount: number;
+    createdAt: string;
+}
+
+const RECENT_LOG_LIMIT = 5;
+
 class SelectMode {
     isActive = false;
     channelId: string | null = null;
@@ -31,6 +54,8 @@ class SelectMode {
     submitting = false;
     lastError: string | null = null;
     result: RelocateResponse | null = null;
+    recentLog: Array<RelocateLogEntry> = [];
+    logLoading = false;
 
     constructor() {
         makeAutoObservable(this, {}, {autoBind: true});
@@ -60,6 +85,7 @@ class SelectMode {
         this.destChannelId = null;
         this.result = null;
         this.lastError = null;
+        void this.fetchRecentLog();
     }
 
     deactivate(): void {
@@ -93,6 +119,26 @@ class SelectMode {
 
     setDestChannelId(channelId: string | null): void {
         this.destChannelId = channelId;
+    }
+
+    // LOCAL-ONLY: relocate audit log fetch — exclude from upstream sync.
+    async fetchRecentLog(): Promise<void> {
+        runInAction(() => {
+            this.logLoading = true;
+        });
+        try {
+            const response = await http.get<Array<RelocateLogEntry>>('/channels/relocate-log', {
+                query: {limit: RECENT_LOG_LIMIT},
+            });
+            runInAction(() => {
+                this.recentLog = response.body;
+                this.logLoading = false;
+            });
+        } catch {
+            runInAction(() => {
+                this.logLoading = false;
+            });
+        }
     }
 
     async submit(): Promise<void> {
@@ -155,6 +201,7 @@ class SelectMode {
                 this.result = response.body;
                 this.submitting = false;
             });
+            void this.fetchRecentLog();
         } catch (error) {
             runInAction(() => {
                 this.lastError = error instanceof Error ? error.message : 'unknown';

@@ -14,6 +14,7 @@
 
 import {OutlineFrame} from '@app/features/app/components/layout/OutlineFrame';
 import styles from '@app/features/channel/components/channel_view/SelectModePanel.module.css';
+import {formatRecentOrFallback} from '@app/features/channel/components/guild_members_page/GuildMembersPageFormatting';
 import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
 import SelectMode from '@app/features/channel/state/SelectMode';
@@ -23,6 +24,7 @@ import Guilds from '@app/features/guild/state/Guilds';
 import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {Button} from '@app/features/ui/button/Button';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
+import {useLingui} from '@lingui/react/macro';
 import {XIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import {useEffect, useState} from 'react';
@@ -50,6 +52,7 @@ interface SelectModePanelProps {
 }
 
 export const SelectModePanel = observer(function SelectModePanel({guild, channel}: SelectModePanelProps) {
+    const {i18n} = useLingui();
     const [destGuildId, setDestGuildId] = useState<string | typeof DMS_DEST_VALUE | null>(
         guild ? guild.id : DMS_DEST_VALUE,
     );
@@ -251,6 +254,54 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                 >
                     Relocate
                 </Button>
+
+                {/* LOCAL-ONLY: recent relocate audit log — exclude from upstream sync. */}
+                <div className={styles.logSection} data-flx="channel.channel-view.select-mode-panel.log-section">
+                    <span className={styles.fieldLabel} data-flx="channel.channel-view.select-mode-panel.log-label">
+                        Recent moves
+                    </span>
+                    {SelectMode.logLoading ? (
+                        <span
+                            className={styles.placeholder}
+                            data-flx="channel.channel-view.select-mode-panel.log-loading"
+                        >
+                            Loading…
+                        </span>
+                    ) : SelectMode.recentLog.length === 0 ? (
+                        <span
+                            className={styles.placeholder}
+                            data-flx="channel.channel-view.select-mode-panel.log-empty"
+                        >
+                            No recent moves
+                        </span>
+                    ) : (
+                        <div className={styles.logList} data-flx="channel.channel-view.select-mode-panel.log-list">
+                            {SelectMode.recentLog.slice(0, 5).map((entry) => (
+                                <div
+                                    key={entry.logId}
+                                    className={styles.logEntry}
+                                    data-flx="channel.channel-view.select-mode-panel.log-entry"
+                                >
+                                    <span
+                                        className={styles.logRoute}
+                                        data-flx="channel.channel-view.select-mode-panel.log-route"
+                                    >
+                                        {entry.sourceChannel.name ?? entry.sourceChannel.id} →{' '}
+                                        {entry.destChannel.name ?? entry.destChannel.id}
+                                    </span>
+                                    <span
+                                        className={styles.logMeta}
+                                        data-flx="channel.channel-view.select-mode-panel.log-meta"
+                                    >
+                                        {entry.movedCount} message{entry.movedCount !== 1 ? 's' : ''} ·{' '}
+                                        {entry.performedBy.displayName ?? entry.performedBy.id} ·{' '}
+                                        {formatRecentOrFallback(new Date(entry.createdAt), i18n)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </OutlineFrame>
     );
