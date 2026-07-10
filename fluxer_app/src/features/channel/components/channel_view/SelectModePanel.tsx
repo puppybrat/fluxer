@@ -102,7 +102,7 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         className={styles.fieldLabel}
                         data-flx="channel.channel-view.select-mode-panel.anchor-label"
                     >
-                        Anchor message
+                        Start message
                     </span>
                     {SelectMode.anchorId != null ? (
                         <>
@@ -136,7 +136,7 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         className={styles.fieldLabel}
                         data-flx="channel.channel-view.select-mode-panel.head-label"
                     >
-                        Head message
+                        End message
                     </span>
                     {SelectMode.headId != null ? (
                         <>
