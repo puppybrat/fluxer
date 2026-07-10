@@ -3,19 +3,38 @@
  * Exclude from any upstream sync.
  */
 
+/*
+ * Outer aside: layout/background only — no padding here. Matches
+ * MemberListContainer.module.css's .memberListContainer exactly: the aside itself
+ * has overflow: hidden, and the actual scrolling + padding happen inside the
+ * Scroller component below (mirroring Members' Scroller wrapper / .memberListScroller).
+ */
 .container {
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow-y: auto;
+    min-height: 0;
     width: 16.5rem;
+    min-width: 0;
+    overflow: hidden;
     background-color: var(--background-secondary-lighter);
-    padding-top: var(--spacing-1);
+}
+
+/* Passed as the Scroller's className — matches .memberListScroller exactly. */
+.scroller {
+    flex: 1;
+    min-height: 0;
+    background-color: var(--background-secondary-lighter);
+    padding-top: 0.25rem;
     padding-left: var(--spacing-2);
     padding-right: var(--spacing-2);
     padding-bottom: var(--spacing-4);
+}
+
+/* Passed as the Scroller's contentClassName — adds spacing between our form
+ * sections; Scroller's own .scrollerChildren already provides flex column layout. */
+.scrollerContent {
     gap: 12px;
-    box-sizing: border-box;
 }
 
 .header {
@@ -39,12 +58,12 @@
     gap: 6px;
 }
 
+/* Matches ChannelMembers.module.css's .virtualGroupRow section-header typography
+ * (the "Online — 1" / "Offline — 1" style): font-size, weight, and muted color. */
 .fieldLabel {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    opacity: 0.6;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-primary-muted);
 }
 
 .idValue {

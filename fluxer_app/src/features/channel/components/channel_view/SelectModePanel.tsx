@@ -93,184 +93,195 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
 
     return (
         <OutlineFrame hideTopBorder>
-            <div className={styles.container} data-flx="channel.channel-view.select-mode-panel.container">
-                <div className={styles.header} data-flx="channel.channel-view.select-mode-panel.header">
-                    <span className={styles.title} data-flx="channel.channel-view.select-mode-panel.title">
-                        Relocate Messages
-                    </span>
-                </div>
-
-                <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.anchor-section">
-                    <span
-                        className={styles.fieldLabel}
-                        data-flx="channel.channel-view.select-mode-panel.anchor-label"
-                    >
-                        Start message
-                    </span>
-                    {SelectMode.anchorId != null ? (
-                        <>
-                            <span
-                                className={styles.idValue}
-                                data-flx="channel.channel-view.select-mode-panel.anchor-value"
-                            >
-                                {SelectMode.anchorId}
-                            </span>
-                            {anchorPreview != null && (
-                                <span
-                                    className={styles.preview}
-                                    data-flx="channel.channel-view.select-mode-panel.anchor-preview"
-                                >
-                                    {anchorPreview}
-                                </span>
-                            )}
-                        </>
-                    ) : (
-                        <span
-                            className={styles.placeholder}
-                            data-flx="channel.channel-view.select-mode-panel.anchor-placeholder"
-                        >
-                            Click a message to set start
+            {/*
+             * LOCAL-ONLY: structure mirrors MemberListContainer.tsx — an <aside> for
+             * layout/background (overflow: hidden, no padding) wrapping a scrollable
+             * content div (.scroller) that carries the actual padding — exclude from
+             * upstream sync.
+             */}
+            <aside className={styles.container} data-flx="channel.channel-view.select-mode-panel.container">
+                <div className={styles.scroller} data-flx="channel.channel-view.select-mode-panel.scroller">
+                    <div className={styles.header} data-flx="channel.channel-view.select-mode-panel.header">
+                        <span className={styles.title} data-flx="channel.channel-view.select-mode-panel.title">
+                            Relocate Messages
                         </span>
-                    )}
-                </div>
-
-                <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.head-section">
-                    <span
-                        className={styles.fieldLabel}
-                        data-flx="channel.channel-view.select-mode-panel.head-label"
-                    >
-                        End message
-                    </span>
-                    {SelectMode.headId != null ? (
-                        <>
-                            <span
-                                className={styles.idValue}
-                                data-flx="channel.channel-view.select-mode-panel.head-value"
-                            >
-                                {SelectMode.headId}
-                            </span>
-                            {headPreview != null && (
-                                <span
-                                    className={styles.preview}
-                                    data-flx="channel.channel-view.select-mode-panel.head-preview"
-                                >
-                                    {headPreview}
-                                </span>
-                            )}
-                        </>
-                    ) : (
-                        <span
-                            className={styles.placeholder}
-                            data-flx="channel.channel-view.select-mode-panel.head-placeholder"
-                        >
-                            Click another message to set end
-                        </span>
-                    )}
-                </div>
-
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={SelectMode.reset}
-                    disabled={!canReset}
-                    small
-                    data-flx="channel.channel-view.select-mode-panel.reset-button"
-                >
-                    Reset selection
-                </Button>
-
-                <Combobox
-                    id="select-mode-dest-server"
-                    label="Destination server"
-                    value={destGuildId ?? ''}
-                    options={destGuildOptions}
-                    onChange={handleDestGuildChange}
-                    data-flx="channel.channel-view.select-mode-panel.dest-server-select"
-                />
-
-                <Combobox
-                    id="select-mode-dest"
-                    label="Destination channel"
-                    value={SelectMode.destChannelId ?? ''}
-                    options={destChannelOptions}
-                    onChange={(value) => SelectMode.setDestChannelId(value || null)}
-                    placeholder="Pick a channel…"
-                    data-flx="channel.channel-view.select-mode-panel.dest-select"
-                />
-
-                {SelectMode.result != null && (
-                    <div className={styles.success} data-flx="channel.channel-view.select-mode-panel.success">
-                        Moved {SelectMode.result.movedCount} message
-                        {SelectMode.result.movedCount !== 1 ? 's' : ''}.
                     </div>
-                )}
 
-                {SelectMode.lastError != null && (
-                    <div className={styles.error} data-flx="channel.channel-view.select-mode-panel.error">
-                        Error: {SelectMode.lastError}
-                    </div>
-                )}
-
-                <Button
-                    type="button"
-                    variant="primary"
-                    onClick={() => void SelectMode.submit()}
-                    disabled={!SelectMode.canSubmit}
-                    submitting={SelectMode.submitting}
-                    fitContainer
-                    data-flx="channel.channel-view.select-mode-panel.relocate-button"
-                >
-                    Relocate
-                </Button>
-
-                {/* LOCAL-ONLY: recent relocate audit log — exclude from upstream sync. */}
-                <div className={styles.logSection} data-flx="channel.channel-view.select-mode-panel.log-section">
-                    <span className={styles.fieldLabel} data-flx="channel.channel-view.select-mode-panel.log-label">
-                        Recent moves
-                    </span>
-                    {SelectMode.logLoading ? (
+                    <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.anchor-section">
                         <span
-                            className={styles.placeholder}
-                            data-flx="channel.channel-view.select-mode-panel.log-loading"
+                            className={styles.fieldLabel}
+                            data-flx="channel.channel-view.select-mode-panel.anchor-label"
                         >
-                            Loading…
+                            Start message
                         </span>
-                    ) : SelectMode.recentLog.length === 0 ? (
-                        <span
-                            className={styles.placeholder}
-                            data-flx="channel.channel-view.select-mode-panel.log-empty"
-                        >
-                            No recent moves
-                        </span>
-                    ) : (
-                        <div className={styles.logList} data-flx="channel.channel-view.select-mode-panel.log-list">
-                            {SelectMode.recentLog.slice(0, 5).map((entry) => (
-                                <div
-                                    key={entry.logId}
-                                    className={styles.logEntry}
-                                    data-flx="channel.channel-view.select-mode-panel.log-entry"
+                        {SelectMode.anchorId != null ? (
+                            <>
+                                <span
+                                    className={styles.idValue}
+                                    data-flx="channel.channel-view.select-mode-panel.anchor-value"
                                 >
+                                    {SelectMode.anchorId}
+                                </span>
+                                {anchorPreview != null && (
                                     <span
-                                        className={styles.logRoute}
-                                        data-flx="channel.channel-view.select-mode-panel.log-route"
+                                        className={styles.preview}
+                                        data-flx="channel.channel-view.select-mode-panel.anchor-preview"
                                     >
-                                        {entry.sourceChannel.name ?? entry.sourceChannel.id} →{' '}
-                                        {entry.destChannel.name ?? entry.destChannel.id}
+                                        {anchorPreview}
                                     </span>
+                                )}
+                            </>
+                        ) : (
+                            <span
+                                className={styles.placeholder}
+                                data-flx="channel.channel-view.select-mode-panel.anchor-placeholder"
+                            >
+                                Click a message to set start
+                            </span>
+                        )}
+                    </div>
+
+                    <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.head-section">
+                        <span
+                            className={styles.fieldLabel}
+                            data-flx="channel.channel-view.select-mode-panel.head-label"
+                        >
+                            End message
+                        </span>
+                        {SelectMode.headId != null ? (
+                            <>
+                                <span
+                                    className={styles.idValue}
+                                    data-flx="channel.channel-view.select-mode-panel.head-value"
+                                >
+                                    {SelectMode.headId}
+                                </span>
+                                {headPreview != null && (
                                     <span
-                                        className={styles.logMeta}
-                                        data-flx="channel.channel-view.select-mode-panel.log-meta"
+                                        className={styles.preview}
+                                        data-flx="channel.channel-view.select-mode-panel.head-preview"
                                     >
-                                        {entry.movedCount} message{entry.movedCount !== 1 ? 's' : ''} ·{' '}
-                                        {entry.performedBy.displayName ?? entry.performedBy.id} ·{' '}
-                                        {formatRecentOrFallback(new Date(entry.createdAt), i18n)}
+                                        {headPreview}
                                     </span>
-                                </div>
-                            ))}
+                                )}
+                            </>
+                        ) : (
+                            <span
+                                className={styles.placeholder}
+                                data-flx="channel.channel-view.select-mode-panel.head-placeholder"
+                            >
+                                Click another message to set end
+                            </span>
+                        )}
+                    </div>
+
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={SelectMode.reset}
+                        disabled={!canReset}
+                        small
+                        data-flx="channel.channel-view.select-mode-panel.reset-button"
+                    >
+                        Reset selection
+                    </Button>
+
+                    <Combobox
+                        id="select-mode-dest-server"
+                        label="Destination server"
+                        value={destGuildId ?? ''}
+                        options={destGuildOptions}
+                        onChange={handleDestGuildChange}
+                        data-flx="channel.channel-view.select-mode-panel.dest-server-select"
+                    />
+
+                    <Combobox
+                        id="select-mode-dest"
+                        label="Destination channel"
+                        value={SelectMode.destChannelId ?? ''}
+                        options={destChannelOptions}
+                        onChange={(value) => SelectMode.setDestChannelId(value || null)}
+                        placeholder="Pick a channel…"
+                        data-flx="channel.channel-view.select-mode-panel.dest-select"
+                    />
+
+                    {SelectMode.result != null && (
+                        <div className={styles.success} data-flx="channel.channel-view.select-mode-panel.success">
+                            Moved {SelectMode.result.movedCount} message
+                            {SelectMode.result.movedCount !== 1 ? 's' : ''}.
                         </div>
                     )}
+
+                    {SelectMode.lastError != null && (
+                        <div className={styles.error} data-flx="channel.channel-view.select-mode-panel.error">
+                            Error: {SelectMode.lastError}
+                        </div>
+                    )}
+
+                    <Button
+                        type="button"
+                        variant="primary"
+                        onClick={() => void SelectMode.submit()}
+                        disabled={!SelectMode.canSubmit}
+                        submitting={SelectMode.submitting}
+                        fitContainer
+                        data-flx="channel.channel-view.select-mode-panel.relocate-button"
+                    >
+                        Relocate
+                    </Button>
+
+                    {/* LOCAL-ONLY: recent relocate audit log — exclude from upstream sync. */}
+                    <div className={styles.logSection} data-flx="channel.channel-view.select-mode-panel.log-section">
+                        <span
+                            className={styles.fieldLabel}
+                            data-flx="channel.channel-view.select-mode-panel.log-label"
+                        >
+                            Recent moves
+                        </span>
+                        {SelectMode.logLoading ? (
+                            <span
+                                className={styles.placeholder}
+                                data-flx="channel.channel-view.select-mode-panel.log-loading"
+                            >
+                                Loading…
+                            </span>
+                        ) : SelectMode.recentLog.length === 0 ? (
+                            <span
+                                className={styles.placeholder}
+                                data-flx="channel.channel-view.select-mode-panel.log-empty"
+                            >
+                                No recent moves
+                            </span>
+                        ) : (
+                            <div className={styles.logList} data-flx="channel.channel-view.select-mode-panel.log-list">
+                                {SelectMode.recentLog.slice(0, 5).map((entry) => (
+                                    <div
+                                        key={entry.logId}
+                                        className={styles.logEntry}
+                                        data-flx="channel.channel-view.select-mode-panel.log-entry"
+                                    >
+                                        <span
+                                            className={styles.logRoute}
+                                            data-flx="channel.channel-view.select-mode-panel.log-route"
+                                        >
+                                            {entry.sourceChannel.name ?? entry.sourceChannel.id} →{' '}
+                                            {entry.destChannel.name ?? entry.destChannel.id}
+                                        </span>
+                                        <span
+                                            className={styles.logMeta}
+                                            data-flx="channel.channel-view.select-mode-panel.log-meta"
+                                        >
+                                            {entry.movedCount} message{entry.movedCount !== 1 ? 's' : ''} ·{' '}
+                                            {entry.performedBy.displayName ?? entry.performedBy.id} ·{' '}
+                                            {formatRecentOrFallback(new Date(entry.createdAt), i18n)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </aside>
         </OutlineFrame>
     );
 });
