@@ -44,11 +44,6 @@ import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 // LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
 import SelectMode from '@app/features/channel/state/SelectMode';
 import {isGroupDmFull} from '@app/features/channel/utils/GroupDmUtils';
-// LOCAL-ONLY: mobile SelectMode history helpers — exclude from upstream sync.
-import {
-	goBackFromMobileSelectModePanelEntry,
-	pushMobileSelectModePanelEntry,
-} from '@app/features/channel/utils/MobileSelectModeHistory';
 import {
 	ADD_TO_FAVORITES_DESCRIPTOR,
 	CHANNEL_ADDED_TO_FAVORITES_DESCRIPTOR,
@@ -308,16 +303,10 @@ export const ChannelHeader = observer(
 			if (!channel) return;
 			if (SelectMode.isActive && SelectMode.channelId === channel.id) {
 				SelectMode.deactivate();
-				if (isMobile) {
-					goBackFromMobileSelectModePanelEntry(channel.id);
-				}
 			} else {
 				SelectMode.activate(channel.id);
-				if (isMobile) {
-					pushMobileSelectModePanelEntry(channel.id);
-				}
 			}
-		}, [channel, isMobile]);
+		}, [channel]);
 		useEffect(() => {
 			const handleChannelDetailsOpen = (payload?: unknown) => {
 				const {initialTab} = (payload ?? {}) as {initialTab?: 'members' | 'pins'};
@@ -1009,7 +998,7 @@ export const ChannelHeader = observer(
 								/>
 							)}
 							{/* LOCAL-ONLY: SelectMode toggle — exclude from upstream sync. */}
-							{channel && (isGuildChannel || isDM || isGroupDM) && (
+							{!isMobile && channel && (isGuildChannel || isDM || isGroupDM) && (
 								<ChannelHeaderIcon
 									icon={ArrowsLeftRightIcon}
 									isSelected={SelectMode.isActive && SelectMode.channelId === channel.id}

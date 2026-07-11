@@ -28,8 +28,6 @@ import {
 	VIEW_INCOMING_CALL_DESCRIPTOR,
 } from '@app/features/channel/components/channel_view/dm_channel_view/shared';
 import {useCompactCallBannerResize} from '@app/features/channel/components/channel_view/dm_channel_view/useCompactCallBannerResize';
-// LOCAL-ONLY: mobile SelectMode overlay styles — exclude from upstream sync.
-import mobileSelectModeOverlayStyles from '@app/features/channel/components/channel_view/MobileSelectModeOverlay.module.css';
 // LOCAL-ONLY: SelectModePanel is a local-only addition — exclude from upstream sync.
 import {SelectModePanel} from '@app/features/channel/components/channel_view/SelectModePanel';
 import {useCallHeaderState} from '@app/features/channel/components/channel_view/useCallHeaderState';
@@ -43,11 +41,6 @@ import Channels from '@app/features/channel/state/Channels';
 // LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
 import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
-// LOCAL-ONLY: mobile SelectMode history helpers — exclude from upstream sync.
-import {
-	goBackFromMobileSelectModePanelEntry,
-	useMobileSelectModeHistoryDismiss,
-} from '@app/features/channel/utils/MobileSelectModeHistory';
 import {INCOMING_CALL_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {useMemberListVisible} from '@app/features/member/hooks/useMemberListVisible';
 import {ComponentDispatch} from '@app/features/platform/utils/ComponentBus';
@@ -258,43 +251,6 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 		return i18n._(VIEW_CALL_DESCRIPTOR);
 	}, [controlsVariant, i18n.locale]);
 	const isCompactCallChatSuppressed = showCompactVoiceView && isCompactCallExpanded;
-	// LOCAL-ONLY: mobile SelectMode overlay show/hide + slide-in transition state — exclude from upstream sync.
-	const showMobileSelectModeOverlay = isMobileLayout && SelectMode.isActive && SelectMode.channelId === channelId;
-	const [isMobileSelectModeOverlayVisible, setIsMobileSelectModeOverlayVisible] = useState(false);
-	useEffect(() => {
-		if (!showMobileSelectModeOverlay) {
-			setIsMobileSelectModeOverlayVisible(false);
-			return;
-		}
-		const frame = requestAnimationFrame(() => setIsMobileSelectModeOverlayVisible(true));
-		return () => cancelAnimationFrame(frame);
-	}, [showMobileSelectModeOverlay]);
-	useMobileSelectModeHistoryDismiss(channelId, isMobileLayout);
-	const handleCloseMobileSelectModeOverlay = useCallback(() => {
-		SelectMode.deactivate();
-		goBackFromMobileSelectModePanelEntry(channelId);
-	}, [channelId]);
-	const mobileSelectModeOverlay =
-		showMobileSelectModeOverlay && channel ? (
-			<>
-				<button
-					type="button"
-					className={mobileSelectModeOverlayStyles.backdrop}
-					aria-label="Close relocate messages panel"
-					onClick={handleCloseMobileSelectModeOverlay}
-					data-flx="channel.channel-view.dm-channel-view.mobile-select-mode-backdrop"
-				/>
-				<div
-					className={clsx(
-						mobileSelectModeOverlayStyles.panel,
-						isMobileSelectModeOverlayVisible && mobileSelectModeOverlayStyles.panelVisible,
-					)}
-					data-flx="channel.channel-view.dm-channel-view.mobile-select-mode-panel"
-				>
-					<SelectModePanel channel={channel} />
-				</div>
-			</>
-		) : null;
 	if (!channel) {
 		return (
 			<div className={dmStyles.emptyState} data-flx="channel.channel-view.dm-channel-view.div">
@@ -581,7 +537,6 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 					data-flx="channel.channel-view.dm-channel-view.direct-call-lobby-bottom-sheet"
 				/>
 			)}
-			{mobileSelectModeOverlay}
 		</>
 	);
 });

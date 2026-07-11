@@ -17,8 +17,6 @@ import {ChannelSearchResults} from '@app/features/channel/components/ChannelSear
 import {ChannelTextarea} from '@app/features/channel/components/ChannelTextarea';
 import {ChannelCompactCallSurface} from '@app/features/channel/components/channel_view/ChannelCompactCallSurface';
 import {ChannelViewScaffold} from '@app/features/channel/components/channel_view/ChannelViewScaffold';
-// LOCAL-ONLY: mobile SelectMode overlay styles — exclude from upstream sync.
-import mobileSelectModeOverlayStyles from '@app/features/channel/components/channel_view/MobileSelectModeOverlay.module.css';
 // LOCAL-ONLY: SelectModePanel is a local-only addition — exclude from upstream sync.
 import {SelectModePanel} from '@app/features/channel/components/channel_view/SelectModePanel';
 import {useChannelSearchState} from '@app/features/channel/components/channel_view/useChannelSearchState';
@@ -33,11 +31,6 @@ import Channels from '@app/features/channel/state/Channels';
 // LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
 import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
-// LOCAL-ONLY: mobile SelectMode history helpers — exclude from upstream sync.
-import {
-	goBackFromMobileSelectModePanelEntry,
-	useMobileSelectModeHistoryDismiss,
-} from '@app/features/channel/utils/MobileSelectModeHistory';
 import DeveloperOptions from '@app/features/devtools/state/DeveloperOptions';
 import GuildMatureContentAgree, {MatureContentGateReason} from '@app/features/guild/state/GuildMatureContentAgree';
 import Guilds from '@app/features/guild/state/Guilds';
@@ -71,7 +64,7 @@ import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
 import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
-import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useRef} from 'react';
 
 const JOIN_VOICE_CHANNEL_DESCRIPTOR = msg({
 	message: 'Join voice channel',
@@ -322,43 +315,6 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 			document.removeEventListener('keydown', handleGlobalKeydown, options);
 		};
 	}, [isSearchActive, searchState]);
-	// LOCAL-ONLY: mobile SelectMode overlay show/hide + slide-in transition state — exclude from upstream sync.
-	const showMobileSelectModeOverlay = isMobileLayout && SelectMode.isActive && SelectMode.channelId === channelId;
-	const [isMobileSelectModeOverlayVisible, setIsMobileSelectModeOverlayVisible] = useState(false);
-	useEffect(() => {
-		if (!showMobileSelectModeOverlay) {
-			setIsMobileSelectModeOverlayVisible(false);
-			return;
-		}
-		const frame = requestAnimationFrame(() => setIsMobileSelectModeOverlayVisible(true));
-		return () => cancelAnimationFrame(frame);
-	}, [showMobileSelectModeOverlay]);
-	useMobileSelectModeHistoryDismiss(channelId, isMobileLayout);
-	const handleCloseMobileSelectModeOverlay = useCallback(() => {
-		SelectMode.deactivate();
-		goBackFromMobileSelectModePanelEntry(channelId);
-	}, [channelId]);
-	const mobileSelectModeOverlay =
-		showMobileSelectModeOverlay && channel ? (
-			<>
-				<button
-					type="button"
-					className={mobileSelectModeOverlayStyles.backdrop}
-					aria-label="Close relocate messages panel"
-					onClick={handleCloseMobileSelectModeOverlay}
-					data-flx="channel.channel-view.guild-channel-view.mobile-select-mode-backdrop"
-				/>
-				<div
-					className={clsx(
-						mobileSelectModeOverlayStyles.panel,
-						isMobileSelectModeOverlayVisible && mobileSelectModeOverlayStyles.panelVisible,
-					)}
-					data-flx="channel.channel-view.guild-channel-view.mobile-select-mode-panel"
-				>
-					<SelectModePanel guild={guild} channel={channel} />
-				</div>
-			</>
-		) : null;
 	const channelTitlePart = channel
 		? `${channel.type === ChannelTypes.GUILD_VOICE ? '' : '#'}${channel.name ?? ''}`
 		: null;
@@ -483,13 +439,12 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 			);
 		}
 		return (
-			<>
-				<ChannelViewScaffold
-					className={clsx(
-						styles.channelGridVoiceCallActive,
-						isVoiceTextCallExpanded && styles.channelGridVoiceCallExpanded,
-					)}
-					voiceTextSplitView={isVoiceTextSplitView}
+			<ChannelViewScaffold
+				className={clsx(
+					styles.channelGridVoiceCallActive,
+					isVoiceTextCallExpanded && styles.channelGridVoiceCallExpanded,
+				)}
+				voiceTextSplitView={isVoiceTextSplitView}
 				header={
 					<div
 						ref={voiceCallChromeRef}
@@ -575,15 +530,12 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 				chatAreaInert={isVoiceTextCallExpanded}
 				data-flx="channel.channel-view.guild-channel-view.channel-grid-voice-call"
 			/>
-			{mobileSelectModeOverlay}
-			</>
 		);
 	}
 	const shouldRenderMemberList = isMemberListVisible && !isMobileLayout && !isSearchActive;
 	return (
-		<>
-			<ChannelViewScaffold
-				header={
+		<ChannelViewScaffold
+			header={
 				<ChannelHeader
 					channel={channel}
 					showMembersToggle={true}
@@ -635,7 +587,5 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 			showMemberListDivider={shouldRenderMemberList && !isSearchActive}
 			data-flx="channel.channel-view.guild-channel-view.channel-view-scaffold"
 		/>
-		{mobileSelectModeOverlay}
-		</>
 	);
 });
