@@ -24,6 +24,7 @@ import Guilds from '@app/features/guild/state/Guilds';
 import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {Button} from '@app/features/ui/button/Button';
 import {Combobox, type ComboboxOption} from '@app/features/ui/components/form/FormCombobox';
+import {Switch} from '@app/features/ui/components/form/FormSwitch';
 import {Scroller} from '@app/features/ui/components/Scroller';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {useLingui} from '@lingui/react/macro';
@@ -111,6 +112,15 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                             Relocate Messages
                         </span>
                     </div>
+
+                    {/* LOCAL-ONLY: enable/disable selection toggle — exclude from upstream sync. */}
+                    <Switch
+                        label="Message selection"
+                        description="Tap messages to set start and end points"
+                        value={SelectMode.isActive}
+                        onChange={() => SelectMode.toggleSelectionMode()}
+                        data-flx="channel.channel-view.select-mode-panel.enable-selection-switch"
+                    />
 
                     <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.anchor-section">
                         <span

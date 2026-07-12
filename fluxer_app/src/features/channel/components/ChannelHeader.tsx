@@ -289,11 +289,25 @@ export const ChannelHeader = observer(
 			}
 			LayoutCommands.toggleMembers(!isMembersOpen);
 		}, [isMembersOpen, canFitMemberList, memberListChannelId, memberListUsesChannelOverride]);
-		// LOCAL-ONLY: SelectMode toggle handler — exclude from upstream sync.
+		// LOCAL-ONLY: SelectMode toggle handler (desktop) — exclude from upstream sync.
 		const handleToggleSelectMode = useCallback(() => {
 			if (!channel) return;
 			if (SelectMode.isActive && SelectMode.channelId === channel.id) {
 				SelectMode.deactivate();
+			} else {
+				SelectMode.activate(channel.id);
+				// activate() no longer flips isActive (mobile needs to open the panel without
+				// enabling selection) — force it on here so desktop's single-click toggle is unchanged.
+				if (!SelectMode.isActive) {
+					SelectMode.toggleSelectionMode();
+				}
+			}
+		}, [channel]);
+		// LOCAL-ONLY: SelectMode toggle handler (mobile) — exclude from upstream sync.
+		const handleToggleSelectModePanel = useCallback(() => {
+			if (!channel) return;
+			if (SelectMode.isPanelOpen) {
+				SelectMode.closePanel();
 			} else {
 				SelectMode.activate(channel.id);
 			}
@@ -845,14 +859,13 @@ export const ChannelHeader = observer(
 								<FocusRing offset={-2} data-flx="channel.channel-header.focus-ring--13">
 									<button
 										type="button"
-										className={styles.iconButtonMobile}
-										aria-label={
-											SelectMode.isActive && SelectMode.channelId === channel.id
-												? 'Close relocation mode'
-												: 'Relocate messages'
-										}
+										className={clsx(
+											styles.iconButtonMobile,
+											SelectMode.isActive && SelectMode.channelId === channel.id && styles.iconButtonMobileActive,
+										)}
+										aria-label={SelectMode.isPanelOpen ? 'Close relocate panel' : 'Relocate messages'}
 										aria-pressed={SelectMode.isActive && SelectMode.channelId === channel.id}
-										onClick={handleToggleSelectMode}
+										onClick={handleToggleSelectModePanel}
 										data-flx="channel.channel-header.icon-button-mobile.toggle-select-mode"
 									>
 										<ArrowsLeftRightIcon

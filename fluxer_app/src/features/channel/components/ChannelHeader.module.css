@@ -574,6 +574,11 @@
 	cursor: pointer;
 }
 
+/* LOCAL-ONLY: SelectMode toggle active state (mobile) — exclude from upstream sync. */
+.iconButtonMobileActive {
+	background-color: var(--status-online);
+}
+
 .buttonIcon {
 	height: 1.5rem;
 	width: 1.5rem;

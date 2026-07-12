@@ -47,6 +47,10 @@ const RECENT_LOG_LIMIT = 5;
 
 class SelectMode {
     isActive = false;
+    // LOCAL-ONLY: isPanelOpen is mobile-only — controls the panel overlay's visibility
+    // independently of isActive (selection enablement). Desktop ignores this field and
+    // keeps rendering the panel whenever isActive && channelId matches — exclude from upstream sync.
+    isPanelOpen = false;
     channelId: string | null = null;
     anchorId: string | null = null;
     headId: string | null = null;
@@ -78,18 +82,14 @@ class SelectMode {
     }
 
     activate(channelId: string): void {
-        this.isActive = true;
         this.channelId = channelId;
-        this.anchorId = null;
-        this.headId = null;
-        this.destChannelId = null;
-        this.result = null;
-        this.lastError = null;
+        this.openPanel();
         void this.fetchRecentLog();
     }
 
     deactivate(): void {
         this.isActive = false;
+        this.isPanelOpen = false;
         this.channelId = null;
         this.anchorId = null;
         this.headId = null;
@@ -97,6 +97,29 @@ class SelectMode {
         this.submitting = false;
         this.lastError = null;
         this.result = null;
+    }
+
+    // LOCAL-ONLY: mobile panel visibility — decoupled from isActive — exclude from upstream sync.
+    openPanel(): void {
+        this.isPanelOpen = true;
+    }
+
+    closePanel(): void {
+        this.isPanelOpen = false;
+    }
+
+    // LOCAL-ONLY: toggles selection enablement independently of panel visibility — exclude from upstream sync.
+    toggleSelectionMode(): void {
+        if (this.isActive) {
+            this.isActive = false;
+            this.anchorId = null;
+            this.headId = null;
+            this.destChannelId = null;
+            this.result = null;
+            this.lastError = null;
+        } else {
+            this.isActive = true;
+        }
     }
 
     setAnchor(messageId: string): void {
