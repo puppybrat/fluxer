@@ -840,6 +840,29 @@ export const ChannelHeader = observer(
 									</button>
 								</FocusRing>
 							)}
+							{/* LOCAL-ONLY: SelectMode toggle (mobile) — exclude from upstream sync. */}
+							{isMobile && channel && (isGuildChannel || isDM || isGroupDM) && (
+								<FocusRing offset={-2} data-flx="channel.channel-header.focus-ring--13">
+									<button
+										type="button"
+										className={styles.iconButtonMobile}
+										aria-label={
+											SelectMode.isActive && SelectMode.channelId === channel.id
+												? 'Close relocation mode'
+												: 'Relocate messages'
+										}
+										aria-pressed={SelectMode.isActive && SelectMode.channelId === channel.id}
+										onClick={handleToggleSelectMode}
+										data-flx="channel.channel-header.icon-button-mobile.toggle-select-mode"
+									>
+										<ArrowsLeftRightIcon
+											className={styles.buttonIconMobile}
+											weight="bold"
+											data-flx="channel.channel-header.button-icon-mobile--5"
+										/>
+									</button>
+								</FocusRing>
+							)}
 							{channel && isGuildChannel && !isMobile && !isPersonalNotes && (
 								<ChannelNotificationSettingsButton
 									channel={channel}
@@ -911,7 +934,7 @@ export const ChannelHeader = observer(
 								/>
 							)}
 							{/* LOCAL-ONLY: SelectMode toggle — exclude from upstream sync. */}
-							{channel && (isGuildChannel || isDM || isGroupDM) && (
+							{!isMobile && channel && (isGuildChannel || isDM || isGroupDM) && (
 								<ChannelHeaderIcon
 									icon={ArrowsLeftRightIcon}
 									isSelected={SelectMode.isActive && SelectMode.channelId === channel.id}
