@@ -12,8 +12,6 @@
 
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {Message} from '@app/features/messaging/models/MessagingMessage';
-import {ChannelMessages} from '@app/features/messaging/state/ChannelMessages';
 import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {http} from '@app/features/platform/transport/RestTransport';
 import {makeAutoObservable, runInAction} from 'mobx';
@@ -188,36 +186,22 @@ class SelectMode {
 
             // Surgically remove moved messages from the source channel's in-memory list.
             // Uses the same path as gateway MESSAGE_DELETE_BULK so scroll position is preserved.
-            // Message objects are captured here (before removal) so they can be reinserted
-            // into the destination channel below, without a round trip back to the API.
+            // The destination channel is intentionally NOT updated in-memory: the captured wire
+            // objects carry literal attachment/embed URLs with the source channel ID baked into
+            // the path, so reinserting them locally renders 404 media. The destination picks the
+            // messages up with correct URLs via the normal fetch-on-open path.
             const channelMsgs = MessagingMessages.getMessages(channelId);
             const startBigInt = BigInt(startMessageId);
             const endBigInt = BigInt(endMessageId);
             const idsToRemove: Array<string> = [];
-            const movedMessages: Array<Message> = [];
             channelMsgs.forEach((message) => {
                 const mid = BigInt(message.id);
                 if (mid >= startBigInt && mid <= endBigInt) {
                     idsToRemove.push(message.id);
-                    movedMessages.push(message);
                 }
             });
             if (idsToRemove.length > 0) {
                 MessagingMessages.handleMessageDeleteBulk({ids: idsToRemove, channelId});
-            }
-
-            // Insert into the destination channel's in-memory list so the messages appear
-            // immediately without a refresh. Only attempted if the destination channel has
-            // already been loaded (ready) — otherwise the normal fetch-on-open path will
-            // pick them up. Safe because the backend preserves the original snowflake IDs
-            // and only rewrites channel_id on move.
-            if (movedMessages.length > 0 && ChannelMessages.get(destChannelId)?.ready) {
-                for (const message of movedMessages) {
-                    MessagingMessages.handleIncomingMessage({
-                        channelId: destChannelId,
-                        message: {...message.toJSON(), channel_id: destChannelId},
-                    });
-                }
             }
 
             runInAction(() => {
