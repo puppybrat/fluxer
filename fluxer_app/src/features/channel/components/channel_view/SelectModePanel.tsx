@@ -26,6 +26,7 @@ import {Button} from '@app/features/ui/button/Button';
 import {Combobox, type ComboboxOption} from '@app/features/ui/components/form/FormCombobox';
 import {Switch} from '@app/features/ui/components/form/FormSwitch';
 import {Scroller} from '@app/features/ui/components/Scroller';
+import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
@@ -113,14 +114,19 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         </span>
                     </div>
 
-                    {/* LOCAL-ONLY: enable/disable selection toggle — exclude from upstream sync. */}
-                    <Switch
-                        label="Message selection"
-                        description="Tap messages to set start and end points"
-                        value={SelectMode.isActive}
-                        onChange={() => SelectMode.toggleSelectionMode()}
-                        data-flx="channel.channel-view.select-mode-panel.enable-selection-switch"
-                    />
+                    {/*
+                     * LOCAL-ONLY: enable/disable selection toggle — mobile only; on desktop
+                     * SelectMode.isActive is driven by the header button — exclude from upstream sync.
+                     */}
+                    {MobileLayout.enabled && (
+                        <Switch
+                            label="Message selection"
+                            description="Tap messages to set start and end points"
+                            value={SelectMode.isActive}
+                            onChange={() => SelectMode.toggleSelectionMode()}
+                            data-flx="channel.channel-view.select-mode-panel.enable-selection-switch"
+                        />
+                    )}
 
                     <div className={styles.section} data-flx="channel.channel-view.select-mode-panel.anchor-section">
                         <span
