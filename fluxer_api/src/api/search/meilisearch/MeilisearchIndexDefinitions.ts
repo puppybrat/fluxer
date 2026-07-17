@@ -8,6 +8,10 @@ export interface MeilisearchIndexDefinition {
 	searchableAttributes: Array<string>;
 	filterableAttributes: Array<string>;
 	sortableAttributes: Array<string>;
+	// Omit to keep Meilisearch's default rules. Set this only when an explicit
+	// sort must outrank relevancy: the default puts `sort` fifth, so it only
+	// breaks ties inside relevancy buckets rather than ordering the whole result.
+	rankingRules?: Array<string>;
 }
 
 export const MEILISEARCH_INDEX_DEFINITIONS: Record<FluxerSearchIndexName, MeilisearchIndexDefinition> = {
@@ -40,6 +44,12 @@ export const MEILISEARCH_INDEX_DEFINITIONS: Record<FluxerSearchIndexName, Meilis
 			'attachmentExtensions',
 		],
 		sortableAttributes: ['createdAt', 'id'],
+		// `sort` leads so an explicit timestamp sort orders every hit. With the
+		// default ordering a multi-word query buckets hits by relevancy first,
+		// leaving each bucket internally sorted but restarting the timestamps at
+		// every bucket boundary. Sort-by-relevancy sends no sort, so this is inert
+		// there.
+		rankingRules: ['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness'],
 	},
 	guilds: {
 		uid: 'guilds',

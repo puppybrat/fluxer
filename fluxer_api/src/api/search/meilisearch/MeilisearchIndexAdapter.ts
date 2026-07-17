@@ -56,10 +56,12 @@ export class MeilisearchIndexAdapter<
 			});
 			await this.waitForTask(task.taskUid);
 		}
+		const rankingRules = this.indexDefinition.rankingRules;
 		await Promise.all([
 			this.applySetting('searchable-attributes', this.indexDefinition.searchableAttributes),
 			this.applySetting('filterable-attributes', this.indexDefinition.filterableAttributes),
 			this.applySetting('sortable-attributes', this.indexDefinition.sortableAttributes),
+			...(rankingRules ? [this.applySetting('ranking-rules', rankingRules)] : []),
 		]);
 		this.initialized = true;
 	}
