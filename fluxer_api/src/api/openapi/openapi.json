@@ -7394,6 +7394,255 @@
 				]
 			}
 		},
+		"/guilds/{guild_id}/cast/characters/{character_id}": {
+			"post": {
+				"operationId": "add_guild_cast_character",
+				"summary": "Add cast character",
+				"tags": ["Guilds"],
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/CastMutationResponse"}}}
+					},
+					"400": {
+						"description": "Bad Request - The request was malformed or contained invalid data",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"401": {
+						"description": "Unauthorized - Authentication is required or the token is invalid",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"403": {
+						"description": "Forbidden - You do not have permission to perform this action",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"429": {
+						"description": "Too Many Requests - You are being rate limited",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"code": {"type": "string", "enum": ["RATE_LIMITED"]},
+										"message": {"type": "string"},
+										"retry_after": {"type": "number", "description": "Seconds to wait before retrying"},
+										"global": {"type": "boolean", "description": "Whether this is a global rate limit"}
+									},
+									"required": ["code", "message", "retry_after"]
+								}
+							}
+						},
+						"headers": {
+							"Retry-After": {
+								"description": "Number of seconds to wait before retrying (only on 429)",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Limit": {
+								"description": "The number of requests that can be made in the current window",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Remaining": {
+								"description": "The number of remaining requests that can be made",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Reset": {
+								"description": "Unix timestamp when the rate limit resets",
+								"schema": {"type": "integer"}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal Server Error - An unexpected error occurred",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					}
+				},
+				"x-mint": {"metadata": {"title": "Add cast character"}},
+				"description": "Add a character to the guild cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
+				"security": [{"botToken": []}, {"sessionToken": []}],
+				"parameters": [
+					{
+						"name": "guild_id",
+						"in": "path",
+						"required": true,
+						"schema": {"$ref": "#/components/schemas/SnowflakeType"},
+						"description": "The ID of the guild"
+					},
+					{
+						"name": "character_id",
+						"in": "path",
+						"required": true,
+						"schema": {"type": "string"},
+						"description": "The character id"
+					}
+				]
+			},
+			"delete": {
+				"operationId": "remove_guild_cast_character",
+				"summary": "Remove cast character",
+				"tags": ["Guilds"],
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/CastMutationResponse"}}}
+					},
+					"400": {
+						"description": "Bad Request - The request was malformed or contained invalid data",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"401": {
+						"description": "Unauthorized - Authentication is required or the token is invalid",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"403": {
+						"description": "Forbidden - You do not have permission to perform this action",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"429": {
+						"description": "Too Many Requests - You are being rate limited",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"code": {"type": "string", "enum": ["RATE_LIMITED"]},
+										"message": {"type": "string"},
+										"retry_after": {"type": "number", "description": "Seconds to wait before retrying"},
+										"global": {"type": "boolean", "description": "Whether this is a global rate limit"}
+									},
+									"required": ["code", "message", "retry_after"]
+								}
+							}
+						},
+						"headers": {
+							"Retry-After": {
+								"description": "Number of seconds to wait before retrying (only on 429)",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Limit": {
+								"description": "The number of requests that can be made in the current window",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Remaining": {
+								"description": "The number of remaining requests that can be made",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Reset": {
+								"description": "Unix timestamp when the rate limit resets",
+								"schema": {"type": "integer"}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal Server Error - An unexpected error occurred",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					}
+				},
+				"x-mint": {"metadata": {"title": "Remove cast character"}},
+				"description": "Remove a character from the guild cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
+				"security": [{"botToken": []}, {"sessionToken": []}],
+				"parameters": [
+					{
+						"name": "guild_id",
+						"in": "path",
+						"required": true,
+						"schema": {"$ref": "#/components/schemas/SnowflakeType"},
+						"description": "The ID of the guild"
+					},
+					{
+						"name": "character_id",
+						"in": "path",
+						"required": true,
+						"schema": {"type": "string"},
+						"description": "The character id"
+					}
+				]
+			},
+			"patch": {
+				"operationId": "update_guild_cast_character",
+				"summary": "Update cast character override",
+				"tags": ["Guilds"],
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/CastMutationResponse"}}}
+					},
+					"400": {
+						"description": "Bad Request - The request was malformed or contained invalid data",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"401": {
+						"description": "Unauthorized - Authentication is required or the token is invalid",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"403": {
+						"description": "Forbidden - You do not have permission to perform this action",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"429": {
+						"description": "Too Many Requests - You are being rate limited",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"code": {"type": "string", "enum": ["RATE_LIMITED"]},
+										"message": {"type": "string"},
+										"retry_after": {"type": "number", "description": "Seconds to wait before retrying"},
+										"global": {"type": "boolean", "description": "Whether this is a global rate limit"}
+									},
+									"required": ["code", "message", "retry_after"]
+								}
+							}
+						},
+						"headers": {
+							"Retry-After": {
+								"description": "Number of seconds to wait before retrying (only on 429)",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Limit": {
+								"description": "The number of requests that can be made in the current window",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Remaining": {
+								"description": "The number of remaining requests that can be made",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Reset": {
+								"description": "Unix timestamp when the rate limit resets",
+								"schema": {"type": "integer"}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal Server Error - An unexpected error occurred",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					}
+				},
+				"x-mint": {"metadata": {"title": "Update cast character override"}},
+				"description": "Update the per-guild nickname and avatar override for a cast character. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
+				"security": [{"botToken": []}, {"sessionToken": []}],
+				"parameters": [
+					{
+						"name": "guild_id",
+						"in": "path",
+						"required": true,
+						"schema": {"$ref": "#/components/schemas/SnowflakeType"},
+						"description": "The ID of the guild"
+					},
+					{
+						"name": "character_id",
+						"in": "path",
+						"required": true,
+						"schema": {"type": "string"},
+						"description": "The character id"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {"application/json": {"schema": {"$ref": "#/components/schemas/CastOverrideUpdateRequest"}}}
+				}
+			}
+		},
 		"/guilds/{guild_id}/channels": {
 			"get": {
 				"operationId": "list_guild_channels",
@@ -30901,6 +31150,46 @@
 					"category_id": {"type": "string", "description": "The channel category this mapping applies to"}
 				},
 				"required": ["pair_slug", "au_slug", "category_id"]
+			},
+			"CastMutationResponse": {
+				"type": "object",
+				"properties": {
+					"success": {"type": "boolean", "description": "Whether the personal site applied the change"},
+					"character_id": {"type": "string", "description": "The character the action applied to"},
+					"override": {
+						"anyOf": [{"$ref": "#/components/schemas/CastOverrideResponse"}, {"type": "null"}],
+						"description": "The resulting override, for update actions only"
+					}
+				},
+				"required": ["success", "character_id", "override"]
+			},
+			"CastOverrideResponse": {
+				"type": "object",
+				"properties": {
+					"character_id": {"type": "string", "description": "The character this override applies to"},
+					"nickname": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The nickname shown for this character in this guild"
+					},
+					"pfp_url": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The avatar URL shown for this character in this guild"
+					}
+				},
+				"required": ["character_id", "nickname", "pfp_url"]
+			},
+			"CastOverrideUpdateRequest": {
+				"type": "object",
+				"properties": {
+					"nickname": {
+						"anyOf": [{"type": "string", "maxLength": 100}, {"type": "null"}],
+						"description": "The nickname to show, or null to clear it"
+					},
+					"pfp_url": {
+						"anyOf": [{"type": "string", "maxLength": 2048, "format": "uri"}, {"type": "null"}],
+						"description": "The avatar URL to show, or null to clear it"
+					}
+				}
 			},
 			"ChannelCreateRequest": {
 				"oneOf": [
