@@ -17,9 +17,18 @@
 
 import * as BucketUtils from '@fluxer/snowflake/src/SnowflakeBuckets';
 import type {ChannelID, MessageID, UserID} from '../../../BrandedTypes';
+import {Config} from '../../../Config';
 import {BatchBuilder, fetchMany, fetchOne, upsertOne} from '../../../database/CassandraQueryExecution';
 import {Db} from '../../../database/CassandraTypes';
-import type {ChannelMessageBucketRow, ChannelStateRow, MessageReactionRow, MessageRow} from '../../../database/types/MessageTypes';
+import type {
+	ChannelMessageBucketRow,
+	ChannelStateRow,
+	MessageAttachment,
+	MessageReactionRow,
+	MessageRow,
+} from '../../../database/types/MessageTypes';
+import type {IStorageService} from '../../../infrastructure/IStorageService';
+import {Logger} from '../../../Logger';
 import {
 	AttachmentLookup,
 	ChannelEmptyBuckets,
@@ -79,6 +88,7 @@ export class MessageRelocationRepository {
 		endMessageId,
 		userId,
 		logId,
+		storageService,
 	}: {
 		sourceChannelId: ChannelID;
 		destChannelId: ChannelID;
@@ -86,6 +96,7 @@ export class MessageRelocationRepository {
 		endMessageId: MessageID;
 		userId: UserID;
 		logId: bigint;
+		storageService: IStorageService;
 	}): Promise<{movedCount: number}> {
 		if (startMessageId > endMessageId) {
 			return {movedCount: 0};
@@ -206,6 +217,18 @@ export class MessageRelocationRepository {
 
 				await batch.execute(true);
 
+				// LOCAL-ONLY: move the attachment files in SeaweedFS to follow the message.
+				// Done after the row batch commits so a file-move failure can never abort an
+				// already-committed relocation (see moveAttachmentFiles for the full rationale).
+				if (msgRow.attachments && msgRow.attachments.length > 0) {
+					await this.moveAttachmentFiles({
+						attachments: msgRow.attachments,
+						sourceChannelId,
+						destChannelId,
+						storageService,
+					});
+				}
+
 				movedCount++;
 				if (maxMovedMessageId === null || msgRow.message_id > maxMovedMessageId) {
 					maxMovedMessageId = msgRow.message_id as MessageID;
@@ -283,6 +306,70 @@ export class MessageRelocationRepository {
 		});
 
 		return {movedCount};
+	}
+
+	// LOCAL-ONLY: SeaweedFS attachment file move — exclude from upstream sync.
+	//
+	// The row operations above relocate a message into the destination channel, but the
+	// attachment *bytes* stay in SeaweedFS under the old key:
+	//
+	//     attachments/<sourceChannelId>/<attachment_id>/<filename>
+	//
+	// The media proxy builds every attachment url from the message's current channel_id
+	// (see makeAttachmentCdnKey in channel/services/message/MessageHelpers.ts), so a
+	// relocated message resolves to attachments/<destChannelId>/... — which 404s until the
+	// file is moved. This copies each attachment to the destination key and only then
+	// deletes the source (copy-before-delete: the source is removed strictly after the copy
+	// succeeds, so a failure never destroys the only copy).
+	//
+	// A file-move failure is logged and skipped, never thrown: the row batch has already
+	// committed, so a stranded or duplicated file is recoverable by hand, whereas aborting
+	// here would leave the message half-relocated. The keys are inlined (rather than importing
+	// makeAttachmentCdnKey) to keep this repository free of service-layer imports; the pattern
+	// is identical.
+	private async moveAttachmentFiles({
+		attachments,
+		sourceChannelId,
+		destChannelId,
+		storageService,
+	}: {
+		attachments: Array<MessageAttachment>;
+		sourceChannelId: ChannelID;
+		destChannelId: ChannelID;
+		storageService: IStorageService;
+	}): Promise<void> {
+		const bucket = Config.s3.buckets.cdn;
+		for (const att of attachments) {
+			const sourceKey = `attachments/${sourceChannelId}/${att.attachment_id}/${att.filename}`;
+			const destinationKey = `attachments/${destChannelId}/${att.attachment_id}/${att.filename}`;
+			if (sourceKey === destinationKey) continue;
+
+			// COPY first — never touch the source until the destination copy succeeds.
+			try {
+				await storageService.copyObject({
+					sourceBucket: bucket,
+					sourceKey,
+					destinationBucket: bucket,
+					destinationKey,
+				});
+			} catch (error) {
+				Logger.error(
+					{error, sourceChannelId, destChannelId, sourceKey, destinationKey, filename: att.filename},
+					'Relocation: failed to copy attachment file to destination channel; source left in place, message will 404 until fixed manually',
+				);
+				continue;
+			}
+
+			// DELETE the source only after the copy is confirmed committed above.
+			try {
+				await storageService.deleteObject(bucket, sourceKey);
+			} catch (error) {
+				Logger.error(
+					{error, sourceChannelId, destChannelId, sourceKey, destinationKey, filename: att.filename},
+					'Relocation: copied attachment to destination but failed to delete source; source left as a recoverable duplicate',
+				);
+			}
+		}
 	}
 
 	// LOCAL-ONLY: relocate audit log write — exclude from upstream sync.

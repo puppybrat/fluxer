@@ -70,6 +70,10 @@ export function RelocateMessagesController(app: HonoApp) {
 			const {sourceChannelId, destChannelId, startMessageId, endMessageId} = ctx.req.valid('json');
 			const userId = ctx.get('user').id;
 			const logId = await ctx.get('snowflakeService').generate();
+			// LOCAL-ONLY: storageService is threaded through so the repository can move each
+			// relocated message's attachment files in SeaweedFS to follow it (see
+			// MessageRelocationRepository.moveAttachmentFiles). Exclude from upstream sync.
+			const storageService = ctx.get('storageService');
 			const repo = new MessageRelocationRepository();
 			const result = await repo.relocateMessages({
 				sourceChannelId: createChannelID(BigInt(sourceChannelId)),
@@ -78,6 +82,7 @@ export function RelocateMessagesController(app: HonoApp) {
 				endMessageId: createMessageID(BigInt(endMessageId)),
 				userId,
 				logId,
+				storageService,
 			});
 			return ctx.json(result);
 		},
