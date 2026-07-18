@@ -8,6 +8,7 @@ import {
 	CastMutationResponse,
 	CastOverrideUpdateRequest,
 	CastResponse,
+	CastSetPrimaryRequest,
 } from '@fluxer/schema/src/domains/cast/CastSchemas';
 import {GuildIdCastCharacterIdParam, GuildIdParam} from '@fluxer/schema/src/domains/common/CommonParamSchemas';
 import type {CastFetchFailure, CastPayload} from '@pkgs/cast_client/src/CastClient';
@@ -245,6 +246,43 @@ export function CastController(app: HonoApp) {
 						}
 					: null,
 			});
+		},
+	);
+
+	// Kept separate from the override PATCH above rather than folded in as another body field:
+	// the two write to different upstream actions, so combining them would make one request
+	// fan out to two calls that can half-fail. Primary status also has a precondition the
+	// override does not — the character must already be in the cast — and the endpoint answers
+	// 409 when it is not, which maps here to the same 4xx passthrough as any other rejection.
+	app.patch(
+		'/guilds/:guild_id/cast/characters/:character_id/primary',
+		RateLimitMiddleware(RateLimitConfigs.GUILD_CAST_SET_PRIMARY),
+		LoginRequired,
+		Validator('param', GuildIdCastCharacterIdParam),
+		Validator('json', CastSetPrimaryRequest),
+		OpenAPI({
+			operationId: 'set_guild_cast_character_primary',
+			summary: 'Set cast character primary',
+			responseSchema: CastMutationResponse,
+			statusCode: 200,
+			security: ['botToken', 'bearerToken', 'sessionToken'],
+			tags: ['Guilds'],
+			description:
+				'Set whether a cast character is a primary for the guild. The character must already be in the cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
+		}),
+		async (ctx) => {
+			const userId = ctx.get('user').id;
+			const {guild_id, character_id} = ctx.req.valid('param');
+			const {is_primary} = ctx.req.valid('json');
+			const guildId = createGuildID(guild_id);
+
+			await authorizeCastWrite(ctx.get('guildService'), userId, guildId);
+
+			const result = await getCastClient().setPrimary(guildId.toString(), character_id, is_primary);
+			if (!result.ok) {
+				throwCastWriteFailure(guildId, result.failure);
+			}
+			return ctx.json({success: true, character_id: String(character_id), override: null});
 		},
 	);
 }

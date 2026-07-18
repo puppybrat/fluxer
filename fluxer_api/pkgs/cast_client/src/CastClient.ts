@@ -58,10 +58,16 @@ const CastOverridePayload = z.object({
 	character_id: z.union([z.string(), z.number()]).nullish(),
 	nickname: z.string().nullish(),
 	pfp_url: z.string().nullish(),
+	is_primary: z.union([z.boolean(), z.number()]).nullish(),
 });
 
 const CastWritePayload = z.object({
 	error: z.string().nullish(),
+	// The endpoint returns the affected row under `row` for every write action; `override` and
+	// the flat fields are kept as fallbacks so an older or changed deployment still parses.
+	// Omitting `row` here made zod strip it, which is why updateOverride reported a null
+	// override while the value persisted correctly upstream.
+	row: CastOverridePayload.nullish(),
 	override: CastOverridePayload.nullish(),
 	nickname: z.string().nullish(),
 	pfp_url: z.string().nullish(),
@@ -228,6 +234,20 @@ export class CastClient {
 	}
 
 	/**
+	 * Sets whether an existing cast member is a primary. Membership lives in character_primaries
+	 * and is a precondition, not something this creates: the endpoint answers 409 when the
+	 * character is not already in the cast, which surfaces here as an http_status failure.
+	 */
+	async setPrimary(serverId: string, characterId: number, isPrimary: boolean): Promise<CastWriteResult> {
+		return this.write(serverId, {
+			action: 'set_primary',
+			server_id: serverId,
+			character_id: characterId,
+			is_primary: isPrimary,
+		});
+	}
+
+	/**
 	 * Drops this server's cached read so the next fetchForServer() goes to the origin.
 	 * Without this a caller would keep seeing pre-write data for up to the TTL, which reads
 	 * as "my edit did not save".
@@ -283,7 +303,7 @@ export class CastClient {
 		// rejected request into a cache stampede against the personal site.
 		this.invalidate(serverId);
 
-		const override = result.data.override ?? result.data;
+		const override = result.data.override ?? result.data.row ?? result.data;
 		const hasOverride = override.nickname != null || override.pfp_url != null;
 		return {
 			ok: true,

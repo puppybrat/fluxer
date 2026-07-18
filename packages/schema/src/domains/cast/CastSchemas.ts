@@ -49,10 +49,14 @@ export const CastOverrideUpdateRequest = z.object({
 	pfp_url: z.string().url().max(2048).nullish().describe('The avatar URL to show, or null to clear it'),
 });
 
+export const CastSetPrimaryRequest = z.object({
+	is_primary: z.boolean().describe('Whether this character is a primary for the guild'),
+});
+
 /**
- * Shared confirmation shape for all three write actions. `override` is populated only by
- * the update action; add and remove report the character they acted on and nothing more,
- * since the personal site owns the row and Fluxer has no business echoing it back.
+ * Shared confirmation shape for every write action. `override` is populated only by the
+ * update action; add, remove and set-primary report the character they acted on and nothing
+ * more, since the personal site owns the row and Fluxer has no business echoing it back.
  */
 export const CastMutationResponse = z.object({
 	success: z.boolean().describe('Whether the personal site applied the change'),
@@ -66,4 +70,5 @@ export type CastCategoryResponseType = z.infer<typeof CastCategoryResponse>;
 export type CastResponseType = z.infer<typeof CastResponse>;
 export type CastOverrideResponseType = z.infer<typeof CastOverrideResponse>;
 export type CastOverrideUpdateRequestType = z.infer<typeof CastOverrideUpdateRequest>;
+export type CastSetPrimaryRequestType = z.infer<typeof CastSetPrimaryRequest>;
 export type CastMutationResponseType = z.infer<typeof CastMutationResponse>;
