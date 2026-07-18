@@ -194,12 +194,18 @@ class SelectMode {
             const startBigInt = BigInt(startMessageId);
             const endBigInt = BigInt(endMessageId);
             const idsToRemove: Array<string> = [];
-            channelMsgs.forEach((message) => {
+            // forAll (not forEach) walks the before/after buffers too, not just the visible window —
+            // otherwise moved messages that have scrolled into beforeBuffer are never collected here,
+            // never removed from the local cache, and get replayed on scroll-up via loadFromCache.
+            channelMsgs.forAll((message) => {
                 const mid = BigInt(message.id);
                 if (mid >= startBigInt && mid <= endBigInt) {
                     idsToRemove.push(message.id);
                 }
             });
+            // Arm the moved-id guard so a subsequent scroll-up that hits the network can't resurface
+            // these relocated messages via an API-fetched page (see MessagingMessages.markMovedIds).
+            MessagingMessages.markMovedIds(channelId, idsToRemove);
             if (idsToRemove.length > 0) {
                 MessagingMessages.handleMessageDeleteBulk({ids: idsToRemove, channelId});
             }

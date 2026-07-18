@@ -8,6 +8,7 @@ import * as MessageCommands from '@app/features/messaging/commands/MessageComman
 import type {Message} from '@app/features/messaging/models/MessagingMessage';
 import type {JumpOptions} from '@app/features/messaging/state/ChannelMessages';
 import {ChannelMessages} from '@app/features/messaging/state/ChannelMessages';
+import {resolveChannelMessagesLoadDecision} from '@app/features/messaging/state/ChannelMessagesLoadStateMachine';
 import type {ReactionEmoji} from '@app/features/messaging/utils/ReactionUtils';
 import SelectedChannel from '@app/features/navigation/state/SelectedChannel';
 import SelectedGuild from '@app/features/navigation/state/SelectedGuild';
@@ -48,15 +49,20 @@ class Messages {
 	private pendingJumpDispatches = new Map<string, PendingJumpDispatch>();
 	private messageRefsByAuthor = new Map<string, Map<string, Set<string>>>();
 	private indexedAuthorsByChannel = new Map<string, Map<string, string>>();
+	// Per-channel set of message IDs that were relocated out of the channel. Used to filter
+	// API-fetched pages so a moved message can't resurface (see markMovedIds / handleLoadMessagesSuccess).
+	// Plain bookkeeping like the index maps above — kept non-observable.
+	private movedIds = new Map<string, Set<string>>();
 	updateCounter = 0;
 	private pendingFullHydration = false;
 
 	constructor() {
-		makeAutoObservable<this, 'messageRefsByAuthor' | 'indexedAuthorsByChannel'>(
+		makeAutoObservable<this, 'messageRefsByAuthor' | 'indexedAuthorsByChannel' | 'movedIds'>(
 			this,
 			{
 				messageRefsByAuthor: false,
 				indexedAuthorsByChannel: false,
+				movedIds: false,
 			},
 			{autoBind: true},
 		);
@@ -81,6 +87,7 @@ class Messages {
 	private clearMessages(channelId: string): void {
 		ChannelMessages.clear(channelId);
 		this.unindexChannelMessages(channelId);
+		this.movedIds.delete(channelId);
 	}
 
 	private indexChannelMessages(messages: ChannelMessages): void {
@@ -498,6 +505,25 @@ class Messages {
 		return false;
 	}
 
+	// Record message IDs that were relocated out of a channel so any later API-fetched page for
+	// that channel drops them in handleLoadMessagesSuccess before hydration. Called by SelectMode
+	// (which owns the relocation flow); MessagingMessages must not import SelectMode — that would be
+	// a circular dependency — so the direction is SelectMode -> markMovedIds, never the reverse.
+	@action
+	markMovedIds(channelId: string, ids: Array<string>): void {
+		if (ids.length === 0) {
+			return;
+		}
+		let set = this.movedIds.get(channelId);
+		if (!set) {
+			set = new Set<string>();
+			this.movedIds.set(channelId, set);
+		}
+		for (const id of ids) {
+			set.add(id);
+		}
+	}
+
 	@action
 	handleLoadMessagesSuccess(action: {
 		channelId: string;
@@ -509,8 +535,19 @@ class Messages {
 		cached?: boolean;
 		messages: Array<WireMessage>;
 	}): boolean {
-		const messages = ChannelMessages.getOrCreate(action.channelId).loadComplete({
-			newMessages: action.messages,
+		const channel = ChannelMessages.getOrCreate(action.channelId);
+		const wasReady = channel.ready;
+
+		// Bug 2 guard: drop any relocated messages from the incoming wire page BEFORE loadComplete
+		// hydrates them. Filtering here (not after) keeps hydrateMessage — and the MessageReactions
+		// store it writes to — from ever seeing a moved message. Scoped by channelId because the
+		// same message ID legitimately exists in the destination channel.
+		const moved = this.movedIds.get(action.channelId);
+		const incomingMessages =
+			moved && moved.size > 0 ? action.messages.filter((message) => !moved.has(message.id)) : action.messages;
+
+		const messages = channel.loadComplete({
+			newMessages: incomingMessages,
 			isBefore: action.isBefore,
 			isAfter: action.isAfter,
 			jump: action.jump,
@@ -518,6 +555,20 @@ class Messages {
 			hasMoreAfter: action.hasMoreAfter,
 			cached: action.cached,
 		});
+
+		// A 'replace' load rebuilds the whole visible window from authoritative server data, so the
+		// moved-id guard for this channel has served its purpose and is cleared. Mirrors the exact
+		// decision loadComplete makes internally by reusing resolveChannelMessagesLoadDecision.
+		const loadDecision = resolveChannelMessagesLoadDecision({
+			isBefore: action.isBefore ?? false,
+			isAfter: action.isAfter ?? false,
+			hasJump: action.jump != null,
+			wasReady,
+		});
+		if (loadDecision.mode === 'replace') {
+			this.movedIds.delete(action.channelId);
+		}
+
 		this.commitMessages(messages);
 		this.notifyChange();
 		return false;
