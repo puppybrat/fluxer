@@ -33,4 +33,7 @@ export const CastResponse = z.object({
 	categories: z.array(CastCategoryResponse).describe('Category to pair/AU mappings for this guild'),
 });
 
+export type CastCharacterResponseType = z.infer<typeof CastCharacterResponse>;
+export type CastPrimaryResponseType = z.infer<typeof CastPrimaryResponse>;
+export type CastCategoryResponseType = z.infer<typeof CastCategoryResponse>;
 export type CastResponseType = z.infer<typeof CastResponse>;

@@ -345,8 +345,8 @@ msgstr "{count, plural, one {# priedas} other {# priedai}}"
 msgid "{count, plural, one {# blocked message} other {# blocked messages}}"
 msgstr "{count, plural, one {# užblokuotas pranešimas} other {# užblokuoti pranešimai}}"
 
-#: src/features/app/components/alerts/MaxBookmarksModal.tsx:50
-#: src/features/app/components/alerts/MaxBookmarksModal.tsx:83
+#: src/features/app/components/alerts/MaxBookmarksModal.tsx:51
+#: src/features/app/components/alerts/MaxBookmarksModal.tsx:76
 msgid "{count, plural, one {# bookmark} other {# bookmarks}}"
 msgstr "{count, plural, one {# žymė} other {# žymės}}"
 
@@ -420,8 +420,8 @@ msgstr "{count, plural, one {# reakcija} other {# reakcijos}}"
 msgid "{count, plural, one {# reactor} other {# reactors}}"
 msgstr "{count, plural, one {# reakcija} few {# reakcijos} other {# reakcijų}}"
 
-#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:44
-#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:82
+#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:45
+#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:79
 msgid "{count, plural, one {# saved media item} other {# saved media items}}"
 msgstr "{count, plural, one {# išsaugotas medijos elementas} other {# išsaugoti medijos elementai}}"
 
@@ -500,7 +500,7 @@ msgstr "{count, plural, one {Atsijungti nuo # įrenginio} other {Atsijungti nuo 
 msgid "{count, plural, one {Used # time.} other {Used # times.}}"
 msgstr "{count, plural, one {Naudota # kartą.} other {Naudota # kartus.}}"
 
-#: src/features/messaging/components/alerts/TooManyAttachmentsModal.tsx:21
+#: src/features/messaging/components/alerts/TooManyAttachmentsModal.tsx:20
 msgid "{count, plural, one {You can only upload # file at a time. Try again with fewer files.} other {You can only upload # files at a time. Try again with fewer files.}}"
 msgstr "{count, plural, one {Vienu metu galite įkelti tik # failą. Bandykite dar kartą su mažiau failų.} few {Vienu metu galite įkelti tik # failus. Bandykite dar kartą su mažiau failų.} many {Vienu metu galite įkelti tik # failų. Bandykite dar kartą su mažiau failų.} other {Vienu metu galite įkelti tik # failų. Bandykite dar kartą su mažiau failų.}}"
 
@@ -525,7 +525,7 @@ msgstr "{count, plural, one {Jau esate prisijungę prie šio balso kanalo iš # 
 msgid "{count, plural, one {You're already using the one allowed connection for this voice channel. Switch to this device or cancel.} other {You're already using all # allowed connections for this voice channel. Switch to this device or cancel.}}"
 msgstr "{count, plural, one {Jau naudojate vieną leidžiamą prisijungimą prie šio balso kanalo. Perjunkite į šį įrenginį arba atšaukite.} other {Jau naudojate visus # leidžiamus prisijungimus prie šio balso kanalo. Perjunkite į šį įrenginį arba atšaukite.}}"
 
-#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:65
+#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:62
 msgid "{count, plural, one {You're at the cap of # saved media item. Remove one to add another.} other {You're at the cap of # saved media items. Remove one to add another.}}"
 msgstr "{count, plural, one {Pasiekėte išsaugotų medijos elementų limito ribą. Pašalinkite vieną, kad pridėtumėte kitą.} other {Pasiekėte išsaugotų medijos elementų limito ribą. Pašalinkite vieną, kad pridėtumėte kitą.}}"
 
@@ -545,7 +545,7 @@ msgstr "{count, plural, one {Pasiekėte įdiegtų lipdukų paketo limitą. Paša
 msgid "{count, plural, one {You're at the limit of # sticker pack. Delete one to create another.} other {You're at the limit of # sticker packs. Delete one to create another.}}"
 msgstr "{count, plural, one {Pasiekėte lipdukų paketo limitą. Ištrinkite vieną, kad sukurtumėte kitą.} other {Pasiekėte lipdukų paketų limitą. Ištrinkite vieną, kad sukurtumėte kitą.}}"
 
-#: src/features/guild/components/alerts/MaxGuildsModal.tsx:25
+#: src/features/guild/components/alerts/MaxGuildsModal.tsx:24
 msgid "{count, plural, one {You've reached the maximum number of communities you can join (# community). Leave a community before joining another one.} other {You've reached the maximum number of communities you can join (# communities). Leave a community before joining another one.}}"
 msgstr "{count, plural, one {Pasiekėte maksimalų bendruomenių, prie kurių galite prisijungti, skaičių (# bendruomenė). Palikite bendruomenę prieš prisijungdami prie kitos.} other {Pasiekėte maksimalų bendruomenių, prie kurių galite prisijungti, skaičių (# bendruomenės). Palikite bendruomenę prieš prisijungdami prie kitos.}}"
 
@@ -1124,22 +1124,22 @@ msgid "{productName} member since"
 msgstr "{productName} narys nuo"
 
 #. Body of the camera-permission-denied modal on web. {productName} is Fluxer.
-#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:40
+#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:39
 msgid "{productName} needs access to your camera to enable video chat. Grant camera permission in your browser settings and try again."
 msgstr "Kad būtų galima naudoti vaizdo pokalbius, \"{productName}\" reikia prieigos prie jūsų kameros. Suteikite kameros leidimą naršyklės nustatymuose ir bandykite dar kartą."
 
 #. Body of the camera-permission-denied modal on Windows and Linux. {productName} is Fluxer.
-#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:35
+#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:34
 msgid "{productName} needs access to your camera. Allow camera access in your operating system privacy settings and restart the app."
 msgstr "Kad \"{productName}\" veiktų, jam reikalinga prieiga prie jūsų kameros. Suteikite prieigą prie kameros operacinės sistemos privatumo nustatymuose ir iš naujo paleiskite programėlę."
 
 #. Body of the microphone-permission-denied modal on web. {productName} is Fluxer.
-#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:30
+#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:29
 msgid "{productName} needs access to your microphone to enable voice chat. Grant microphone permission in your browser settings and try again."
 msgstr "Kad galėtų įjungti balso pokalbius, \"{productName}\" reikia prieigos prie jūsų mikrofono. Suteikite mikrofono leidimą naršyklės nustatymuose ir bandykite dar kartą."
 
 #. Body of the microphone-permission-denied modal on Windows and Linux. {productName} is Fluxer.
-#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:25
+#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:24
 msgid "{productName} needs access to your microphone. Allow microphone access in your operating system privacy settings and restart the app."
 msgstr "{productName} reikia prieigos prie jūsų mikrofono. Leiskite prieigą prie mikrofono operacinės sistemos privatumo nustatymuose ir iš naujo paleiskite programą."
 
@@ -1154,7 +1154,7 @@ msgid "{productName} needs microphone access to list your devices."
 msgstr "Kad galėtų rodyti jūsų įrenginius, „{productName}\" reikia prieigos prie mikrofono."
 
 #. Body of the screen-permission-denied modal on non-mac desktop platforms. {productName} is Fluxer.
-#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:45
+#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:44
 msgid "{productName} needs screen recording access. Allow screen recording in your operating system privacy settings and restart the app."
 msgstr "{productName} reikalinga prieiga prie ekrano įrašymo. Įjunkite ekrano įrašymą savo operacinės sistemos privatumo nustatymuose ir paleiskite programėlę iš naujo."
 
@@ -1179,7 +1179,7 @@ msgid "{productName} spellcheck settings…"
 msgstr "{productName} rašybos tikrinimo nustatymai…"
 
 #. Label in the invites disabled modal.
-#: src/features/invite/components/alerts/InvitesDisabledModal.tsx:14
+#: src/features/invite/components/alerts/InvitesDisabledModal.tsx:13
 msgid "{productName} spotted a possible raid here. Invites are paused — try again later."
 msgstr "{productName} aptiko galimą antpuolį. Kvietimai pristabdyti – bandykite dar kartą vėliau."
 
@@ -2349,7 +2349,7 @@ msgid "Activity log"
 msgstr "Veiklų žurnalas"
 
 #. Community settings tab showing activity log entries and moderation history.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:61
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:69
 msgctxt "community-settings-tab"
 msgid "Activity log"
 msgstr "Veiklų žurnalas"
@@ -2844,7 +2844,7 @@ msgid "Administrator"
 msgstr "Administratorius"
 
 #. Error message in the invites disabled modal.
-#: src/features/invite/components/alerts/InvitesDisabledModal.tsx:18
+#: src/features/invite/components/alerts/InvitesDisabledModal.tsx:17
 msgid "Admins paused invites — you can't join right now."
 msgstr "Administratoriai pristabdė kvietimus – šiuo metu negalite prisijungti."
 
@@ -3423,12 +3423,12 @@ msgstr "Ir 1 kitas skambutis"
 msgid "Animate on interaction"
 msgstr "Animuoti sąveikaujant"
 
-#: src/features/expressions/utils/AnimatedAvifModalUtils.tsx:27
+#: src/features/expressions/utils/AnimatedAvifModalUtils.tsx:26
 msgid "Animated {AVIF_FORMAT_LABEL} files aren't supported. Upload a static {AVIF_FORMAT_LABEL} file instead."
 msgstr "Animuoti {AVIF_FORMAT_LABEL} failai nepalaikomi. Vietoj to įkelkite statinį {AVIF_FORMAT_LABEL} failą."
 
 #. Modal title shown when an animated AVIF upload is rejected by the client.
-#: src/features/expressions/utils/AnimatedAvifModalUtils.tsx:12
+#: src/features/expressions/utils/AnimatedAvifModalUtils.tsx:11
 msgid "Animated {avifFormatLabel} not supported"
 msgstr "Animuotas {avifFormatLabel} formatas nepalaikomas"
 
@@ -3476,7 +3476,7 @@ msgid "Animated emoji"
 msgstr "Animuoti jaustukai"
 
 #. Section heading for animated emoji in community emoji settings.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:104
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:105
 msgid "Animated emoji ({emojiCount})"
 msgstr "Animuoti jaustukai ({emojiCount})"
 
@@ -4119,7 +4119,7 @@ msgid "Attachment upload"
 msgstr "Įkelti failą"
 
 #. Short label in the attachment upload connectivity modal. Keep it concise.
-#: src/features/messaging/components/alerts/AttachmentUploadConnectivityModal.tsx:13
+#: src/features/messaging/components/alerts/AttachmentUploadConnectivityModal.tsx:12
 msgid "Attachment upload unavailable"
 msgstr "Priedo įkėlimas nepasiekiamas"
 
@@ -4685,8 +4685,8 @@ msgstr "Pasiekiama darbalaukio programoje."
 #. Form label for a webhook avatar image.
 #. Settings search entry label. Also used as a search synonym in the settings search bar.
 #: src/features/ui/components/BaseAvatar.tsx:17
-#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:374
-#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:422
+#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:372
+#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:420
 #: src/features/user/components/settings_utils/search_index/MyProfileIndex.ts:13
 #: src/features/webhook/components/WebhookListItem.tsx:251
 msgid "Avatar"
@@ -5015,7 +5015,7 @@ msgid "Banner preview"
 msgstr "Reklamjuostės peržiūra"
 
 #. Community settings tab for banned users.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:91
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:99
 msgctxt "community-settings-tab"
 msgid "Bans"
 msgstr "Uždrausti nariai"
@@ -5273,7 +5273,7 @@ msgid "Bookmark"
 msgstr "Žymė"
 
 #. Short label in the max bookmarks modal.
-#: src/features/app/components/alerts/MaxBookmarksModal.tsx:15
+#: src/features/app/components/alerts/MaxBookmarksModal.tsx:16
 msgid "Bookmark limit reached"
 msgstr "Pasiektas žymių limitas"
 
@@ -5761,7 +5761,7 @@ msgid "Camera on"
 msgstr "Kamera įjungta"
 
 #. Title of the modal shown when camera permission is denied. Keep tone plain.
-#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:17
+#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:16
 msgid "Camera permission required"
 msgstr "Reikalingas leidimas naudoti kamerą"
 
@@ -5805,12 +5805,12 @@ msgid "Can't access that email?"
 msgstr "Negalite pasiekti to el. pašto?"
 
 #. Error message in the attachment permission denied modal. Keep the tone plain and specific.
-#: src/features/messaging/components/alerts/AttachmentPermissionDeniedModal.tsx:12
+#: src/features/messaging/components/alerts/AttachmentPermissionDeniedModal.tsx:9
 msgid "Can't paste image here"
 msgstr "Čia negalima įklijuoti nuotraukos"
 
 #. Error message in the attachment permission denied modal. Keep the tone plain and specific.
-#: src/features/messaging/components/alerts/AttachmentPermissionDeniedModal.tsx:16
+#: src/features/messaging/components/alerts/AttachmentPermissionDeniedModal.tsx:13
 msgid "Can't upload files here"
 msgstr "Čia negalima įkelti failų"
 
@@ -6048,6 +6048,16 @@ msgstr "Kortelės gali išlaikyti PLN kainodarą po greito {paymentProviderName}
 msgid "Cards can keep TRY pricing after a quick {paymentProviderName} verification, but the card must be issued in Türkiye."
 msgstr "Kortelės gali išlaikyti TRY kainodarą po greito {paymentProviderName} patvirtinimo, tačiau kortelė turi būti išduota Turkijoje."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:37
+msgid "Cast"
+msgstr ""
+
+#. Community settings tab listing the characters available in the community.
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:38
+msgctxt "community-settings-tab"
+msgid "Cast"
+msgstr ""
+
 #. Short label in the discovery category bottom sheet. Keep it concise.
 #: src/features/discovery/components/bottomsheets/DiscoveryCategoryBottomSheet.tsx:15
 msgid "Categories"
@@ -6142,8 +6152,8 @@ msgstr "Centre"
 
 #. Title of the modal where the user picks an avatar source (file upload or GIF provider). Keep it concise.
 #: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:110
-#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:396
-#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:432
+#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:394
+#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:430
 msgid "Change avatar"
 msgstr "Keisti avatarą"
 
@@ -6609,6 +6619,10 @@ msgstr "Kanalai, kuriuos moderuoju"
 #: src/features/ui/character_counter/CharacterCountMessages.ts:20
 msgid "Character limit exceeded by {remaining}"
 msgstr "Viršytas simbolių limitas: {remaining}"
+
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:40
+msgid "Characters available in this community, and which are currently primary."
+msgstr ""
 
 #. Advanced settings category tag.
 #. Short heading in the keyboard shortcuts cheatsheet.
@@ -7823,13 +7837,13 @@ msgstr "bendruomenė"
 #: src/features/app/config/AuditLogConstants.ts:152
 #: src/features/auth/components/pages/oauth_authorize_page/OAuthCommunityStep.tsx:48
 #: src/features/moderation/components/report_modal/IARModalPreview.tsx:16
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:253
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:270
 #: src/features/user/components/settings_utils/section_registry/PrivacySafetySections.ts:140
 msgid "Community"
 msgstr "Bendruomenė"
 
 #. Short label in the guild at capacity modal. Keep it concise.
-#: src/features/guild/components/alerts/GuildAtCapacityModal.tsx:9
+#: src/features/guild/components/alerts/GuildAtCapacityModal.tsx:8
 msgid "Community at capacity"
 msgstr "Bendruomenė pasiekė maksimalų narių skaičių"
 
@@ -8009,7 +8023,7 @@ msgid "Community record"
 msgstr "Bendruomenės įrašas"
 
 #. Root label for community settings modal and settings search paths.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:244
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
 msgid "Community settings"
 msgstr "Bendruomenės nustatymai"
 
@@ -8042,7 +8056,7 @@ msgid "Community-wide"
 msgstr "Community-wide"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:276
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:271
 #: src/features/user/components/settings_utils/section_registry/AppearanceSections.ts:242
 msgid "Compact"
 msgstr "Kompaktiškas"
@@ -8449,7 +8463,7 @@ msgid "Contact support"
 msgstr "Susisiekti su palaikymo komanda"
 
 #. Short label in the authentication content blocked handler. Keep the tone plain and specific.
-#: src/features/auth/components/ContentBlockedHandler.tsx:11
+#: src/features/auth/components/ContentBlockedHandler.tsx:10
 msgid "Content blocked"
 msgstr "Turinys užblokuotas"
 
@@ -9000,7 +9014,7 @@ msgid "Could not load this page"
 msgstr "Nepavyko įkelti šio puslapio"
 
 #. Body of the modal shown when a screen share attempt fails. Advises the user to try sharing the full screen.
-#: src/features/voice/components/alerts/ScreenShareFailedModal.tsx:13
+#: src/features/voice/components/alerts/ScreenShareFailedModal.tsx:12
 msgid "Could not start the screen share. The selected source may no longer be available or may have blocked capture. Try sharing your entire screen or monitor instead of a specific window."
 msgstr "Nepavyko pradėti ekrano bendrinimo. Pasirinktas šaltinis gali būti nepasiekiamas arba jo fiksavimas gali būti užblokuotas. Pabandykite bendrinti visą ekraną ar monitorių, o ne konkretų langą."
 
@@ -9558,7 +9572,7 @@ msgid "Cover"
 msgstr "Viršelis"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:267
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:262
 #: src/features/user/components/settings_utils/section_registry/AppearanceSections.ts:246
 msgid "Cozy"
 msgstr "Jauku"
@@ -11686,7 +11700,7 @@ msgid "Discovery"
 msgstr "Atradimas"
 
 #. Community settings tab for public community discovery/listing.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:76
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:84
 msgctxt "community-settings-tab"
 msgid "Discovery"
 msgstr "Atradimas"
@@ -12197,7 +12211,7 @@ msgstr "Juodraštis"
 msgid "Drag and drop"
 msgstr "Vilkite ir numeskite"
 
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:295
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:290
 msgid "Drag and drop a sticker file here (one at a time)"
 msgstr "Nuvilkite lipduko failą čia (po vieną)"
 
@@ -12206,7 +12220,7 @@ msgstr "Nuvilkite lipduko failą čia (po vieną)"
 msgid "Drag and drop area for file upload"
 msgstr "Nuvilkite failus čia, kad įkeltumėte"
 
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:471
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:470
 msgid "Drag and drop emoji files here"
 msgstr "Nuvilkite jaustukų failus čia"
 
@@ -12792,7 +12806,7 @@ msgid "Emoji"
 msgstr "Jaustukai"
 
 #. Community settings tab for managing custom emoji uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:36
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:44
 msgctxt "community-settings-tab"
 msgid "Emoji"
 msgstr "Jaustukai"
@@ -12848,7 +12862,7 @@ msgid "Emoji name must be at most 32 characters long"
 msgstr "Jaustuko pavadinimas turi būti ne ilgesnis nei 32 simboliai"
 
 #. Description in the community emoji upload section. {maxSize} is the formatted size limit.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:95
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:96
 msgid "Emoji names need at least 2 characters and can use letters, numbers, and underscores. Emojis must be under {maxSize}. Static images are resized to 128x128 pixels and compressed automatically. Animated emojis and SVGs must already fit the limit."
 msgstr "Emblemos pavadinimai turi būti bent 2 simboliai ir gali naudoti raides, skaičius bei pabraukimus. Emblemos dydis neturi viršyti {maxSize}. Statiniai vaizdai automatiškai keičiami į 128x128 pikselių dydį ir suspaudžiami. Animuoti paveikslėliai ir SVG turi jau atitikti nurodytą dydį."
 
@@ -12896,7 +12910,7 @@ msgstr "Jaustukų paketai"
 msgid "Emoji picker"
 msgstr "Jaustukų parinkiklis"
 
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:451
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:450
 msgid "Emoji slots"
 msgstr "Jaustukų vietos"
 
@@ -14054,7 +14068,7 @@ msgstr "Išraiškos išvalymas"
 #. Community settings sidebar category grouping the emoji and stickers tabs.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:249
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:266
 #: src/features/user/components/settings_utils/search_index/ExpressionPacksIndex.ts:19
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:134
 msgid "Expressions"
@@ -14219,7 +14233,11 @@ msgstr "Nepavyko įkelti"
 msgid "Failed to load authorized applications"
 msgstr "Nepavyko įkelti autorizuotų programų"
 
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:444
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:53
+msgid "Failed to load cast"
+msgstr ""
+
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:443
 msgid "Failed to load emojis. Try again later."
 msgstr "Nepavyko įkelti jaustukų. Bandykite dar kartą vėliau."
 
@@ -14243,7 +14261,7 @@ msgid "Failed to load shareable sources."
 msgstr "Nepavyko įkelti bendrinamų šaltinių."
 
 #. Error message in the guild stickers tab.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:74
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:71
 msgid "Failed to load stickers"
 msgstr "Nepavyko įkelti lipdukų"
 
@@ -14293,7 +14311,7 @@ msgid "Failed to pin message"
 msgstr "Nepavyko prisegti žinutės"
 
 #. Error message in the guild emoji tab.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:54
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:55
 msgid "Failed to prepare emojis"
 msgstr "Nepavyko paruošti jaustukų"
 
@@ -14439,12 +14457,12 @@ msgid "Failed to upload custom sound"
 msgstr "Nepavyko įkelti pasirinktinio garso"
 
 #. Error message in the emoji upload failure modal. startLabel is a chunk label like "#1"; errorMsg is the server error.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:62
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:63
 msgid "Failed to upload emojis starting at {startLabel}: {errorMsg}"
 msgstr "Nepavyko įkelti jaustukų, pradedant nuo {startLabel}: {errorMsg}"
 
 #. Error message in the guild emoji tab.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:58
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:59
 msgid "Failed to upload emojis. Try again."
 msgstr "Nepavyko įkelti jaustukų. Bandykite dar kartą."
 
@@ -14538,7 +14556,7 @@ msgid "Feature"
 msgstr "Funkcija"
 
 #. Short label in the feature temporarily disabled modal.
-#: src/features/app/components/alerts/FeatureTemporarilyDisabledModal.tsx:9
+#: src/features/app/components/alerts/FeatureTemporarilyDisabledModal.tsx:8
 msgid "Feature temporarily disabled"
 msgstr "Funkcija laikinai išjungta"
 
@@ -14581,12 +14599,12 @@ msgid "File options"
 msgstr "Failo parinktys"
 
 #. Title of the file-too-large alert variant that offers a Plutonium upsell.
-#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:38
+#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:35
 msgid "File size limit exceeded"
 msgstr "Viršytas failo dydžio limitas"
 
 #. Title of the file-too-large alert.
-#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:34
+#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:31
 msgid "File size too large"
 msgstr "Failo dydis per didelis"
 
@@ -15436,7 +15454,7 @@ msgid "Gap"
 msgstr "Tarpas"
 
 #. Short label in the temporary invite requires presence modal.
-#: src/features/app/components/alerts/TemporaryInviteRequiresPresenceModal.tsx:9
+#: src/features/app/components/alerts/TemporaryInviteRequiresPresenceModal.tsx:8
 msgid "Gateway connection required"
 msgstr "Reikalingas \"Gateway\" ryšys"
 
@@ -15753,7 +15771,7 @@ msgid "Give everyone on this instance the highest premium limits."
 msgstr "Suteikite visiems šioje instancijoje aukščiausius premium limitus."
 
 #. Modal body shown when the role-edit form is submitted with an empty role name.
-#: src/features/app/components/alerts/RoleNameBlankModal.tsx:13
+#: src/features/app/components/alerts/RoleNameBlankModal.tsx:12
 msgid "Give the role a name before saving."
 msgstr "Prieš išsaugant, suteikite vaidmeniui pavadinimą."
 
@@ -17088,7 +17106,7 @@ msgstr "Paveikslėlio įkėlimas"
 msgid "Images"
 msgstr "Nuotraukos"
 
-#: src/features/messaging/components/alerts/AttachmentPermissionDeniedModal.tsx:38
+#: src/features/messaging/components/alerts/AttachmentPermissionDeniedModal.tsx:35
 msgid "Images pasted from your clipboard are sent as attachments, and you don't have permission to attach files in this channel."
 msgstr "Iš iškarpinės įklijuoti vaizdai siunčiami kaip priedai, o jūs neturite leidimo pridėti failų šiame kanale."
 
@@ -17626,7 +17644,7 @@ msgstr "Momentiniai pakvietimai"
 
 #. Community settings sidebar category grouping webhooks.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:257
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:274
 #: src/features/user/components/settings_utils/search_index/AuthorizedAppsIndex.ts:26
 msgid "Integrations"
 msgstr "Integracijos"
@@ -17969,7 +17987,7 @@ msgid "Invites"
 msgstr "Kvietimai"
 
 #. Community settings tab for invite link management.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:86
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:94
 msgctxt "community-settings-tab"
 msgid "Invites"
 msgstr "Kvietimai"
@@ -18014,7 +18032,7 @@ msgstr "Kvietimų išjungimo pranešimų juosta"
 
 #. Button or menu action label in the invite accept modal. Keep it concise.
 #. Button or menu action label in the invites disabled modal. Keep it concise.
-#: src/features/invite/components/alerts/InvitesDisabledModal.tsx:10
+#: src/features/invite/components/alerts/InvitesDisabledModal.tsx:9
 #: src/features/invite/components/modals/InviteAcceptModal.tsx:49
 msgid "Invites paused"
 msgstr "Kvietimai pristabdyti"
@@ -19741,7 +19759,7 @@ msgid "Mature content media gate"
 msgstr "Brandos turinio medijos vartai"
 
 #. Error message in the mature content rejected modal.
-#: src/features/moderation/components/alerts/MatureContentRejectedModal.tsx:9
+#: src/features/moderation/components/alerts/MatureContentRejectedModal.tsx:8
 msgid "Mature content not allowed"
 msgstr "Nepageidaujamas turinys neleidžiamas"
 
@@ -19837,7 +19855,7 @@ msgid "Maximum screen share bitrate"
 msgstr "Maksimalus ekrano bendrinimo bitratas"
 
 #. Short label in the max favorite memes modal.
-#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:33
+#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:34
 #: src/features/expressions/components/modals/GiftAcceptModal.tsx:220
 #: src/features/expressions/components/modals/GiftAcceptModal.tsx:277
 msgid "Maybe later"
@@ -20045,7 +20063,7 @@ msgid "Members"
 msgstr "Nariai"
 
 #. Community settings tab for managing community members.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:81
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:89
 msgctxt "community-settings-tab"
 msgid "Members"
 msgstr "Nariai"
@@ -20533,7 +20551,7 @@ msgid "Microphone gain"
 msgstr "Mikrofono stiprumas"
 
 #. Title of the modal shown when microphone permission is denied. Keep tone plain.
-#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:13
+#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:12
 msgid "Microphone permission required"
 msgstr "Reikalingas mikrofono leidimas"
 
@@ -20744,7 +20762,7 @@ msgid "Moderation"
 msgstr "Moderavimas"
 
 #. Community settings tab for moderation and safety controls.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:56
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:64
 msgctxt "community-settings-tab"
 msgid "Moderation"
 msgstr "Moderavimas"
@@ -21539,7 +21557,7 @@ msgid "NEW"
 msgstr "NEW"
 
 #. Description text in the new account guild limit modal.
-#: src/features/guild/components/alerts/NewAccountGuildLimitModal.tsx:13
+#: src/features/guild/components/alerts/NewAccountGuildLimitModal.tsx:12
 msgid "New accounts can join up to 10 communities in the first 24 hours. Try again later."
 msgstr "Naujos paskyros per pirmąsias 24 valandas gali prisijungti prie ne daugiau kaip 10 bendruomenių. Bandykite dar kartą vėliau."
 
@@ -21824,6 +21842,10 @@ msgstr "Kamerų ar virtualiųjų įrenginių nerasta"
 msgid "No capture devices found"
 msgstr "Nerasta fiksavimo įrenginių"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:70
+msgid "No cast configured"
+msgstr ""
+
 #. Empty-state text in the invite list item.
 #. Subtext under a channel name in the notification overrides list when the channel has no parent category. Short standalone label.
 #: src/features/guild/components/modals/GuildNotificationSettingsModal.tsx:145
@@ -21902,11 +21924,11 @@ msgid "No embeds returned"
 msgstr "Nėra įterptųjų elementų"
 
 #. Empty-state text in the guild emoji tab.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:46
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:47
 msgid "No emoji slots available"
 msgstr "Nėra laisvų jaustukų vietų"
 
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:479
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:478
 msgid "No emojis found matching your search."
 msgstr "Nerasta jaustukų, atitinkančių jūsų paiešką."
 
@@ -22157,7 +22179,7 @@ msgid "No scheduled messages"
 msgstr "Nėra suplanuotų žinučių"
 
 #. Body of the screen-share-unsupported modal shown when xdg-desktop-portal returns no capturable sources.
-#: src/features/voice/components/alerts/ScreenShareUnsupportedModal.tsx:19
+#: src/features/voice/components/alerts/ScreenShareUnsupportedModal.tsx:18
 msgid "No screens or windows were returned by the Linux screen sharing portal. Try again after checking that your desktop environment allows screen capture."
 msgstr "Linux ekrano dalijimosi portalas neparūpino nė vieno ekrano ar lango. Pabandykite dar kartą, patikrinę, ar jūsų darbalaukio aplinka leidžia daryti ekrano nuotraukas."
 
@@ -22185,17 +22207,17 @@ msgid "No specific scopes requested."
 msgstr "Nenurodytos jokios konkrečios sritys."
 
 #. Empty-state text in the guild stickers tab.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:61
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:58
 msgid "No sticker slots available"
 msgstr "Nėra laisvų lipdukų vietų"
 
 #. Empty-state text in the guild stickers tab.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:57
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:54
 msgid "No stickers found"
 msgstr "Lipdukų nerasta"
 
 #. Empty-state text in the guild stickers tab.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:70
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:67
 msgid "No stickers found matching your search."
 msgstr "Nerasta lipdukų, atitinkančių jūsų paiešką."
 
@@ -22322,7 +22344,7 @@ msgid "Noise suppression: {noiseSuppressionLabel}"
 msgstr "Triukšmo slopinimas: {noiseSuppressionLabel}"
 
 #. Section heading for static emoji in community emoji settings.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:100
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:101
 msgid "Non-animated emoji ({emojiCount})"
 msgstr "Neanimuoti jaustukai ({emojiCount})"
 
@@ -22640,7 +22662,7 @@ msgid "One or more attachments couldn't be read or uploaded. The file may have b
 msgstr "Vieno ar kelių priedų nepavyko perskaityti arba įkelti. Failas galėjo būti perkeltas arba ištrintas. Pridėkite jį dar kartą ir bandykite iš naujo."
 
 #. Body of the file-too-large alert for ambiguous count (single or multiple) over the per-file size limit.
-#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:30
+#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:27
 msgid "One or more files you're trying to upload exceed the maximum size limit of {maxSizeFormatted} per file."
 msgstr "Vienas ar keli failai, kuriuos bandote įkelti, viršija maksimalų {maxSizeFormatted} dydžio limitą vienam failui."
 
@@ -23503,7 +23525,7 @@ msgid "Overview"
 msgstr "Apžvalga"
 
 #. Community settings tab for basic server/community details.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:46
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:54
 msgctxt "community-settings-tab"
 msgid "Overview"
 msgstr "Apžvalga"
@@ -23822,7 +23844,7 @@ msgstr "Čia rodomi laukiantys draugų užklausimai."
 #: src/features/expressions/utils/UnicodeEmojis.ts:21
 #: src/features/search/state/QuickSwitcherResultConverters.ts:22
 #: src/features/search/utils/QuickSwitcherModalUtils.tsx:51
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:278
 msgid "People"
 msgstr "Žmonės"
 
@@ -24663,6 +24685,7 @@ msgstr "Kainos vis dar įkeliamos."
 msgid "Pricing preference"
 msgstr "Kainodaros nuostatos"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:96
 #: src/features/user/components/modals/tabs/component_gallery_tab/ComponentGalleryTabButtonsTab.tsx:157
 msgid "Primary"
 msgstr "Pagrindinis"
@@ -25918,8 +25941,8 @@ msgstr "Pašalinti priedą"
 msgid "Remove authenticator app"
 msgstr "Pašalinti autentifikavimo programėlę"
 
-#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:406
-#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:442
+#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:404
+#: src/features/user/components/modals/tabs/my_profile_tab/AvatarUploader.tsx:440
 msgid "Remove avatar"
 msgstr "Pašalinti avatarą"
 
@@ -27020,7 +27043,7 @@ msgid "Review the permissions {productName} uses for voice, video, screen sharin
 msgstr "Peržiūrėkite leidimus, kuriuos {productName} naudoja balsui, vaizdo įrašams, ekrano bendrinimui ir sparčiosioms klaviatūros komandoms."
 
 #. Intro text in the error modal shown after some emoji uploads fail.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:71
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:72
 msgid "Review these files and try again with smaller or simpler images."
 msgstr "Peržiūrėkite šiuos failus ir bandykite dar kartą su mažesniais ar paprastesniais vaizdais."
 
@@ -27191,7 +27214,7 @@ msgid "Role name"
 msgstr "Vaidmens pavadinimas"
 
 #. Validation modal title when the role-edit form is submitted with an empty role name.
-#: src/features/app/components/alerts/RoleNameBlankModal.tsx:9
+#: src/features/app/components/alerts/RoleNameBlankModal.tsx:8
 msgid "Role name is required"
 msgstr "Reikalingas vaidmens pavadinimas"
 
@@ -27211,7 +27234,7 @@ msgid "Roles"
 msgstr "Rolės"
 
 #. Community settings tab for role hierarchy and permission rules.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:51
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:59
 msgctxt "community-settings-tab"
 msgid "Roles"
 msgstr "Vaidmenys"
@@ -27421,7 +27444,7 @@ msgid "Saved media autocomplete"
 msgstr "Išsaugotos medijos automatinis užbaigimas"
 
 #. Short label in the max favorite memes modal.
-#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:15
+#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:16
 msgid "Saved media limit reached"
 msgstr "Pasiektas išsaugotos medijos limitas"
 
@@ -27528,7 +27551,7 @@ msgstr "Ekrano skaitytuvo pranešimai"
 
 #. Heading in the screen-share picker when macOS screen recording permission is missing.
 #. Title of the modal shown when screen recording permission is denied. Keep tone plain.
-#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:21
+#: src/features/permissions/system/components/MediaPermissionBlockedModal.tsx:20
 #: src/features/voice/components/modals/screen_share_picker_modal/ScreenSharePickerDisplayPermissionPrompt.tsx:18
 msgid "Screen recording permission required"
 msgstr "Reikalingas ekrano įrašymo leidimas"
@@ -27561,7 +27584,7 @@ msgid "Screen share encoder controls"
 msgstr "Ekrano dalijimosi įrašymo nustatymų valdikliai"
 
 #. Title of a modal shown when an active screen share stops unexpectedly.
-#: src/features/voice/engine/v2/VoiceEngineV2AppScreenShareExecutionAdapter.tsx:111
+#: src/features/voice/engine/v2/VoiceEngineV2AppScreenShareExecutionAdapter.tsx:110
 msgctxt "screen-share"
 msgid "Screen share ended"
 msgstr "Ekrano dalijimasis baigėsi"
@@ -27648,17 +27671,17 @@ msgid "Screen sharing codec"
 msgstr "Ekrano bendrinimo kodekas"
 
 #. Title of the modal shown when a screen share attempt fails due to a video source error.
-#: src/features/voice/components/alerts/ScreenShareFailedModal.tsx:9
+#: src/features/voice/components/alerts/ScreenShareFailedModal.tsx:8
 msgid "Screen sharing failed"
 msgstr "Nepavyko bendrinti ekrano"
 
 #. Body of the screen-share-unsupported modal. Mentions specific browsers and OSes; keep all proper nouns intact.
-#: src/features/voice/components/alerts/ScreenShareUnsupportedModal.tsx:13
+#: src/features/voice/components/alerts/ScreenShareUnsupportedModal.tsx:12
 msgid "Screen sharing is not supported on this device or browser. This feature requires a desktop browser that supports screen sharing, such as Chrome, Firefox, or Edge on Windows, macOS, or Linux."
 msgstr "Ekrano bendrinimas nepalaikomas šiame įrenginyje ar naršyklėje. Šiai funkcijai reikalinga ekrano bendrinimą palaikanti darbalaukio naršyklė, pvz., \"Chrome\", \"Firefox\" ar \"Edge\" sistemoje \"Windows\", \"macOS\" arba \"Linux\"."
 
 #. Title of the modal shown when screen sharing is not supported on the current device / browser.
-#: src/features/voice/components/alerts/ScreenShareUnsupportedModal.tsx:9
+#: src/features/voice/components/alerts/ScreenShareUnsupportedModal.tsx:8
 msgid "Screen sharing not supported"
 msgstr "Ekrano bendrinimas nepalaikomas"
 
@@ -27795,7 +27818,7 @@ msgid "Search countries…"
 msgstr "Ieškoti šalių…"
 
 #. Button or menu action label in the guild emoji tab. Keep it concise.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:91
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:92
 msgid "Search emojis"
 msgstr "Ieškoti jaustukų"
 
@@ -27960,7 +27983,7 @@ msgid "Search shortcuts…"
 msgstr "Ieškoti nuorodų…"
 
 #. Button or menu action label in the guild stickers tab. Keep it concise.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:49
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:46
 msgid "Search stickers"
 msgstr "Ieškoti lipdukų"
 
@@ -29954,7 +29977,7 @@ msgid "Slow attachment upload"
 msgstr "Lėtas priedų įkėlimas"
 
 #. Short label in the new account guild limit modal. Keep it concise.
-#: src/features/guild/components/alerts/NewAccountGuildLimitModal.tsx:9
+#: src/features/guild/components/alerts/NewAccountGuildLimitModal.tsx:8
 msgid "Slow down"
 msgstr "Lėčiau"
 
@@ -30004,7 +30027,7 @@ msgstr "Lėtasis režimas · laukti {remaining}"
 #. Developer tools debug menu label. Internal-only surface for developers; translators may keep this terse.
 #. Short label in the slowmode rate limited modal. Keep it concise.
 #: src/features/channel/components/channel_header_components/developer_tools/DeveloperOptionLabels.ts:249
-#: src/features/slowmode/components/alerts/SlowmodeRateLimitedModal.tsx:14
+#: src/features/slowmode/components/alerts/SlowmodeRateLimitedModal.tsx:13
 msgid "Slowmode active"
 msgstr "Lėtasis režimas aktyvus"
 
@@ -30019,7 +30042,7 @@ msgid "Slowmode is enabled, but you are immune."
 msgstr "Sulėgintasis režimas įjungtas, bet jums jis negalioja."
 
 #. Modal body shown when slowmode blocks sending a message. {duration} is a localized short duration such as "2 minutes".
-#: src/features/slowmode/components/alerts/SlowmodeRateLimitedModal.tsx:18
+#: src/features/slowmode/components/alerts/SlowmodeRateLimitedModal.tsx:17
 msgid "Slowmode is on — wait {duration} before sending another."
 msgstr "Įjungtas lėtasis režimas – prieš siųsdami kitą palaukite {duration}."
 
@@ -30150,12 +30173,12 @@ msgid "Sold out"
 msgstr "Išparduota"
 
 #. Title of the error modal shown after some emoji uploads fail.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:67
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:68
 msgid "Some emojis couldn't be added"
 msgstr "Kai kurių jaustukų nepavyko pridėti"
 
 #. Body of the file-too-large alert when multiple files exceed the per-file size limit. maxSizeFormatted is the limit formatted with units.
-#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:21
+#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:18
 msgid "Some files you're trying to upload exceed the maximum size limit of {maxSizeFormatted} per file."
 msgstr "Kai kurie failai, kuriuos bandote įkelti, viršija maksimalų {maxSizeFormatted} dydžio limitą vienam failui."
 
@@ -30948,7 +30971,7 @@ msgid "Sticker deleted"
 msgstr "Lipdukas ištrintas"
 
 #. Short label in the guild stickers tab. Keep it concise.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:53
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:50
 msgid "Sticker density"
 msgstr "Lipdukų tankis"
 
@@ -30996,7 +31019,7 @@ msgstr "Pasiektas lipdukų paketo limitas"
 msgid "Sticker packs"
 msgstr "Lipdukų paketai"
 
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:283
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:278
 msgid "Sticker slots"
 msgstr "Lipdukų vietos"
 
@@ -31026,13 +31049,13 @@ msgid "Stickers"
 msgstr "Lipdukai"
 
 #. Community settings tab for managing custom stickers uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:41
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:49
 msgctxt "community-settings-tab"
 msgid "Stickers"
 msgstr "Lipdukai"
 
 #. Description in the community sticker upload section. {maxSize} is the formatted size limit.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:82
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:79
 msgid "Stickers are saved at 320x320 pixels and must be under {maxSize}. Static images are resized and compressed automatically. Animated stickers and SVGs must already fit the limit."
 msgstr "Lipdukai išsaugomi 320x320 pikselių dydžiu ir turi būti ne didesni nei {maxSize}. Statiniai vaizdai automatiškai keičiami į reikiamą dydį ir suspaudžiami. Animuoti lipdukai ir SVG jau turi atitikti nurodytą dydį."
 
@@ -31862,7 +31885,7 @@ msgid "temporarily unavailable"
 msgstr "(laikinai nepasiekiama)"
 
 #. Modal body shown when the user tries to accept a temporary invite while the realtime connection is offline.
-#: src/features/app/components/alerts/TemporaryInviteRequiresPresenceModal.tsx:13
+#: src/features/app/components/alerts/TemporaryInviteRequiresPresenceModal.tsx:12
 msgid "Temporary invites need a live connection. Check yours and try again."
 msgstr "Laikini kvietimai veikia tik esant tiesioginiam ryšiui. Patikrinkite ryšį ir bandykite dar kartą."
 
@@ -31982,12 +32005,12 @@ msgid "Text-to-speech"
 msgstr "Text-to-speech"
 
 #. Body of the TTS-unsupported modal. Mentions specific browsers; keep Chrome, Firefox, Edge, and Brave as literal proper nouns.
-#: src/features/voice/components/alerts/TtsUnsupportedModal.tsx:13
+#: src/features/voice/components/alerts/TtsUnsupportedModal.tsx:12
 msgid "Text-to-speech is not supported by your browser. Some browsers like Brave block this feature for privacy reasons. Try using Chrome, Firefox, or Edge, or adjust your browser's privacy settings."
 msgstr "Jūsų naršyklė nepalaiko teksto į kalbą funkcijos. Kai kurios naršyklės, pvz., \"Brave\", blokuoja šią funkciją dėl privatumo priežasčių. Pabandykite naudoti \"Chrome\", \"Firefox\" arba \"Edge\" arba pakoreguokite naršyklės privatumo nustatymus."
 
 #. Title of the modal shown when the browser does not support text-to-speech.
-#: src/features/voice/components/alerts/TtsUnsupportedModal.tsx:9
+#: src/features/voice/components/alerts/TtsUnsupportedModal.tsx:8
 msgid "Text-to-speech not supported"
 msgstr "Teksto į kalbą funkcija nepalaikoma"
 
@@ -32148,7 +32171,7 @@ msgid "The file contains the verification token we will fetch from <0>{dnsUrl}</
 msgstr "Faile yra patvirtinimo prieigos raktas, kurį gausime iš <0>{dnsUrl}</0>."
 
 #. Body of the file-too-large alert when a single file exceeds the per-file size limit.
-#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:26
+#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:23
 msgid "The file you're trying to upload exceeds the maximum size limit of {maxSizeFormatted}."
 msgstr "Bandomas įkelti failas viršija maksimalų {maxSizeFormatted} dydžio limitą."
 
@@ -32198,7 +32221,7 @@ msgid "The provided redirect_uri must use HTTP or HTTPS."
 msgstr "Pateiktas \"redirect_uri\" turi naudoti HTTP arba HTTPS."
 
 #. Body of a modal shown when a browser screen share track ends outside the app, for example from the browser sharing controls.
-#: src/features/voice/engine/v2/VoiceEngineV2AppScreenShareExecutionAdapter.tsx:116
+#: src/features/voice/engine/v2/VoiceEngineV2AppScreenShareExecutionAdapter.tsx:115
 msgctxt "screen-share"
 msgid "The screen share source stopped sending video, so your screen share was stopped."
 msgstr "Šaltinio, kuriuo dalijamasi ekranu, vaizdo perdavimas buvo sustabdytas, todėl ekrano dalijimasis buvo nutrauktas."
@@ -32361,6 +32384,10 @@ msgstr "Šiuo metu čia nėra programėlėje veikiančio vietinio prenumeratos m
 msgid "There is no recovery once this starts. We will DM you when it finishes."
 msgstr "Kai tik tai prasidės, atkurti nebebus įmanoma. Baigus procesą, atsiųsime jums tiesioginę žinutę."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:54
+msgid "There was an error loading the cast for this community. Try again."
+msgstr ""
+
 #: src/features/channel/components/modals/channel_tabs/ChannelInvitesTab.tsx:271
 msgid "There was an error loading the invite links for this channel. Try again."
 msgstr "Įkeliant šio kanalo kvietimo nuorodas įvyko klaida. Bandykite dar kartą."
@@ -32370,7 +32397,7 @@ msgid "There was an error loading the invites. Try again."
 msgstr "Įkeliant pakvietimus įvyko klaida. Bandykite dar kartą."
 
 #. Error message in the guild stickers tab.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:78
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:75
 msgid "There was an error loading the stickers. Try again."
 msgstr "Įkeliant lipdukus įvyko klaida. Bandykite dar kartą."
 
@@ -32516,7 +32543,7 @@ msgid "This channel is marked for mature content and may contain material that m
 msgstr "Šis kanalas pažymėtas kaip skirtas suaugusiųjų turiniui ir jame gali būti medžiagos, kuri kai kuriems naudotojams gali būti netinkama."
 
 #. Label in the mature content rejected modal.
-#: src/features/moderation/components/alerts/MatureContentRejectedModal.tsx:13
+#: src/features/moderation/components/alerts/MatureContentRejectedModal.tsx:12
 msgid "This channel is not marked for mature content. Mature content can only be sent in channels marked for mature content. Ask a moderator to update this channel if appropriate."
 msgstr "Šis kanalas nepažymėtas kaip skirtas suaugusiųjų turiniui. Suaugusiųjų turinys gali būti siunčiamas tik kanaluose, pažymėtuose kaip skirti suaugusiųjų turiniui. Jei reikia, paprašykite moderatoriaus atnaujinti šį kanalą."
 
@@ -32560,6 +32587,10 @@ msgstr "Šis kodas neteisingas arba jau panaudotas."
 msgid "This code was already redeemed."
 msgstr "Šis kodas jau buvo panaudotas."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:71
+msgid "This community doesn't have any cast characters mapped to it yet."
+msgstr ""
+
 #: src/features/guild/components/modals/guild_tabs/GuildInvitesTab.tsx:102
 msgid "This community doesn't have any invite links yet. Go to a channel and create an invite to invite people."
 msgstr "Ši bendruomenė dar neturi jokių pakvietimo nuorodų. Eikite į kanalą ir sukurkite pakvietimą, kad pakviestumėte žmones."
@@ -32579,7 +32610,7 @@ msgid "This community has paused invites. You can try again later."
 msgstr "Ši bendruomenė pristabdė kvietimus. Galite bandyti dar kartą vėliau."
 
 #. Description text in the guild at capacity modal.
-#: src/features/guild/components/alerts/GuildAtCapacityModal.tsx:13
+#: src/features/guild/components/alerts/GuildAtCapacityModal.tsx:12
 msgid "This community has reached its maximum member limit and is not accepting new members at this time."
 msgstr "Ši bendruomenė pasiekė didžiausią leistiną narių skaičių ir šiuo metu nepriima naujų narių."
 
@@ -32657,7 +32688,7 @@ msgid "This doesn't look like a valid template response. Make sure you copied th
 msgstr "Panašu, kad tai nėra galiojantis šablono atsakas. Įsitikinkite, kad nukopijavote visą JSON dokumentą."
 
 #. Generic per-file error text shown when preparing an emoji upload fails.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:87
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:88
 msgid "This emoji could not be prepared. Try another file or try again in a moment."
 msgstr "Šio jaustuko nepavyko paruošti. Pabandykite kitą failą arba pakartokite vėliau."
 
@@ -32674,7 +32705,7 @@ msgid "This expression is gone"
 msgstr "Šis raiškos elementas dingo"
 
 #. Modal body shown when an instance admin has temporarily disabled a feature. Keep plain.
-#: src/features/app/components/alerts/FeatureTemporarilyDisabledModal.tsx:13
+#: src/features/app/components/alerts/FeatureTemporarilyDisabledModal.tsx:12
 msgid "This feature is paused. Try again later."
 msgstr "Ši funkcija pristabdyta. Bandykite dar kartą vėliau."
 
@@ -32684,7 +32715,7 @@ msgid "This field has an error"
 msgstr "Šiame lauke yra klaida"
 
 #. Error text for animated emoji or SVG uploads that exceed the file size limit. {fileSize} and {maxSize} are formatted file sizes.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:75
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:76
 msgid "This file is {fileSize}, over the {maxSize} limit. Animated emojis and SVGs must already be small enough to upload. Choose a smaller file or shorten the animation."
 msgstr "Šis failas yra {fileSize} dydžio, viršijantis {maxSize} limitą. Animaciniai jaustukai ir SVG failai turi būti pakankamai maži, kad juos būtų galima įkelti. Pasirinkite mažesnį failą arba sutrumpinkite animaciją."
 
@@ -32833,7 +32864,7 @@ msgid "This is not the community you're looking for."
 msgstr "Tai ne ta bendruomenė, kurios ieškote."
 
 #. Description text in the too many reactions modal. Keep the tone plain and specific.
-#: src/features/messaging/components/alerts/TooManyReactionsModal.tsx:13
+#: src/features/messaging/components/alerts/TooManyReactionsModal.tsx:12
 msgid "This is one heavy message. Some reactions need to be removed before you can add more."
 msgstr "Ši žinutė sulaukė daug reakcijų. Kad galėtumėte pridėti daugiau, kai kurias reakcijas reikia pašalinti."
 
@@ -32855,7 +32886,7 @@ msgid "This is the third option description"
 msgstr "Tai trečiojo pasirinkimo aprašymas"
 
 #. Extra file-too-large alert sentence shown when premium upload-limit upgrades are unavailable.
-#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:42
+#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:39
 msgid "This limit is configured by your instance administrator."
 msgstr "Šį limitą nustatė jūsų egzemplioriaus administratorius."
 
@@ -33570,7 +33601,7 @@ msgid "Too many attempts. Wait a bit, then try again."
 msgstr "Per daug bandymų. Šiek tiek palaukite ir bandykite dar kartą."
 
 #. Error message in the max guilds modal.
-#: src/features/guild/components/alerts/MaxGuildsModal.tsx:10
+#: src/features/guild/components/alerts/MaxGuildsModal.tsx:9
 msgid "Too many communities"
 msgstr "Per daug bendruomenių"
 
@@ -34199,8 +34230,8 @@ msgstr "Nepavyko įkelti peržiūros."
 msgid "Unable to load profile banner, badges, and bio."
 msgstr "Nepavyko įkelti profilio reklamjuostės, ženklelių ir biografijos."
 
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:272
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:328
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:271
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:327
 msgid "Unable to prepare any emojis for upload. The following errors occurred:"
 msgstr "Nepavyko paruošti jaustukų įkėlimui. Įvyko šios klaidos:"
 
@@ -34932,7 +34963,7 @@ msgid "Unsupported icon format"
 msgstr "Nepalaikomas piktogramos formatas"
 
 #. Title of the error modal shown when an unsupported sticker file type is selected.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:87
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:84
 msgid "Unsupported sticker file"
 msgstr "Nepalaikomas lipduko failas"
 
@@ -35135,8 +35166,8 @@ msgstr "Atnaujinti dabar"
 
 #. Short label in the max bookmarks modal. Preserve {premiumProductName}; it is inserted by code.
 #. Short label in the max favorite memes modal. Preserve {premiumProductName}; it is inserted by code.
-#: src/features/app/components/alerts/MaxBookmarksModal.tsx:35
-#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:29
+#: src/features/app/components/alerts/MaxBookmarksModal.tsx:36
+#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:30
 msgid "Upgrade to {premiumProductName}"
 msgstr "Atnaujinkite į {premiumProductName}"
 
@@ -35208,7 +35239,7 @@ msgstr "Įkelti pasirinktinį garsą, skirtą \"{label}\""
 msgid "Upload directly to {displayName}"
 msgstr "Įkelti tiesiai į \"{displayName}\""
 
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:454
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:453
 msgid "Upload emoji"
 msgstr "Įkelti jaustuką"
 
@@ -35252,7 +35283,7 @@ msgstr "Įkelkite ekrano dalijimosi peržiūros kadrus."
 msgid "Upload sound"
 msgstr "Įkelti garsą"
 
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:286
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:281
 msgid "Upload sticker"
 msgstr "Įkelti lipduką"
 
@@ -36004,7 +36035,7 @@ msgid "Vanity URL"
 msgstr "Pasirinktinis URL"
 
 #. Community settings tab for the community vanity/custom invite link.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:71
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:79
 msgctxt "community-settings-tab"
 msgid "Vanity URL"
 msgstr "Individualizuotas URL"
@@ -36996,7 +37027,7 @@ msgid "Volume sliders"
 msgstr "Garsumo slankikliai"
 
 #. Description text in the message delete too quick modal. Keep the tone plain and specific.
-#: src/features/messaging/components/alerts/MessageDeleteTooQuickModal.tsx:13
+#: src/features/messaging/components/alerts/MessageDeleteTooQuickModal.tsx:12
 msgid "Wait a moment before deleting more messages."
 msgstr "Palaukite, kol ištrinsite daugiau žinučių."
 
@@ -37148,7 +37179,7 @@ msgstr "Šiuo metu nepavyko persiųsti žinutės."
 msgid "We couldn't import that theme library file."
 msgstr "Nepavyko importuoti šio temos bibliotekos failo."
 
-#: src/features/messaging/components/alerts/AttachmentUploadConnectivityModal.tsx:24
+#: src/features/messaging/components/alerts/AttachmentUploadConnectivityModal.tsx:23
 msgid "We couldn't reach the attachment upload service. {PRODUCT_NAME} can fall back to the standard upload path for messages up to {fallbackSizeFormatted} total, but these attachments exceed that combined limit and can't be sent until connectivity is restored. Try again later or contact <0>{SUPPORT_EMAIL}</0> if this keeps happening."
 msgstr "Nepavyko pasiekti priedų įkėlimo paslaugos. \"{PRODUCT_NAME}\" gali naudoti standartinį įkėlimo kelią žinutėms iki {fallbackSizeFormatted} iš viso, tačiau šie priedai viršija bendrą limitą ir negali būti išsiųsti, kol nebus atkurta ryšio. Bandykite dar kartą vėliau arba susisiekite su <0>{SUPPORT_EMAIL}</0>, jei tai kartosis."
 
@@ -37191,7 +37222,7 @@ msgid "We recommend saving these codes now so that you don't get locked out of y
 msgstr "Rekomenduojame išsaugoti šiuos kodus dabar, kad neprarastumėte prieigos prie paskyros."
 
 #. Error text for static emoji uploads that still exceed the file size limit after resizing. {fileSize} and {maxSize} are formatted file sizes.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:81
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:82
 msgid "We resized and compressed this emoji to 128x128 pixels, but it is still {fileSize}. The limit is {maxSize}. Try a simpler image, fewer colors, or a smaller source file."
 msgstr "Pakeitėme šio jaustuko dydį ir suglaudinome jį iki 128x128 pikselių, bet jis vis tiek yra {fileSize}. Limitas yra {maxSize}. Pabandykite paprastesnį paveikslėlį, mažiau spalvų arba mažesnį šaltinio failą."
 
@@ -37384,7 +37415,7 @@ msgid "Webhooks"
 msgstr "Webhook'ai"
 
 #. Community settings tab for configuring webhooks.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:66
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:74
 msgctxt "community-settings-tab"
 msgid "Webhooks"
 msgstr "Webhookai"
@@ -37657,8 +37688,8 @@ msgstr "Oho, čia spausdinimo apokalipsė"
 
 #. Label in the too many attachments modal.
 #. Label in the too many reactions modal.
-#: src/features/messaging/components/alerts/TooManyAttachmentsModal.tsx:10
-#: src/features/messaging/components/alerts/TooManyReactionsModal.tsx:9
+#: src/features/messaging/components/alerts/TooManyAttachmentsModal.tsx:9
+#: src/features/messaging/components/alerts/TooManyReactionsModal.tsx:8
 msgid "Whoa, this is heavy"
 msgstr "Oho, čia tai gėris"
 
@@ -37741,7 +37772,7 @@ msgid "With {PREMIUM_PRODUCT_NAME}, you can use animated avatars ({ANIMATED_AVAT
 msgstr "Naudodami {PREMIUM_PRODUCT_NAME}, galite naudoti animuotus avatarus ({ANIMATED_AVATAR_FORMATS}), profilio fonus, pritaikyti savo žymą ir atrakinti daugybę kitų {PREMIUM_PRODUCT_NAME} privalumų."
 
 #. Premium upsell sentence in the file-too-large alert. premiumProductName is the paid product name; fileSizeLimit is a localized file size.
-#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:46
+#: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:43
 msgid "With {premiumProductName}, your per-file upload limit increases to {fileSizeLimit}, plus animated avatars, longer messages, and many other {premiumProductName} perks."
 msgstr "Naudodami {premiumProductName}, jūsų maksimalus failo dydis padidės iki {fileSizeLimit}, taip pat galėsite naudoti animuotus avatarus, siųsti ilgesnius pranešimus ir gauti daugybę kitų {premiumProductName} privalumų."
 
@@ -37871,7 +37902,7 @@ msgid "You are about to transfer ownership of this community to <0>{0}</0>. This
 msgstr "Perduosite šios bendruomenės nuosavybės teises <0>{0}</0>. Šis veiksmas yra <1>negrįžtamas</1> ir prarasite visas savininko privilegijas."
 
 #. Error message in the user banned from guild modal. Keep the tone plain and specific.
-#: src/features/moderation/components/alerts/UserBannedFromGuildModal.tsx:13
+#: src/features/moderation/components/alerts/UserBannedFromGuildModal.tsx:12
 msgid "You are banned from this community and cannot join."
 msgstr "Esate užblokuotas šioje bendruomenėje ir negalite prisijungti."
 
@@ -37994,7 +38025,7 @@ msgid "You can't add new reactions while you're on timeout."
 msgstr "Negalite pridėti naujų reakcijų, kol jums skirta pertraukėlė."
 
 #. Description text in the attachment permission denied modal. Keep the tone plain and specific.
-#: src/features/messaging/components/alerts/AttachmentPermissionDeniedModal.tsx:20
+#: src/features/messaging/components/alerts/AttachmentPermissionDeniedModal.tsx:17
 msgid "You can't attach files in this channel."
 msgstr "Negalite pridėti failų šiame kanale."
 
@@ -38502,17 +38533,17 @@ msgid "You're already Visionary"
 msgstr "Jūs jau esate \"Visionary\" narys"
 
 #. Modal body shown when the bookmarks limit is reached on a self-hosted instance with no upgrade path. Limit count is interpolated.
-#: src/features/app/components/alerts/MaxBookmarksModal.tsx:19
+#: src/features/app/components/alerts/MaxBookmarksModal.tsx:20
 msgid "You're at {bookmarksText} — your instance admin sets this cap. Remove one to add another."
 msgstr "Pasiekėte {bookmarksText} – šį limitą nustatė jūsų egzemplioriaus administratorius. Pašalinkite vieną, kad galėtumėte pridėti kitą."
 
 #. Modal body shown when the bookmarks limit is reached and Plutonium is unavailable on this instance. Limit count is interpolated.
-#: src/features/app/components/alerts/MaxBookmarksModal.tsx:24
+#: src/features/app/components/alerts/MaxBookmarksModal.tsx:25
 msgid "You're at {bookmarksText}. Remove one to add another."
 msgstr "Pasiekėte {bookmarksText}. Pašalinkite vieną, kad pridėtumėte kitą."
 
 #. Modal body shown when the favorite-memes limit is reached on a self-hosted instance with no Plutonium upgrade path. Limit text is interpolated.
-#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:19
+#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:20
 msgid "You're at the cap of {freeItemsText} — your instance admin sets this limit."
 msgstr "Pasiekėte {freeItemsText} limitą – šį limitą nustato jūsų egzemplioriaus administratorius."
 
@@ -38524,12 +38555,12 @@ msgid "You're at the creation limit. Delete one to create another."
 msgstr "Pasiekėte kūrimo limitą. Norėdami sukurti naują, ištrinkite vieną."
 
 #. Modal body shown when the free bookmarks limit is reached and Plutonium would increase it. Free and Plutonium limits are interpolated.
-#: src/features/app/components/alerts/MaxBookmarksModal.tsx:29
+#: src/features/app/components/alerts/MaxBookmarksModal.tsx:30
 msgid "You're at the free cap of {bookmarksText}. {premiumProductName} bumps you up to {premiumBookmarksText} — or remove one to add another."
 msgstr "Pasiekėte nemokamą {bookmarksText} limitą. Su \"{premiumProductName}\" limitas padidėja iki {premiumBookmarksText} – arba pašalinkite vieną, kad pridėtumėte kitą."
 
 #. Modal body shown when the free favorite-memes limit is reached and Plutonium would increase it. Free and Plutonium limits are interpolated.
-#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:24
+#: src/features/app/components/alerts/MaxFavoriteMemesModal.tsx:25
 msgid "You're at the free cap of {freeItemsText}. {premiumProductName} bumps you up to {premiumItemsText}."
 msgstr "Pasiekėte nemokamą {freeItemsText} limitą. Su \"{premiumProductName}\" limitas padidėja iki {premiumItemsText}."
 
@@ -38541,7 +38572,7 @@ msgid "You're at the install limit. Remove one to add another."
 msgstr "Pasiekėte diegimo limitą. Pašalinkite vieną, kad pridėtumėte kitą."
 
 #. Short label in the user banned from guild modal. Keep it concise. Keep the tone plain and specific.
-#: src/features/moderation/components/alerts/UserBannedFromGuildModal.tsx:9
+#: src/features/moderation/components/alerts/UserBannedFromGuildModal.tsx:8
 msgid "You're banned"
 msgstr "Jūs užblokuotas"
 
@@ -38566,7 +38597,7 @@ msgid "You're deafened"
 msgstr "Esate nustebintas."
 
 #. Label in the message delete too quick modal. Keep the tone plain and specific.
-#: src/features/messaging/components/alerts/MessageDeleteTooQuickModal.tsx:9
+#: src/features/messaging/components/alerts/MessageDeleteTooQuickModal.tsx:8
 msgid "You're deleting messages too quickly"
 msgstr "Per greitai trinami pranešimai"
 
@@ -38725,12 +38756,12 @@ msgid "You've reached the group DM limit"
 msgstr "Pasiekėte grupinių tiesioginių žinučių limitą"
 
 #. Emoji upload limit message in community emoji settings. Do not suggest that communities can be upgraded.
-#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:50
+#: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:51
 msgid "You've reached the maximum number of emojis. Delete some existing emojis to make room."
 msgstr "Pasiekėte didžiausią jaustukų skaičių. Ištrinkite kai kuriuos esamus jaustukus, kad atlaisvintumėte vietos."
 
 #. Sticker upload limit message in community sticker settings. Do not suggest that communities can be upgraded.
-#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:65
+#: src/features/guild/components/modals/guild_tabs/GuildStickersTab.tsx:62
 msgid "You've reached the maximum number of stickers. Delete some existing stickers to make room."
 msgstr "Pasiekėte didžiausią lipdukų skaičių. Ištrinkite esamus lipdukus, kad atlaisvintumėte vietos."
 
@@ -38803,7 +38834,7 @@ msgid "Your account requires multi-factor authentication, but no supported metho
 msgstr "Jūsų paskyrai reikalingas daugiafaktorinis autentifikavimas, tačiau šiame įrenginyje nėra nustatytų palaikomų metodų. Prisijunkite įrenginyje, kuriame yra jūsų autentifikavimo programa arba saugos raktas, arba susisiekite su palaikymo komanda."
 
 #. Modal body shown when the safety system blocks the requested action. Keep plain and calm; offer support path.
-#: src/features/auth/components/ContentBlockedHandler.tsx:15
+#: src/features/auth/components/ContentBlockedHandler.tsx:14
 msgid "Your action could not be completed because it was flagged by our safety systems. If you believe this is a mistake, please contact support."
 msgstr "Jūsų veiksmas negalėjo būti atliktas, nes jį pažymėjo mūsų saugos sistemos. Jei manote, kad tai klaida, susisiekite su palaikymo komanda."
 
@@ -38928,12 +38959,12 @@ msgid "Your IP address has been successfully authorized."
 msgstr "Jūsų IP adresas sėkmingai autorizuotas."
 
 #. Error message in the user ip banned from guild modal. Keep the tone plain and specific.
-#: src/features/moderation/components/alerts/UserIpBannedFromGuildModal.tsx:13
+#: src/features/moderation/components/alerts/UserIpBannedFromGuildModal.tsx:12
 msgid "Your IP address is banned from this community and you cannot join."
 msgstr "Jūsų IP adresas užblokuotas šioje bendruomenėje ir negalite prisijungti."
 
 #. Label in the user ip banned from guild modal. Keep the tone plain and specific.
-#: src/features/moderation/components/alerts/UserIpBannedFromGuildModal.tsx:9
+#: src/features/moderation/components/alerts/UserIpBannedFromGuildModal.tsx:8
 msgid "Your IP is banned"
 msgstr "Jūsų IP užblokuotas"
 

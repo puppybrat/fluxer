@@ -88,6 +88,7 @@ export const Endpoints = {
 	CHANNEL_VOICE_PRESENCE_HEARTBEAT: (channelId: string) => `/channels/${channelId}/voice-presence/heartbeat`,
 	GUILDS: '/guilds',
 	GUILD: (guildId: string) => `/guilds/${guildId}`,
+	GUILD_CAST: (guildId: string) => `/guilds/${guildId}/cast`,
 	GUILD_CHANNELS: (guildId: string) => `/guilds/${guildId}/channels`,
 	GUILD_MEMBER: (guildId: string, query = ME) => `/guilds/${guildId}/members/${query}`,
 	GUILD_MEMBERS: (guildId: string) => `/guilds/${guildId}/members`,
