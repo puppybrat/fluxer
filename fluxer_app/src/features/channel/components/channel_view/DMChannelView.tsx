@@ -28,6 +28,10 @@ import {
 	VIEW_INCOMING_CALL_DESCRIPTOR,
 } from '@app/features/channel/components/channel_view/dm_channel_view/shared';
 import {useCompactCallBannerResize} from '@app/features/channel/components/channel_view/dm_channel_view/useCompactCallBannerResize';
+// LOCAL-ONLY: mobile SelectMode overlay styles — exclude from upstream sync.
+import mobileSelectModeOverlayStyles from '@app/features/channel/components/channel_view/MobileSelectModeOverlay.module.css';
+// LOCAL-ONLY: SelectModePanel is a local-only addition — exclude from upstream sync.
+import {SelectModePanel} from '@app/features/channel/components/channel_view/SelectModePanel';
 import {useCallHeaderState} from '@app/features/channel/components/channel_view/useCallHeaderState';
 import {useChannelSearchState} from '@app/features/channel/components/channel_view/useChannelSearchState';
 import {useVoiceCallChromePinState} from '@app/features/channel/components/channel_view/useVoiceCallChromePinState';
@@ -36,7 +40,11 @@ import {useMessagesBottomBarVisibility} from '@app/features/channel/components/M
 import {useChannelMemberListVisibility} from '@app/features/channel/hooks/useChannelMemberListVisibility';
 import {useChannelSearchVisibility} from '@app/features/channel/hooks/useChannelSearchVisibility';
 import Channels from '@app/features/channel/state/Channels';
+// LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
+import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
+// LOCAL-ONLY: mobile SelectMode history helper — exclude from upstream sync.
+import {useMobileSelectModeHistoryDismiss} from '@app/features/channel/utils/MobileSelectModeHistory';
 import {INCOMING_CALL_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {useMemberListVisible} from '@app/features/member/hooks/useMemberListVisible';
 import {ComponentDispatch} from '@app/features/platform/utils/ComponentBus';
@@ -65,6 +73,7 @@ import {ChatTeardropIcon, PhoneIcon} from '@phosphor-icons/react';
 import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 
 interface DMChannelViewProps {
 	channelId: string;
@@ -247,6 +256,35 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 		return i18n._(VIEW_CALL_DESCRIPTOR);
 	}, [controlsVariant, i18n.locale]);
 	const isCompactCallChatSuppressed = showCompactVoiceView && isCompactCallExpanded;
+	// LOCAL-ONLY: mobile SelectMode panel overlay — exclude from upstream sync.
+	// Rendered via createPortal into document.body: .contentGrid (an ancestor via
+	// ChannelViewScaffold) sets `contain: layout` + `overflow: hidden`, which would trap a
+	// non-portaled fixed-position overlay instead of covering the viewport. This component's
+	// return is already a Fragment with multiple children, so the portal is added as a plain
+	// sibling below rather than requiring any change to the return shape.
+	useMobileSelectModeHistoryDismiss(channelId, isMobileLayout);
+	const showMobileSelectModeOverlay = isMobileLayout && SelectMode.isPanelOpen && SelectMode.channelId === channelId;
+	const mobileSelectModeOverlay =
+		showMobileSelectModeOverlay && channel && typeof document !== 'undefined'
+			? createPortal(
+					<>
+						<button
+							type="button"
+							className={mobileSelectModeOverlayStyles.backdrop}
+							aria-label="Close relocate messages panel"
+							onClick={() => SelectMode.closePanel()}
+							data-flx="channel.channel-view.dm-channel-view.mobile-select-mode-backdrop"
+						/>
+						<div
+							className={clsx(mobileSelectModeOverlayStyles.panel, mobileSelectModeOverlayStyles.panelOpen)}
+							data-flx="channel.channel-view.dm-channel-view.mobile-select-mode-panel"
+						>
+							<SelectModePanel channel={channel} />
+						</div>
+					</>,
+					document.body,
+				)
+			: null;
 	if (!channel) {
 		return (
 			<div className={dmStyles.emptyState} data-flx="channel.channel-view.dm-channel-view.div">
@@ -518,6 +556,8 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 						</div>
 					) : shouldRenderMemberList ? (
 						<ChannelMembers channel={channel} data-flx="channel.channel-view.dm-channel-view.channel-members" />
+					) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
+						<SelectModePanel channel={channel} />
 					) : null
 				}
 				chatAreaInert={isCompactCallChatSuppressed}
@@ -531,6 +571,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 					data-flx="channel.channel-view.dm-channel-view.direct-call-lobby-bottom-sheet"
 				/>
 			)}
+			{mobileSelectModeOverlay}
 		</>
 	);
 });

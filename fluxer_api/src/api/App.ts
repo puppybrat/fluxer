@@ -37,6 +37,15 @@ function AbuseAwareAppErrorHandler(err: Error, ctx: Context<HonoEnv>): Response 
 	return AppErrorHandler(err, ctx);
 }
 
+function extraCorsOrigins(): Array<string> {
+	const raw = process.env.FLUXER_EXTRA_CORS_ORIGINS;
+	if (!raw) return [];
+	return raw
+		.split(',')
+		.map((origin) => origin.trim())
+		.filter((origin) => origin.length > 0);
+}
+
 export async function createAPIApp(options: CreateAPIAppOptions): Promise<APIAppResult> {
 	const {config, logger} = options;
 	const shutdownApiLifecycle = createShutdown(logger);
@@ -45,7 +54,7 @@ export async function createAPIApp(options: CreateAPIAppOptions): Promise<APIApp
 	configureMiddleware(routes, {
 		logger,
 		nodeEnv: config.nodeEnv,
-		corsOrigins: [config.endpoints.webApp, config.endpoints.marketing],
+		corsOrigins: [config.endpoints.webApp, config.endpoints.marketing, ...extraCorsOrigins()],
 		trustClientIpHeader: config.proxy.trust_client_ip_header,
 		clientIpHeaderName: config.proxy.client_ip_header,
 	});

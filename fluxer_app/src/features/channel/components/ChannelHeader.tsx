@@ -25,10 +25,8 @@ import {
 	SEARCH_DESCRIPTOR,
 	SHOW_CHANNEL_LIST_DESCRIPTOR,
 	SHOW_MEMBERS_DESCRIPTOR,
-	VIDEO_CALL_DESCRIPTOR,
 } from '@app/features/channel/components/channel_header/shared';
 import {useChannelHeaderData} from '@app/features/channel/components/channel_header/useChannelHeaderData';
-import {CallButtons} from '@app/features/channel/components/channel_header_components/CallButtons';
 import {ChannelHeaderIcon} from '@app/features/channel/components/channel_header_components/ChannelHeaderIcon';
 import {ChannelNotificationSettingsButton} from '@app/features/channel/components/channel_header_components/ChannelNotificationSettingsButton';
 import {ChannelPinsButton} from '@app/features/channel/components/channel_header_components/ChannelPinsButton';
@@ -41,6 +39,8 @@ import {CreateDMModal} from '@app/features/channel/components/modals/CreateDMMod
 import {EditGroupModal} from '@app/features/channel/components/modals/EditGroupModal';
 import type {Channel} from '@app/features/channel/models/Channel';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
+// LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
+import SelectMode from '@app/features/channel/state/SelectMode';
 import {isGroupDmFull} from '@app/features/channel/utils/GroupDmUtils';
 import {
 	ADD_TO_FAVORITES_DESCRIPTOR,
@@ -82,35 +82,29 @@ import MobileLayout from '@app/features/ui/state/MobileLayout';
 import PopoutState from '@app/features/ui/state/Popout';
 import {Tooltip} from '@app/features/ui/tooltip/Tooltip';
 import * as UserProfileCommands from '@app/features/user/commands/UserProfileCommands';
-import * as CallCommands from '@app/features/voice/commands/CallCommands';
 import MediaEngine from '@app/features/voice/engine/MediaEngineFacade';
 import CallState from '@app/features/voice/state/CallState';
 import {computeChannelE2EEStatus} from '@app/features/voice/state/ChannelE2EEStatus';
-import * as CallUtils from '@app/features/voice/utils/CallUtils';
-import {VOICE_CALL_DESCRIPTOR} from '@app/features/voice/utils/VoiceMessageDescriptors';
 import {ME} from '@fluxer/constants/src/AppConstants';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {RelationshipTypes} from '@fluxer/constants/src/UserConstants';
 import {useLingui} from '@lingui/react/macro';
 import {
 	ArrowLeftIcon,
+	ArrowsLeftRightIcon,
 	CaretRightIcon,
 	EyeSlashIcon,
 	ListIcon,
 	MagnifyingGlassIcon,
 	PencilIcon,
-	PhoneIcon,
 	StarIcon,
 	UserPlusIcon,
 	UsersIcon,
-	VideoCameraIcon,
 } from '@phosphor-icons/react';
 import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
 import {useCallback, useEffect, useRef, useState} from 'react';
-
-const {VoiceCallButton, VideoCallButton} = CallButtons;
 
 interface ChannelHeaderProps {
 	channel?: Channel;
@@ -295,6 +289,29 @@ export const ChannelHeader = observer(
 			}
 			LayoutCommands.toggleMembers(!isMembersOpen);
 		}, [isMembersOpen, canFitMemberList, memberListChannelId, memberListUsesChannelOverride]);
+		// LOCAL-ONLY: SelectMode toggle handler (desktop) — exclude from upstream sync.
+		const handleToggleSelectMode = useCallback(() => {
+			if (!channel) return;
+			if (SelectMode.isActive && SelectMode.channelId === channel.id) {
+				SelectMode.deactivate();
+			} else {
+				SelectMode.activate(channel.id);
+				// activate() no longer flips isActive (mobile needs to open the panel without
+				// enabling selection) — force it on here so desktop's single-click toggle is unchanged.
+				if (!SelectMode.isActive) {
+					SelectMode.toggleSelectionMode();
+				}
+			}
+		}, [channel]);
+		// LOCAL-ONLY: SelectMode toggle handler (mobile) — exclude from upstream sync.
+		const handleToggleSelectModePanel = useCallback(() => {
+			if (!channel) return;
+			if (SelectMode.isPanelOpen) {
+				SelectMode.closePanel();
+			} else {
+				SelectMode.activate(channel.id);
+			}
+		}, [channel]);
 		useEffect(() => {
 			const handleChannelDetailsOpen = (payload?: unknown) => {
 				const {initialTab} = (payload ?? {}) as {initialTab?: 'members' | 'pins'};
@@ -415,46 +432,6 @@ export const ChannelHeader = observer(
 				}
 			},
 			[channel, isDM, isGroupDM, recipient],
-		);
-		const handleMobileVoiceCall = useCallback(
-			async (event: React.MouseEvent) => {
-				if (!channel) return;
-				const isConnected = MediaEngine.connected;
-				const connectedChannelId = MediaEngine.channelId;
-				const isInCall = isConnected && connectedChannelId === channel.id;
-				if (isInCall) {
-					void CallCommands.leaveCall(channel.id);
-				} else if (CallState.hasActiveCall(channel.id)) {
-					CallCommands.joinCall(channel.id);
-				} else {
-					await CallUtils.requestStartCall(
-						i18n,
-						channel.id,
-						CallUtils.getCallStartRequestOptions(event, {kind: 'voice'}),
-					);
-				}
-			},
-			[channel, i18n],
-		);
-		const handleMobileVideoCall = useCallback(
-			async (event: React.MouseEvent) => {
-				if (!channel) return;
-				const isConnected = MediaEngine.connected;
-				const connectedChannelId = MediaEngine.channelId;
-				const isInCall = isConnected && connectedChannelId === channel.id;
-				if (isInCall) {
-					void CallCommands.leaveCall(channel.id);
-				} else if (CallState.hasActiveCall(channel.id)) {
-					CallCommands.joinCall(channel.id);
-				} else {
-					await CallUtils.requestStartCall(
-						i18n,
-						channel.id,
-						CallUtils.getCallStartRequestOptions(event, {kind: 'video'}),
-					);
-				}
-			},
-			[channel, i18n],
 		);
 		const handleToggleFavorite = useCallback(() => {
 			if (!channel || isPersonalNotes) return;
@@ -860,38 +837,6 @@ export const ChannelHeader = observer(
 									</button>
 								</FocusRing>
 							)}
-							{isMobile && (isDM || isGroupDM) && !isPersonalNotes && (
-								<>
-									<FocusRing offset={-2} data-flx="channel.channel-header.focus-ring--8">
-										<button
-											type="button"
-											className={styles.iconButtonMobile}
-											aria-label={i18n._(VOICE_CALL_DESCRIPTOR)}
-											onClick={handleMobileVoiceCall}
-											data-flx="channel.channel-header.icon-button-mobile.mobile-voice-call"
-										>
-											<PhoneIcon
-												className={styles.buttonIconMobile}
-												data-flx="channel.channel-header.button-icon-mobile--2"
-											/>
-										</button>
-									</FocusRing>
-									<FocusRing offset={-2} data-flx="channel.channel-header.focus-ring--9">
-										<button
-											type="button"
-											className={styles.iconButtonMobile}
-											aria-label={i18n._(VIDEO_CALL_DESCRIPTOR)}
-											onClick={handleMobileVideoCall}
-											data-flx="channel.channel-header.icon-button-mobile.mobile-video-call"
-										>
-											<VideoCameraIcon
-												className={styles.buttonIconMobile}
-												data-flx="channel.channel-header.button-icon-mobile--3"
-											/>
-										</button>
-									</FocusRing>
-								</>
-							)}
 							{isMobile && isGuildChannel && (
 								<FocusRing offset={-2} data-flx="channel.channel-header.focus-ring--10">
 									<button
@@ -909,17 +854,33 @@ export const ChannelHeader = observer(
 									</button>
 								</FocusRing>
 							)}
+							{/* LOCAL-ONLY: SelectMode toggle (mobile) — exclude from upstream sync. */}
+							{isMobile && channel && (isGuildChannel || isDM || isGroupDM) && (
+								<FocusRing offset={-2} data-flx="channel.channel-header.focus-ring--13">
+									<button
+										type="button"
+										className={clsx(
+											styles.iconButtonMobile,
+											SelectMode.isActive && SelectMode.channelId === channel.id && styles.iconButtonMobileActive,
+										)}
+										aria-label={SelectMode.isPanelOpen ? 'Close relocate panel' : 'Relocate messages'}
+										aria-pressed={SelectMode.isActive && SelectMode.channelId === channel.id}
+										onClick={handleToggleSelectModePanel}
+										data-flx="channel.channel-header.icon-button-mobile.toggle-select-mode"
+									>
+										<ArrowsLeftRightIcon
+											className={styles.buttonIconMobile}
+											weight="bold"
+											data-flx="channel.channel-header.button-icon-mobile--5"
+										/>
+									</button>
+								</FocusRing>
+							)}
 							{channel && isGuildChannel && !isMobile && !isPersonalNotes && (
 								<ChannelNotificationSettingsButton
 									channel={channel}
 									data-flx="channel.channel-header.channel-notification-settings-button"
 								/>
-							)}
-							{(isDM || isGroupDM) && channel && !isMobile && !(isDM && isBotDMRecipient) && (
-								<>
-									<VoiceCallButton channel={channel} data-flx="channel.channel-header.voice-call-button" />
-									<VideoCallButton channel={channel} data-flx="channel.channel-header.video-call-button" />
-								</>
 							)}
 							{showPins && channel && !isMobile && (
 								<ChannelPinsButton channel={channel} data-flx="channel.channel-header.channel-pins-button" />
@@ -983,6 +944,21 @@ export const ChannelHeader = observer(
 									aria-pressed={isMembersToggleOpen}
 									keybindAction="chat_toggle_member_list"
 									data-flx="channel.channel-header.channel-header-icon.toggle-members"
+								/>
+							)}
+							{/* LOCAL-ONLY: SelectMode toggle — exclude from upstream sync. */}
+							{!isMobile && channel && (isGuildChannel || isDM || isGroupDM) && (
+								<ChannelHeaderIcon
+									icon={ArrowsLeftRightIcon}
+									isSelected={SelectMode.isActive && SelectMode.channelId === channel.id}
+									label={
+										SelectMode.isActive && SelectMode.channelId === channel.id
+											? 'Close relocation mode'
+											: 'Relocate messages'
+									}
+									onClick={handleToggleSelectMode}
+									aria-pressed={SelectMode.isActive && SelectMode.channelId === channel.id}
+									data-flx="channel.channel-header.channel-header-icon.toggle-select-mode"
 								/>
 							)}
 							{!isMobile && channel && !isPersonalNotes && (

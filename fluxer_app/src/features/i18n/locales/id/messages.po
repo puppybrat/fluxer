@@ -4,19 +4,20 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: @lingui/cli\n"
+"X-Generator: Weblate 2026.7.dev0\n"
 "Language: id\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: \n"
-"Last-Translator: \n"
-"Language-Team: \n"
-"Plural-Forms: \n"
+"PO-Revision-Date: 2026-07-07 23:18+0000\n"
+"Last-Translator: Hampus <hampus@fluxer.com>\n"
+"Language-Team: Indonesian <https://weblate.fluxer.tools/projects/fluxer/app/"
+"id/>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
 #. Description text in the messages tab.
 #: src/features/user/components/modals/tabs/appearance_tab/MessagesTab.tsx:51
 msgid "... turn dense mode on. Nice!"
-msgstr "... aktifkan mode padat. Mantap!"
+msgstr "... nyalakan mode aktif dense. Nice!"
 
 #. Button or menu action label in the channel and chat user message. Keep it concise.
 #: src/features/channel/components/MessageAttachments.tsx:362
@@ -27,17 +28,17 @@ msgstr "(diedit)"
 #. Error message in the messaging emoji renderer.
 #: src/features/messaging/components/markdown/renderers/EmojiRenderer.tsx:29
 msgid "(failed to load)"
-msgstr "(gagal memuat)"
+msgstr "(gagal dimuat)"
 
 #. Placeholder content text shown for scheduled messages with neither text nor attachments. Keep the parentheses.
 #: src/features/messaging/components/popouts/ScheduledMessagesContent.tsx:38
 msgid "(no content)"
-msgstr "(tanpa konten)"
+msgstr "(tidak ada konten)"
 
 #: src/features/app/components/pages/YouPage.tsx:183
 #: src/features/user/components/modals/UserProfileMobileSheet.tsx:899
 msgid "(only visible to you)"
-msgstr "(hanya Anda yang bisa melihat)"
+msgstr "(hanya dilihat oleh kamu)"
 
 #. Short label in the keybinds tab. Keep it concise.
 #: src/features/user/components/modals/tabs/keybinds_tab/CustomKeybindsList.tsx:25
@@ -46,7 +47,7 @@ msgstr "(belum ditetapkan)"
 
 #: src/features/channel/components/bottomsheets/channel_details_bottom_sheet/DMMembersList.tsx:120
 msgid "(you)"
-msgstr "(anda)"
+msgstr "(kamu)"
 
 #. placeholder {0}: guild.member_count
 #: src/features/discovery/discovery/DiscoveryGuildCard.tsx:257
@@ -67,11 +68,12 @@ msgstr "{a}, {b}, dan {c} sedang mengetik..."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:571
 msgid "{actor} added channel permissions for {targetEntity} in {channelNode}."
-msgstr "{actor} menambahkan izin saluran untuk {targetEntity} di {channelNode}."
+msgstr ""
+"{actor} menambahkan perizinan saluran untuk {targetEntity} di {channelNode}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:576
 msgid "{actor} added channel permissions for {targetEntity}."
-msgstr "{actor} menambahkan izin channel untuk {targetEntity}."
+msgstr "{actor} menambahkan izin saluran untuk {targetEntity}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:671
 msgid "{actor} added the bot {targetMember}."
@@ -87,7 +89,7 @@ msgstr "{actor} menambahkan stiker {namedTarget}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:612
 msgid "{actor} banned {targetMember}."
-msgstr "{actor} membanned {targetMember}."
+msgstr "{actor} menagguhkan {targetMember}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:552
 msgid "{actor} created the channel {namedTarget}."
@@ -149,7 +151,7 @@ msgstr "{actor} menghapus webhook {namedTarget}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:665
 msgid "{actor} disconnected {targetMember} from voice."
-msgstr "{actor} memutus sambungan {targetMember} dari panggilan suara."
+msgstr "{actor} sambungan panggilan suara dari {targetMember} terputus."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:606
 msgid "{actor} kicked {targetMember}."
@@ -174,11 +176,13 @@ msgstr "{actor} menyematkan pesan{0}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:648
 msgid "{actor} pruned inactive members."
-msgstr "{actor} menghapus anggota tidak aktif."
+msgstr "{actor} membersihkan anggota tidak aktif."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:637
 msgid "{actor} pruned members inactive for {pruneDays, plural, one {# day} other {# days}}."
-msgstr "{actor} menghapus anggota yang tidak aktif selama {pruneDays, plural, one {# hari} other {# hari}}."
+msgstr ""
+"{actor} membersihkan anggota yang tidak aktif selama {pruneDays, plural, one "
+"{# hari} other {# hari}}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:595
 msgid "{actor} removed channel permissions for {targetEntity} in {channelNode}."
@@ -190,20 +194,21 @@ msgstr "{actor} menghapus izin saluran untuk {targetEntity}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:618
 msgid "{actor} unbanned {targetMember}."
-msgstr "{actor} membatalkan pemblokiran {targetMember}."
+msgstr "{actor} batalkan pemblokiran untuk {targetMember}."
 
 #. placeholder {0}: channelNode ? <> in {channelNode}</> : null
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:801
 msgid "{actor} unpinned a message{0}."
-msgstr "{actor} melepas sematan pesan{0}."
+msgstr "{actor} batal menyematkan pesan{0}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:624
 msgid "{actor} updated {targetMember}."
-msgstr "{actor} memperbarui {targetMember}."
+msgstr "{actor} {targetMember} diperbarui."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:583
 msgid "{actor} updated channel permissions for {targetEntity} in {channelNode}."
-msgstr "{actor} memperbarui izin saluran untuk {targetEntity} di {channelNode}."
+msgstr ""
+"{actor} izin saluran untuk {targetEntity} sudah diperbarui di {channelNode}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:588
 msgid "{actor} updated channel permissions for {targetEntity}."
@@ -2247,7 +2252,7 @@ msgid "Action"
 msgstr "Tindakan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:283
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:307
 msgid "Action bar"
 msgstr "Bilah tindakan"
 
@@ -2349,7 +2354,7 @@ msgid "Activity log"
 msgstr "Log aktivitas"
 
 #. Community settings tab showing activity log entries and moderation history.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:69
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:61
 msgctxt "community-settings-tab"
 msgid "Activity log"
 msgstr "Log aktivitas"
@@ -2831,7 +2836,9 @@ msgstr "Sesuaikan tingkat zoom keseluruhan aplikasi. Firefox tetap menggunakan p
 #. Description for the app zoom setting. The placeholders are keyboard shortcuts.
 #: src/features/user/components/modals/tabs/appearance_tab/ScalingTab.tsx:46
 msgid "Adjust the overall zoom level of the app. Use {zoomIn} / {zoomOut} to adjust quickly."
-msgstr "Sesuaikan tingkat zoom aplikasi secara keseluruhan. Gunakan {zoomIn} / {zoomOut} untuk menyesuaikan dengan cepat."
+msgstr ""
+"Sesuaikan tingkat level zoom aplikasi secara keseluruhan. Gunakan {zoomIn} / "
+"{zoomOut} untuk menyesuaikan dengan cepat."
 
 #. Inline adaptive-quality status in the stream settings menu. Shows the current automatically lowered resolution and frame rate.
 #: src/features/voice/components/StreamSettingsMenuContent.tsx:146
@@ -3253,7 +3260,7 @@ msgid "Already set to cancel"
 msgstr "Sudah diatur untuk membatalkan"
 
 #. Toggle-switch label in the moderator delete-message confirmation dialog. When enabled, the message is reported (category: other) before being deleted. {productName} is the product name (e.g., Fluxer).
-#: src/features/messaging/commands/MessageCommands.tsx:75
+#: src/features/messaging/commands/MessageCommands.tsx:76
 msgid "Also report this message to the {productName} Safety Team"
 msgstr "Laporkan juga pesan ini ke Tim Keamanan {productName}"
 
@@ -3861,7 +3868,7 @@ msgid "Apply theme"
 msgstr "Terapkan tema"
 
 #. Short confirmation button label in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:140
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:144
 msgid "Apply to all communities"
 msgstr "Terapkan ke semua komunitas"
 
@@ -4019,7 +4026,7 @@ msgid "asc or desc"
 msgstr "naik atau turun"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:351
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:375
 msgid "ASCII smileys"
 msgstr "Emoji ASCII"
 
@@ -4619,7 +4626,7 @@ msgid "Automatically remove tracking parameters (like utm_source, fbclid, gclid)
 msgstr "Hapus parameter pelacakan (seperti utm_source, fbclid, gclid) secara otomatis dari URL di pesan yang Anda kirim. Membersihkan tautan sebelum sampai ke orang lain."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:167
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:191
 msgid "Automatically remove tracking parameters from URLs in messages you send"
 msgstr "Hapus parameter pelacakan secara otomatis dari URL di pesan yang Anda kirim"
 
@@ -5015,7 +5022,7 @@ msgid "Banner preview"
 msgstr "Pratinjau banner"
 
 #. Community settings tab for banned users.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:99
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:91
 msgctxt "community-settings-tab"
 msgid "Bans"
 msgstr "Larangan"
@@ -5872,7 +5879,7 @@ msgstr "Bilah notifikasi CTA penguji Canary"
 #: src/features/user/components/modals/EmailChangeModal.tsx:289
 #: src/features/user/components/modals/EmailChangeModal.tsx:311
 #: src/features/user/components/modals/EmailChangeModal.tsx:326
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:389
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:394
 #: src/features/user/components/modals/PasswordChangeModal.tsx:226
 #: src/features/user/components/modals/PasswordChangeModal.tsx:237
 #: src/features/user/components/modals/PasswordChangeModal.tsx:255
@@ -5899,7 +5906,7 @@ msgstr "Batalkan pengeditan pesan terjadwal"
 msgid "Cancel friend request"
 msgstr "Batalkan permintaan pertemanan"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:144
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:145
 msgid "Cancel if you want to choose a different username instead."
 msgstr "Batalkan jika Anda ingin memilih nama pengguna lain."
 
@@ -6047,16 +6054,6 @@ msgstr "Kartu dapat mempertahankan harga PLN setelah verifikasi {paymentProvider
 #: src/features/app/components/dialogs/components/plutonium/PricingContextPanel.tsx:195
 msgid "Cards can keep TRY pricing after a quick {paymentProviderName} verification, but the card must be issued in Türkiye."
 msgstr "Kartu dapat mempertahankan harga TRY setelah verifikasi {paymentProviderName} yang cepat, tetapi kartu harus diterbitkan di Turki."
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:37
-msgid "Cast"
-msgstr ""
-
-#. Community settings tab listing the characters available in the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:38
-msgctxt "community-settings-tab"
-msgid "Cast"
-msgstr ""
 
 #. Short label in the discovery category bottom sheet. Keep it concise.
 #: src/features/discovery/components/bottomsheets/DiscoveryCategoryBottomSheet.tsx:15
@@ -6299,7 +6296,7 @@ msgid "Change username"
 msgstr "Ubah nama pengguna"
 
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:47
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:48
 msgid "Change username form"
 msgstr "Formulir ganti nama pengguna"
 
@@ -6349,7 +6346,7 @@ msgstr "Ubah foto profil Anda"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:51
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:52
 #: src/features/user/components/settings_utils/search_index/MyProfileIndex.ts:77
 msgid "Change your username"
 msgstr "Ubah nama pengguna Anda"
@@ -6620,10 +6617,6 @@ msgstr "Saluran yang saya moderasi"
 msgid "Character limit exceeded by {remaining}"
 msgstr "Batas karakter terlampaui sebanyak {remaining}"
 
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:40
-msgid "Characters available in this community, and which are currently primary."
-msgstr ""
-
 #. Advanced settings category tag.
 #. Short heading in the keyboard shortcuts cheatsheet.
 #. Short label in the keybinds tab. Keep it concise.
@@ -6763,7 +6756,9 @@ msgstr "Pilih"
 #. Settings section description. One-line summary of what the settings section controls.
 #: src/features/user/components/settings_utils/section_registry/AppearanceSections.ts:34
 msgid "Choose a base appearance, manage quick CSS, organize saved theme files, and tune theme tokens."
-msgstr "Pilih tampilan dasar, kelola CSS cepat, atur file tema tersimpan, dan sesuaikan token tema."
+msgstr ""
+"Pilih tampilan dasar, kelola CSS cepat, kelola file tema tersimpan, dan "
+"sesuaikan tune token tema."
 
 #. Form field label or placeholder for choosing a community.
 #: src/features/expressions/components/modals/AddFavoriteChannelModal.tsx:40
@@ -6865,7 +6860,7 @@ msgid "Choose hCaptcha or Cloudflare Turnstile for signup challenges."
 msgstr "Pilih hCaptcha atau Cloudflare Turnstile untuk tantangan pendaftaran."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:403
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:427
 msgid "Choose how chat moves after you send a message"
 msgstr "Pilih cara percakapan berlanjut setelah Anda mengirim pesan"
 
@@ -7153,7 +7148,7 @@ msgid "Claiming to be another person, brand, or organization."
 msgstr "Mengaku sebagai orang, merek, atau organisasi lain."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:151
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:175
 msgid "Clean link"
 msgstr "Bersihkan tautan"
 
@@ -7701,7 +7696,7 @@ msgstr "Titik dua"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:323
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:347
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:154
 msgid "Colon autocomplete"
 msgstr "Pelengkapan otomatis titik dua"
@@ -7837,7 +7832,7 @@ msgstr "komunitas"
 #: src/features/app/config/AuditLogConstants.ts:152
 #: src/features/auth/components/pages/oauth_authorize_page/OAuthCommunityStep.tsx:48
 #: src/features/moderation/components/report_modal/IARModalPreview.tsx:16
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:270
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:253
 #: src/features/user/components/settings_utils/section_registry/PrivacySafetySections.ts:140
 msgid "Community"
 msgstr "Komunitas"
@@ -8023,7 +8018,7 @@ msgid "Community record"
 msgstr "Catatan komunitas"
 
 #. Root label for community settings modal and settings search paths.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:244
 msgid "Community settings"
 msgstr "Setelan komunitas"
 
@@ -8140,7 +8135,7 @@ msgstr "Tombol komposer"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:371
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:395
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:190
 msgid "Composer buttons"
 msgstr "Tombol komposer"
@@ -8152,7 +8147,7 @@ msgstr "Fokus komposer"
 
 #. Button label that opens a dedicated advanced settings modal for configuring screen-share encoder controls.
 #. Button label that opens a dedicated advanced settings modal.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:156
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:160
 #: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedVideoControls.tsx:162
 msgid "Configure"
 msgstr "Konfigurasi"
@@ -8193,7 +8188,7 @@ msgid "Configure role settings and permissions"
 msgstr "Konfigurasi pengaturan dan izin peran"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:239
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:263
 msgid "Configure search engines used from selected text"
 msgstr "Konfigurasikan mesin pencari yang digunakan dari teks yang dipilih"
 
@@ -8203,14 +8198,15 @@ msgid "Configure spellcheck, dictionaries, and personal words"
 msgstr "Konfigurasi pemeriksa ejaan, kamus, dan kata pribadi"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:271
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:295
 msgid "Configure translator providers used from selected text"
 msgstr "Konfigurasikan penyedia terjemahan yang digunakan dari teks yang dipilih"
 
 #. Settings section description. One-line summary of what the settings section controls.
 #: src/features/user/components/settings_utils/section_registry/VoiceVideoSections.ts:153
 msgid "Configure your camera, screen sharing quality, previews, and frame rate."
-msgstr "Konfigurasi kamera, kualitas berbagi layar, pratinjau, dan kecepatan bingkai Anda."
+msgstr ""
+"Konfigurasi kameramu, kualitas berbagi layar, pratinjau, dan frame rate."
 
 #. Settings section description. One-line summary of what the settings section controls.
 #: src/features/user/components/settings_utils/section_registry/VoiceVideoSections.ts:17
@@ -8226,7 +8222,7 @@ msgstr "Konfigurasi lencana profil Anda"
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/channel/components/MentionEveryonePopout.tsx:180
 #: src/features/user/components/modals/EmailChangeModal.tsx:340
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:419
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:443
 msgid "Confirm"
 msgstr "Konfirmasi"
 
@@ -8278,7 +8274,7 @@ msgid "Confirm voice join"
 msgstr "Konfirmasi gabung suara"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:415
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:439
 msgid "Confirmation"
 msgstr "Konfirmasi"
 
@@ -8529,7 +8525,7 @@ msgstr "Menu konteks dapat dibuka dengan klik kiri (pada tombol) atau klik kanan
 #: src/features/auth/flow/HandoffApprovalFlow.tsx:118
 #: src/features/connection/components/modals/AddConnectionModal.tsx:383
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:711
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:392
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:397
 #: src/features/user/components/modals/tabs/AuthorizedAppsTab.tsx:181
 msgid "Continue"
 msgstr "Lanjutkan"
@@ -10048,7 +10044,7 @@ msgid "Custom date range"
 msgstr "Rentang tanggal kustom"
 
 #. Error message in the FluxerTag change modal.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:64
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:65
 msgid "Custom discriminators are not available on this instance"
 msgstr "Diskriminator khusus tidak tersedia di instans ini"
 
@@ -10113,7 +10109,7 @@ msgid "Custom ringtone"
 msgstr "Nada dering kustom"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:219
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:243
 msgid "Custom search engine"
 msgstr "Mesin pencari khusus"
 
@@ -10182,7 +10178,7 @@ msgid "Custom title bar"
 msgstr "Bilah judul khusus"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:235
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:259
 msgid "Custom translator"
 msgstr "Penerjemah khusus"
 
@@ -10241,7 +10237,7 @@ msgid "Customize interface elements and behaviors."
 msgstr "Sesuaikan elemen dan perilaku antarmuka."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:315
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:339
 msgid "Customize the action bar that appears when hovering over messages"
 msgstr "Sesuaikan bilah tindakan yang muncul saat mengarahkan kursor ke pesan"
 
@@ -10265,7 +10261,7 @@ msgstr "Sesuaikan banner profil Anda"
 msgid "Customize your tag ({discriminatorLabel}) to your liking with {premiumProductName}"
 msgstr "Sesuaikan tag Anda ({discriminatorLabel}) sesuai keinginan Anda dengan {premiumProductName}"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:381
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:386
 msgid "Customize your tag or keep it when changing your username"
 msgstr "Sesuaikan tag Anda atau tetap gunakan saat mengubah nama pengguna Anda"
 
@@ -10677,7 +10673,7 @@ msgstr "Nonaktif secara default di perangkat seluler untuk menghemat baterai dan
 #: src/features/emoji/components/emojis/EmojiListItem.tsx:203
 #: src/features/emoji/components/emojis/EmojiListItem.tsx:215
 #: src/features/emoji/components/stickers/StickerGridItem.tsx:34
-#: src/features/messaging/commands/MessageCommands.tsx:71
+#: src/features/messaging/commands/MessageCommands.tsx:72
 #: src/features/moderation/components/report_modal/IARModalCopy.ts:135
 #: src/features/theme_studio/sections/LibrarySection.tsx:514
 #: src/features/user/components/modals/tabs/account_security_tab/SecurityTab.tsx:399
@@ -10922,7 +10918,7 @@ msgid "Delete this message"
 msgstr "Hapus pesan ini"
 
 #. Error message in the messaging commands. Keep the tone plain and specific.
-#: src/features/messaging/commands/MessageCommands.tsx:67
+#: src/features/messaging/commands/MessageCommands.tsx:68
 msgid "Delete this message? Can't be undone."
 msgstr "Hapus pesan ini? Tidak dapat dibatalkan."
 
@@ -11136,7 +11132,10 @@ msgstr "Bilah notifikasi desktop"
 
 #: src/features/ui/commands/NotificationCommands.tsx:31
 msgid "Desktop notifications have been blocked. You can enable them later in your browser settings or in user settings, or in {notificationSettingsPath}."
-msgstr "Notifikasi desktop telah diblokir. Anda dapat mengaktifkannya nanti di pengaturan browser atau di pengaturan pengguna, atau di {notificationSettingsPath}."
+msgstr ""
+"Notifikasi desktop telah diblokir. Kamu dapat mengaktifkannya nanti di "
+"pengaturan browser atau di pengaturan pengguna, atau di "
+"{notificationSettingsPath}."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/user/components/settings_utils/search_index/DesktopSettingsIndex.ts:110
@@ -11700,7 +11699,7 @@ msgid "Discovery"
 msgstr "Temukan"
 
 #. Community settings tab for public community discovery/listing.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:84
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:76
 msgctxt "community-settings-tab"
 msgid "Discovery"
 msgstr "Penemuan"
@@ -12806,7 +12805,7 @@ msgid "Emoji"
 msgstr "file"
 
 #. Community settings tab for managing custom emoji uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:44
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:36
 msgctxt "community-settings-tab"
 msgid "Emoji"
 msgstr "File"
@@ -12822,12 +12821,12 @@ msgid "Emoji & sticker packs"
 msgstr "Paket emoji & stiker"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:327
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:351
 msgid "Emoji autocomplete"
 msgstr "pelengkapan otomatis emoji"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:379
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:403
 msgid "Emoji button"
 msgstr "Tombol emoji"
 
@@ -12935,13 +12934,13 @@ msgid "Emojis"
 msgstr "Emoji"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:347
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:371
 msgid "Emoticon"
 msgstr "Emotikon"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:343
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:367
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:142
 msgid "Emoticons"
 msgstr "Emotikon"
@@ -13037,7 +13036,7 @@ msgstr "Aktifkan notifikasi desktop"
 #. Nagbar body shown in desktop/web contexts when notification permission is not yet enabled.
 #: src/features/app/components/layout/app_layout/nagbars/DesktopNotificationNagbar.tsx:51
 msgid "Enable desktop notifications to stay updated on new messages."
-msgstr "Aktifkan notifikasi desktop agar tetap update dengan pesan baru."
+msgstr "Aktifkan notifikasi desktop agar tetap ter-update dengan pesan baru."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
 #. Short label for an advanced developer setting.
@@ -13351,6 +13350,11 @@ msgstr "Ditingkatkan"
 msgctxt "noise-suppression-option"
 msgid "Enhanced"
 msgstr "Ditingkatkan"
+
+#. Settings search entry description. One-line summary of what the settings search entry controls.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:147
+msgid "Ensures file messages appear in the order you sent them"
+msgstr "Memastikan pesan file muncul dalam urutan Anda mengirimkannya"
 
 #. Keyboard key label for confirming a mass-mention warning.
 #. Keyboard shortcut keycap label for Enter. Keep it short.
@@ -13830,7 +13834,7 @@ msgid "Expand"
 msgstr "Perluas"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:303
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:327
 msgid "Expand action bar"
 msgstr "Perluas bilah tindakan"
 
@@ -14033,7 +14037,7 @@ msgstr "Tampilkan bagian zona waktu khusus staf di pengaturan profil."
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:319
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:343
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:158
 msgid "Expression autocomplete"
 msgstr "Lengkapi otomatis ekspresi"
@@ -14068,7 +14072,7 @@ msgstr "Hapus ekspresi"
 #. Community settings sidebar category grouping the emoji and stickers tabs.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:266
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:249
 #: src/features/user/components/settings_utils/search_index/ExpressionPacksIndex.ts:19
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:134
 msgid "Expressions"
@@ -14087,7 +14091,7 @@ msgstr "Eksternal"
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Warning text in the external link warning modal. Keep the tone plain and specific.
 #: src/features/messaging/components/modals/ExternalLinkWarningModal.tsx:17
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:191
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:215
 msgid "External link warning"
 msgstr "Peringatan tautan eksternal"
 
@@ -14232,10 +14236,6 @@ msgstr "Gagal memuat"
 #: src/features/user/components/modals/tabs/AuthorizedAppsTab.tsx:42
 msgid "Failed to load authorized applications"
 msgstr "Gagal memuat aplikasi yang diotorisasi"
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:53
-msgid "Failed to load cast"
-msgstr ""
 
 #: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:443
 msgid "Failed to load emojis. Try again later."
@@ -14597,6 +14597,11 @@ msgstr "Ukuran file terlalu besar. Ukuran maksimum adalah {maxSize}."
 #: src/features/channel/components/MediaActionBottomSheet.tsx:33
 msgid "File options"
 msgstr "Opsi file"
+
+#. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:135
+msgid "File ordering"
+msgstr "Urutan file"
 
 #. Title of the file-too-large alert variant that offers a Plutonium upsell.
 #: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:35
@@ -15185,7 +15190,7 @@ msgstr "Laju bingkai"
 #. Video settings note shown when higher frame rates require premium.
 #: src/features/user/components/modals/tabs/UserVideoTab.tsx:53
 msgid "Frame rates above 30 FPS require {premiumProductName}"
-msgstr "Kecepatan bingkai di atas 30 FPS memerlukan {premiumProductName}"
+msgstr "Frame rate di atas 30 FPS memerlukan {premiumProductName}"
 
 #. Section header in the stream settings menu for frame rate options.
 #: src/features/voice/components/StreamSettingsMenuContent.tsx:121
@@ -15530,7 +15535,7 @@ msgid "Get {premiumProductName} to customize your tag"
 msgstr "Dapatkan {premiumProductName} untuk menyesuaikan tag Anda"
 
 #. Description text in the FluxerTag change modal. Preserve {premiumProductName}; it is inserted by code. Keep the tone plain and specific.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:55
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:56
 msgid "Get {premiumProductName} to customize your tag or keep it when changing your username"
 msgstr "Dapatkan {premiumProductName} untuk menyesuaikan tag Anda atau menyimpannya saat mengubah nama pengguna Anda"
 
@@ -15568,7 +15573,7 @@ msgid "GIF"
 msgstr "GIF"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:375
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:399
 msgid "GIF button"
 msgstr "tombol GIF"
 
@@ -15902,7 +15907,7 @@ msgid "Go to third community"
 msgstr "Buka komunitas ketiga"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:263
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:287
 msgid "Google lens"
 msgstr "Google Lens"
 
@@ -16413,7 +16418,7 @@ msgid "Hide avatars"
 msgstr "Sembunyikan avatar"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:455
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:479
 msgid "Hide channels you've muted from community sidebars"
 msgstr "Sembunyikan saluran yang Anda bisukan dari bilah sisi komunitas"
 
@@ -16465,7 +16470,7 @@ msgid "Hide members"
 msgstr "Sembunyikan anggota"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:447
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:471
 msgid "Hide muted"
 msgstr "Sembunyikan yang dibisukan"
 
@@ -16476,13 +16481,13 @@ msgstr "Sembunyikan channel yang dibisukan"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Short label for an advanced sidebar preference.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:132
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:435
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:136
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:459
 msgid "Hide muted channels by default"
 msgstr "Sembunyikan channel yang dibisukan secara default"
 
 #. Confirmation prompt in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:136
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:140
 msgid "Hide muted channels by default?"
 msgstr "Sembunyikan channel yang dibisukan secara default?"
 
@@ -16655,7 +16660,7 @@ msgid "Hours"
 msgstr "Jam"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:291
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:315
 msgid "Hover buttons"
 msgstr "Tombol melayang"
 
@@ -16902,7 +16907,9 @@ msgstr "Jika Anda tidak dapat menggunakan metode verifikasi apa pun, hubungi duk
 #. Confirmation modal body shown before dismissing the desktop-notification nagbar. {notificationSettingsPath} is the localized settings path.
 #: src/features/app/components/layout/app_layout/nagbars/DesktopNotificationNagbar.tsx:38
 msgid "If you dismiss this, you can always enable desktop notifications later under {notificationSettingsPath}."
-msgstr "Jika Anda menutup ini, Anda selalu dapat mengaktifkan notifikasi desktop nanti di {notificationSettingsPath}."
+msgstr ""
+"Jika Anda menutup ini, Kamu selalu dapat mengaktifkan notifikasi desktop "
+"nanti di {notificationSettingsPath}."
 
 #: src/features/voice/components/dialogs/DisablePiPConfirmModal.tsx:56
 msgid "If you don't remember this preference, we'll only hide the popout for this session. You can change this any time in {audioVideoSettingsPath}."
@@ -16928,11 +16935,11 @@ msgstr "Jika Anda membayar dengan kartu dalam PLN, kartu tersebut harus diterbit
 msgid "If you prefer, you can switch to standard USD pricing instead."
 msgstr "Jika mau, Anda bisa beralih ke harga standar USD saja."
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:349
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:354
 msgid "If you save this username, your tag will reroll randomly when your {PREMIUM_PRODUCT_NAME} expires on <0>{premiumExpiresAtLabel}</0>, unless it renews."
 msgstr "Jika kamu menyimpan nama pengguna ini, tag kamu akan diacak ulang secara otomatis saat {PREMIUM_PRODUCT_NAME} kamu berakhir pada <0>{premiumExpiresAtLabel}</0>, kecuali jika diperpanjang."
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:356
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:361
 msgid "If you save this username, your tag will reroll randomly when your {PREMIUM_PRODUCT_NAME} expires, unless it renews."
 msgstr "Jika Anda menyimpan nama pengguna ini, tag Anda akan diacak secara otomatis saat {PREMIUM_PRODUCT_NAME} Anda berakhir, kecuali jika diperpanjang."
 
@@ -17063,7 +17070,7 @@ msgid "Image dimensions must be between {min}x{min2} and {max}x{max2} pixels."
 msgstr "Dimensi gambar harus antara {min}x{min2} dan {max}x{max2} piksel."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:259
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:283
 msgid "Image lookup"
 msgstr "Pencarian gambar"
 
@@ -17078,12 +17085,12 @@ msgid "Image preview"
 msgstr "Pratinjau gambar"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:251
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:275
 msgid "Image search"
 msgstr "Pencarian gambar"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:267
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:291
 msgid "Image search provider"
 msgstr "Penyedia pencarian gambar"
 
@@ -17644,7 +17651,7 @@ msgstr "Undangan instan"
 
 #. Community settings sidebar category grouping webhooks.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:274
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:257
 #: src/features/user/components/settings_utils/search_index/AuthorizedAppsIndex.ts:26
 msgid "Integrations"
 msgstr "Integrasi"
@@ -17987,7 +17994,7 @@ msgid "Invites"
 msgstr "Undangan"
 
 #. Community settings tab for invite link management.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:94
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:86
 msgctxt "community-settings-tab"
 msgid "Invites"
 msgstr "Undangan"
@@ -18972,7 +18979,7 @@ msgid "Link underline"
 msgstr "Garis bawah tautan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:195
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:219
 msgid "Link warnings"
 msgstr "Peringatan tautan"
 
@@ -19529,7 +19536,7 @@ msgstr "Pembaruan desktop manual"
 #. Action label in the inbox popout overflow menu. Marks every inbox channel as read.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/messaging/components/popouts/InboxPopout.tsx:42
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:411
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:435
 msgid "Mark all as read"
 msgstr "Tandai semua sudah dibaca"
 
@@ -19551,7 +19558,7 @@ msgid "Mark all inbox channels as read"
 msgstr "Tandai semua saluran kotak masuk sebagai sudah dibaca"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:431
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:455
 msgid "Mark all unread inbox channels as read immediately, without asking to confirm"
 msgstr "Tandai semua saluran kotak masuk yang belum dibaca sebagai sudah dibaca segera, tanpa meminta konfirmasi"
 
@@ -19652,7 +19659,7 @@ msgid "Markers below slider"
 msgstr "Penanda di bawah penggeser"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:143
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:167
 msgid "Marketing parameters"
 msgstr "Parameter pemasaran"
 
@@ -20063,7 +20070,7 @@ msgid "Members"
 msgstr "Anggota"
 
 #. Community settings tab for managing community members.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:89
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:81
 msgctxt "community-settings-tab"
 msgid "Members"
 msgstr "Anggota"
@@ -20239,7 +20246,7 @@ msgid "Message @"
 msgstr "Pesan @"
 
 #. Settings search entry label. Also used as a search synonym in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:279
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:303
 msgid "Message action bar"
 msgstr "Bilah tindakan pesan"
 
@@ -20261,7 +20268,7 @@ msgid "Message badge"
 msgstr "Badge pesan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:311
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:335
 msgid "Message buttons"
 msgstr "Tombol pesan"
 
@@ -20337,7 +20344,7 @@ msgid "Message history threshold updated"
 msgstr "Ambang batas riwayat pesan diperbarui"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:287
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:311
 msgid "Message hover"
 msgstr "Arahkan kursor ke pesan"
 
@@ -20350,7 +20357,7 @@ msgstr "Input pesan"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:367
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:391
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:194
 msgid "Message input buttons"
 msgstr "Tombol input pesan"
@@ -20762,7 +20769,7 @@ msgid "Moderation"
 msgstr "Moderasi"
 
 #. Community settings tab for moderation and safety controls.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:64
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:56
 msgctxt "community-settings-tab"
 msgid "Moderation"
 msgstr "Moderasi"
@@ -20839,7 +20846,7 @@ msgid "More actions for {displayName}"
 msgstr "Tindakan lainnya untuk {displayName}"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:307
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:331
 msgid "More button"
 msgstr "Tombol lainnya"
 
@@ -21188,7 +21195,7 @@ msgstr "dibisukan"
 #: src/features/app/components/layout/sidebar_nav/GuildListItem.tsx:80
 #: src/features/app/components/layout/VoiceStateIcons.tsx:19
 #: src/features/ui/avatars/AvatarWithPresence.tsx:15
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:439
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:463
 #: src/features/user/components/settings_utils/section_registry/SharedDescriptors.ts:73
 #: src/features/voice/components/voice_participant_tile/shared.ts:75
 #: src/lib/overlay/OverlayContextMenu.tsx:24
@@ -21202,7 +21209,7 @@ msgstr "Dibisukan oleh moderator"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:443
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:467
 #: src/features/user/components/settings_utils/section_registry/SharedDescriptors.ts:69
 msgid "Muted channels"
 msgstr "Channel dibisukan"
@@ -21574,20 +21581,20 @@ msgid "New category"
 msgstr "Kategori baru"
 
 #. Short confirmation button label in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:144
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:148
 msgid "New communities only"
 msgstr "Komunitas baru saja"
 
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:618
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:635
 msgid "New communities you join will automatically have muted channels hidden. Would you also like to apply this setting to all your existing communities?"
 msgstr "Komunitas baru yang Anda ikuti akan otomatis menyembunyikan saluran yang dibisukan. Apakah Anda juga ingin menerapkan pengaturan ini ke semua komunitas Anda yang sudah ada?"
 
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:649
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:666
 msgid "New communities you join will no longer have muted channels hidden automatically. Would you also like to show muted channels in all your existing communities?"
 msgstr "Komunitas baru yang Anda ikuti tidak akan lagi menyembunyikan channel yang dibisukan secara otomatis. Apakah Anda juga ingin menampilkan channel yang dibisukan di semua komunitas Anda yang sudah ada?"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:451
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:475
 msgid "New community muted"
 msgstr "Komunitas baru dibisukan"
 
@@ -21841,10 +21848,6 @@ msgstr "Tidak ada kamera atau perangkat virtual yang ditemukan"
 #: src/features/voice/components/modals/screen_share_picker_modal/useDeviceEmptyStateCopy.ts:23
 msgid "No capture devices found"
 msgstr "Tidak ada perangkat perekam yang ditemukan"
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:70
-msgid "No cast configured"
-msgstr ""
 
 #. Empty-state text in the invite list item.
 #. Subtext under a channel name in the notification overrides list when the channel has no parent category. Short standalone label.
@@ -23395,6 +23398,11 @@ msgstr "atau kirim tautan hadiah ke teman:"
 msgid "Ordered"
 msgstr "Dipesan"
 
+#. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:139
+msgid "Ordered upload"
+msgstr "Unggahan berurutan"
+
 #. Error message in the channel and chat reply preview.
 #: src/features/channel/components/ReplyPreview.tsx:29
 msgid "Original message failed to load"
@@ -23525,7 +23533,7 @@ msgid "Overview"
 msgstr "Ikhtisar"
 
 #. Community settings tab for basic server/community details.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:54
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:46
 msgctxt "community-settings-tab"
 msgid "Overview"
 msgstr "Ikhtisar"
@@ -23844,7 +23852,7 @@ msgstr "Permintaan pertemanan tertunda akan muncul di sini."
 #: src/features/expressions/utils/UnicodeEmojis.ts:21
 #: src/features/search/state/QuickSwitcherResultConverters.ts:22
 #: src/features/search/utils/QuickSwitcherModalUtils.tsx:51
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:278
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
 msgid "People"
 msgstr "Orang"
 
@@ -24100,12 +24108,12 @@ msgid "Pick the rule to review."
 msgstr "Pilih aturan untuk ditinjau."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:335
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:359
 msgid "Pick what appears when you type a colon in the message input"
 msgstr "Pilih apa yang muncul saat Anda mengetik titik dua di kotak pesan"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:387
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:411
 msgid "Pick which buttons show in the message input"
 msgstr "Pilih tombol mana yang akan ditampilkan di area masukan pesan"
 
@@ -24685,7 +24693,6 @@ msgstr "Harga masih dimuat."
 msgid "Pricing preference"
 msgstr "Preferensi harga"
 
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:96
 #: src/features/user/components/modals/tabs/component_gallery_tab/ComponentGalleryTabButtonsTab.tsx:157
 msgid "Primary"
 msgstr "Primer"
@@ -24944,7 +24951,7 @@ msgid "Promotion or instructions encouraging self-harm or eating disorders."
 msgstr "Promosi atau instruksi yang mendorong tindakan menyakiti diri sendiri atau gangguan makan."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:423
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:447
 msgid "Prompt"
 msgstr "Perintah"
 
@@ -25220,7 +25227,7 @@ msgid "Quick CSS replaced from {fileName}."
 msgstr "CSS Cepat diganti dari {fileName}."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:295
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:319
 msgid "Quick reactions"
 msgstr "Reaksi cepat"
 
@@ -25230,26 +25237,26 @@ msgstr "Reaksi cepat"
 #: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:77
 #: src/features/user/components/settings_utils/search_index/KeybindsIndex.ts:50
 msgid "Quick switcher"
-msgstr "Pengalih cepat"
+msgstr "Beralih cepat"
 
 #. Accessible label for the desktop quick switcher result listbox.
 #. Accessible label for the quick switcher result listbox.
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:106
 #: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:98
 msgid "Quick switcher results"
-msgstr "Hasil pengalih cepat"
+msgstr "Hasil beralih cepat"
 
 #. Accessible label for the desktop quick switcher search input region.
 #. Accessible label for the quick switcher search input region.
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:93
 #: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:85
 msgid "Quick switcher search"
-msgstr "Pencarian pengalih cepat"
+msgstr "Beralih pencarian cepat"
 
 #. Accessible label for the tablist in the mobile quick switcher.
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:89
 msgid "Quick switcher tabs"
-msgstr "Tab pengalih cepat"
+msgstr "Tab beralih cepat"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/user/components/settings_utils/section_registry/NotificationsSections.ts:187
@@ -25269,7 +25276,7 @@ msgstr "Keluar dari {appName}"
 #. Singular external-post stat label on a social post embed. Lowercase to appear after the count.
 #: src/features/channel/components/embeds/channel_embed/ChannelEmbedShared.ts:67
 msgid "quote"
-msgstr "kutipan"
+msgstr "kutip"
 
 #. Plural external-post stat label on a social post embed. Lowercase to appear after the count.
 #: src/features/channel/components/embeds/channel_embed/ChannelEmbedShared.ts:71
@@ -25644,7 +25651,7 @@ msgid "Reference copied."
 msgstr "Referensi disalin."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:147
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:171
 msgid "Referral parameters"
 msgstr "Parameter rujukan"
 
@@ -26961,14 +26968,14 @@ msgid "Reverify your phone number to continue using {productName}."
 msgstr "Verifikasi ulang nomor telepon Anda untuk melanjutkan penggunaan {productName}."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:247
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:271
 msgid "Reverse image"
 msgstr "Cari gambar serupa"
 
 #. Generic action label that runs a reverse-image search on the selected media.
 #. Settings search entry label. Also used as a search synonym in the settings search bar.
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:603
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:243
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:267
 msgid "Reverse image search"
 msgstr "Cari gambar terbalik"
 
@@ -26978,7 +26985,7 @@ msgid "Reverse image search provider"
 msgstr "Penyedia pencarian gambar terbalik"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:275
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:299
 msgid "Reverse image search providers"
 msgstr "Penyedia pencarian gambar terbalik"
 
@@ -27234,7 +27241,7 @@ msgid "Roles"
 msgstr "Peran"
 
 #. Community settings tab for role hierarchy and permission rules.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:59
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:51
 msgctxt "community-settings-tab"
 msgid "Roles"
 msgstr "Peran"
@@ -27323,7 +27330,7 @@ msgid "Same time as you"
 msgstr "Sama dengan zona waktu Anda"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:155
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:179
 msgid "Sanitize link"
 msgstr "Bersihkan tautan"
 
@@ -27721,15 +27728,15 @@ msgstr "Gulir ke bawah untuk melihat semua keuntungan yang termasuk dalam {premi
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Short label in the whats new modal.
 #: src/features/app/components/whats_new/WhatsNewModal.tsx:28
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:395
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:419
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:178
 msgid "Scroll to bottom"
 msgstr "Gulir ke bawah"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Short label for an advanced message input preference.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:124
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:391
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:128
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:415
 msgid "Scroll to bottom when sending a message"
 msgstr "Gulir ke bawah saat mengirim pesan"
 
@@ -27781,7 +27788,7 @@ msgid "Search bans"
 msgstr "Cari larangan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:255
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:279
 msgid "Search by image"
 msgstr "Cari dengan gambar"
 
@@ -27823,12 +27830,12 @@ msgid "Search emojis"
 msgstr "Cari emoji"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:207
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:231
 msgid "Search engine"
 msgstr "Mesin pencari"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:203
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:227
 msgid "Search engines"
 msgstr "Mesin pencari"
 
@@ -27958,7 +27965,7 @@ msgid "Search scope: {label}"
 msgstr "Cakupan pencarian: {label}"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:215
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:239
 msgid "Search selected text"
 msgstr "Cari teks yang dipilih"
 
@@ -28446,7 +28453,7 @@ msgstr "Kirim laporan lain"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:383
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:407
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:170
 msgid "Send button"
 msgstr "Tombol kirim"
@@ -28461,6 +28468,13 @@ msgstr "Kirim kode"
 #: src/features/moderation/components/report/ReportStepDetails.tsx:302
 msgid "Send DSA report"
 msgstr "Kirim laporan DSA"
+
+#. Settings search entry label. Names the settings search entry in the settings UI.
+#. Short label for an advanced message input preference.
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:112
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:127
+msgid "Send file messages in order"
+msgstr "Kirim pesan file secara berurutan"
 
 #. Button or menu action label in the user profile mobile sheet. Keep it concise.
 #. Button or menu action label in the user profile modal. Keep it concise.
@@ -28654,10 +28668,20 @@ msgstr "mengirimkan sematan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:399
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:423
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:182
 msgid "Sent messages"
 msgstr "Pesan terkirim"
+
+#. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:131
+msgid "Sequential send"
+msgstr "Kirim berurutan"
+
+#. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:143
+msgid "Serial send"
+msgstr "Kirim serial"
 
 #: src/features/connection/components/modals/AddConnectionModal.tsx:326
 msgid "Serve the token file"
@@ -29121,7 +29145,7 @@ msgid "Shift"
 msgstr "Shift"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:299
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:323
 msgid "Shift expand"
 msgstr "Geser untuk memperluas"
 
@@ -29322,7 +29346,7 @@ msgstr "Tampilkan sematan dan pratinjau tautan situs web"
 #. Short label for an advanced message input preference.
 #. Short label in the channel and chat textarea plus menu. Keep it concise.
 #: src/features/channel/components/textarea/TextareaPlusMenu.tsx:55
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:116
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:120
 msgid "Show emoji button"
 msgstr "Tampilkan tombol emoji"
 
@@ -29376,7 +29400,7 @@ msgid "Show icon when collapsed"
 msgstr "Tampilkan ikon saat diciutkan"
 
 #. Short confirmation button label in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:152
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:156
 msgid "Show in all communities"
 msgstr "Tampilkan di semua komunitas"
 
@@ -29566,7 +29590,7 @@ msgstr "Tampilkan media tersimpan di pelengkapan otomatis ekspresi"
 #. Short label for an advanced message input preference.
 #. Short label in the channel and chat textarea plus menu. Keep it concise.
 #: src/features/channel/components/textarea/TextareaPlusMenu.tsx:59
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:120
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:124
 msgid "Show send button"
 msgstr "Tampilkan tombol kirim"
 
@@ -29578,7 +29602,7 @@ msgstr "Tampilkan konten spoiler saat diklik"
 #. Short label for an advanced message input preference.
 #. Short label in the channel and chat textarea plus menu. Keep it concise.
 #: src/features/channel/components/textarea/TextareaPlusMenu.tsx:51
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:112
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:116
 msgid "Show stickers button"
 msgstr "Tampilkan tombol stiker"
 
@@ -29883,14 +29907,14 @@ msgid "Size selection"
 msgstr "Pilihan ukuran"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:427
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:451
 msgid "Skip"
 msgstr "Lewati"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Short label for an advanced inbox preference.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:128
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:407
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:132
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:431
 msgid "Skip \"Mark all as read\" confirmation"
 msgstr "Lewati konfirmasi \"Tandai semua sudah dibaca\""
 
@@ -29904,7 +29928,7 @@ msgid "Skip external link warnings. Less secure."
 msgstr "Lewati peringatan tautan eksternal. Kurang aman."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:199
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:223
 msgid "Skip the external link warning for all domains"
 msgstr "Lewati peringatan tautan eksternal untuk semua domain"
 
@@ -30110,7 +30134,7 @@ msgid "Smaller media size"
 msgstr "Ukuran media lebih kecil"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:355
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:379
 msgid "Smiley face"
 msgstr "Wajah tersenyum"
 
@@ -30817,7 +30841,7 @@ msgid "Start searches with <0>{peoplePrefix}</0> <1>{textChannelPrefix}</1> <2>{
 msgstr "Mulai pencarian dengan <0>{peoplePrefix}</0> <1>{textChannelPrefix}</1> <2>{voiceChannelPrefix}</2> <3>{communityPrefix}</3> untuk mempersempit hasil."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:127
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:151
 msgid "Start uploading attachments as soon as they are added to the message input"
 msgstr "Mulai unggah lampiran segera setelah ditambahkan ke kotak pesan"
 
@@ -30946,7 +30970,7 @@ msgid "Sticker attached to the message"
 msgstr "Stiker dilampirkan ke pesan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:331
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:355
 msgid "Sticker autocomplete"
 msgstr "pelengkapan otomatis stiker"
 
@@ -31049,7 +31073,7 @@ msgid "Stickers"
 msgstr "Stiker"
 
 #. Community settings tab for managing custom stickers uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:49
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:41
 msgctxt "community-settings-tab"
 msgid "Stickers"
 msgstr "Stiker"
@@ -31100,7 +31124,7 @@ msgid "Stop"
 msgstr "Berhenti"
 
 #. Confirmation prompt in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:148
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:152
 msgid "Stop hiding muted channels by default?"
 msgstr "Berhenti menyembunyikan channel yang dibisukan secara default?"
 
@@ -31251,19 +31275,19 @@ msgid "Strikethrough"
 msgstr "Coretan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:163
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:187
 msgid "Strip parameters"
 msgstr "Hapus parameter"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:159
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:183
 msgid "Strip tracking"
 msgstr "Hapus pelacakan"
 
 #. Label in the links tab.
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #: src/features/user/components/modals/tabs/chat_settings_tab/ChatSettingsTabLinksTab.tsx:43
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:131
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:155
 msgid "Strip tracking parameters from URLs"
 msgstr "Hapus parameter pelacakan dari URL"
 
@@ -31426,7 +31450,7 @@ msgid "SVC mode"
 msgstr "Mode SVC"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:363
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:387
 msgid "Swap common text faces such as :) and <3 for emoji when sending messages"
 msgstr "Ganti ekspresi teks umum seperti :) dan <3 dengan emoji saat mengirim pesan"
 
@@ -31777,7 +31801,7 @@ msgstr "Tab"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:60
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:61
 #: src/features/user/components/settings_utils/search_index/MyProfileIndex.ts:73
 msgid "Tag"
 msgstr "Tag"
@@ -31966,7 +31990,7 @@ msgstr "Format teks"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:359
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:383
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:150
 msgid "Text replacement"
 msgstr "Penggantian teks"
@@ -32113,7 +32137,7 @@ msgid "That's everything in the queue."
 msgstr "Itu semua yang ada dalam antrean."
 
 #. Description text in the FluxerTag change modal.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:68
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:69
 msgid "The #0000 tag is reserved for Visionary subscribers. Visionary is no longer available for purchase."
 msgstr "Tag #0000 dicadangkan untuk pelanggan Visionary. Visionary tidak lagi tersedia untuk pembelian."
 
@@ -32248,7 +32272,7 @@ msgstr "Layanan unggah menolak stiker ini karena ukurannya lebih besar dari {max
 msgid "The URL of the {productName} instance you want to sign in to."
 msgstr "URL instance {productName} yang ingin Anda masuki."
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:134
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:135
 msgid "The username <0>{fluxerTag}</0> is already taken. Continuing will reroll your tag automatically."
 msgstr "Nama pengguna <0>{fluxerTag}</0> sudah dipakai. Jika Anda melanjutkan, tag Anda akan diacak ulang secara otomatis."
 
@@ -32383,10 +32407,6 @@ msgstr "Saat ini tidak ada metode langganan lokal berbasis aplikasi yang ditampi
 #: src/features/user/components/modals/tabs/privacy_safety_tab/data_request_modal/DataRequestModal.tsx:125
 msgid "There is no recovery once this starts. We will DM you when it finishes."
 msgstr "Tidak ada pemulihan setelah ini dimulai. Kami akan mengirim DM kepada Anda setelah selesai."
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:54
-msgid "There was an error loading the cast for this community. Try again."
-msgstr ""
 
 #: src/features/channel/components/modals/channel_tabs/ChannelInvitesTab.tsx:271
 msgid "There was an error loading the invite links for this channel. Try again."
@@ -32586,10 +32606,6 @@ msgstr "Kode ini tidak valid atau sudah digunakan."
 #: src/features/gift/commands/GiftCommands.tsx:40
 msgid "This code was already redeemed."
 msgstr "Kode ini sudah ditukarkan."
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:71
-msgid "This community doesn't have any cast characters mapped to it yet."
-msgstr ""
 
 #: src/features/guild/components/modals/guild_tabs/GuildInvitesTab.tsx:102
 msgid "This community doesn't have any invite links yet. Go to a channel and create an invite to invite people."
@@ -33512,7 +33528,7 @@ msgstr "Alihkan pesan tersemat"
 #. Keyboard shortcut action label shown in the shortcuts list and keybind editor. Keep short, sentence case.
 #: src/features/input/state/input_keybind/shared.ts:117
 msgid "Toggle quick switcher"
-msgstr "Alihkan pengalih cepat"
+msgstr "Tombol beralih cepat"
 
 #. Keyboard shortcut action label shown in the shortcuts list and keybind editor. Keep short, sentence case.
 #: src/features/input/state/input_keybind/shared.ts:281
@@ -33658,12 +33674,12 @@ msgid "Track moderator actions across the community."
 msgstr "Lacak tindakan moderator di seluruh komunitas."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:135
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:159
 msgid "Tracking"
 msgstr "Pelacakan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:139
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:163
 msgid "Tracking parameters"
 msgstr "Parameter pelacakan"
 
@@ -33696,7 +33712,7 @@ msgstr "Mengalihkan kepemilikan ke {0}."
 #. Generic action label that translates a message body.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:583
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:231
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:255
 msgid "Translate"
 msgstr "Terjemahkan"
 
@@ -33715,12 +33731,12 @@ msgid "Translations are automated. Help improve localization by emailing <0>{I18
 msgstr "Terjemahan dilakukan secara otomatis. Bantu tingkatkan lokalisasi dengan mengirim email ke <0>{I18N_EMAIL}</0>."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:223
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:247
 msgid "Translator"
 msgstr "Penerjemah"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:227
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:251
 msgid "Translators"
 msgstr "Penerjemah"
 
@@ -33777,14 +33793,14 @@ msgstr "benar atau salah"
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Short label in the links tab. Keep it concise.
 #: src/features/user/components/modals/tabs/chat_settings_tab/ChatSettingsTabLinksTab.tsx:27
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:175
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:199
 msgid "Trust all"
 msgstr "Percayai semua"
 
 #. Label in the links tab.
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #: src/features/user/components/modals/tabs/chat_settings_tab/ChatSettingsTabLinksTab.tsx:39
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:171
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:195
 msgid "Trust all external links"
 msgstr "Percayai semua tautan eksternal"
 
@@ -33794,17 +33810,17 @@ msgid "Trust all external links?"
 msgstr "Percayai semua tautan eksternal?"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:179
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:203
 msgid "Trust all links"
 msgstr "Percayai semua tautan"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:187
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:211
 msgid "Trust domain"
 msgstr "Domain tepercaya"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:183
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:207
 msgid "Trusted domains"
 msgstr "Domain tepercaya"
 
@@ -34031,7 +34047,7 @@ msgstr "Aktifkan privasi streaming"
 #. Label in the input tab.
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #: src/features/user/components/modals/tabs/chat_settings_tab/ChatSettingsTabInputTab.tsx:10
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:339
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:363
 msgid "Turn text smileys into emoji"
 msgstr "Ubah emoji teks"
 
@@ -35888,7 +35904,7 @@ msgstr "pengguna, bot, atau webhook"
 #. Settings search entry label. Also used as a search synonym in the settings search bar.
 #: src/features/app/components/setup/SetupWizardSteps.tsx:952
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:567
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:217
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:218
 #: src/features/user/components/modals/tabs/my_profile_tab/MyProfileTabUsernameSection.tsx:55
 #: src/features/user/components/settings_utils/search_index/MyProfileIndex.ts:53
 msgid "Username"
@@ -35900,7 +35916,7 @@ msgid "Username (optional)"
 msgstr "Nama pengguna (opsional)"
 
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:39
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:40
 msgid "Username already taken"
 msgstr "Nama pengguna sudah dipakai"
 
@@ -35930,11 +35946,11 @@ msgid "Username must be at most 32 characters"
 msgstr "Nama pengguna maksimal 32 karakter"
 
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:43
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:44
 msgid "Username updated"
 msgstr "Nama pengguna diperbarui"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:210
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:211
 msgid "Usernames can only contain letters (a-z, A-Z), numbers (0-9), and underscores. Usernames are case-insensitive."
 msgstr "Nama pengguna hanya bisa berisi huruf (a-z, A-Z), angka (0-9), dan garis bawah. Nama pengguna tidak peka huruf besar/kecil."
 
@@ -36035,7 +36051,7 @@ msgid "Vanity URL"
 msgstr "URL kustom"
 
 #. Community settings tab for the community vanity/custom invite link.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:79
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:71
 msgctxt "community-settings-tab"
 msgid "Vanity URL"
 msgstr "URL khusus"
@@ -37342,7 +37358,7 @@ msgid "Web authentication"
 msgstr "Autentikasi web"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:211
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:235
 msgid "Web search"
 msgstr "Pencarian web"
 
@@ -37415,7 +37431,7 @@ msgid "Webhooks"
 msgstr "Webhook"
 
 #. Community settings tab for configuring webhooks.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:74
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:66
 msgctxt "community-settings-tab"
 msgid "Webhooks"
 msgstr "Webhook"
@@ -38211,11 +38227,11 @@ msgstr "Anda tidak dapat menghapus izin ini karena akan menghapusnya dari diri A
 msgid "You changed your nickname in this community from **{previousNickname}** to **{newNickname}**."
 msgstr "Anda mengubah nama panggilan Anda di komunitas ini dari **{previousNickname}** menjadi **{newNickname}**."
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:362
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:367
 msgid "You changed your tag while on {PREMIUM_PRODUCT_NAME}. It will reroll randomly when your {PREMIUM_PRODUCT_NAME} expires on <0>{premiumExpiresAtLabel}</0>, unless it renews."
 msgstr "Kamu mengubah tag saat menggunakan {PREMIUM_PRODUCT_NAME}. Tag akan diacak ulang secara otomatis saat {PREMIUM_PRODUCT_NAME} kamu berakhir pada <0>{premiumExpiresAtLabel}</0>, kecuali jika diperpanjang."
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:369
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:374
 msgid "You changed your tag while on {PREMIUM_PRODUCT_NAME}. It will reroll randomly when your {PREMIUM_PRODUCT_NAME} expires, unless it renews."
 msgstr "Anda mengubah tag saat berlangganan {PREMIUM_PRODUCT_NAME}. Tag akan diacak ulang secara otomatis saat langganan {PREMIUM_PRODUCT_NAME} Anda berakhir, kecuali jika diperpanjang."
 

@@ -115,6 +115,7 @@ pub async fn proxy_assets(
         &RuntimeCspSources {
             static_cdn_endpoint: state.config.static_cdn_endpoint.clone(),
             media_endpoint: None,
+            gateway_endpoint: None,
             s3_public_endpoint: None,
             s3_uploads_bucket: None,
         },

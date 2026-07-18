@@ -17,6 +17,10 @@ import {ChannelSearchResults} from '@app/features/channel/components/ChannelSear
 import {ChannelTextarea} from '@app/features/channel/components/ChannelTextarea';
 import {ChannelCompactCallSurface} from '@app/features/channel/components/channel_view/ChannelCompactCallSurface';
 import {ChannelViewScaffold} from '@app/features/channel/components/channel_view/ChannelViewScaffold';
+// LOCAL-ONLY: mobile SelectMode overlay styles — exclude from upstream sync.
+import mobileSelectModeOverlayStyles from '@app/features/channel/components/channel_view/MobileSelectModeOverlay.module.css';
+// LOCAL-ONLY: SelectModePanel is a local-only addition — exclude from upstream sync.
+import {SelectModePanel} from '@app/features/channel/components/channel_view/SelectModePanel';
 import {useChannelSearchState} from '@app/features/channel/components/channel_view/useChannelSearchState';
 import {useVoiceCallChromePinState} from '@app/features/channel/components/channel_view/useVoiceCallChromePinState';
 import {MatureContentChannelGate} from '@app/features/channel/components/MatureContentChannelGate';
@@ -26,7 +30,11 @@ import {useChannelMemberListVisibility} from '@app/features/channel/hooks/useCha
 import {useChannelSearchVisibility} from '@app/features/channel/hooks/useChannelSearchVisibility';
 import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
+// LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
+import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
+// LOCAL-ONLY: mobile SelectMode history helper — exclude from upstream sync.
+import {useMobileSelectModeHistoryDismiss} from '@app/features/channel/utils/MobileSelectModeHistory';
 import DeveloperOptions from '@app/features/devtools/state/DeveloperOptions';
 import GuildMatureContentAgree, {MatureContentGateReason} from '@app/features/guild/state/GuildMatureContentAgree';
 import Guilds from '@app/features/guild/state/Guilds';
@@ -61,6 +69,7 @@ import {useLingui} from '@lingui/react/macro';
 import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
 import {useCallback, useEffect, useLayoutEffect, useRef} from 'react';
+import {createPortal} from 'react-dom';
 
 const JOIN_VOICE_CHANNEL_DESCRIPTOR = msg({
 	message: 'Join voice channel',
@@ -311,6 +320,35 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 			document.removeEventListener('keydown', handleGlobalKeydown, options);
 		};
 	}, [isSearchActive, searchState]);
+	// LOCAL-ONLY: mobile SelectMode panel overlay — exclude from upstream sync.
+	// Rendered via createPortal into document.body rather than as a JSX sibling: this component's
+	// return sites are single elements, and .contentGrid (an ancestor via ChannelViewScaffold) sets
+	// `contain: layout` + `overflow: hidden`, which would trap a non-portaled fixed-position overlay
+	// instead of covering the viewport. The portal call is threaded through the existing `sidePanel`
+	// prop below (which is otherwise always null on mobile) so the return shape here never changes.
+	useMobileSelectModeHistoryDismiss(channelId, isMobileLayout);
+	const showMobileSelectModeOverlay = isMobileLayout && SelectMode.isPanelOpen && SelectMode.channelId === channelId;
+	const mobileSelectModeOverlay =
+		showMobileSelectModeOverlay && channel && typeof document !== 'undefined'
+			? createPortal(
+					<>
+						<button
+							type="button"
+							className={mobileSelectModeOverlayStyles.backdrop}
+							aria-label="Close relocate messages panel"
+							onClick={() => SelectMode.closePanel()}
+							data-flx="channel.channel-view.guild-channel-view.mobile-select-mode-backdrop"
+						/>
+						<div
+							className={clsx(mobileSelectModeOverlayStyles.panel, mobileSelectModeOverlayStyles.panelOpen)}
+							data-flx="channel.channel-view.guild-channel-view.mobile-select-mode-panel"
+						>
+							<SelectModePanel guild={guild} channel={channel} />
+						</div>
+					</>,
+					document.body,
+				)
+			: null;
 	const channelTitlePart = channel
 		? `${channel.type === ChannelTypes.GUILD_VOICE ? '' : '#'}${channel.name ?? ''}`
 		: null;
@@ -518,7 +556,11 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 							guild={guild}
 							data-flx="channel.channel-view.guild-channel-view.channel-members--2"
 						/>
-					) : null
+					) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
+						<SelectModePanel guild={guild} channel={channel} />
+					) : (
+						mobileSelectModeOverlay
+					)
 				}
 				showMemberListDivider={shouldRenderMemberList && !isSearchActive}
 				chatAreaInert={isVoiceTextCallExpanded}
@@ -574,7 +616,11 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 						guild={guild}
 						data-flx="channel.channel-view.guild-channel-view.channel-members"
 					/>
-				) : null
+				) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
+					<SelectModePanel guild={guild} channel={channel} />
+				) : (
+					mobileSelectModeOverlay
+				)
 			}
 			showMemberListDivider={shouldRenderMemberList && !isSearchActive}
 			data-flx="channel.channel-view.guild-channel-view.channel-view-scaffold"

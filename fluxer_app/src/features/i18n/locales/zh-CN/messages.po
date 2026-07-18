@@ -2247,7 +2247,7 @@ msgid "Action"
 msgstr "操作"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:283
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:307
 msgid "Action bar"
 msgstr "操作栏"
 
@@ -2349,7 +2349,7 @@ msgid "Activity log"
 msgstr "活动日志"
 
 #. Community settings tab showing activity log entries and moderation history.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:69
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:61
 msgctxt "community-settings-tab"
 msgid "Activity log"
 msgstr "活动日志"
@@ -3253,7 +3253,7 @@ msgid "Already set to cancel"
 msgstr "已设为取消"
 
 #. Toggle-switch label in the moderator delete-message confirmation dialog. When enabled, the message is reported (category: other) before being deleted. {productName} is the product name (e.g., Fluxer).
-#: src/features/messaging/commands/MessageCommands.tsx:75
+#: src/features/messaging/commands/MessageCommands.tsx:76
 msgid "Also report this message to the {productName} Safety Team"
 msgstr "同时将此消息举报给 {productName} 安全团队"
 
@@ -3861,7 +3861,7 @@ msgid "Apply theme"
 msgstr "应用主题"
 
 #. Short confirmation button label in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:140
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:144
 msgid "Apply to all communities"
 msgstr "应用于所有社群"
 
@@ -4019,7 +4019,7 @@ msgid "asc or desc"
 msgstr "升序或降序"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:351
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:375
 msgid "ASCII smileys"
 msgstr "ASCII 表情符号"
 
@@ -4619,7 +4619,7 @@ msgid "Automatically remove tracking parameters (like utm_source, fbclid, gclid)
 msgstr "自动移除您发送消息中网址的跟踪参数（例如 utm_source、fbclid、gclid）。在链接发送给其他人之前进行清理。"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:167
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:191
 msgid "Automatically remove tracking parameters from URLs in messages you send"
 msgstr "自动移除你发送消息中网址的跟踪参数"
 
@@ -5015,7 +5015,7 @@ msgid "Banner preview"
 msgstr "横幅预览"
 
 #. Community settings tab for banned users.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:99
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:91
 msgctxt "community-settings-tab"
 msgid "Bans"
 msgstr "封禁"
@@ -5872,7 +5872,7 @@ msgstr "金丝雀测试员行动号召提示条"
 #: src/features/user/components/modals/EmailChangeModal.tsx:289
 #: src/features/user/components/modals/EmailChangeModal.tsx:311
 #: src/features/user/components/modals/EmailChangeModal.tsx:326
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:389
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:394
 #: src/features/user/components/modals/PasswordChangeModal.tsx:226
 #: src/features/user/components/modals/PasswordChangeModal.tsx:237
 #: src/features/user/components/modals/PasswordChangeModal.tsx:255
@@ -5899,7 +5899,7 @@ msgstr "取消编辑定时消息"
 msgid "Cancel friend request"
 msgstr "取消好友请求"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:144
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:145
 msgid "Cancel if you want to choose a different username instead."
 msgstr "如果要选择其他用户名，请取消。"
 
@@ -6047,16 +6047,6 @@ msgstr "银行卡在通过 {paymentProviderName} 快速验证后可保留波兰�
 #: src/features/app/components/dialogs/components/plutonium/PricingContextPanel.tsx:195
 msgid "Cards can keep TRY pricing after a quick {paymentProviderName} verification, but the card must be issued in Türkiye."
 msgstr "通过快速的{paymentProviderName}验证后，银行卡可以保留土耳其里拉定价，但该卡必须在土耳其发行。"
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:37
-msgid "Cast"
-msgstr ""
-
-#. Community settings tab listing the characters available in the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:38
-msgctxt "community-settings-tab"
-msgid "Cast"
-msgstr ""
 
 #. Short label in the discovery category bottom sheet. Keep it concise.
 #: src/features/discovery/components/bottomsheets/DiscoveryCategoryBottomSheet.tsx:15
@@ -6299,7 +6289,7 @@ msgid "Change username"
 msgstr "修改用户名"
 
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:47
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:48
 msgid "Change username form"
 msgstr "更改用户名表单"
 
@@ -6349,7 +6339,7 @@ msgstr "更改头像"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:51
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:52
 #: src/features/user/components/settings_utils/search_index/MyProfileIndex.ts:77
 msgid "Change your username"
 msgstr "更改用户名"
@@ -6620,10 +6610,6 @@ msgstr "我管理的频道"
 msgid "Character limit exceeded by {remaining}"
 msgstr "超出字符限制 {remaining} 个"
 
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:40
-msgid "Characters available in this community, and which are currently primary."
-msgstr ""
-
 #. Advanced settings category tag.
 #. Short heading in the keyboard shortcuts cheatsheet.
 #. Short label in the keybinds tab. Keep it concise.
@@ -6865,7 +6851,7 @@ msgid "Choose hCaptcha or Cloudflare Turnstile for signup challenges."
 msgstr "选择 hCaptcha 或 Cloudflare Turnstile 作为注册挑战。"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:403
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:427
 msgid "Choose how chat moves after you send a message"
 msgstr "选择发送消息后聊天窗口的滚动方式"
 
@@ -7153,7 +7139,7 @@ msgid "Claiming to be another person, brand, or organization."
 msgstr "冒充他人、品牌或组织。"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:151
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:175
 msgid "Clean link"
 msgstr "清理链接"
 
@@ -7701,7 +7687,7 @@ msgstr "冒号"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:323
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:347
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:154
 msgid "Colon autocomplete"
 msgstr "冒号自动补全"
@@ -7837,7 +7823,7 @@ msgstr "社群"
 #: src/features/app/config/AuditLogConstants.ts:152
 #: src/features/auth/components/pages/oauth_authorize_page/OAuthCommunityStep.tsx:48
 #: src/features/moderation/components/report_modal/IARModalPreview.tsx:16
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:270
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:253
 #: src/features/user/components/settings_utils/section_registry/PrivacySafetySections.ts:140
 msgid "Community"
 msgstr "社群"
@@ -8023,7 +8009,7 @@ msgid "Community record"
 msgstr "社群记录"
 
 #. Root label for community settings modal and settings search paths.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:244
 msgid "Community settings"
 msgstr "社群设置"
 
@@ -8140,7 +8126,7 @@ msgstr "输入框按钮"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:371
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:395
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:190
 msgid "Composer buttons"
 msgstr "输入框按钮"
@@ -8152,7 +8138,7 @@ msgstr "输入框聚焦"
 
 #. Button label that opens a dedicated advanced settings modal for configuring screen-share encoder controls.
 #. Button label that opens a dedicated advanced settings modal.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:156
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:160
 #: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedVideoControls.tsx:162
 msgid "Configure"
 msgstr "配置"
@@ -8193,7 +8179,7 @@ msgid "Configure role settings and permissions"
 msgstr "配置角色设置和权限"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:239
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:263
 msgid "Configure search engines used from selected text"
 msgstr "配置从选定文本中使用的搜索引擎"
 
@@ -8203,7 +8189,7 @@ msgid "Configure spellcheck, dictionaries, and personal words"
 msgstr "配置拼写检查、词典和个人词库"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:271
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:295
 msgid "Configure translator providers used from selected text"
 msgstr "配置从选定文本使用的翻译提供程序"
 
@@ -8226,7 +8212,7 @@ msgstr "配置你的个人资料徽章"
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/channel/components/MentionEveryonePopout.tsx:180
 #: src/features/user/components/modals/EmailChangeModal.tsx:340
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:419
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:443
 msgid "Confirm"
 msgstr "确认"
 
@@ -8278,7 +8264,7 @@ msgid "Confirm voice join"
 msgstr "确认语音加入"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:415
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:439
 msgid "Confirmation"
 msgstr "确认"
 
@@ -8529,7 +8515,7 @@ msgstr "左键点击（按钮）或右键点击（其他元素）可打开上下
 #: src/features/auth/flow/HandoffApprovalFlow.tsx:118
 #: src/features/connection/components/modals/AddConnectionModal.tsx:383
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:711
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:392
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:397
 #: src/features/user/components/modals/tabs/AuthorizedAppsTab.tsx:181
 msgid "Continue"
 msgstr "继续"
@@ -10048,7 +10034,7 @@ msgid "Custom date range"
 msgstr "自定义日期范围"
 
 #. Error message in the FluxerTag change modal.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:64
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:65
 msgid "Custom discriminators are not available on this instance"
 msgstr "此实例不支持自定义识别码"
 
@@ -10113,7 +10099,7 @@ msgid "Custom ringtone"
 msgstr "自定义铃声"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:219
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:243
 msgid "Custom search engine"
 msgstr "自定义搜索引擎"
 
@@ -10182,7 +10168,7 @@ msgid "Custom title bar"
 msgstr "自定义标题栏"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:235
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:259
 msgid "Custom translator"
 msgstr "自定义翻译器"
 
@@ -10241,7 +10227,7 @@ msgid "Customize interface elements and behaviors."
 msgstr "自定义界面元素和行为."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:315
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:339
 msgid "Customize the action bar that appears when hovering over messages"
 msgstr "自定义鼠标悬停在消息上时显示的操作栏"
 
@@ -10265,7 +10251,7 @@ msgstr "自定义个人资料横幅"
 msgid "Customize your tag ({discriminatorLabel}) to your liking with {premiumProductName}"
 msgstr "使用{premiumProductName}自定义你的标签（{discriminatorLabel}）"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:381
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:386
 msgid "Customize your tag or keep it when changing your username"
 msgstr "更改用户名时，可自定义标签或保留现有标签"
 
@@ -10677,7 +10663,7 @@ msgstr "移动设备上默认关闭，以节省电量和流量。"
 #: src/features/emoji/components/emojis/EmojiListItem.tsx:203
 #: src/features/emoji/components/emojis/EmojiListItem.tsx:215
 #: src/features/emoji/components/stickers/StickerGridItem.tsx:34
-#: src/features/messaging/commands/MessageCommands.tsx:71
+#: src/features/messaging/commands/MessageCommands.tsx:72
 #: src/features/moderation/components/report_modal/IARModalCopy.ts:135
 #: src/features/theme_studio/sections/LibrarySection.tsx:514
 #: src/features/user/components/modals/tabs/account_security_tab/SecurityTab.tsx:399
@@ -10922,7 +10908,7 @@ msgid "Delete this message"
 msgstr "删除此消息"
 
 #. Error message in the messaging commands. Keep the tone plain and specific.
-#: src/features/messaging/commands/MessageCommands.tsx:67
+#: src/features/messaging/commands/MessageCommands.tsx:68
 msgid "Delete this message? Can't be undone."
 msgstr "删除这条消息？此操作无法撤消。"
 
@@ -11700,7 +11686,7 @@ msgid "Discovery"
 msgstr "发现"
 
 #. Community settings tab for public community discovery/listing.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:84
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:76
 msgctxt "community-settings-tab"
 msgid "Discovery"
 msgstr "发现"
@@ -12806,7 +12792,7 @@ msgid "Emoji"
 msgstr "表情"
 
 #. Community settings tab for managing custom emoji uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:44
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:36
 msgctxt "community-settings-tab"
 msgid "Emoji"
 msgstr "表情符号"
@@ -12822,12 +12808,12 @@ msgid "Emoji & sticker packs"
 msgstr "表情和贴纸包"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:327
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:351
 msgid "Emoji autocomplete"
 msgstr "表情符号自动补全"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:379
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:403
 msgid "Emoji button"
 msgstr "表情按钮"
 
@@ -12935,13 +12921,13 @@ msgid "Emojis"
 msgstr "表情"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:347
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:371
 msgid "Emoticon"
 msgstr "表情符号"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:343
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:367
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:142
 msgid "Emoticons"
 msgstr "表情符号"
@@ -13351,6 +13337,11 @@ msgstr "增强"
 msgctxt "noise-suppression-option"
 msgid "Enhanced"
 msgstr "增强"
+
+#. Settings search entry description. One-line summary of what the settings search entry controls.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:147
+msgid "Ensures file messages appear in the order you sent them"
+msgstr "确保文件消息按您发送的顺序显示"
 
 #. Keyboard key label for confirming a mass-mention warning.
 #. Keyboard shortcut keycap label for Enter. Keep it short.
@@ -13830,7 +13821,7 @@ msgid "Expand"
 msgstr "展开"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:303
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:327
 msgid "Expand action bar"
 msgstr "展开操作栏"
 
@@ -14033,7 +14024,7 @@ msgstr "在个人资料设置中显示仅供员工访问的时区部分。"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:319
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:343
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:158
 msgid "Expression autocomplete"
 msgstr "表情自动补全"
@@ -14068,7 +14059,7 @@ msgstr "表情包清除"
 #. Community settings sidebar category grouping the emoji and stickers tabs.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:266
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:249
 #: src/features/user/components/settings_utils/search_index/ExpressionPacksIndex.ts:19
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:134
 msgid "Expressions"
@@ -14087,7 +14078,7 @@ msgstr "外部"
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Warning text in the external link warning modal. Keep the tone plain and specific.
 #: src/features/messaging/components/modals/ExternalLinkWarningModal.tsx:17
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:191
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:215
 msgid "External link warning"
 msgstr "外部链接警告"
 
@@ -14232,10 +14223,6 @@ msgstr "加载失败"
 #: src/features/user/components/modals/tabs/AuthorizedAppsTab.tsx:42
 msgid "Failed to load authorized applications"
 msgstr "授权应用加载失败"
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:53
-msgid "Failed to load cast"
-msgstr ""
 
 #: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:443
 msgid "Failed to load emojis. Try again later."
@@ -14597,6 +14584,11 @@ msgstr "文件过大。最大文件大小为 {maxSize}。"
 #: src/features/channel/components/MediaActionBottomSheet.tsx:33
 msgid "File options"
 msgstr "文件选项"
+
+#. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:135
+msgid "File ordering"
+msgstr "文件排序"
 
 #. Title of the file-too-large alert variant that offers a Plutonium upsell.
 #: src/features/messaging/components/alerts/FileSizeTooLargeModal.tsx:35
@@ -15530,7 +15522,7 @@ msgid "Get {premiumProductName} to customize your tag"
 msgstr "获取 {premiumProductName} 以自定义你的标签"
 
 #. Description text in the FluxerTag change modal. Preserve {premiumProductName}; it is inserted by code. Keep the tone plain and specific.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:55
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:56
 msgid "Get {premiumProductName} to customize your tag or keep it when changing your username"
 msgstr "获取 {premiumProductName} 以自定义你的标签，或在更改用户名时保留它"
 
@@ -15568,7 +15560,7 @@ msgid "GIF"
 msgstr "GIF"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:375
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:399
 msgid "GIF button"
 msgstr "GIF 按钮"
 
@@ -15902,7 +15894,7 @@ msgid "Go to third community"
 msgstr "前往第三个社群"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:263
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:287
 msgid "Google lens"
 msgstr "Google 智能镜头"
 
@@ -16413,7 +16405,7 @@ msgid "Hide avatars"
 msgstr "隐藏头像"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:455
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:479
 msgid "Hide channels you've muted from community sidebars"
 msgstr "在社群侧边栏中隐藏你已静音的频道"
 
@@ -16465,7 +16457,7 @@ msgid "Hide members"
 msgstr "隐藏成员"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:447
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:471
 msgid "Hide muted"
 msgstr "隐藏已静音的对话"
 
@@ -16476,13 +16468,13 @@ msgstr "隐藏已静音频道"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Short label for an advanced sidebar preference.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:132
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:435
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:136
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:459
 msgid "Hide muted channels by default"
 msgstr "默认隐藏已静音的频道"
 
 #. Confirmation prompt in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:136
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:140
 msgid "Hide muted channels by default?"
 msgstr "默认隐藏已静音频道？"
 
@@ -16655,7 +16647,7 @@ msgid "Hours"
 msgstr "小时"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:291
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:315
 msgid "Hover buttons"
 msgstr "悬浮按钮"
 
@@ -16928,11 +16920,11 @@ msgstr "如果使用波兰兹罗提支付，银行卡也必须在波兰发行，
 msgid "If you prefer, you can switch to standard USD pricing instead."
 msgstr "如果你愿意，也可以切换到标准美元定价。"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:349
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:354
 msgid "If you save this username, your tag will reroll randomly when your {PREMIUM_PRODUCT_NAME} expires on <0>{premiumExpiresAtLabel}</0>, unless it renews."
 msgstr "如果您保存此用户名，您的标签将在您的 {PREMIUM_PRODUCT_NAME} 于 <0>{premiumExpiresAtLabel}</0> 到期时随机重新生成，除非它续订。"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:356
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:361
 msgid "If you save this username, your tag will reroll randomly when your {PREMIUM_PRODUCT_NAME} expires, unless it renews."
 msgstr "如果你保存此用户名，你的标签将在 {PREMIUM_PRODUCT_NAME} 到期时随机重新生成，除非它续订。"
 
@@ -17063,7 +17055,7 @@ msgid "Image dimensions must be between {min}x{min2} and {max}x{max2} pixels."
 msgstr "图片尺寸必须介于 {min}x{min2} 和 {max}x{max2} 像素之间。"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:259
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:283
 msgid "Image lookup"
 msgstr "图片查找"
 
@@ -17078,12 +17070,12 @@ msgid "Image preview"
 msgstr "图片预览"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:251
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:275
 msgid "Image search"
 msgstr "图片搜索"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:267
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:291
 msgid "Image search provider"
 msgstr "图片搜索提供方"
 
@@ -17644,7 +17636,7 @@ msgstr "即时邀请"
 
 #. Community settings sidebar category grouping webhooks.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:274
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:257
 #: src/features/user/components/settings_utils/search_index/AuthorizedAppsIndex.ts:26
 msgid "Integrations"
 msgstr "集成"
@@ -17987,7 +17979,7 @@ msgid "Invites"
 msgstr "邀请"
 
 #. Community settings tab for invite link management.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:94
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:86
 msgctxt "community-settings-tab"
 msgid "Invites"
 msgstr "邀请链接"
@@ -18972,7 +18964,7 @@ msgid "Link underline"
 msgstr "链接下划线"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:195
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:219
 msgid "Link warnings"
 msgstr "链接安全提示"
 
@@ -19529,7 +19521,7 @@ msgstr "手动更新桌面版"
 #. Action label in the inbox popout overflow menu. Marks every inbox channel as read.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/messaging/components/popouts/InboxPopout.tsx:42
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:411
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:435
 msgid "Mark all as read"
 msgstr "全部标为已读"
 
@@ -19551,7 +19543,7 @@ msgid "Mark all inbox channels as read"
 msgstr "将收件箱中的所有频道标记为已读"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:431
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:455
 msgid "Mark all unread inbox channels as read immediately, without asking to confirm"
 msgstr "将所有未读收件箱频道标记为已读，无需确认"
 
@@ -19652,7 +19644,7 @@ msgid "Markers below slider"
 msgstr "滑块下方标记"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:143
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:167
 msgid "Marketing parameters"
 msgstr "营销参数"
 
@@ -20063,7 +20055,7 @@ msgid "Members"
 msgstr "成员"
 
 #. Community settings tab for managing community members.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:89
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:81
 msgctxt "community-settings-tab"
 msgid "Members"
 msgstr "成员"
@@ -20239,7 +20231,7 @@ msgid "Message @"
 msgstr "消息 @"
 
 #. Settings search entry label. Also used as a search synonym in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:279
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:303
 msgid "Message action bar"
 msgstr "消息操作栏"
 
@@ -20261,7 +20253,7 @@ msgid "Message badge"
 msgstr "消息角标"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:311
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:335
 msgid "Message buttons"
 msgstr "消息按钮"
 
@@ -20337,7 +20329,7 @@ msgid "Message history threshold updated"
 msgstr "消息历史记录阈值已更新"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:287
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:311
 msgid "Message hover"
 msgstr "消息悬停"
 
@@ -20350,7 +20342,7 @@ msgstr "消息输入"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:367
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:391
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:194
 msgid "Message input buttons"
 msgstr "消息输入按钮"
@@ -20762,7 +20754,7 @@ msgid "Moderation"
 msgstr "管理"
 
 #. Community settings tab for moderation and safety controls.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:64
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:56
 msgctxt "community-settings-tab"
 msgid "Moderation"
 msgstr "审核"
@@ -20839,7 +20831,7 @@ msgid "More actions for {displayName}"
 msgstr "更多关于{displayName}的操作"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:307
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:331
 msgid "More button"
 msgstr "更多按钮"
 
@@ -21188,7 +21180,7 @@ msgstr "已静音"
 #: src/features/app/components/layout/sidebar_nav/GuildListItem.tsx:80
 #: src/features/app/components/layout/VoiceStateIcons.tsx:19
 #: src/features/ui/avatars/AvatarWithPresence.tsx:15
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:439
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:463
 #: src/features/user/components/settings_utils/section_registry/SharedDescriptors.ts:73
 #: src/features/voice/components/voice_participant_tile/shared.ts:75
 #: src/lib/overlay/OverlayContextMenu.tsx:24
@@ -21202,7 +21194,7 @@ msgstr "被管理员禁言"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:443
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:467
 #: src/features/user/components/settings_utils/section_registry/SharedDescriptors.ts:69
 msgid "Muted channels"
 msgstr "已静音频道"
@@ -21574,20 +21566,20 @@ msgid "New category"
 msgstr "新建分类"
 
 #. Short confirmation button label in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:144
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:148
 msgid "New communities only"
 msgstr "仅新社群"
 
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:618
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:635
 msgid "New communities you join will automatically have muted channels hidden. Would you also like to apply this setting to all your existing communities?"
 msgstr "你新加入的社群将自动隐藏静音频道。是否也将此设置应用于所有现有社群？"
 
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:649
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:666
 msgid "New communities you join will no longer have muted channels hidden automatically. Would you also like to show muted channels in all your existing communities?"
 msgstr "您加入的新社群将不再自动隐藏已静音频道。是否也要在所有现有社群中显示已静音频道？"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:451
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:475
 msgid "New community muted"
 msgstr "新社群已静音"
 
@@ -21841,10 +21833,6 @@ msgstr "未找到摄像头或虚拟设备"
 #: src/features/voice/components/modals/screen_share_picker_modal/useDeviceEmptyStateCopy.ts:23
 msgid "No capture devices found"
 msgstr "未找到可用的录制设备"
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:70
-msgid "No cast configured"
-msgstr ""
 
 #. Empty-state text in the invite list item.
 #. Subtext under a channel name in the notification overrides list when the channel has no parent category. Short standalone label.
@@ -23395,6 +23383,11 @@ msgstr "或将礼物链接发送给好友："
 msgid "Ordered"
 msgstr "已排序"
 
+#. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:139
+msgid "Ordered upload"
+msgstr "按顺序上传"
+
 #. Error message in the channel and chat reply preview.
 #: src/features/channel/components/ReplyPreview.tsx:29
 msgid "Original message failed to load"
@@ -23525,7 +23518,7 @@ msgid "Overview"
 msgstr "概览"
 
 #. Community settings tab for basic server/community details.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:54
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:46
 msgctxt "community-settings-tab"
 msgid "Overview"
 msgstr "概览"
@@ -23844,7 +23837,7 @@ msgstr "待处理的好友请求会显示在这里。"
 #: src/features/expressions/utils/UnicodeEmojis.ts:21
 #: src/features/search/state/QuickSwitcherResultConverters.ts:22
 #: src/features/search/utils/QuickSwitcherModalUtils.tsx:51
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:278
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
 msgid "People"
 msgstr "用户"
 
@@ -24100,12 +24093,12 @@ msgid "Pick the rule to review."
 msgstr "选择要查看的规则."
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:335
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:359
 msgid "Pick what appears when you type a colon in the message input"
 msgstr "选择在消息输入框中键入冒号时显示的内容"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:387
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:411
 msgid "Pick which buttons show in the message input"
 msgstr "选择要在消息输入框中显示的按钮"
 
@@ -24685,7 +24678,6 @@ msgstr "价格仍在加载中。"
 msgid "Pricing preference"
 msgstr "价格偏好"
 
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:96
 #: src/features/user/components/modals/tabs/component_gallery_tab/ComponentGalleryTabButtonsTab.tsx:157
 msgid "Primary"
 msgstr "主要"
@@ -24944,7 +24936,7 @@ msgid "Promotion or instructions encouraging self-harm or eating disorders."
 msgstr "宣传或指导自残或饮食失调。"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:423
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:447
 msgid "Prompt"
 msgstr "提示"
 
@@ -25220,7 +25212,7 @@ msgid "Quick CSS replaced from {fileName}."
 msgstr "快速 CSS 已从 {fileName} 替换。"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:295
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:319
 msgid "Quick reactions"
 msgstr "快捷回应"
 
@@ -25644,7 +25636,7 @@ msgid "Reference copied."
 msgstr "参考已复制."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:147
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:171
 msgid "Referral parameters"
 msgstr "引荐参数"
 
@@ -26961,14 +26953,14 @@ msgid "Reverify your phone number to continue using {productName}."
 msgstr "请重新验证您的电话号码，以继续使用 {productName}。"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:247
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:271
 msgid "Reverse image"
 msgstr "搜图"
 
 #. Generic action label that runs a reverse-image search on the selected media.
 #. Settings search entry label. Also used as a search synonym in the settings search bar.
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:603
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:243
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:267
 msgid "Reverse image search"
 msgstr "搜图"
 
@@ -26978,7 +26970,7 @@ msgid "Reverse image search provider"
 msgstr "反向图片搜索提供方"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:275
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:299
 msgid "Reverse image search providers"
 msgstr "反向图像搜索提供程序"
 
@@ -27234,7 +27226,7 @@ msgid "Roles"
 msgstr "身份组"
 
 #. Community settings tab for role hierarchy and permission rules.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:59
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:51
 msgctxt "community-settings-tab"
 msgid "Roles"
 msgstr "角色"
@@ -27323,7 +27315,7 @@ msgid "Same time as you"
 msgstr "与您时区相同"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:155
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:179
 msgid "Sanitize link"
 msgstr "净化链接"
 
@@ -27721,15 +27713,15 @@ msgstr "向下滚动，查看 {premiumProductName} 包含的所有特权"
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Short label in the whats new modal.
 #: src/features/app/components/whats_new/WhatsNewModal.tsx:28
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:395
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:419
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:178
 msgid "Scroll to bottom"
 msgstr "滑到底部"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Short label for an advanced message input preference.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:124
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:391
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:128
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:415
 msgid "Scroll to bottom when sending a message"
 msgstr "发送消息后滚动到底部"
 
@@ -27781,7 +27773,7 @@ msgid "Search bans"
 msgstr "搜索封禁用户"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:255
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:279
 msgid "Search by image"
 msgstr "图片搜索"
 
@@ -27823,12 +27815,12 @@ msgid "Search emojis"
 msgstr "搜索表情"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:207
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:231
 msgid "Search engine"
 msgstr "搜索引擎"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:203
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:227
 msgid "Search engines"
 msgstr "搜索引擎"
 
@@ -27958,7 +27950,7 @@ msgid "Search scope: {label}"
 msgstr "搜索范围：{label}"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:215
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:239
 msgid "Search selected text"
 msgstr "搜索选中文字"
 
@@ -28446,7 +28438,7 @@ msgstr "发送其他举报"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:383
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:407
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:170
 msgid "Send button"
 msgstr "发送按钮"
@@ -28461,6 +28453,13 @@ msgstr "发送验证码"
 #: src/features/moderation/components/report/ReportStepDetails.tsx:302
 msgid "Send DSA report"
 msgstr "发送 DSA 报告"
+
+#. Settings search entry label. Names the settings search entry in the settings UI.
+#. Short label for an advanced message input preference.
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:112
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:127
+msgid "Send file messages in order"
+msgstr "按顺序发送文件消息"
 
 #. Button or menu action label in the user profile mobile sheet. Keep it concise.
 #. Button or menu action label in the user profile modal. Keep it concise.
@@ -28654,10 +28653,20 @@ msgstr "发送了嵌入消息"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:399
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:423
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:182
 msgid "Sent messages"
 msgstr "已发送消息"
+
+#. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:131
+msgid "Sequential send"
+msgstr "顺序发送"
+
+#. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:143
+msgid "Serial send"
+msgstr "序列发送"
 
 #: src/features/connection/components/modals/AddConnectionModal.tsx:326
 msgid "Serve the token file"
@@ -29121,7 +29130,7 @@ msgid "Shift"
 msgstr "班次"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:299
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:323
 msgid "Shift expand"
 msgstr "展开"
 
@@ -29322,7 +29331,7 @@ msgstr "显示嵌入内容和网站链接预览"
 #. Short label for an advanced message input preference.
 #. Short label in the channel and chat textarea plus menu. Keep it concise.
 #: src/features/channel/components/textarea/TextareaPlusMenu.tsx:55
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:116
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:120
 msgid "Show emoji button"
 msgstr "显示表情按钮"
 
@@ -29376,7 +29385,7 @@ msgid "Show icon when collapsed"
 msgstr "折叠时显示图标"
 
 #. Short confirmation button label in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:152
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:156
 msgid "Show in all communities"
 msgstr "在所有社群中显示"
 
@@ -29566,7 +29575,7 @@ msgstr "在表情自动填充中显示已保存的媒体"
 #. Short label for an advanced message input preference.
 #. Short label in the channel and chat textarea plus menu. Keep it concise.
 #: src/features/channel/components/textarea/TextareaPlusMenu.tsx:59
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:120
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:124
 msgid "Show send button"
 msgstr "显示发送按钮"
 
@@ -29578,7 +29587,7 @@ msgstr "点击后显示剧透内容"
 #. Short label for an advanced message input preference.
 #. Short label in the channel and chat textarea plus menu. Keep it concise.
 #: src/features/channel/components/textarea/TextareaPlusMenu.tsx:51
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:112
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:116
 msgid "Show stickers button"
 msgstr "显示贴纸按钮"
 
@@ -29883,14 +29892,14 @@ msgid "Size selection"
 msgstr "选择尺寸"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:427
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:451
 msgid "Skip"
 msgstr "跳过"
 
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #. Short label for an advanced inbox preference.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:128
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:407
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:132
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:431
 msgid "Skip \"Mark all as read\" confirmation"
 msgstr "跳过\"全部标为已读\"确认"
 
@@ -29904,7 +29913,7 @@ msgid "Skip external link warnings. Less secure."
 msgstr "跳过外部链接警告。安全性较低。"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:199
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:223
 msgid "Skip the external link warning for all domains"
 msgstr "跳过所有域名的外部链接警告"
 
@@ -30110,7 +30119,7 @@ msgid "Smaller media size"
 msgstr "更小的媒体文件"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:355
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:379
 msgid "Smiley face"
 msgstr "笑脸"
 
@@ -30817,7 +30826,7 @@ msgid "Start searches with <0>{peoplePrefix}</0> <1>{textChannelPrefix}</1> <2>{
 msgstr "从 <0>{peoplePrefix}</0>、<1>{textChannelPrefix}</1>、<2>{voiceChannelPrefix}</2> 和 <3>{communityPrefix}</3> 开始搜索，以缩小结果范围。"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:127
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:151
 msgid "Start uploading attachments as soon as they are added to the message input"
 msgstr "添加附件到消息输入框后，立即开始上传"
 
@@ -30946,7 +30955,7 @@ msgid "Sticker attached to the message"
 msgstr "消息中包含贴纸"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:331
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:355
 msgid "Sticker autocomplete"
 msgstr "表情包自动补全"
 
@@ -31049,7 +31058,7 @@ msgid "Stickers"
 msgstr "贴纸"
 
 #. Community settings tab for managing custom stickers uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:49
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:41
 msgctxt "community-settings-tab"
 msgid "Stickers"
 msgstr "贴纸"
@@ -31100,7 +31109,7 @@ msgid "Stop"
 msgstr "停止"
 
 #. Confirmation prompt in advanced settings.
-#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:148
+#: src/features/user/components/modals/tabs/advanced_settings_tab/AdvancedChatControls.tsx:152
 msgid "Stop hiding muted channels by default?"
 msgstr "要停止默认隐藏已静音的频道吗？"
 
@@ -31251,19 +31260,19 @@ msgid "Strikethrough"
 msgstr "删除线"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:163
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:187
 msgid "Strip parameters"
 msgstr "移除参数"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:159
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:183
 msgid "Strip tracking"
 msgstr "移除追踪"
 
 #. Label in the links tab.
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #: src/features/user/components/modals/tabs/chat_settings_tab/ChatSettingsTabLinksTab.tsx:43
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:131
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:155
 msgid "Strip tracking parameters from URLs"
 msgstr "移除链接跟踪参数"
 
@@ -31426,7 +31435,7 @@ msgid "SVC mode"
 msgstr "SVC 模式"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:363
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:387
 msgid "Swap common text faces such as :) and <3 for emoji when sending messages"
 msgstr "将常见的文本表情（如 :) 和 <3）在发送消息时替换为表情符号"
 
@@ -31777,7 +31786,7 @@ msgstr "标签页"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:60
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:61
 #: src/features/user/components/settings_utils/search_index/MyProfileIndex.ts:73
 msgid "Tag"
 msgstr "标签"
@@ -31966,7 +31975,7 @@ msgstr "文本格式"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:359
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:383
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:150
 msgid "Text replacement"
 msgstr "文本替换"
@@ -32113,7 +32122,7 @@ msgid "That's everything in the queue."
 msgstr "队列中的消息都显示在这里了。"
 
 #. Description text in the FluxerTag change modal.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:68
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:69
 msgid "The #0000 tag is reserved for Visionary subscribers. Visionary is no longer available for purchase."
 msgstr "#0000 标签是 Visionary 订阅者专属。Visionary 已停止购买。"
 
@@ -32248,7 +32257,7 @@ msgstr "上传服务拒绝了此贴纸，因为它大于 {maxSize}。请尝试�
 msgid "The URL of the {productName} instance you want to sign in to."
 msgstr "您要登录的 {productName} 实例的网址。"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:134
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:135
 msgid "The username <0>{fluxerTag}</0> is already taken. Continuing will reroll your tag automatically."
 msgstr "用户名 <0>{fluxerTag}</0> 已被占用。继续操作将自动重新生成你的标签。"
 
@@ -32383,10 +32392,6 @@ msgstr "目前没有应用内订阅方式，请通过本地银行卡支付。"
 #: src/features/user/components/modals/tabs/privacy_safety_tab/data_request_modal/DataRequestModal.tsx:125
 msgid "There is no recovery once this starts. We will DM you when it finishes."
 msgstr "此操作无法撤销。完成后我们会私信通知您。"
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:54
-msgid "There was an error loading the cast for this community. Try again."
-msgstr ""
 
 #: src/features/channel/components/modals/channel_tabs/ChannelInvitesTab.tsx:271
 msgid "There was an error loading the invite links for this channel. Try again."
@@ -32586,10 +32591,6 @@ msgstr "此兑换码无效或已被使用。"
 #: src/features/gift/commands/GiftCommands.tsx:40
 msgid "This code was already redeemed."
 msgstr "此兑换码已被使用。"
-
-#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:71
-msgid "This community doesn't have any cast characters mapped to it yet."
-msgstr ""
 
 #: src/features/guild/components/modals/guild_tabs/GuildInvitesTab.tsx:102
 msgid "This community doesn't have any invite links yet. Go to a channel and create an invite to invite people."
@@ -33658,12 +33659,12 @@ msgid "Track moderator actions across the community."
 msgstr "追踪社区内的管理员操作。"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:135
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:159
 msgid "Tracking"
 msgstr "追踪"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:139
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:163
 msgid "Tracking parameters"
 msgstr "跟踪参数"
 
@@ -33696,7 +33697,7 @@ msgstr "已将所有权转让给 {0}。"
 #. Generic action label that translates a message body.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:583
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:231
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:255
 msgid "Translate"
 msgstr "翻译"
 
@@ -33715,12 +33716,12 @@ msgid "Translations are automated. Help improve localization by emailing <0>{I18
 msgstr "翻译由机器自动完成。发送邮件至<0>{I18N_EMAIL}</0>，帮助我们改进本地化。"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:223
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:247
 msgid "Translator"
 msgstr "翻译"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:227
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:251
 msgid "Translators"
 msgstr "翻译人员"
 
@@ -33777,14 +33778,14 @@ msgstr "是或否"
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Short label in the links tab. Keep it concise.
 #: src/features/user/components/modals/tabs/chat_settings_tab/ChatSettingsTabLinksTab.tsx:27
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:175
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:199
 msgid "Trust all"
 msgstr "全部信任"
 
 #. Label in the links tab.
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #: src/features/user/components/modals/tabs/chat_settings_tab/ChatSettingsTabLinksTab.tsx:39
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:171
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:195
 msgid "Trust all external links"
 msgstr "信任所有外部链接"
 
@@ -33794,17 +33795,17 @@ msgid "Trust all external links?"
 msgstr "信任所有外部链接？"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:179
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:203
 msgid "Trust all links"
 msgstr "信任所有链接"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:187
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:211
 msgid "Trust domain"
 msgstr "信任域"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:183
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:207
 msgid "Trusted domains"
 msgstr "信任的域名"
 
@@ -34031,7 +34032,7 @@ msgstr "开启直播隐私模式"
 #. Label in the input tab.
 #. Settings search entry label. Names the settings search entry in the settings UI.
 #: src/features/user/components/modals/tabs/chat_settings_tab/ChatSettingsTabInputTab.tsx:10
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:339
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:363
 msgid "Turn text smileys into emoji"
 msgstr "启用文本表情符号转换为表情符号"
 
@@ -35888,7 +35889,7 @@ msgstr "用户、机器人或Webhook"
 #. Settings search entry label. Also used as a search synonym in the settings search bar.
 #: src/features/app/components/setup/SetupWizardSteps.tsx:952
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:567
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:217
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:218
 #: src/features/user/components/modals/tabs/my_profile_tab/MyProfileTabUsernameSection.tsx:55
 #: src/features/user/components/settings_utils/search_index/MyProfileIndex.ts:53
 msgid "Username"
@@ -35900,7 +35901,7 @@ msgid "Username (optional)"
 msgstr "用户名（可选）"
 
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:39
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:40
 msgid "Username already taken"
 msgstr "用户名已被占用"
 
@@ -35930,11 +35931,11 @@ msgid "Username must be at most 32 characters"
 msgstr "用户名最多32个字符"
 
 #. Short label in the FluxerTag change modal. Keep it concise.
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:43
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:44
 msgid "Username updated"
 msgstr "用户名已更新"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:210
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:211
 msgid "Usernames can only contain letters (a-z, A-Z), numbers (0-9), and underscores. Usernames are case-insensitive."
 msgstr "用户名只能包含字母（a-z, A-Z）、数字（0-9）和下划线。用户名不区分大小写。"
 
@@ -36035,7 +36036,7 @@ msgid "Vanity URL"
 msgstr "自定义邀请链接"
 
 #. Community settings tab for the community vanity/custom invite link.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:79
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:71
 msgctxt "community-settings-tab"
 msgid "Vanity URL"
 msgstr "自定义网址"
@@ -37342,7 +37343,7 @@ msgid "Web authentication"
 msgstr "网页认证"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:211
+#: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:235
 msgid "Web search"
 msgstr "网页搜索"
 
@@ -37415,7 +37416,7 @@ msgid "Webhooks"
 msgstr "Webhook"
 
 #. Community settings tab for configuring webhooks.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:74
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:66
 msgctxt "community-settings-tab"
 msgid "Webhooks"
 msgstr "Webhook"
@@ -38211,11 +38212,11 @@ msgstr "你无法移除此权限，因为它会把你自己的权限也移除"
 msgid "You changed your nickname in this community from **{previousNickname}** to **{newNickname}**."
 msgstr "你在此社群中的昵称已从\"**{previousNickname}**\"更改为\"**{newNickname}**\"。"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:362
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:367
 msgid "You changed your tag while on {PREMIUM_PRODUCT_NAME}. It will reroll randomly when your {PREMIUM_PRODUCT_NAME} expires on <0>{premiumExpiresAtLabel}</0>, unless it renews."
 msgstr "您在{PREMIUM_PRODUCT_NAME}期间更改了标签。除非续订，否则当您的{PREMIUM_PRODUCT_NAME}在<0>{premiumExpiresAtLabel}</0>到期时，标签将随机重新生成。"
 
-#: src/features/user/components/modals/FluxerTagChangeModal.tsx:369
+#: src/features/user/components/modals/FluxerTagChangeModal.tsx:374
 msgid "You changed your tag while on {PREMIUM_PRODUCT_NAME}. It will reroll randomly when your {PREMIUM_PRODUCT_NAME} expires, unless it renews."
 msgstr "您在{PREMIUM_PRODUCT_NAME}期间更改了标签。除非续订，否则您的{PREMIUM_PRODUCT_NAME}到期后，标签将随机重新生成。"
 

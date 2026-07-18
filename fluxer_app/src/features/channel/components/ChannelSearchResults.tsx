@@ -144,6 +144,22 @@ export const ChannelSearchResults = observer(
 			}
 			return grouped;
 		}, [successResults]);
+		// Consecutive same-channel runs, preserving the sort order returned by the search.
+		// Unlike `messagesByChannel`, this isn't a full channel grouping — a channel's messages
+		// can appear in more than one non-contiguous run when interleaved with other channels'
+		// messages by timestamp/relevance.
+		const searchResultRuns = useMemo(() => {
+			const runs: Array<{channelId: string; messages: Array<Message>}> = [];
+			for (const message of successResults) {
+				const lastRun = runs[runs.length - 1];
+				if (lastRun && lastRun.channelId === message.channelId) {
+					lastRun.messages.push(message);
+				} else {
+					runs.push({channelId: message.channelId, messages: [message]});
+				}
+			}
+			return runs;
+		}, [successResults]);
 		const onCopySelectedMessages = useMessageSelectionCopyForMessages<HTMLDivElement>(successResults);
 		const spammerOverrideVersion = LocalUserSpamOverride.version;
 		const collapsedMessageVisibility = useMemo(
@@ -606,7 +622,7 @@ export const ChannelSearchResults = observer(
 								data-message-selection-root="true"
 								data-flx="channel.channel-search-results.render-content.results-scroller"
 							>
-								{Array.from(messagesByChannel.entries()).map(([resultChannelId, messages]) => {
+								{searchResultRuns.map(({channelId: resultChannelId, messages}, runIndex) => {
 									const renderData = getSearchResultChannelRenderData(
 										resultChannelId,
 										searchChannelsById,
@@ -649,7 +665,7 @@ export const ChannelSearchResults = observer(
 										</div>
 									);
 									return (
-										<React.Fragment key={resultChannelId}>
+										<React.Fragment key={`${resultChannelId}-${runIndex}`}>
 											<MessageContextPrefix
 												channel={messageChannel}
 												showGuildMeta={showGuildMeta}
@@ -725,7 +741,7 @@ export const ChannelSearchResults = observer(
 			handlePaginationJump,
 			onCopySelectedMessages,
 			collapsedMessageVisibility,
-			messagesByChannel,
+			searchResultRuns,
 			searchChannelsById,
 			revealedGroupKeys,
 			handleCollapsedGroupRevealChange,

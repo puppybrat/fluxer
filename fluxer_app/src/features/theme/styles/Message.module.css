@@ -73,12 +73,24 @@
 }
 
 :global(:where(html.window-focused, html.unfocused-fully-interactive):not(.window-focus-activation-guard))
-	.message.messageHovered:not(.messageMentioned):not(.messageReplying):not(.messageHighlight):not(.messagePreview),
+	.message.messageHovered:not(.messageMentioned):not(.messageReplying):not(.messageHighlight):not(
+		.messagePreview
+	):not(.messageSelectRange),
 :global(:where(html.window-focused, html.unfocused-fully-interactive):not(.window-focus-activation-guard))
 	.messageCompact.messageHovered:not(.messageMentioned):not(.messageReplying):not(.messageHighlight):not(
 		.messagePreview
-	) {
+	):not(.messageSelectRange) {
 	background-color: var(--background-modifier-hover);
+}
+
+/* LOCAL-ONLY: select-mode relocation range highlight — exclude from upstream sync. */
+:global(:where(html.window-focused, html.unfocused-fully-interactive):not(.window-focus-activation-guard))
+	.message.messageSelectRange.messageHovered:not(.messageMentioned):not(.messageReplying):not(.messageHighlight),
+:global(:where(html.window-focused, html.unfocused-fully-interactive):not(.window-focus-activation-guard))
+	.messageCompact.messageSelectRange.messageHovered:not(.messageMentioned):not(.messageReplying):not(
+		.messageHighlight
+	) {
+	background-color: var(--background-modifier-selected);
 }
 
 :global(:where(html.window-focused, html.unfocused-fully-interactive):not(.window-focus-activation-guard))
@@ -320,6 +332,12 @@
 .messageReplying:not(.messageMentioned),
 .messageHighlight:not(.messageMentioned) {
 	background-color: var(--message-reply-bg);
+	transition: background-color var(--message-transition-highlight);
+}
+
+/* LOCAL-ONLY: select-mode relocation range highlight — exclude from upstream sync. */
+.messageSelectRange:not(.messageMentioned):not(.messageReplying):not(.messageHighlight) {
+	background-color: var(--background-modifier-selected);
 	transition: background-color var(--message-transition-highlight);
 }
 

@@ -8,6 +8,8 @@ import {MessageActionBottomSheet} from '@app/features/channel/components/Message
 import {requestDeleteMessage} from '@app/features/channel/components/MessageActionUtils';
 import {MessageViewContextProvider} from '@app/features/channel/components/MessageViewContext';
 import type {Channel} from '@app/features/channel/models/Channel';
+// LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
+import SelectMode from '@app/features/channel/state/SelectMode';
 import DeveloperOptions from '@app/features/devtools/state/DeveloperOptions';
 import {parse} from '@app/features/messaging/components/markdown/renderers';
 import {MarkdownContext} from '@app/features/messaging/components/markdown/renderers/RendererTypes';
@@ -398,6 +400,44 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 		},
 		[i18n, message],
 	);
+	// LOCAL-ONLY: SelectMode click-to-select handling — exclude from upstream sync.
+	// Returns true if the click was consumed by select mode, so the caller can skip other row click behavior.
+	const handleSelectModeClick = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>): boolean => {
+			if (!SelectMode.isActive || SelectMode.channelId !== channel.id) {
+				return false;
+			}
+			if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) {
+				return false;
+			}
+			const target = event.target;
+			if (target instanceof Element && target.closest('a, button, [role="button"], input, textarea, [data-user-id]')) {
+				return false;
+			}
+			const selection = window.getSelection();
+			if (selection && selection.toString().length > 0) {
+				return false;
+			}
+			event.preventDefault();
+			if (SelectMode.anchorId == null || SelectMode.headId != null) {
+				SelectMode.setAnchor(message.id);
+			} else {
+				SelectMode.setHead(message.id);
+			}
+			return true;
+		},
+		[channel.id, message.id],
+	);
+	// LOCAL-ONLY: SelectMode click-to-select handling — exclude from upstream sync.
+	const handleRowClick = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>) => {
+			if (handleSelectModeClick(event)) {
+				return;
+			}
+			handleAltClick(event);
+		},
+		[handleSelectModeClick, handleAltClick],
+	);
 	const handleContextMenu = useCallback(
 		(event: React.MouseEvent) => {
 			if (behaviorOverrides?.disableContextMenu) {
@@ -780,6 +820,18 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 		astNodes.length === 1 &&
 		astNodes[0].type === NodeType.Link &&
 		!message.suppressEmbeds;
+	// LOCAL-ONLY: SelectMode range highlight — exclude from upstream sync.
+	const isInSelectRange = useMemo(() => {
+		if (!SelectMode.isActive || SelectMode.channelId !== channel.id) {
+			return false;
+		}
+		const {startMessageId, endMessageId} = SelectMode;
+		if (startMessageId == null || endMessageId == null) {
+			return false;
+		}
+		const mid = BigInt(message.id);
+		return mid >= BigInt(startMessageId) && mid <= BigInt(endMessageId);
+	}, [channel.id, message.id, SelectMode.isActive, SelectMode.channelId, SelectMode.startMessageId, SelectMode.endMessageId]);
 	const shouldDisableHoverBackground = (prefersReducedMotion && !isEditing) || readonlyPreview;
 	const isKeyboardFocused = keyboardModeEnabled && isFocusedWithin;
 	const shouldApplySpacing = !shouldGroup && !removeTopSpacing && previewContext !== MessagePreviewContext.LIST_POPOUT;
@@ -815,6 +867,8 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 				isKeyboardFocused && styles.keyboardFocused,
 				isKeyboardFocused && 'keyboard-focus-active',
 				shouldApplySpacing && previewContext && styles.messagePreviewSpacing,
+				// LOCAL-ONLY: SelectMode range highlight — exclude from upstream sync.
+				!previewContext && isInSelectRange && styles.messageSelectRange,
 			),
 		[
 			messageDisplayCompact,
@@ -836,6 +890,7 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 			shouldHideContent,
 			isKeyboardFocused,
 			shouldApplySpacing,
+			isInSelectRange,
 		],
 	);
 	const shouldShowActionBar = useMemo(
@@ -897,7 +952,7 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 					className={messageClasses}
 					ref={messageRef}
 					onClickCapture={handleClickCapture}
-					onClick={handleAltClick}
+					onClick={handleRowClick}
 					onKeyDown={handleAltKeyDown}
 					onFocus={handleFocusWithin}
 					onBlur={handleBlurWithin}
@@ -907,7 +962,7 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 					onTouchMove={handleLongPressMove}
 					onTouchCancel={handleLongPressEnd}
 					style={articleStyle}
-					data-flx="channel.message.article.alt-click"
+					data-flx="channel.message.article.row-click"
 				>
 					{messageComponent}
 					{shouldRenderInlineActionBar &&

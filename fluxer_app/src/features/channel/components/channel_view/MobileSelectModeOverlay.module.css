@@ -1,0 +1,32 @@
+/*
+ * LOCAL-ONLY: Styles for the mobile SelectMode panel overlay — a local-only addition to
+ * fluxer_app. Exclude from any upstream sync.
+ */
+
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+.backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 30;
+	margin: 0;
+	border: none;
+	padding: 0;
+	background-color: rgba(0, 0, 0, 0.4);
+	cursor: default;
+}
+
+.panel {
+	position: fixed;
+	top: 4rem;
+	right: 0;
+	bottom: 0;
+	z-index: 31;
+	width: 264px;
+	transform: translateX(100%);
+	transition: transform 250ms ease;
+}
+
+.panelOpen {
+	transform: translateX(0);
+}
