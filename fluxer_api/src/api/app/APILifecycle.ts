@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {randomUUID} from 'node:crypto';
+import {initCastClient, shutdownCastClient} from '@pkgs/cast_client/src/CastClient';
 import {initCassandra, shutdownCassandra} from '@pkgs/cassandra/src/Client';
 import {ensureGeoipDatabaseOnStartup} from '@pkgs/geoip/src/GeoipStartup';
 import {JetStreamConnectionManager} from '@pkgs/nats/src/JetStreamConnectionManager';
@@ -171,6 +172,8 @@ export function createInitializer(config: APIConfig, logger: ILogger): () => Pro
 			logger.info('Profile substring blocklist cache initialized');
 			await initializeServiceSingletons();
 			logger.info('Service singletons initialized');
+			initCastClient({apiUrl: config.cast.apiUrl ?? '', apiSecret: config.cast.apiSecret ?? ''});
+			logger.info({configured: Boolean(config.cast.apiUrl)}, 'Cast client initialized');
 			await refreshRiskCache(logger, 'startup');
 			startRiskCacheRefreshLoop(logger);
 			if (!config.dev.testModeEnabled) {
@@ -284,6 +287,12 @@ export function createShutdown(logger: ILogger): () => Promise<void> {
 			logger.info('Search service shut down');
 		} catch (error) {
 			logger.error({error}, 'Error shutting down search service');
+		}
+		try {
+			shutdownCastClient();
+			logger.info('Cast client shut down');
+		} catch (error) {
+			logger.error({error}, 'Error shutting down cast client');
 		}
 		try {
 			stopRiskCacheRefreshLoop();

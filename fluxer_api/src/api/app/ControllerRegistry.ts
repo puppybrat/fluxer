@@ -5,6 +5,7 @@ import {AuthController} from '../auth/AuthController';
 import {BlueskyOAuthController} from '../bluesky/BlueskyOAuthController';
 import {Config} from '../Config';
 import {CanaryTesterController} from '../canary_tester/CanaryTesterController';
+import {CastController} from '../cast/CastController';
 import {ChannelController} from '../channel/ChannelController';
 import type {APIConfig} from '../config/APIConfig';
 import {ConnectionController} from '../connection/ConnectionController';
@@ -59,6 +60,7 @@ export function registerControllers(routes: HonoApp, config: APIConfig): void {
 	ReadStateController(routes);
 	ReportController(routes);
 	GuildController(routes);
+	CastController(routes);
 	SearchController(routes);
 	GifController(routes);
 	ThemeController(routes);

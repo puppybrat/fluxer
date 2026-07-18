@@ -31,6 +31,7 @@
 		"@fluxer/snowflake": "workspace:*",
 		"@pkgs/cache": "workspace:*",
 		"@pkgs/captcha": "workspace:*",
+		"@pkgs/cast_client": "workspace:*",
 		"@pkgs/cassandra": "workspace:*",
 		"@pkgs/elasticsearch_search": "workspace:*",
 		"@pkgs/email": "workspace:*",

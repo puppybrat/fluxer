@@ -1,0 +1,224 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import {createHttpClient} from '@pkgs/http_client/src/HttpClient';
+import type {HttpClient} from '@pkgs/http_client/src/HttpClientTypes';
+import {createPublicInternetRequestUrlPolicy} from '@pkgs/http_client/src/PublicInternetRequestUrlPolicy';
+import {z} from 'zod';
+
+const CAST_SECRET_HEADER = 'X-Fluxer-Cast-Secret';
+const DEFAULT_TIMEOUT_MS = 5_000;
+const DEFAULT_CACHE_TTL_MS = 60_000;
+const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Wire shape returned by the personal site's fluxer-cast.php endpoint.
+ *
+ * This is the *external* contract and is deliberately permissive: unknown columns are
+ * stripped rather than rejected, so adding a column on the PHP side cannot break Fluxer.
+ * Only the fields Fluxer actually consumes are declared. The trimmed shape Fluxer exposes
+ * to its own clients lives in @fluxer/schema/src/domains/cast/CastSchemas.
+ */
+const CastCharacterPayload = z.object({
+	id: z.union([z.string(), z.number()]),
+	name: z.string().nullish(),
+	alias: z.string().nullish(),
+	ship: z.string().nullish(),
+});
+
+const CastPrimaryPayload = z.object({
+	character_id: z.union([z.string(), z.number()]),
+	server_id: z.union([z.string(), z.number()]).nullish(),
+	channel_id: z.union([z.string(), z.number()]).nullish(),
+	is_primary: z.union([z.boolean(), z.number(), z.string()]).nullish(),
+});
+
+const CastCategoryPayload = z.object({
+	id: z.union([z.string(), z.number()]).nullish(),
+	pair_slug: z.string().nullish(),
+	au_slug: z.string().nullish(),
+	server_id: z.union([z.string(), z.number()]).nullish(),
+	category_id: z.union([z.string(), z.number()]).nullish(),
+});
+
+const CastResponsePayload = z.object({
+	characters: z.array(CastCharacterPayload).default([]),
+	primaries: z.array(CastPrimaryPayload).default([]),
+	categories: z.array(CastCategoryPayload).default([]),
+});
+
+export type CastPayload = z.infer<typeof CastResponsePayload>;
+
+/**
+ * Why a discriminated union rather than a boolean:
+ * the caller needs to distinguish "the personal site is down" (retryable, log-worthy)
+ * from "this deployment has no Cast configured" (expected, silent) from "the endpoint
+ * returned something we cannot parse" (a deploy skew bug worth alerting on). Collapsing
+ * these to a single flag is the antipattern this client exists to avoid.
+ */
+export type CastFetchFailure =
+	| {kind: 'not_configured'}
+	| {kind: 'network'; detail: string}
+	| {kind: 'http_status'; status: number}
+	| {kind: 'malformed_json'; detail: string}
+	| {kind: 'invalid_shape'; detail: string};
+
+export type CastFetchResult = {ok: true; data: CastPayload; cached: boolean} | {ok: false; failure: CastFetchFailure};
+
+export interface CastClientConfig {
+	apiUrl: string;
+	apiSecret: string;
+	timeoutMs?: number;
+	cacheTtlMs?: number;
+}
+
+interface CacheEntry {
+	data: CastPayload;
+	expiresAt: number;
+}
+
+/**
+ * Short-TTL in-memory cache, keyed by server_id.
+ *
+ * ASSUMPTION: this is burst protection, not correctness-critical caching. A cast edit on
+ * the personal site may take up to the TTL to appear in Fluxer, and that is acceptable.
+ * The cache is per-process and deliberately unbounded-in-time only by TTL: the key space
+ * is the set of guilds with Cast configured, which is small. Do not extend this into a
+ * read-through cache for anything where staleness matters.
+ */
+export class CastClient {
+	private readonly cache = new Map<string, CacheEntry>();
+	private readonly http: HttpClient;
+	private readonly timeoutMs: number;
+	private readonly cacheTtlMs: number;
+
+	constructor(private readonly config: CastClientConfig) {
+		this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+		this.cacheTtlMs = config.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
+		this.http = createHttpClient({
+			userAgent: 'fluxer-api',
+			defaultTimeoutMs: this.timeoutMs,
+			requestUrlPolicy: createPublicInternetRequestUrlPolicy(),
+		});
+	}
+
+	isConfigured(): boolean {
+		return this.config.apiUrl.length > 0 && this.config.apiSecret.length > 0;
+	}
+
+	clearCache(): void {
+		this.cache.clear();
+	}
+
+	/**
+	 * Fetches Cast data for a server. Never throws: every failure path is returned as a
+	 * typed failure so a personal-site outage can never take down an API request.
+	 *
+	 * An unmapped server is NOT a failure — the endpoint returns 200 with empty arrays and
+	 * that is passed through as a normal success result.
+	 */
+	async fetchForServer(serverId: string): Promise<CastFetchResult> {
+		if (!this.isConfigured()) {
+			return {ok: false, failure: {kind: 'not_configured'}};
+		}
+
+		const cached = this.cache.get(serverId);
+		if (cached && cached.expiresAt > Date.now()) {
+			return {ok: true, data: cached.data, cached: true};
+		}
+
+		let status: number;
+		let body: string;
+		try {
+			const url = new URL(this.config.apiUrl);
+			url.searchParams.set('server_id', serverId);
+			const response = await this.http.sendRequest({
+				url: url.toString(),
+				method: 'GET',
+				headers: {[CAST_SECRET_HEADER]: this.config.apiSecret, Accept: 'application/json'},
+				timeout: this.timeoutMs,
+				serviceName: 'cast',
+			});
+			status = response.status;
+			body = await this.readBody(response.stream);
+		} catch (error) {
+			return {ok: false, failure: {kind: 'network', detail: errorDetail(error)}};
+		}
+
+		if (status < 200 || status >= 300) {
+			return {ok: false, failure: {kind: 'http_status', status}};
+		}
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(body);
+		} catch (error) {
+			return {ok: false, failure: {kind: 'malformed_json', detail: errorDetail(error)}};
+		}
+
+		const result = CastResponsePayload.safeParse(parsed);
+		if (!result.success) {
+			return {ok: false, failure: {kind: 'invalid_shape', detail: result.error.issues[0]?.message ?? 'unknown'}};
+		}
+
+		this.cache.set(serverId, {data: result.data, expiresAt: Date.now() + this.cacheTtlMs});
+		return {ok: true, data: result.data, cached: false};
+	}
+
+	private async readBody(stream: ReadableStream<Uint8Array> | null): Promise<string> {
+		if (!stream) {
+			return '';
+		}
+		const reader = stream.getReader();
+		const chunks: Array<Uint8Array> = [];
+		let total = 0;
+		try {
+			while (true) {
+				const {done, value} = await reader.read();
+				if (done) {
+					break;
+				}
+				if (!value) {
+					continue;
+				}
+				total += value.byteLength;
+				if (total > MAX_RESPONSE_BYTES) {
+					await reader.cancel().catch(() => {});
+					throw new Error(`cast response exceeded ${MAX_RESPONSE_BYTES} bytes`);
+				}
+				chunks.push(value);
+			}
+		} finally {
+			reader.releaseLock();
+		}
+		const merged = new Uint8Array(total);
+		let offset = 0;
+		for (const chunk of chunks) {
+			merged.set(chunk, offset);
+			offset += chunk.byteLength;
+		}
+		return new TextDecoder().decode(merged);
+	}
+}
+
+function errorDetail(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+let defaultClient: CastClient | null = null;
+
+export function initCastClient(config: CastClientConfig): CastClient {
+	defaultClient = new CastClient(config);
+	return defaultClient;
+}
+
+export function getCastClient(): CastClient {
+	if (!defaultClient) {
+		throw new Error('Cast client accessed before initCastClient()');
+	}
+	return defaultClient;
+}
+
+export function shutdownCastClient(): void {
+	defaultClient?.clearCache();
+	defaultClient = null;
+}

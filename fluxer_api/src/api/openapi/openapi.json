@@ -7318,6 +7318,82 @@
 				]
 			}
 		},
+		"/guilds/{guild_id}/cast": {
+			"get": {
+				"operationId": "get_guild_cast",
+				"summary": "Get guild cast",
+				"tags": ["Guilds"],
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/CastResponse"}}}
+					},
+					"400": {
+						"description": "Bad Request - The request was malformed or contained invalid data",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"401": {
+						"description": "Unauthorized - Authentication is required or the token is invalid",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"403": {
+						"description": "Forbidden - You do not have permission to perform this action",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"429": {
+						"description": "Too Many Requests - You are being rate limited",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"code": {"type": "string", "enum": ["RATE_LIMITED"]},
+										"message": {"type": "string"},
+										"retry_after": {"type": "number", "description": "Seconds to wait before retrying"},
+										"global": {"type": "boolean", "description": "Whether this is a global rate limit"}
+									},
+									"required": ["code", "message", "retry_after"]
+								}
+							}
+						},
+						"headers": {
+							"Retry-After": {
+								"description": "Number of seconds to wait before retrying (only on 429)",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Limit": {
+								"description": "The number of requests that can be made in the current window",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Remaining": {
+								"description": "The number of remaining requests that can be made",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Reset": {
+								"description": "Unix timestamp when the rate limit resets",
+								"schema": {"type": "integer"}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal Server Error - An unexpected error occurred",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					}
+				},
+				"x-mint": {"metadata": {"title": "Get guild cast"}},
+				"description": "Get the cast characters, primary assignments and category mappings for a guild. Returns empty arrays when the guild has no cast configured.",
+				"security": [{"botToken": []}, {"sessionToken": []}],
+				"parameters": [
+					{
+						"name": "guild_id",
+						"in": "path",
+						"required": true,
+						"schema": {"$ref": "#/components/schemas/SnowflakeType"},
+						"description": "The ID of the guild"
+					}
+				]
+			}
+		},
 		"/guilds/{guild_id}/channels": {
 			"get": {
 				"operationId": "list_guild_channels",
@@ -30675,6 +30751,70 @@
 						"description": "Duration of the ban in seconds (0 for permanent, or between 60 and 63072000 seconds for a temporary ban)"
 					}
 				}
+			},
+			"CastResponse": {
+				"type": "object",
+				"properties": {
+					"characters": {
+						"type": "array",
+						"items": {"$ref": "#/components/schemas/CastCharacterResponse"},
+						"description": "Characters available for this guild"
+					},
+					"primaries": {
+						"type": "array",
+						"items": {"$ref": "#/components/schemas/CastPrimaryResponse"},
+						"description": "Primary character assignments for this guild"
+					},
+					"categories": {
+						"type": "array",
+						"items": {"$ref": "#/components/schemas/CastCategoryResponse"},
+						"description": "Category to pair/AU mappings for this guild"
+					}
+				},
+				"required": ["characters", "primaries", "categories"]
+			},
+			"CastCharacterResponse": {
+				"type": "object",
+				"properties": {
+					"id": {"type": "string", "description": "The external identifier for this character"},
+					"name": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The display name of this character"
+					},
+					"alias": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "An alternate name for this character"
+					},
+					"ship": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "The ship this character belongs to"}
+				},
+				"required": ["id", "name", "alias", "ship"]
+			},
+			"CastPrimaryResponse": {
+				"type": "object",
+				"properties": {
+					"character_id": {"type": "string", "description": "The character this primary assignment refers to"},
+					"channel_id": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The channel this character is primary in, if channel-scoped"
+					},
+					"is_primary": {"type": "boolean", "description": "Whether this character is primary for the scope"}
+				},
+				"required": ["character_id", "channel_id", "is_primary"]
+			},
+			"CastCategoryResponse": {
+				"type": "object",
+				"properties": {
+					"pair_slug": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The pair this category belongs to"
+					},
+					"au_slug": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The alternate universe this category belongs to"
+					},
+					"category_id": {"type": "string", "description": "The channel category this mapping applies to"}
+				},
+				"required": ["pair_slug", "au_slug", "category_id"]
 			},
 			"ChannelCreateRequest": {
 				"oneOf": [
