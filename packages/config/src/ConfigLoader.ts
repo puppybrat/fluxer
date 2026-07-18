@@ -231,6 +231,10 @@ function defaultConfig(): MasterConfig {
 			youtube: {
 				api_key: '',
 			},
+			cast: {
+				api_url: '',
+				api_secret: '',
+			},
 			bunny: {
 				purge_enabled: false,
 				api_key: '',

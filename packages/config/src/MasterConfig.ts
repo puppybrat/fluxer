@@ -271,6 +271,10 @@ export interface MasterConfig {
 		youtube: {
 			api_key: string;
 		};
+		cast: {
+			api_url: string;
+			api_secret: string;
+		};
 		bunny: {
 			purge_enabled: boolean;
 			api_key: string;

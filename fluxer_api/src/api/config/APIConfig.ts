@@ -283,6 +283,10 @@ export interface APIConfig {
 	youtube: {
 		apiKey?: string;
 	};
+	cast: {
+		apiUrl?: string;
+		apiSecret?: string;
+	};
 	instance: {
 		selfHosted: boolean;
 		autoJoinInviteCode?: string;

@@ -281,6 +281,8 @@ const NAMED_FLUXER_ENV_OVERRIDES: Record<string, NamedEnvOverride> = {
 	FLUXER_GIF_PROVIDER: {path: ['integrations', 'gif', 'provider']},
 	FLUXER_KLIPY_API_KEY: {path: ['integrations', 'klipy', 'api_key']},
 	FLUXER_TENOR_API_KEY: {path: ['integrations', 'tenor', 'api_key']},
+	FLUXER_CAST_API_URL: {path: ['integrations', 'cast', 'api_url']},
+	FLUXER_CAST_API_SECRET: {path: ['integrations', 'cast', 'api_secret']},
 	FLUXER_YOUTUBE_API_KEY: {path: ['integrations', 'youtube', 'api_key']},
 	FLUXER_BUNNY_PURGE_ENABLED: {path: ['integrations', 'bunny', 'purge_enabled'], parse: parseEnvValue},
 	FLUXER_BUNNY_API_KEY: {path: ['integrations', 'bunny', 'api_key']},

@@ -372,6 +372,10 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		youtube: {
 			apiKey: master.integrations.youtube.api_key,
 		},
+		cast: {
+			apiUrl: master.integrations.cast.api_url,
+			apiSecret: master.integrations.cast.api_secret,
+		},
 		instance: {
 			selfHosted: master.instance.self_hosted,
 			autoJoinInviteCode: master.instance.auto_join_invite_code,
