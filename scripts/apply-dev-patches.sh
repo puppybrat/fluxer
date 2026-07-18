@@ -3,89 +3,33 @@
 #
 # Reapplies the working-tree-only dev patches this VPS needs.
 #
-# These patches are deliberately never committed (they would break production
-# builds), which means they do not survive a branch switch, rebase, or
-# `git restore`. Losing one silently broke the fluxer-dev.obyr.us gateway
-# handshake on 2026-07-18; this script exists so recovery is one command
-# instead of an investigation.
+# There are currently NO patches to apply. Both original ones are gone:
 #
-# The GatewayCompression patch that motivated this script was removed once
-# upstream adopted the same dev-mode behaviour in getPreferredCompression().
+#   GatewayCompression.ts — removed once upstream adopted the same dev-mode
+#   behaviour in getPreferredCompression(), making the patch a permanent no-op.
 #
-# Idempotent: every patch checks its own state first, so running this twice is
-# a no-op. It never touches git — leaving the edits uncommitted is the point.
+#   rspack.config.mjs (localIdentName '[local]') — removed because it is
+#   actively harmful, not merely obsolete. Dropping the [name]__ prefix and
+#   [hash] suffix collapses every CSS module's classes into bare names, and at
+#   this codebase's size they collide en masse: the 2026-07-18 build had 121
+#   distinct `.container` rules in main.css alone, all resolving to one class.
+#   Last-rule-wins then silently overwrites most component layout, which is what
+#   rendered fluxer-dev.obyr.us without its server rail or channel list styling.
+#   CSS collisions raise no console errors, so it presents as inexplicable
+#   visual breakage. Readable devtools class names are not worth that.
+#
+# The script is kept as the documented home for any future working-tree-only
+# patch, and as a record of why these two are not coming back. If you add one,
+# follow the old shape: a function that checks its own state first so the script
+# stays idempotent, and never touch git — leaving the edits uncommitted is the
+# point, since committing them would break production builds.
 #
 # Usage: scripts/apply-dev-patches.sh
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-RSPACK_CONFIG="$REPO_ROOT/fluxer_app/rspack.config.mjs"
-
-applied=()
-skipped=()
-
-fail() {
-	echo "ERROR: $*" >&2
-	exit 1
-}
-
-# Patch 1 — readable CSS class names in devtools.
-#
-# Uses plain [local] in development instead of the hashed name, so devtools
-# shows `container` rather than `SelectModePanel.module__container___ZjAxND`.
-# Production is unaffected: isProduction keeps the hashed form. Applies to both
-# the css/module and css/auto generator entries.
-patch_rspack_local_ident_name() {
-	[[ -f "$RSPACK_CONFIG" ]] || fail "not found: $RSPACK_CONFIG"
-
-	if grep -q "localIdentName: isProduction ?" "$RSPACK_CONFIG"; then
-		echo "  rspack.config.mjs         already applied — skipped"
-		skipped+=("rspack.config.mjs")
-		return
-	fi
-
-	grep -q "isProduction" "$RSPACK_CONFIG" ||
-		fail "rspack.config.mjs has no isProduction binding — refusing to patch"
-
-	sed -i "s/localIdentName: '\[name\]__\[local\]___\[hash:base64:6\]'/localIdentName: isProduction ? '[name]__[local]___[hash:base64:6]' : '[local]'/g" "$RSPACK_CONFIG"
-
-	local count
-	count="$(grep -c "localIdentName: isProduction ?" "$RSPACK_CONFIG" || true)"
-	[[ "$count" == "2" ]] ||
-		fail "rspack.config.mjs: expected 2 patched localIdentName entries (css/module, css/auto), found $count"
-
-	echo "  rspack.config.mjs         applied"
-	applied+=("rspack.config.mjs")
-}
-
 echo "Applying dev-only working-tree patches..."
 echo
-patch_rspack_local_ident_name
+echo "  no patches are currently defined — nothing to do"
 echo
-echo "Summary: ${#applied[@]} applied, ${#skipped[@]} already present"
-
-if [[ ${#applied[@]} -gt 0 ]]; then
-	echo
-	echo "Applied:"
-	for name in "${applied[@]}"; do echo "  - $name"; done
-	echo
-	echo "Files modified (left uncommitted, as intended):"
-	for name in "${applied[@]}"; do
-		case "$name" in
-			rspack.config.mjs) echo "  $RSPACK_CONFIG" ;;
-		esac
-	done
-	echo
-	echo "Rebuild for changes to take effect:"
-	echo "  cd $REPO_ROOT/fluxer_app && rspack build --mode development --watch"
-	echo "  cd ~/fluxer && docker compose restart app-proxy-dev"
-fi
-
-if [[ ${#skipped[@]} -gt 0 ]]; then
-	echo
-	echo "Already present (no change):"
-	for name in "${skipped[@]}"; do echo "  - $name"; done
-fi
+echo "See the comment at the top of this file for why the previous two were removed."
