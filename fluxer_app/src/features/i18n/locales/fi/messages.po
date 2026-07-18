@@ -10,8 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "PO-Revision-Date: 2026-07-09 00:18+0000\n"
 "Last-Translator: Hampus <hampus@fluxer.com>\n"
-"Language-Team: Finnish <https://weblate.fluxer.tools/projects/fluxer/app/fi/>"
-"\n"
+"Language-Team: Finnish <https://weblate.fluxer.tools/projects/fluxer/app/fi/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #. Description text in the messages tab.
@@ -294,7 +293,7 @@ msgid "{channelHeading}, {mentionCount} mentions"
 msgstr "{channelHeading}, {mentionCount} mainintaa"
 
 #. Short label in the channel layout. Keep it concise. Preserve {channelName}; it is inserted by code.
-#: src/features/channel/components/ChannelLayout.tsx:17
+#: src/features/channel/components/ChannelLayout.tsx:20
 msgid "{channelName} channel"
 msgstr "Kanava {channelName}"
 
@@ -319,9 +318,7 @@ msgstr "{communityName} on tällä hetkellä vain {productName}-henkilöstön j�
 #. Displayed value for the voice channel participant limit slider. ∞ is the infinity symbol.
 #: src/features/channel/components/modals/channel_tabs/channel_overview_tab/VoiceSettings.tsx:43
 msgid "{count, plural, =0 {∞ No limit} one {# participant} other {# participants}}"
-msgstr ""
-"{count, plural, =0 {∞ Ei rajoitusta} one {# osallistuja} other {# "
-"osallistujaa}}"
+msgstr "{count, plural, =0 {∞ Ei rajoitusta} one {# osallistuja} other {# osallistujaa}}"
 
 #: src/features/channel/components/embeds/attachments/TextualAttachmentPreview.tsx:121
 msgid "{count, plural, one {... (# line left)} other {... (# lines left)}}"
@@ -360,10 +357,7 @@ msgstr "{count, plural, one {# yhteisö löytyi} other {# yhteisöä löytyi}}"
 
 #: src/features/app/components/layout/GuildsLayout.tsx:730
 msgid "{count, plural, one {# community is temporarily unavailable due to a flux capacitor malfunction.} other {# communities are temporarily unavailable due to a flux capacitor malfunction.}}"
-msgstr ""
-"{count, plural, one {# yhteisö on tilapäisesti pois käytöstä toimintahäiriön "
-"vuoksi.} other {# yhteisöä on tilapäisesti pois käytöstä toimintahäiriön "
-"vuoksi.}}"
+msgstr "{count, plural, one {# yhteisö on tilapäisesti pois käytöstä toimintahäiriön vuoksi.} other {# yhteisöä on tilapäisesti pois käytöstä toimintahäiriön vuoksi.}}"
 
 #. Displayed value for the voice channel connection limit slider.
 #: src/features/channel/components/modals/channel_tabs/channel_overview_tab/VoiceSettings.tsx:47
@@ -631,9 +625,7 @@ msgstr "{desktopChannel} Desktop {desktopVersion}"
 #. Unsaved-changes banner text in the devices tab. Counts selected devices that will be signed out.
 #: src/features/user/components/modals/tabs/DevicesTab.tsx:74
 msgid "{deviceCount, plural, one {# device selected for sign out} other {# devices selected for sign out}}"
-msgstr ""
-"{deviceCount, plural, one {# laite valittu uloskirjautumista varten} other "
-"{# laitetta valittu uloskirjautumista varten}}"
+msgstr "{deviceCount, plural, one {# laite valittu uloskirjautumista varten} other {# laitetta valittu uloskirjautumista varten}}"
 
 #. Sidebar Fluxer-home button tooltip showing how many incoming friend requests are pending. Count is interpolated.
 #: src/features/app/components/layout/sidebar_nav/FluxerButton.tsx:47
@@ -846,7 +838,7 @@ msgid "{length} apps"
 msgstr "{length} sovellusta"
 
 #. Screen-reader fragment listing multiple attachments on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:49
+#: src/features/channel/components/ChannelMessage.tsx:51
 msgid "{length} attachments"
 msgstr "{length} liitettä"
 
@@ -856,12 +848,12 @@ msgid "{length} channels"
 msgstr "{length} kanavaa"
 
 #. Screen-reader fragment listing multiple embeds on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:67
+#: src/features/channel/components/ChannelMessage.tsx:69
 msgid "{length} embeds"
 msgstr "{length} upotusta"
 
 #. Screen-reader fragment listing multiple stickers on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:58
+#: src/features/channel/components/ChannelMessage.tsx:60
 msgid "{length} stickers"
 msgstr "{length} tarraa"
 
@@ -1065,10 +1057,7 @@ msgstr "{productName}-sovelluksen symboli"
 #. Label in the push settings.
 #: src/features/user/components/modals/tabs/notifications_tab/PushSettings.tsx:16
 msgid "{productName} avoids sending push notifications to your mobile devices when you are at your computer. Choose how long you need to be inactive on desktop before you receive push notifications."
-msgstr ""
-"{productName} ei lähetä push-ilmoituksia mobiililaitteeseesi, kun olet "
-"aktiivisena tietokoneella. Valitse, kuinka kauan sinun on oltava käyttämättä "
-"työpöydällä, ennen kuin saat push-ilmoituksia."
+msgstr "{productName} ei lähetä push-ilmoituksia mobiililaitteeseesi, kun olet aktiivisena tietokoneella. Valitse, kuinka kauan sinun on oltava käyttämättä työpöydällä, ennen kuin saat push-ilmoituksia."
 
 #. Short badge title in the user profile badges popout. Preserve {productName}; it is inserted by code. English locales use Title Case for official badge titles; other locales should use natural local capitalization.
 #: src/features/user/components/popouts/UserProfileBadges.tsx:37
@@ -1080,9 +1069,7 @@ msgstr "{productName}-buginmetsästäjä"
 #: src/features/voice/components/modals/screen_share_picker_modal/PerWindowAudioNotice.tsx:23
 #: src/features/voice/components/modals/screen_share_picker_modal/PerWindowAudioNotice.tsx:42
 msgid "{productName} cannot capture desktop audio here while excluding {productName}'s call audio."
-msgstr ""
-"{productName} ei voi jakaa työpöydän ääntä siten, että itse puhelun ääni "
-"jäisi pois jaosta."
+msgstr "{productName} ei voi jakaa työpöydän ääntä siten, että itse puhelun ääni jäisi pois jaosta."
 
 #. Inline notice body on Windows. Explains that app audio is disabled because productName cannot guarantee isolated audio capture on this OS build.
 #. Inline notice body on macOS. Explains that app audio is disabled because productName cannot guarantee isolated audio capture on this OS build.
@@ -2362,7 +2349,7 @@ msgid "Activity log"
 msgstr "Aktiviteettiloki"
 
 #. Community settings tab showing activity log entries and moderation history.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:61
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:69
 msgctxt "community-settings-tab"
 msgid "Activity log"
 msgstr "Aktiviteettiloki"
@@ -3984,9 +3971,7 @@ msgstr "Haluatko varmasti ottaa kutsut käyttöön? Tämän jälkeen käyttäjä
 #. placeholder {0}: targetUser.tag
 #: src/features/moderation/components/modals/KickMemberModal.tsx:44
 msgid "Are you sure you want to kick <0>{0}</0> from the community? They will be able to rejoin with a new invite."
-msgstr ""
-"Haluatko varmasti potkaista käyttäjän <0>{0}</0> yhteisöstä? Hän voi liittyä "
-"uudelleen uudella kutsulla."
+msgstr "Haluatko varmasti potkaista käyttäjän <0>{0}</0> yhteisöstä? Hän voi liittyä uudelleen uudella kutsulla."
 
 #: src/features/user/components/modals/tabs/chat_settings_tab/SearchEnginesTab.tsx:229
 msgid "Are you sure you want to remove <0>{engineName}</0>?"
@@ -4063,7 +4048,7 @@ msgid "Attach files"
 msgstr "Liitä tiedostoja"
 
 #. Screen-reader fragment listing one attachment on a message. Lowercase because it appears inside a longer sentence.
-#: src/features/channel/components/ChannelMessage.tsx:44
+#: src/features/channel/components/ChannelMessage.tsx:46
 msgid "attachment"
 msgstr "liite"
 
@@ -5030,7 +5015,7 @@ msgid "Banner preview"
 msgstr "Bannerin esikatselu"
 
 #. Community settings tab for banned users.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:91
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:99
 msgctxt "community-settings-tab"
 msgid "Bans"
 msgstr "Porttikiellot"
@@ -6063,6 +6048,16 @@ msgstr "Kortit voivat säilyttää PLN-hinnoittelun nopean {paymentProviderName}
 msgid "Cards can keep TRY pricing after a quick {paymentProviderName} verification, but the card must be issued in Türkiye."
 msgstr "Kortit voivat säilyttää TRY-hinnoittelun nopean {paymentProviderName}-vahvistuksen jälkeen, mutta kortin on oltava myönnetty Turkissa."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:37
+msgid "Cast"
+msgstr ""
+
+#. Community settings tab listing the characters available in the community.
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:38
+msgctxt "community-settings-tab"
+msgid "Cast"
+msgstr ""
+
 #. Short label in the discovery category bottom sheet. Keep it concise.
 #: src/features/discovery/components/bottomsheets/DiscoveryCategoryBottomSheet.tsx:15
 msgid "Categories"
@@ -6393,7 +6388,7 @@ msgstr "kanava"
 #. Short label in the channel source preview. Keep it concise.
 #: src/features/app/config/AuditLogConstants.ts:168
 #: src/features/channel/components/bottomsheets/channel_details_bottom_sheet/ChannelDetailsBottomSheetShared.ts:24
-#: src/features/channel/components/ChannelLayout.tsx:13
+#: src/features/channel/components/ChannelLayout.tsx:16
 #: src/features/channel/components/ChannelSourcePreview.tsx:27
 #: src/features/invite/components/InviteListItem.tsx:71
 #: src/features/webhook/components/WebhookListItem.tsx:55
@@ -6624,6 +6619,10 @@ msgstr "Kanavat, joita moderoin"
 #: src/features/ui/character_counter/CharacterCountMessages.ts:20
 msgid "Character limit exceeded by {remaining}"
 msgstr "Merkkirajoitus ylittyy {remaining} merkillä"
+
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:40
+msgid "Characters available in this community, and which are currently primary."
+msgstr ""
 
 #. Advanced settings category tag.
 #. Short heading in the keyboard shortcuts cheatsheet.
@@ -7838,7 +7837,7 @@ msgstr "yhteisö"
 #: src/features/app/config/AuditLogConstants.ts:152
 #: src/features/auth/components/pages/oauth_authorize_page/OAuthCommunityStep.tsx:48
 #: src/features/moderation/components/report_modal/IARModalPreview.tsx:16
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:253
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:270
 #: src/features/user/components/settings_utils/section_registry/PrivacySafetySections.ts:140
 msgid "Community"
 msgstr "Yhteisö"
@@ -8024,7 +8023,7 @@ msgid "Community record"
 msgstr "Yhteisötietue"
 
 #. Root label for community settings modal and settings search paths.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:244
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
 msgid "Community settings"
 msgstr "Yhteisön asetukset"
 
@@ -8609,7 +8608,7 @@ msgstr "Hallitse mykistettyjen kanavien lukemattomien viestien ilmaisimia kanava
 msgid "Control which chat updates are announced by assistive technology."
 msgstr "Hallitse, mitkä chat-päivitykset ilmoitetaan avustavalla teknologialla."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:259
+#: src/features/channel/components/channel_view/DMChannelView.tsx:297
 msgid "Conversation not found"
 msgstr "Keskustelua ei löydy"
 
@@ -11701,7 +11700,7 @@ msgid "Discovery"
 msgstr "Löydä"
 
 #. Community settings tab for public community discovery/listing.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:76
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:84
 msgctxt "community-settings-tab"
 msgid "Discovery"
 msgstr "Löydettävyys"
@@ -12733,7 +12732,7 @@ msgstr "Sähköposti vahvistettu"
 
 #. Screen-reader fragment listing one embed on a message. Lowercase because it appears inside a longer sentence.
 #. has:embed chip label. Always lowercase; matches the typed query value 1:1.
-#: src/features/channel/components/ChannelMessage.tsx:62
+#: src/features/channel/components/ChannelMessage.tsx:64
 #: src/features/search/utils/SearchUtils.ts:33
 msgid "embed"
 msgstr "upotettu"
@@ -12807,7 +12806,7 @@ msgid "Emoji"
 msgstr "Emoji"
 
 #. Community settings tab for managing custom emoji uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:36
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:44
 msgctxt "community-settings-tab"
 msgid "Emoji"
 msgstr "Emojit"
@@ -14074,7 +14073,7 @@ msgstr "Lausekkeiden poisto"
 #. Community settings sidebar category grouping the emoji and stickers tabs.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:249
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:266
 #: src/features/user/components/settings_utils/search_index/ExpressionPacksIndex.ts:19
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:134
 msgid "Expressions"
@@ -14238,6 +14237,10 @@ msgstr "Lataus epäonnistui"
 #: src/features/user/components/modals/tabs/AuthorizedAppsTab.tsx:42
 msgid "Failed to load authorized applications"
 msgstr "Valtuutettujen sovellusten lataaminen epäonnistui"
+
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:53
+msgid "Failed to load cast"
+msgstr ""
 
 #: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:443
 msgid "Failed to load emojis. Try again later."
@@ -17651,7 +17654,7 @@ msgstr "Kutsulinkit"
 
 #. Community settings sidebar category grouping webhooks.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:257
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:274
 #: src/features/user/components/settings_utils/search_index/AuthorizedAppsIndex.ts:26
 msgid "Integrations"
 msgstr "Integraatiot"
@@ -17994,7 +17997,7 @@ msgid "Invites"
 msgstr "Kutsut"
 
 #. Community settings tab for invite link management.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:86
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:94
 msgctxt "community-settings-tab"
 msgid "Invites"
 msgstr "Kutsut"
@@ -18250,7 +18253,7 @@ msgstr "Liity äänipuheluun"
 
 #. Button in the unjoined voice channel call surface. Joins the current voice channel.
 #. Confirm dialog title shown before joining a voice channel from a context where confirmation is required.
-#: src/features/channel/components/channel_view/GuildChannelView.tsx:65
+#: src/features/channel/components/channel_view/GuildChannelView.tsx:74
 #: src/features/voice/hooks/usePendingVoiceConnection.tsx:12
 msgid "Join voice channel"
 msgstr "Liity äänikanavalle"
@@ -20070,7 +20073,7 @@ msgid "Members"
 msgstr "Jäsenet"
 
 #. Community settings tab for managing community members.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:81
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:89
 msgctxt "community-settings-tab"
 msgid "Members"
 msgstr "Jäsenet"
@@ -20213,7 +20216,7 @@ msgid "Menu shortcuts"
 msgstr "Valikkopikakuvakkeet"
 
 #. Fallback role label used in screen-reader message summaries.
-#: src/features/channel/components/ChannelMessage.tsx:76
+#: src/features/channel/components/ChannelMessage.tsx:78
 msgid "message"
 msgstr "viesti"
 
@@ -20769,7 +20772,7 @@ msgid "Moderation"
 msgstr "Moderointi"
 
 #. Community settings tab for moderation and safety controls.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:56
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:64
 msgctxt "community-settings-tab"
 msgid "Moderation"
 msgstr "Moderointi"
@@ -20782,10 +20785,7 @@ msgstr "Tässä näkyvät moderointitoimet ja yhteisön muutokset."
 #. Guild nagbar body shown when moderation actions in a community require two-factor authentication. {communityName} is the community name.
 #: src/features/app/components/layout/GuildLayout.tsx:77
 msgid "Moderation actions in {communityName} require two-factor authentication. Enable 2FA to kick, ban, timeout, or delete messages here."
-msgstr ""
-"Yhteisön {communityName} moderointitoiminnot edellyttävät kaksivaiheista "
-"todennusta. Ota kaksivaiheinen todennus käyttöön, jos haluat potkia, "
-"porttikieltää, aikakatkaista tai poistaa viestejä täällä."
+msgstr "Yhteisön {communityName} moderointitoiminnot edellyttävät kaksivaiheista todennusta. Ota kaksivaiheinen todennus käyttöön, jos haluat potkia, porttikieltää, aikakatkaista tai poistaa viestejä täällä."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:66
@@ -21852,6 +21852,10 @@ msgstr "Kameroita tai virtuaalilaitteita ei löytynyt"
 msgid "No capture devices found"
 msgstr "Kuvauslaitteita ei löydy"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:70
+msgid "No cast configured"
+msgstr ""
+
 #. Empty-state text in the invite list item.
 #. Subtext under a channel name in the notification overrides list when the channel has no parent category. Short standalone label.
 #: src/features/guild/components/modals/GuildNotificationSettingsModal.tsx:145
@@ -22250,7 +22254,7 @@ msgid "No system channel"
 msgstr "Ei järjestelmäkanavaa"
 
 #. Screen-reader fragment indicating the message has no text body. Lowercase because it appears inside a longer sentence.
-#: src/features/channel/components/ChannelMessage.tsx:71
+#: src/features/channel/components/ChannelMessage.tsx:73
 msgid "no text content"
 msgstr "ei tekstisisältöä"
 
@@ -23536,7 +23540,7 @@ msgid "Overview"
 msgstr "Yleiskatsaus"
 
 #. Community settings tab for basic server/community details.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:46
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:54
 msgctxt "community-settings-tab"
 msgid "Overview"
 msgstr "Yleiskatsaus"
@@ -23855,7 +23859,7 @@ msgstr "Tässä näkyvät odottavat kaveripyynnöt."
 #: src/features/expressions/utils/UnicodeEmojis.ts:21
 #: src/features/search/state/QuickSwitcherResultConverters.ts:22
 #: src/features/search/utils/QuickSwitcherModalUtils.tsx:51
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:278
 msgid "People"
 msgstr "Ihmiset"
 
@@ -24696,6 +24700,7 @@ msgstr "Hintatiedot latautuvat yhä."
 msgid "Pricing preference"
 msgstr "Hinnoittelumieltymys"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:96
 #: src/features/user/components/modals/tabs/component_gallery_tab/ComponentGalleryTabButtonsTab.tsx:157
 msgid "Primary"
 msgstr "Ensisijainen"
@@ -26532,9 +26537,7 @@ msgstr "Vaadi OAuth2-koodivaltuutus"
 
 #: src/features/guild/components/modals/guild_tabs/GuildModerationTab.tsx:466
 msgid "Require two-factor authentication for moderators before they can ban, kick, timeout, or remove messages."
-msgstr ""
-"Vaadi moderaattoreilta kaksivaiheista tunnistautumista ennen kuin he voivat "
-"porttikieltää, potkaista, aikakatkaista tai poistaa viestejä."
+msgstr "Vaadi moderaattoreilta kaksivaiheista tunnistautumista ennen kuin he voivat porttikieltää, potkaista, aikakatkaista tai poistaa viestejä."
 
 #. Short label in the authentication OAUTH scopes step. Keep the tone plain and specific.
 #: src/features/auth/components/pages/oauth_authorize_page/OAuthScopesStep.tsx:24
@@ -27246,7 +27249,7 @@ msgid "Roles"
 msgstr "Roolit"
 
 #. Community settings tab for role hierarchy and permission rules.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:51
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:59
 msgctxt "community-settings-tab"
 msgid "Roles"
 msgstr "Roolit"
@@ -30944,7 +30947,7 @@ msgstr "Vaihe 4"
 #. Screen-reader fragment listing one sticker on a message. Lowercase because it appears inside a longer sentence.
 #. has:sticker chip label. Always lowercase; matches the typed query value 1:1.
 #: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:111
-#: src/features/channel/components/ChannelMessage.tsx:53
+#: src/features/channel/components/ChannelMessage.tsx:55
 #: src/features/search/utils/SearchUtils.ts:73
 msgid "sticker"
 msgstr "tarra"
@@ -31078,7 +31081,7 @@ msgid "Stickers"
 msgstr "Tarrat"
 
 #. Community settings tab for managing custom stickers uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:41
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:49
 msgctxt "community-settings-tab"
 msgid "Stickers"
 msgstr "Tarrat"
@@ -32166,7 +32169,7 @@ msgstr "Botti on lisätty kohteeseen <0>{destinationName}</0>."
 msgid "The bot has been added."
 msgstr "Botti lisätty."
 
-#: src/features/channel/components/ChannelLayout.tsx:51
+#: src/features/channel/components/ChannelLayout.tsx:56
 msgid "The channel you're looking for may have been deleted or you may not have access to it."
 msgstr "Etsimääsi kanavaa ei ehkä ole poistettu tai sinulla ei ole siihen pääsyä."
 
@@ -32413,6 +32416,10 @@ msgstr "Sovelluksen sisäistä paikallista tilausmenetelmää ei ole saatavilla,
 msgid "There is no recovery once this starts. We will DM you when it finishes."
 msgstr "Tätä toimintoa ei voi peruuttaa, kun se on aloitettu. Ilmoitamme sinulle yksityisviestillä, kun se on valmis."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:54
+msgid "There was an error loading the cast for this community. Try again."
+msgstr ""
+
 #: src/features/channel/components/modals/channel_tabs/ChannelInvitesTab.tsx:271
 msgid "There was an error loading the invite links for this channel. Try again."
 msgstr "Kutsulinkkien lataamisessa tälle kanavalle tapahtui virhe. Yritä uudelleen."
@@ -32612,6 +32619,10 @@ msgstr "Koodi on virheellinen tai jo käytetty."
 msgid "This code was already redeemed."
 msgstr "Tämä koodi on jo lunastettu."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:71
+msgid "This community doesn't have any cast characters mapped to it yet."
+msgstr ""
+
 #: src/features/guild/components/modals/guild_tabs/GuildInvitesTab.tsx:102
 msgid "This community doesn't have any invite links yet. Go to a channel and create an invite to invite people."
 msgstr "Tällä yhteisöllä ei ole vielä kutsulinkkejä. Mene kanavalle ja luo kutsu, jotta voit kutsua ihmisiä."
@@ -32684,7 +32695,7 @@ msgstr "Yhteyttä ei ole vahvistettu."
 msgid "This contains sensitive content."
 msgstr "Sisältää arkaluonteista sisältöä."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:262
+#: src/features/channel/components/channel_view/DMChannelView.tsx:300
 msgid "This conversation is no longer available."
 msgstr "Tämä keskustelu ei ole enää saatavilla."
 
@@ -32875,7 +32886,7 @@ msgstr "Tämä on poistettu käytöstä"
 msgid "This is how messages appear"
 msgstr "Näin viestit näkyvät"
 
-#: src/features/channel/components/ChannelLayout.tsx:45
+#: src/features/channel/components/ChannelLayout.tsx:50
 msgid "This is not the channel you're looking for."
 msgstr "Tämä ei ole etsimäsi kanava."
 
@@ -33055,8 +33066,8 @@ msgid "This removes every custom shortcut and re-enables all built-in shortcuts.
 msgstr "Tämä poistaa kaikki mukautetut pikanäppäimet ja ottaa käyttöön kaikki sisäänrakennetut pikanäppäimet uudelleen. Tätä toimintoa ei voi kumota."
 
 #: src/features/auth/components/pages/ResetPasswordPage.tsx:114
-msgid "This reset link has expired. Reset links last 24 hours. Request a new one."
-msgstr "Tämä nollauslinkki on vanhentunut. Nollauslinkit ovat voimassa 24 tuntia. Pyydä uusi linkki."
+msgid "This reset link has expired. Reset links last 1 hour. Please request a new one."
+msgstr ""
 
 #. Fallback role name in a mass-mention warning title.
 #: src/features/channel/components/MentionEveryonePopout.tsx:14
@@ -33160,7 +33171,7 @@ msgstr "Tällä käyttäjällä ei ole rooleja tässä yhteisössä."
 msgid "This user is already banned from the community."
 msgstr "Tämä käyttäjä on jo porttikiellossa yhteisöstä."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:279
+#: src/features/channel/components/channel_view/DMChannelView.tsx:317
 msgid "This user is no longer available."
 msgstr "Tämä käyttäjä ei ole enää käytettävissä."
 
@@ -35862,7 +35873,7 @@ msgstr "Käyttäjä siirsi kanavan"
 #. Reason chip in the unaddable recipients alert when the user record is missing.
 #. Title of the error modal shown when the recipient of a DM no longer exists.
 #: src/features/app/components/alerts/DmActionErrorModal.tsx:24
-#: src/features/channel/components/channel_view/DMChannelView.tsx:276
+#: src/features/channel/components/channel_view/DMChannelView.tsx:314
 #: src/features/channel/components/modals/UnaddableRecipientsConfirmModal.tsx:11
 msgid "User not found"
 msgstr "Käyttäjää ei löydy"
@@ -36056,7 +36067,7 @@ msgid "Vanity URL"
 msgstr "Mukautettu URL-osoite"
 
 #. Community settings tab for the community vanity/custom invite link.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:71
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:79
 msgctxt "community-settings-tab"
 msgid "Vanity URL"
 msgstr "Mukautettu URL-osoite"
@@ -37436,7 +37447,7 @@ msgid "Webhooks"
 msgstr "Webhookit"
 
 #. Community settings tab for configuring webhooks.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:66
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:74
 msgctxt "community-settings-tab"
 msgid "Webhooks"
 msgstr "Webhookit"
@@ -38283,7 +38294,7 @@ msgid "You don't have permission to do this to this member."
 msgstr "Sinulla ei ole oikeutta tehdä tätä tälle jäsenelle."
 
 #. Tooltip on the disabled Join voice channel button shown when the user lacks the Connect permission in the voice channel.
-#: src/features/channel/components/channel_view/GuildChannelView.tsx:69
+#: src/features/channel/components/channel_view/GuildChannelView.tsx:78
 msgid "You don't have permission to join this voice channel"
 msgstr "Sinulla ei ole oikeutta liittyä tälle äänikanavalle"
 

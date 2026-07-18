@@ -293,7 +293,7 @@ msgid "{channelHeading}, {mentionCount} mentions"
 msgstr "{channelHeading}, {mentionCount} omtaler"
 
 #. Short label in the channel layout. Keep it concise. Preserve {channelName}; it is inserted by code.
-#: src/features/channel/components/ChannelLayout.tsx:17
+#: src/features/channel/components/ChannelLayout.tsx:20
 msgid "{channelName} channel"
 msgstr "{channelName}-kanal"
 
@@ -838,7 +838,7 @@ msgid "{length} apps"
 msgstr "{length} apps"
 
 #. Screen-reader fragment listing multiple attachments on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:49
+#: src/features/channel/components/ChannelMessage.tsx:51
 msgid "{length} attachments"
 msgstr "{length} vedhæftede filer"
 
@@ -848,12 +848,12 @@ msgid "{length} channels"
 msgstr "{length} kanaler"
 
 #. Screen-reader fragment listing multiple embeds on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:67
+#: src/features/channel/components/ChannelMessage.tsx:69
 msgid "{length} embeds"
 msgstr "{length} indlejringer"
 
 #. Screen-reader fragment listing multiple stickers on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:58
+#: src/features/channel/components/ChannelMessage.tsx:60
 msgid "{length} stickers"
 msgstr "{length} klistermærker"
 
@@ -2349,7 +2349,7 @@ msgid "Activity log"
 msgstr "Aktivitetslog"
 
 #. Community settings tab showing activity log entries and moderation history.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:61
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:69
 msgctxt "community-settings-tab"
 msgid "Activity log"
 msgstr "Aktivitetslog"
@@ -4048,7 +4048,7 @@ msgid "Attach files"
 msgstr "Vedhæft filer"
 
 #. Screen-reader fragment listing one attachment on a message. Lowercase because it appears inside a longer sentence.
-#: src/features/channel/components/ChannelMessage.tsx:44
+#: src/features/channel/components/ChannelMessage.tsx:46
 msgid "attachment"
 msgstr "vedhæftet fil"
 
@@ -5015,7 +5015,7 @@ msgid "Banner preview"
 msgstr "Forhåndsvisning af banner"
 
 #. Community settings tab for banned users.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:91
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:99
 msgctxt "community-settings-tab"
 msgid "Bans"
 msgstr "Udelukkelser"
@@ -6048,6 +6048,16 @@ msgstr "Kort kan beholde PLN-priser efter en hurtig {paymentProviderName}-verifi
 msgid "Cards can keep TRY pricing after a quick {paymentProviderName} verification, but the card must be issued in Türkiye."
 msgstr "Kort kan beholde TRY-priser efter en hurtig {paymentProviderName}-bekræftelse, men kortet skal være udstedt i Tyrkiet."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:37
+msgid "Cast"
+msgstr ""
+
+#. Community settings tab listing the characters available in the community.
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:38
+msgctxt "community-settings-tab"
+msgid "Cast"
+msgstr ""
+
 #. Short label in the discovery category bottom sheet. Keep it concise.
 #: src/features/discovery/components/bottomsheets/DiscoveryCategoryBottomSheet.tsx:15
 msgid "Categories"
@@ -6378,7 +6388,7 @@ msgstr "kanal"
 #. Short label in the channel source preview. Keep it concise.
 #: src/features/app/config/AuditLogConstants.ts:168
 #: src/features/channel/components/bottomsheets/channel_details_bottom_sheet/ChannelDetailsBottomSheetShared.ts:24
-#: src/features/channel/components/ChannelLayout.tsx:13
+#: src/features/channel/components/ChannelLayout.tsx:16
 #: src/features/channel/components/ChannelSourcePreview.tsx:27
 #: src/features/invite/components/InviteListItem.tsx:71
 #: src/features/webhook/components/WebhookListItem.tsx:55
@@ -6609,6 +6619,10 @@ msgstr "Kanaler, jeg modererer"
 #: src/features/ui/character_counter/CharacterCountMessages.ts:20
 msgid "Character limit exceeded by {remaining}"
 msgstr "Tegngrænsen er overskredet med {remaining}"
+
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:40
+msgid "Characters available in this community, and which are currently primary."
+msgstr ""
 
 #. Advanced settings category tag.
 #. Short heading in the keyboard shortcuts cheatsheet.
@@ -7823,7 +7837,7 @@ msgstr "fællesskab"
 #: src/features/app/config/AuditLogConstants.ts:152
 #: src/features/auth/components/pages/oauth_authorize_page/OAuthCommunityStep.tsx:48
 #: src/features/moderation/components/report_modal/IARModalPreview.tsx:16
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:253
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:270
 #: src/features/user/components/settings_utils/section_registry/PrivacySafetySections.ts:140
 msgid "Community"
 msgstr "Fællesskab"
@@ -8009,7 +8023,7 @@ msgid "Community record"
 msgstr "Fællesskabsoptegnelse"
 
 #. Root label for community settings modal and settings search paths.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:244
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
 msgid "Community settings"
 msgstr "Fællesskabsindstillinger"
 
@@ -8594,7 +8608,7 @@ msgstr "Styr, hvordan ulæste-indikatoren opfører sig for lydløse kanaler på 
 msgid "Control which chat updates are announced by assistive technology."
 msgstr "Styr, hvilke chathændelser der læses op af hjælpeteknologi."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:259
+#: src/features/channel/components/channel_view/DMChannelView.tsx:297
 msgid "Conversation not found"
 msgstr "Samtale ikke fundet"
 
@@ -11686,7 +11700,7 @@ msgid "Discovery"
 msgstr "Opdag"
 
 #. Community settings tab for public community discovery/listing.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:76
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:84
 msgctxt "community-settings-tab"
 msgid "Discovery"
 msgstr "Opdagelse"
@@ -12718,7 +12732,7 @@ msgstr "Mail bekræftet"
 
 #. Screen-reader fragment listing one embed on a message. Lowercase because it appears inside a longer sentence.
 #. has:embed chip label. Always lowercase; matches the typed query value 1:1.
-#: src/features/channel/components/ChannelMessage.tsx:62
+#: src/features/channel/components/ChannelMessage.tsx:64
 #: src/features/search/utils/SearchUtils.ts:33
 msgid "embed"
 msgstr "integrer"
@@ -12792,7 +12806,7 @@ msgid "Emoji"
 msgstr "Emoji"
 
 #. Community settings tab for managing custom emoji uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:36
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:44
 msgctxt "community-settings-tab"
 msgid "Emoji"
 msgstr "Emojis"
@@ -14059,7 +14073,7 @@ msgstr "Udtryk slettet"
 #. Community settings sidebar category grouping the emoji and stickers tabs.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:249
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:266
 #: src/features/user/components/settings_utils/search_index/ExpressionPacksIndex.ts:19
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:134
 msgid "Expressions"
@@ -14223,6 +14237,10 @@ msgstr "Kunne ikke indlæse"
 #: src/features/user/components/modals/tabs/AuthorizedAppsTab.tsx:42
 msgid "Failed to load authorized applications"
 msgstr "Kunne ikke indlæse godkendte apps"
+
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:53
+msgid "Failed to load cast"
+msgstr ""
 
 #: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:443
 msgid "Failed to load emojis. Try again later."
@@ -17636,7 +17654,7 @@ msgstr "Invitationer"
 
 #. Community settings sidebar category grouping webhooks.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:257
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:274
 #: src/features/user/components/settings_utils/search_index/AuthorizedAppsIndex.ts:26
 msgid "Integrations"
 msgstr "Integrationer"
@@ -17979,7 +17997,7 @@ msgid "Invites"
 msgstr "Invitationer"
 
 #. Community settings tab for invite link management.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:86
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:94
 msgctxt "community-settings-tab"
 msgid "Invites"
 msgstr "Invitationer"
@@ -18235,7 +18253,7 @@ msgstr "Deltag i taleopkald"
 
 #. Button in the unjoined voice channel call surface. Joins the current voice channel.
 #. Confirm dialog title shown before joining a voice channel from a context where confirmation is required.
-#: src/features/channel/components/channel_view/GuildChannelView.tsx:65
+#: src/features/channel/components/channel_view/GuildChannelView.tsx:74
 #: src/features/voice/hooks/usePendingVoiceConnection.tsx:12
 msgid "Join voice channel"
 msgstr "Deltag i talechat"
@@ -20055,7 +20073,7 @@ msgid "Members"
 msgstr "Medlemmer"
 
 #. Community settings tab for managing community members.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:81
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:89
 msgctxt "community-settings-tab"
 msgid "Members"
 msgstr "Medlemmer"
@@ -20198,7 +20216,7 @@ msgid "Menu shortcuts"
 msgstr "Genveje til menu"
 
 #. Fallback role label used in screen-reader message summaries.
-#: src/features/channel/components/ChannelMessage.tsx:76
+#: src/features/channel/components/ChannelMessage.tsx:78
 msgid "message"
 msgstr "Besked"
 
@@ -20754,7 +20772,7 @@ msgid "Moderation"
 msgstr "Moderat"
 
 #. Community settings tab for moderation and safety controls.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:56
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:64
 msgctxt "community-settings-tab"
 msgid "Moderation"
 msgstr "Moderat"
@@ -21834,6 +21852,10 @@ msgstr "Ingen kameraer eller virtuelle enheder fundet"
 msgid "No capture devices found"
 msgstr "Ingen optageenheder fundet"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:70
+msgid "No cast configured"
+msgstr ""
+
 #. Empty-state text in the invite list item.
 #. Subtext under a channel name in the notification overrides list when the channel has no parent category. Short standalone label.
 #: src/features/guild/components/modals/GuildNotificationSettingsModal.tsx:145
@@ -22232,7 +22254,7 @@ msgid "No system channel"
 msgstr "Ingen systemkanal"
 
 #. Screen-reader fragment indicating the message has no text body. Lowercase because it appears inside a longer sentence.
-#: src/features/channel/components/ChannelMessage.tsx:71
+#: src/features/channel/components/ChannelMessage.tsx:73
 msgid "no text content"
 msgstr "intet tekstindhold"
 
@@ -23518,7 +23540,7 @@ msgid "Overview"
 msgstr "Oversigt"
 
 #. Community settings tab for basic server/community details.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:46
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:54
 msgctxt "community-settings-tab"
 msgid "Overview"
 msgstr "Oversigt"
@@ -23837,7 +23859,7 @@ msgstr "Ventende venneanmodninger vises her."
 #: src/features/expressions/utils/UnicodeEmojis.ts:21
 #: src/features/search/state/QuickSwitcherResultConverters.ts:22
 #: src/features/search/utils/QuickSwitcherModalUtils.tsx:51
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:278
 msgid "People"
 msgstr "Personer"
 
@@ -24678,6 +24700,7 @@ msgstr "Priser indlæses stadig."
 msgid "Pricing preference"
 msgstr "Præference for prissætning"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:96
 #: src/features/user/components/modals/tabs/component_gallery_tab/ComponentGalleryTabButtonsTab.tsx:157
 msgid "Primary"
 msgstr "Primær"
@@ -27226,7 +27249,7 @@ msgid "Roles"
 msgstr "Roller"
 
 #. Community settings tab for role hierarchy and permission rules.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:51
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:59
 msgctxt "community-settings-tab"
 msgid "Roles"
 msgstr "Roller"
@@ -30924,7 +30947,7 @@ msgstr "Trin 4"
 #. Screen-reader fragment listing one sticker on a message. Lowercase because it appears inside a longer sentence.
 #. has:sticker chip label. Always lowercase; matches the typed query value 1:1.
 #: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:111
-#: src/features/channel/components/ChannelMessage.tsx:53
+#: src/features/channel/components/ChannelMessage.tsx:55
 #: src/features/search/utils/SearchUtils.ts:73
 msgid "sticker"
 msgstr "sticker"
@@ -31058,7 +31081,7 @@ msgid "Stickers"
 msgstr "Klistermærker"
 
 #. Community settings tab for managing custom stickers uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:41
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:49
 msgctxt "community-settings-tab"
 msgid "Stickers"
 msgstr "Klistermærker"
@@ -32146,7 +32169,7 @@ msgstr "Botten er blevet føjet til <0>{destinationName}</0>."
 msgid "The bot has been added."
 msgstr "Botten er blevet tilføjet."
 
-#: src/features/channel/components/ChannelLayout.tsx:51
+#: src/features/channel/components/ChannelLayout.tsx:56
 msgid "The channel you're looking for may have been deleted or you may not have access to it."
 msgstr "Kanalen, du leder efter, er muligvis blevet slettet, eller du har ikke adgang til den."
 
@@ -32393,6 +32416,10 @@ msgstr "Der er ingen lokal abonnementsmetode i appen tilgængelig her i dag, så
 msgid "There is no recovery once this starts. We will DM you when it finishes."
 msgstr "Der er ingen fortrydelsesret, når dette er startet. Vi sender dig en direkte besked, når det er færdigt."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:54
+msgid "There was an error loading the cast for this community. Try again."
+msgstr ""
+
 #: src/features/channel/components/modals/channel_tabs/ChannelInvitesTab.tsx:271
 msgid "There was an error loading the invite links for this channel. Try again."
 msgstr "Der opstod en fejl under indlæsning af invitationslinkene til denne kanal. Prøv igen."
@@ -32592,6 +32619,10 @@ msgstr "Koden er ugyldig eller allerede brugt."
 msgid "This code was already redeemed."
 msgstr "Denne kode er allerede indløst."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:71
+msgid "This community doesn't have any cast characters mapped to it yet."
+msgstr ""
+
 #: src/features/guild/components/modals/guild_tabs/GuildInvitesTab.tsx:102
 msgid "This community doesn't have any invite links yet. Go to a channel and create an invite to invite people."
 msgstr "Dette fællesskab har ingen invitationslinks endnu. Gå til en kanal, og opret en invitation for at invitere folk."
@@ -32664,7 +32695,7 @@ msgstr "Denne forbindelse er ikke blevet bekræftet."
 msgid "This contains sensitive content."
 msgstr "Dette indeholder følsomt indhold."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:262
+#: src/features/channel/components/channel_view/DMChannelView.tsx:300
 msgid "This conversation is no longer available."
 msgstr "Denne samtale er ikke længere tilgængelig."
 
@@ -32855,7 +32886,7 @@ msgstr "Dette er deaktiveret"
 msgid "This is how messages appear"
 msgstr "Sådan vises beskeder"
 
-#: src/features/channel/components/ChannelLayout.tsx:45
+#: src/features/channel/components/ChannelLayout.tsx:50
 msgid "This is not the channel you're looking for."
 msgstr "Dette er ikke den kanal, du leder efter."
 
@@ -33035,8 +33066,8 @@ msgid "This removes every custom shortcut and re-enables all built-in shortcuts.
 msgstr "Dette fjerner alle tilpassede genveje og genaktiverer alle indbyggede genveje. Dette kan ikke fortrydes."
 
 #: src/features/auth/components/pages/ResetPasswordPage.tsx:114
-msgid "This reset link has expired. Reset links last 24 hours. Request a new one."
-msgstr "Dette nulstillingslink er udløbet. Nulstillingslinks er gyldige i 24 timer. Anmod om et nyt."
+msgid "This reset link has expired. Reset links last 1 hour. Please request a new one."
+msgstr ""
 
 #. Fallback role name in a mass-mention warning title.
 #: src/features/channel/components/MentionEveryonePopout.tsx:14
@@ -33140,7 +33171,7 @@ msgstr "Denne bruger har ingen roller i dette fællesskab."
 msgid "This user is already banned from the community."
 msgstr "Denne bruger er allerede udelukket fra fællesskabet."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:279
+#: src/features/channel/components/channel_view/DMChannelView.tsx:317
 msgid "This user is no longer available."
 msgstr "Denne bruger er ikke længere tilgængelig."
 
@@ -35842,7 +35873,7 @@ msgstr "Bruger flyttede kanal"
 #. Reason chip in the unaddable recipients alert when the user record is missing.
 #. Title of the error modal shown when the recipient of a DM no longer exists.
 #: src/features/app/components/alerts/DmActionErrorModal.tsx:24
-#: src/features/channel/components/channel_view/DMChannelView.tsx:276
+#: src/features/channel/components/channel_view/DMChannelView.tsx:314
 #: src/features/channel/components/modals/UnaddableRecipientsConfirmModal.tsx:11
 msgid "User not found"
 msgstr "Brugeren blev ikke fundet"
@@ -36036,7 +36067,7 @@ msgid "Vanity URL"
 msgstr "Vanity-URL"
 
 #. Community settings tab for the community vanity/custom invite link.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:71
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:79
 msgctxt "community-settings-tab"
 msgid "Vanity URL"
 msgstr "Brugerdefineret URL"
@@ -37416,7 +37447,7 @@ msgid "Webhooks"
 msgstr "Webhooks"
 
 #. Community settings tab for configuring webhooks.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:66
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:74
 msgctxt "community-settings-tab"
 msgid "Webhooks"
 msgstr "Webhooks"
@@ -38263,7 +38294,7 @@ msgid "You don't have permission to do this to this member."
 msgstr "Du har ikke tilladelse til at gøre dette ved dette medlem."
 
 #. Tooltip on the disabled Join voice channel button shown when the user lacks the Connect permission in the voice channel.
-#: src/features/channel/components/channel_view/GuildChannelView.tsx:69
+#: src/features/channel/components/channel_view/GuildChannelView.tsx:78
 msgid "You don't have permission to join this voice channel"
 msgstr "Du har ikke tilladelse til at deltage i denne stemmekanal"
 

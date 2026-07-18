@@ -5,9 +5,12 @@
 #
 # These patches are deliberately never committed (they would break production
 # builds), which means they do not survive a branch switch, rebase, or
-# `git restore`. Losing the GatewayCompression one silently broke the
-# fluxer-dev.obyr.us gateway handshake on 2026-07-18; this script exists so
-# recovery is one command instead of an investigation.
+# `git restore`. Losing one silently broke the fluxer-dev.obyr.us gateway
+# handshake on 2026-07-18; this script exists so recovery is one command
+# instead of an investigation.
+#
+# The GatewayCompression patch that motivated this script was removed once
+# upstream adopted the same dev-mode behaviour in getPreferredCompression().
 #
 # Idempotent: every patch checks its own state first, so running this twice is
 # a no-op. It never touches git — leaving the edits uncommitted is the point.
@@ -19,7 +22,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-GATEWAY_COMPRESSION="$REPO_ROOT/fluxer_app/src/features/gateway/transport/GatewayCompression.ts"
 RSPACK_CONFIG="$REPO_ROOT/fluxer_app/rspack.config.mjs"
 
 applied=()
@@ -30,34 +32,7 @@ fail() {
 	exit 1
 }
 
-# Patch 1 — force gateway compression to 'none' in development.
-#
-# The zstd decompression WASM in this environment is a hand-encoded no-op stub
-# (the real one needs the Rust toolchain, which only exists inside Docker), so
-# negotiating zstd-stream makes the HELLO handshake time out and the client
-# reconnect-loops on the splash screen.
-patch_gateway_compression() {
-	[[ -f "$GATEWAY_COMPRESSION" ]] || fail "not found: $GATEWAY_COMPRESSION"
-
-	if grep -q "process.env.NODE_ENV === 'development'" "$GATEWAY_COMPRESSION"; then
-		echo "  GatewayCompression.ts     already applied — skipped"
-		skipped+=("GatewayCompression.ts")
-		return
-	fi
-
-	perl -0777 -pi -e '
-		s{(export function getPreferredCompression\(\): CompressionType \{\n)(\treturn \x27zstd-stream\x27;\n\})}
-		 {$1\t// DEV-ONLY WORKING-TREE PATCH — DO NOT COMMIT. The zstd decompression WASM is a stub\n\t// no-op in this dev environment, so negotiating zstd-stream hangs the HELLO handshake.\n\tif (process.env.NODE_ENV === \x27development\x27) {\n\t\treturn \x27none\x27;\n\t}\n$2}
-	' "$GATEWAY_COMPRESSION"
-
-	grep -q "process.env.NODE_ENV === 'development'" "$GATEWAY_COMPRESSION" ||
-		fail "GatewayCompression.ts patch did not apply — getPreferredCompression() may have changed upstream"
-
-	echo "  GatewayCompression.ts     applied"
-	applied+=("GatewayCompression.ts")
-}
-
-# Patch 2 — readable CSS class names in devtools.
+# Patch 1 — readable CSS class names in devtools.
 #
 # Uses plain [local] in development instead of the hashed name, so devtools
 # shows `container` rather than `SelectModePanel.module__container___ZjAxND`.
@@ -88,7 +63,6 @@ patch_rspack_local_ident_name() {
 
 echo "Applying dev-only working-tree patches..."
 echo
-patch_gateway_compression
 patch_rspack_local_ident_name
 echo
 echo "Summary: ${#applied[@]} applied, ${#skipped[@]} already present"
@@ -101,7 +75,6 @@ if [[ ${#applied[@]} -gt 0 ]]; then
 	echo "Files modified (left uncommitted, as intended):"
 	for name in "${applied[@]}"; do
 		case "$name" in
-			GatewayCompression.ts) echo "  $GATEWAY_COMPRESSION" ;;
 			rspack.config.mjs) echo "  $RSPACK_CONFIG" ;;
 		esac
 	done

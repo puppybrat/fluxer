@@ -10,8 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "PO-Revision-Date: 2026-07-07 23:18+0000\n"
 "Last-Translator: Hampus <hampus@fluxer.com>\n"
-"Language-Team: Indonesian <https://weblate.fluxer.tools/projects/fluxer/app/"
-"id/>\n"
+"Language-Team: Indonesian <https://weblate.fluxer.tools/projects/fluxer/app/id/>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. Description text in the messages tab.
@@ -68,8 +67,7 @@ msgstr "{a}, {b}, dan {c} sedang mengetik..."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:571
 msgid "{actor} added channel permissions for {targetEntity} in {channelNode}."
-msgstr ""
-"{actor} menambahkan perizinan saluran untuk {targetEntity} di {channelNode}."
+msgstr "{actor} menambahkan perizinan saluran untuk {targetEntity} di {channelNode}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:576
 msgid "{actor} added channel permissions for {targetEntity}."
@@ -180,9 +178,7 @@ msgstr "{actor} membersihkan anggota tidak aktif."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:637
 msgid "{actor} pruned members inactive for {pruneDays, plural, one {# day} other {# days}}."
-msgstr ""
-"{actor} membersihkan anggota yang tidak aktif selama {pruneDays, plural, one "
-"{# hari} other {# hari}}."
+msgstr "{actor} membersihkan anggota yang tidak aktif selama {pruneDays, plural, one {# hari} other {# hari}}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:595
 msgid "{actor} removed channel permissions for {targetEntity} in {channelNode}."
@@ -207,8 +203,7 @@ msgstr "{actor} {targetMember} diperbarui."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:583
 msgid "{actor} updated channel permissions for {targetEntity} in {channelNode}."
-msgstr ""
-"{actor} izin saluran untuk {targetEntity} sudah diperbarui di {channelNode}."
+msgstr "{actor} izin saluran untuk {targetEntity} sudah diperbarui di {channelNode}."
 
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabUtils.tsx:588
 msgid "{actor} updated channel permissions for {targetEntity}."
@@ -298,7 +293,7 @@ msgid "{channelHeading}, {mentionCount} mentions"
 msgstr "{channelHeading}, {mentionCount} sebutan"
 
 #. Short label in the channel layout. Keep it concise. Preserve {channelName}; it is inserted by code.
-#: src/features/channel/components/ChannelLayout.tsx:17
+#: src/features/channel/components/ChannelLayout.tsx:20
 msgid "{channelName} channel"
 msgstr "Saluran {channelName}"
 
@@ -843,7 +838,7 @@ msgid "{length} apps"
 msgstr "{length} aplikasi"
 
 #. Screen-reader fragment listing multiple attachments on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:49
+#: src/features/channel/components/ChannelMessage.tsx:51
 msgid "{length} attachments"
 msgstr "{length} lampiran"
 
@@ -853,12 +848,12 @@ msgid "{length} channels"
 msgstr "{length} saluran"
 
 #. Screen-reader fragment listing multiple embeds on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:67
+#: src/features/channel/components/ChannelMessage.tsx:69
 msgid "{length} embeds"
 msgstr "{length} sematan"
 
 #. Screen-reader fragment listing multiple stickers on a message. length is the count.
-#: src/features/channel/components/ChannelMessage.tsx:58
+#: src/features/channel/components/ChannelMessage.tsx:60
 msgid "{length} stickers"
 msgstr "{length} stiker"
 
@@ -2354,7 +2349,7 @@ msgid "Activity log"
 msgstr "Log aktivitas"
 
 #. Community settings tab showing activity log entries and moderation history.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:61
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:69
 msgctxt "community-settings-tab"
 msgid "Activity log"
 msgstr "Log aktivitas"
@@ -2836,9 +2831,7 @@ msgstr "Sesuaikan tingkat zoom keseluruhan aplikasi. Firefox tetap menggunakan p
 #. Description for the app zoom setting. The placeholders are keyboard shortcuts.
 #: src/features/user/components/modals/tabs/appearance_tab/ScalingTab.tsx:46
 msgid "Adjust the overall zoom level of the app. Use {zoomIn} / {zoomOut} to adjust quickly."
-msgstr ""
-"Sesuaikan tingkat level zoom aplikasi secara keseluruhan. Gunakan {zoomIn} / "
-"{zoomOut} untuk menyesuaikan dengan cepat."
+msgstr "Sesuaikan tingkat level zoom aplikasi secara keseluruhan. Gunakan {zoomIn} / {zoomOut} untuk menyesuaikan dengan cepat."
 
 #. Inline adaptive-quality status in the stream settings menu. Shows the current automatically lowered resolution and frame rate.
 #: src/features/voice/components/StreamSettingsMenuContent.tsx:146
@@ -4055,7 +4048,7 @@ msgid "Attach files"
 msgstr "Lampirkan file"
 
 #. Screen-reader fragment listing one attachment on a message. Lowercase because it appears inside a longer sentence.
-#: src/features/channel/components/ChannelMessage.tsx:44
+#: src/features/channel/components/ChannelMessage.tsx:46
 msgid "attachment"
 msgstr "lampiran"
 
@@ -5022,7 +5015,7 @@ msgid "Banner preview"
 msgstr "Pratinjau banner"
 
 #. Community settings tab for banned users.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:91
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:99
 msgctxt "community-settings-tab"
 msgid "Bans"
 msgstr "Larangan"
@@ -6055,6 +6048,16 @@ msgstr "Kartu dapat mempertahankan harga PLN setelah verifikasi {paymentProvider
 msgid "Cards can keep TRY pricing after a quick {paymentProviderName} verification, but the card must be issued in Türkiye."
 msgstr "Kartu dapat mempertahankan harga TRY setelah verifikasi {paymentProviderName} yang cepat, tetapi kartu harus diterbitkan di Turki."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:37
+msgid "Cast"
+msgstr ""
+
+#. Community settings tab listing the characters available in the community.
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:38
+msgctxt "community-settings-tab"
+msgid "Cast"
+msgstr ""
+
 #. Short label in the discovery category bottom sheet. Keep it concise.
 #: src/features/discovery/components/bottomsheets/DiscoveryCategoryBottomSheet.tsx:15
 msgid "Categories"
@@ -6385,7 +6388,7 @@ msgstr "saluran"
 #. Short label in the channel source preview. Keep it concise.
 #: src/features/app/config/AuditLogConstants.ts:168
 #: src/features/channel/components/bottomsheets/channel_details_bottom_sheet/ChannelDetailsBottomSheetShared.ts:24
-#: src/features/channel/components/ChannelLayout.tsx:13
+#: src/features/channel/components/ChannelLayout.tsx:16
 #: src/features/channel/components/ChannelSourcePreview.tsx:27
 #: src/features/invite/components/InviteListItem.tsx:71
 #: src/features/webhook/components/WebhookListItem.tsx:55
@@ -6617,6 +6620,10 @@ msgstr "Saluran yang saya moderasi"
 msgid "Character limit exceeded by {remaining}"
 msgstr "Batas karakter terlampaui sebanyak {remaining}"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:40
+msgid "Characters available in this community, and which are currently primary."
+msgstr ""
+
 #. Advanced settings category tag.
 #. Short heading in the keyboard shortcuts cheatsheet.
 #. Short label in the keybinds tab. Keep it concise.
@@ -6756,9 +6763,7 @@ msgstr "Pilih"
 #. Settings section description. One-line summary of what the settings section controls.
 #: src/features/user/components/settings_utils/section_registry/AppearanceSections.ts:34
 msgid "Choose a base appearance, manage quick CSS, organize saved theme files, and tune theme tokens."
-msgstr ""
-"Pilih tampilan dasar, kelola CSS cepat, kelola file tema tersimpan, dan "
-"sesuaikan tune token tema."
+msgstr "Pilih tampilan dasar, kelola CSS cepat, kelola file tema tersimpan, dan sesuaikan tune token tema."
 
 #. Form field label or placeholder for choosing a community.
 #: src/features/expressions/components/modals/AddFavoriteChannelModal.tsx:40
@@ -7832,7 +7837,7 @@ msgstr "komunitas"
 #: src/features/app/config/AuditLogConstants.ts:152
 #: src/features/auth/components/pages/oauth_authorize_page/OAuthCommunityStep.tsx:48
 #: src/features/moderation/components/report_modal/IARModalPreview.tsx:16
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:253
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:270
 #: src/features/user/components/settings_utils/section_registry/PrivacySafetySections.ts:140
 msgid "Community"
 msgstr "Komunitas"
@@ -8018,7 +8023,7 @@ msgid "Community record"
 msgstr "Catatan komunitas"
 
 #. Root label for community settings modal and settings search paths.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:244
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
 msgid "Community settings"
 msgstr "Setelan komunitas"
 
@@ -8205,8 +8210,7 @@ msgstr "Konfigurasikan penyedia terjemahan yang digunakan dari teks yang dipilih
 #. Settings section description. One-line summary of what the settings section controls.
 #: src/features/user/components/settings_utils/section_registry/VoiceVideoSections.ts:153
 msgid "Configure your camera, screen sharing quality, previews, and frame rate."
-msgstr ""
-"Konfigurasi kameramu, kualitas berbagi layar, pratinjau, dan frame rate."
+msgstr "Konfigurasi kameramu, kualitas berbagi layar, pratinjau, dan frame rate."
 
 #. Settings section description. One-line summary of what the settings section controls.
 #: src/features/user/components/settings_utils/section_registry/VoiceVideoSections.ts:17
@@ -8604,7 +8608,7 @@ msgstr "Kontrol perilaku indikator belum dibaca untuk channel yang dibisukan di 
 msgid "Control which chat updates are announced by assistive technology."
 msgstr "Kontrol pembaruan chat mana yang diumumkan oleh teknologi bantu."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:259
+#: src/features/channel/components/channel_view/DMChannelView.tsx:297
 msgid "Conversation not found"
 msgstr "Percakapan tidak ditemukan"
 
@@ -11132,10 +11136,7 @@ msgstr "Bilah notifikasi desktop"
 
 #: src/features/ui/commands/NotificationCommands.tsx:31
 msgid "Desktop notifications have been blocked. You can enable them later in your browser settings or in user settings, or in {notificationSettingsPath}."
-msgstr ""
-"Notifikasi desktop telah diblokir. Kamu dapat mengaktifkannya nanti di "
-"pengaturan browser atau di pengaturan pengguna, atau di "
-"{notificationSettingsPath}."
+msgstr "Notifikasi desktop telah diblokir. Kamu dapat mengaktifkannya nanti di pengaturan browser atau di pengaturan pengguna, atau di {notificationSettingsPath}."
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/user/components/settings_utils/search_index/DesktopSettingsIndex.ts:110
@@ -11699,7 +11700,7 @@ msgid "Discovery"
 msgstr "Temukan"
 
 #. Community settings tab for public community discovery/listing.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:76
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:84
 msgctxt "community-settings-tab"
 msgid "Discovery"
 msgstr "Penemuan"
@@ -12731,7 +12732,7 @@ msgstr "Email berhasil diverifikasi"
 
 #. Screen-reader fragment listing one embed on a message. Lowercase because it appears inside a longer sentence.
 #. has:embed chip label. Always lowercase; matches the typed query value 1:1.
-#: src/features/channel/components/ChannelMessage.tsx:62
+#: src/features/channel/components/ChannelMessage.tsx:64
 #: src/features/search/utils/SearchUtils.ts:33
 msgid "embed"
 msgstr "sematkan"
@@ -12805,7 +12806,7 @@ msgid "Emoji"
 msgstr "file"
 
 #. Community settings tab for managing custom emoji uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:36
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:44
 msgctxt "community-settings-tab"
 msgid "Emoji"
 msgstr "File"
@@ -14072,7 +14073,7 @@ msgstr "Hapus ekspresi"
 #. Community settings sidebar category grouping the emoji and stickers tabs.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:249
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:266
 #: src/features/user/components/settings_utils/search_index/ExpressionPacksIndex.ts:19
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:134
 msgid "Expressions"
@@ -14236,6 +14237,10 @@ msgstr "Gagal memuat"
 #: src/features/user/components/modals/tabs/AuthorizedAppsTab.tsx:42
 msgid "Failed to load authorized applications"
 msgstr "Gagal memuat aplikasi yang diotorisasi"
+
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:53
+msgid "Failed to load cast"
+msgstr ""
 
 #: src/features/guild/components/modals/guild_tabs/GuildEmojiTab.tsx:443
 msgid "Failed to load emojis. Try again later."
@@ -16907,9 +16912,7 @@ msgstr "Jika Anda tidak dapat menggunakan metode verifikasi apa pun, hubungi duk
 #. Confirmation modal body shown before dismissing the desktop-notification nagbar. {notificationSettingsPath} is the localized settings path.
 #: src/features/app/components/layout/app_layout/nagbars/DesktopNotificationNagbar.tsx:38
 msgid "If you dismiss this, you can always enable desktop notifications later under {notificationSettingsPath}."
-msgstr ""
-"Jika Anda menutup ini, Kamu selalu dapat mengaktifkan notifikasi desktop "
-"nanti di {notificationSettingsPath}."
+msgstr "Jika Anda menutup ini, Kamu selalu dapat mengaktifkan notifikasi desktop nanti di {notificationSettingsPath}."
 
 #: src/features/voice/components/dialogs/DisablePiPConfirmModal.tsx:56
 msgid "If you don't remember this preference, we'll only hide the popout for this session. You can change this any time in {audioVideoSettingsPath}."
@@ -17651,7 +17654,7 @@ msgstr "Undangan instan"
 
 #. Community settings sidebar category grouping webhooks.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:257
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:274
 #: src/features/user/components/settings_utils/search_index/AuthorizedAppsIndex.ts:26
 msgid "Integrations"
 msgstr "Integrasi"
@@ -17994,7 +17997,7 @@ msgid "Invites"
 msgstr "Undangan"
 
 #. Community settings tab for invite link management.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:86
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:94
 msgctxt "community-settings-tab"
 msgid "Invites"
 msgstr "Undangan"
@@ -18250,7 +18253,7 @@ msgstr "Gabung panggilan suara"
 
 #. Button in the unjoined voice channel call surface. Joins the current voice channel.
 #. Confirm dialog title shown before joining a voice channel from a context where confirmation is required.
-#: src/features/channel/components/channel_view/GuildChannelView.tsx:65
+#: src/features/channel/components/channel_view/GuildChannelView.tsx:74
 #: src/features/voice/hooks/usePendingVoiceConnection.tsx:12
 msgid "Join voice channel"
 msgstr "Gabung ke saluran suara"
@@ -20070,7 +20073,7 @@ msgid "Members"
 msgstr "Anggota"
 
 #. Community settings tab for managing community members.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:81
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:89
 msgctxt "community-settings-tab"
 msgid "Members"
 msgstr "Anggota"
@@ -20213,7 +20216,7 @@ msgid "Menu shortcuts"
 msgstr "Pintasan menu"
 
 #. Fallback role label used in screen-reader message summaries.
-#: src/features/channel/components/ChannelMessage.tsx:76
+#: src/features/channel/components/ChannelMessage.tsx:78
 msgid "message"
 msgstr "Pesan"
 
@@ -20769,7 +20772,7 @@ msgid "Moderation"
 msgstr "Moderasi"
 
 #. Community settings tab for moderation and safety controls.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:56
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:64
 msgctxt "community-settings-tab"
 msgid "Moderation"
 msgstr "Moderasi"
@@ -21849,6 +21852,10 @@ msgstr "Tidak ada kamera atau perangkat virtual yang ditemukan"
 msgid "No capture devices found"
 msgstr "Tidak ada perangkat perekam yang ditemukan"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:70
+msgid "No cast configured"
+msgstr ""
+
 #. Empty-state text in the invite list item.
 #. Subtext under a channel name in the notification overrides list when the channel has no parent category. Short standalone label.
 #: src/features/guild/components/modals/GuildNotificationSettingsModal.tsx:145
@@ -22247,7 +22254,7 @@ msgid "No system channel"
 msgstr "Tidak ada saluran sistem"
 
 #. Screen-reader fragment indicating the message has no text body. Lowercase because it appears inside a longer sentence.
-#: src/features/channel/components/ChannelMessage.tsx:71
+#: src/features/channel/components/ChannelMessage.tsx:73
 msgid "no text content"
 msgstr "tidak ada konten teks"
 
@@ -23533,7 +23540,7 @@ msgid "Overview"
 msgstr "Ikhtisar"
 
 #. Community settings tab for basic server/community details.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:46
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:54
 msgctxt "community-settings-tab"
 msgid "Overview"
 msgstr "Ikhtisar"
@@ -23852,7 +23859,7 @@ msgstr "Permintaan pertemanan tertunda akan muncul di sini."
 #: src/features/expressions/utils/UnicodeEmojis.ts:21
 #: src/features/search/state/QuickSwitcherResultConverters.ts:22
 #: src/features/search/utils/QuickSwitcherModalUtils.tsx:51
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:261
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:278
 msgid "People"
 msgstr "Orang"
 
@@ -24693,6 +24700,7 @@ msgstr "Harga masih dimuat."
 msgid "Pricing preference"
 msgstr "Preferensi harga"
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:96
 #: src/features/user/components/modals/tabs/component_gallery_tab/ComponentGalleryTabButtonsTab.tsx:157
 msgid "Primary"
 msgstr "Primer"
@@ -27241,7 +27249,7 @@ msgid "Roles"
 msgstr "Peran"
 
 #. Community settings tab for role hierarchy and permission rules.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:51
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:59
 msgctxt "community-settings-tab"
 msgid "Roles"
 msgstr "Peran"
@@ -30939,7 +30947,7 @@ msgstr "Langkah 4"
 #. Screen-reader fragment listing one sticker on a message. Lowercase because it appears inside a longer sentence.
 #. has:sticker chip label. Always lowercase; matches the typed query value 1:1.
 #: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:111
-#: src/features/channel/components/ChannelMessage.tsx:53
+#: src/features/channel/components/ChannelMessage.tsx:55
 #: src/features/search/utils/SearchUtils.ts:73
 msgid "sticker"
 msgstr "stiker"
@@ -31073,7 +31081,7 @@ msgid "Stickers"
 msgstr "Stiker"
 
 #. Community settings tab for managing custom stickers uploaded to the community.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:41
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:49
 msgctxt "community-settings-tab"
 msgid "Stickers"
 msgstr "Stiker"
@@ -32161,7 +32169,7 @@ msgstr "Bot telah ditambahkan ke <0>{destinationName}</0>."
 msgid "The bot has been added."
 msgstr "Bot telah ditambahkan."
 
-#: src/features/channel/components/ChannelLayout.tsx:51
+#: src/features/channel/components/ChannelLayout.tsx:56
 msgid "The channel you're looking for may have been deleted or you may not have access to it."
 msgstr "Saluran yang Anda cari mungkin sudah dihapus atau Anda tidak memiliki akses ke sana."
 
@@ -32408,6 +32416,10 @@ msgstr "Saat ini tidak ada metode langganan lokal berbasis aplikasi yang ditampi
 msgid "There is no recovery once this starts. We will DM you when it finishes."
 msgstr "Tidak ada pemulihan setelah ini dimulai. Kami akan mengirim DM kepada Anda setelah selesai."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:54
+msgid "There was an error loading the cast for this community. Try again."
+msgstr ""
+
 #: src/features/channel/components/modals/channel_tabs/ChannelInvitesTab.tsx:271
 msgid "There was an error loading the invite links for this channel. Try again."
 msgstr "Terjadi error saat memuat tautan undangan untuk saluran ini. Coba lagi."
@@ -32607,6 +32619,10 @@ msgstr "Kode ini tidak valid atau sudah digunakan."
 msgid "This code was already redeemed."
 msgstr "Kode ini sudah ditukarkan."
 
+#: src/features/guild/components/modals/guild_tabs/GuildCastTab.tsx:71
+msgid "This community doesn't have any cast characters mapped to it yet."
+msgstr ""
+
 #: src/features/guild/components/modals/guild_tabs/GuildInvitesTab.tsx:102
 msgid "This community doesn't have any invite links yet. Go to a channel and create an invite to invite people."
 msgstr "Komunitas ini belum punya tautan undangan. Buka saluran dan buat undangan untuk mengundang orang."
@@ -32679,7 +32695,7 @@ msgstr "Koneksi ini belum diverifikasi."
 msgid "This contains sensitive content."
 msgstr "Ini berisi konten sensitif."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:262
+#: src/features/channel/components/channel_view/DMChannelView.tsx:300
 msgid "This conversation is no longer available."
 msgstr "Percakapan ini tidak tersedia lagi."
 
@@ -32870,7 +32886,7 @@ msgstr "Ini dinonaktifkan"
 msgid "This is how messages appear"
 msgstr "Begini tampilan pesan"
 
-#: src/features/channel/components/ChannelLayout.tsx:45
+#: src/features/channel/components/ChannelLayout.tsx:50
 msgid "This is not the channel you're looking for."
 msgstr "Ini bukan saluran yang Anda cari."
 
@@ -33050,8 +33066,8 @@ msgid "This removes every custom shortcut and re-enables all built-in shortcuts.
 msgstr "Ini akan menghapus semua pintasan khusus dan mengaktifkan kembali semua pintasan bawaan. Tindakan ini tidak dapat dibatalkan."
 
 #: src/features/auth/components/pages/ResetPasswordPage.tsx:114
-msgid "This reset link has expired. Reset links last 24 hours. Request a new one."
-msgstr "Tautan reset ini sudah kedaluwarsa. Tautan reset berlaku selama 24 jam. Minta tautan baru."
+msgid "This reset link has expired. Reset links last 1 hour. Please request a new one."
+msgstr ""
 
 #. Fallback role name in a mass-mention warning title.
 #: src/features/channel/components/MentionEveryonePopout.tsx:14
@@ -33155,7 +33171,7 @@ msgstr "Pengguna ini tidak memiliki peran di komunitas ini."
 msgid "This user is already banned from the community."
 msgstr "Pengguna ini sudah diblokir dari komunitas."
 
-#: src/features/channel/components/channel_view/DMChannelView.tsx:279
+#: src/features/channel/components/channel_view/DMChannelView.tsx:317
 msgid "This user is no longer available."
 msgstr "Pengguna ini sudah tidak tersedia."
 
@@ -35857,7 +35873,7 @@ msgstr "Pengguna memindahkan saluran"
 #. Reason chip in the unaddable recipients alert when the user record is missing.
 #. Title of the error modal shown when the recipient of a DM no longer exists.
 #: src/features/app/components/alerts/DmActionErrorModal.tsx:24
-#: src/features/channel/components/channel_view/DMChannelView.tsx:276
+#: src/features/channel/components/channel_view/DMChannelView.tsx:314
 #: src/features/channel/components/modals/UnaddableRecipientsConfirmModal.tsx:11
 msgid "User not found"
 msgstr "Pengguna tidak ditemukan"
@@ -36051,7 +36067,7 @@ msgid "Vanity URL"
 msgstr "URL kustom"
 
 #. Community settings tab for the community vanity/custom invite link.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:71
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:79
 msgctxt "community-settings-tab"
 msgid "Vanity URL"
 msgstr "URL khusus"
@@ -37431,7 +37447,7 @@ msgid "Webhooks"
 msgstr "Webhook"
 
 #. Community settings tab for configuring webhooks.
-#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:66
+#: src/features/user/components/settings_utils/GuildSettingsConstants.ts:74
 msgctxt "community-settings-tab"
 msgid "Webhooks"
 msgstr "Webhook"
@@ -38278,7 +38294,7 @@ msgid "You don't have permission to do this to this member."
 msgstr "Anda tidak memiliki izin untuk melakukan ini pada anggota ini."
 
 #. Tooltip on the disabled Join voice channel button shown when the user lacks the Connect permission in the voice channel.
-#: src/features/channel/components/channel_view/GuildChannelView.tsx:69
+#: src/features/channel/components/channel_view/GuildChannelView.tsx:78
 msgid "You don't have permission to join this voice channel"
 msgstr "Anda tidak memiliki izin untuk bergabung ke saluran suara ini"
 
