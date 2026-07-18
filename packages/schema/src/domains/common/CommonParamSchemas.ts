@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {createStringType, SnowflakeType} from '@fluxer/schema/src/primitives/SchemaPrimitives';
+import {
+	coerceNumberFromString,
+	createStringType,
+	SnowflakeType,
+} from '@fluxer/schema/src/primitives/SchemaPrimitives';
 import {z} from 'zod';
 
 export const GuildIdParam = z.object({
@@ -165,6 +169,17 @@ export const GuildIdEmojiIdParam = z.object({
 });
 
 export type GuildIdEmojiIdParam = z.infer<typeof GuildIdEmojiIdParam>;
+
+/**
+ * `character_id` is the personal site's `characters.id` — a plain auto-increment integer,
+ * NOT a Fluxer snowflake. Parsing it as one would reject every valid value.
+ */
+export const GuildIdCastCharacterIdParam = z.object({
+	guild_id: SnowflakeType.describe('The ID of the guild'),
+	character_id: coerceNumberFromString(z.number().int().positive()).describe('The personal site ID of the character'),
+});
+
+export type GuildIdCastCharacterIdParam = z.infer<typeof GuildIdCastCharacterIdParam>;
 
 export const GuildIdStickerIdParam = z.object({
 	guild_id: SnowflakeType.describe('The ID of the guild'),

@@ -49,6 +49,37 @@ const CastResponsePayload = z.object({
 export type CastPayload = z.infer<typeof CastResponsePayload>;
 
 /**
+ * Write-side wire shapes. Deliberately permissive for the same reason as the read payload:
+ * the personal site owns this contract. The endpoint reports failure as `{"error": "..."}`
+ * with a 4xx status, so a 2xx body is treated as success regardless of which confirmation
+ * fields it carries, and the override is read from either a nested object or flat fields.
+ */
+const CastOverridePayload = z.object({
+	character_id: z.union([z.string(), z.number()]).nullish(),
+	nickname: z.string().nullish(),
+	pfp_url: z.string().nullish(),
+});
+
+const CastWritePayload = z.object({
+	error: z.string().nullish(),
+	override: CastOverridePayload.nullish(),
+	nickname: z.string().nullish(),
+	pfp_url: z.string().nullish(),
+});
+
+export interface CastOverride {
+	nickname: string | null;
+	pfpUrl: string | null;
+}
+
+export type CastWriteResult = {ok: true; override: CastOverride | null} | {ok: false; failure: CastFetchFailure};
+
+export interface CastOverrideUpdate {
+	nickname?: string | null;
+	pfpUrl?: string | null;
+}
+
+/**
  * Why a discriminated union rather than a boolean:
  * the caller needs to distinguish "the personal site is down" (retryable, log-worthy)
  * from "this deployment has no Cast configured" (expected, silent) from "the endpoint
@@ -58,7 +89,7 @@ export type CastPayload = z.infer<typeof CastResponsePayload>;
 export type CastFetchFailure =
 	| {kind: 'not_configured'}
 	| {kind: 'network'; detail: string}
-	| {kind: 'http_status'; status: number}
+	| {kind: 'http_status'; status: number; message?: string}
 	| {kind: 'malformed_json'; detail: string}
 	| {kind: 'invalid_shape'; detail: string};
 
@@ -162,6 +193,102 @@ export class CastClient {
 
 		this.cache.set(serverId, {data: result.data, expiresAt: Date.now() + this.cacheTtlMs});
 		return {ok: true, data: result.data, cached: false};
+	}
+
+	/**
+	 * Adds a character to a guild's cast. Idempotency is the personal site's business, not
+	 * this client's — a repeat add is whatever the endpoint decides it is.
+	 */
+	async addToCast(serverId: string, characterId: number): Promise<CastWriteResult> {
+		return this.write(serverId, {action: 'add_to_cast', server_id: serverId, character_id: characterId});
+	}
+
+	async removeFromCast(serverId: string, characterId: number): Promise<CastWriteResult> {
+		return this.write(serverId, {action: 'remove_from_cast', server_id: serverId, character_id: characterId});
+	}
+
+	/**
+	 * Updates the per-guild display override. Fields left undefined are omitted from the
+	 * request entirely, so "not supplied" and "explicitly cleared to null" stay distinct all
+	 * the way to the personal site rather than collapsing into one meaning here.
+	 */
+	async updateOverride(serverId: string, characterId: number, update: CastOverrideUpdate): Promise<CastWriteResult> {
+		const body: Record<string, unknown> = {
+			action: 'update_override',
+			server_id: serverId,
+			character_id: characterId,
+		};
+		if (update.nickname !== undefined) {
+			body.nickname = update.nickname;
+		}
+		if (update.pfpUrl !== undefined) {
+			body.pfp_url = update.pfpUrl;
+		}
+		return this.write(serverId, body);
+	}
+
+	/**
+	 * Drops this server's cached read so the next fetchForServer() goes to the origin.
+	 * Without this a caller would keep seeing pre-write data for up to the TTL, which reads
+	 * as "my edit did not save".
+	 */
+	invalidate(serverId: string): void {
+		this.cache.delete(serverId);
+	}
+
+	private async write(serverId: string, body: Record<string, unknown>): Promise<CastWriteResult> {
+		if (!this.isConfigured()) {
+			return {ok: false, failure: {kind: 'not_configured'}};
+		}
+
+		let status: number;
+		let responseBody: string;
+		try {
+			const response = await this.http.sendRequest({
+				url: this.config.apiUrl,
+				method: 'POST',
+				headers: {[CAST_SECRET_HEADER]: this.config.apiSecret, Accept: 'application/json'},
+				body,
+				timeout: this.timeoutMs,
+				serviceName: 'cast',
+			});
+			status = response.status;
+			responseBody = await this.readBody(response.stream);
+		} catch (error) {
+			return {ok: false, failure: {kind: 'network', detail: errorDetail(error)}};
+		}
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(responseBody);
+		} catch (error) {
+			// A non-2xx with an unparseable body is still primarily a status failure: report it
+			// as such rather than as malformed JSON, which would misdirect the reader.
+			if (status < 200 || status >= 300) {
+				return {ok: false, failure: {kind: 'http_status', status}};
+			}
+			return {ok: false, failure: {kind: 'malformed_json', detail: errorDetail(error)}};
+		}
+
+		const result = CastWritePayload.safeParse(parsed);
+		if (!result.success) {
+			return {ok: false, failure: {kind: 'invalid_shape', detail: result.error.issues[0]?.message ?? 'unknown'}};
+		}
+
+		if (status < 200 || status >= 300) {
+			return {ok: false, failure: {kind: 'http_status', status, message: result.data.error ?? undefined}};
+		}
+
+		// Only a confirmed write invalidates: dropping the entry on failure would turn every
+		// rejected request into a cache stampede against the personal site.
+		this.invalidate(serverId);
+
+		const override = result.data.override ?? result.data;
+		const hasOverride = override.nickname != null || override.pfp_url != null;
+		return {
+			ok: true,
+			override: hasOverride ? {nickname: override.nickname ?? null, pfpUrl: override.pfp_url ?? null} : null,
+		};
 	}
 
 	private async readBody(stream: ReadableStream<Uint8Array> | null): Promise<string> {
