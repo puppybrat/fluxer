@@ -8,7 +8,10 @@
 
 .header {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
 }
 
 .title {
@@ -66,4 +69,26 @@
 	font-size: 0.75rem;
 	line-height: 1rem;
 	color: var(--text-primary-muted);
+}
+
+.headerText {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	min-width: 0;
+}
+
+.characterActions {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-left: auto;
+}
+
+.writeError {
+	padding: 0.5rem 0.75rem;
+	border-radius: var(--radius-sm);
+	background-color: var(--background-secondary);
+	color: var(--text-danger);
+	font-size: 0.8125rem;
 }

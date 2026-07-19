@@ -1,0 +1,70 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+.searchInput {
+	width: 100%;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--background-modifier-accent);
+	border-radius: var(--radius-sm);
+	background-color: var(--input-background);
+	color: var(--text-primary);
+	font-size: 0.875rem;
+}
+
+.searchInput:focus {
+	outline: 2px solid var(--brand-primary);
+	outline-offset: -1px;
+}
+
+.spinnerContainer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem 0;
+}
+
+.characterList {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	max-height: 20rem;
+	overflow-y: auto;
+}
+
+.characterItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.5rem 0.75rem;
+	border-radius: var(--radius-sm);
+	background-color: var(--background-secondary);
+}
+
+.characterInfo {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.characterName {
+	color: var(--text-primary);
+	font-size: 0.875rem;
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.characterAlias {
+	color: var(--text-secondary);
+	font-size: 0.75rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.errorText {
+	color: var(--text-danger);
+	font-size: 0.8125rem;
+}

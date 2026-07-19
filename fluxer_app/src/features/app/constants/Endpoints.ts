@@ -89,6 +89,10 @@ export const Endpoints = {
 	GUILDS: '/guilds',
 	GUILD: (guildId: string) => `/guilds/${guildId}`,
 	GUILD_CAST: (guildId: string) => `/guilds/${guildId}/cast`,
+	GUILD_CAST_ALL_CHARACTERS: (guildId: string) => `/guilds/${guildId}/cast/all-characters`,
+	GUILD_CAST_CHARACTER: (guildId: string, characterId: string) => `/guilds/${guildId}/cast/characters/${characterId}`,
+	GUILD_CAST_CHARACTER_PRIMARY: (guildId: string, characterId: string) =>
+		`/guilds/${guildId}/cast/characters/${characterId}/primary`,
 	GUILD_CHANNELS: (guildId: string) => `/guilds/${guildId}/channels`,
 	GUILD_MEMBER: (guildId: string, query = ME) => `/guilds/${guildId}/members/${query}`,
 	GUILD_MEMBERS: (guildId: string) => `/guilds/${guildId}/members`,
