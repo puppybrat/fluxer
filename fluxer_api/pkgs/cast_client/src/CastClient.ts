@@ -40,10 +40,24 @@ const CastCategoryPayload = z.object({
 	category_id: z.union([z.string(), z.number()]).nullish(),
 });
 
+/**
+ * Per-guild display override rows. `channel_id` is always null today — the endpoint models a
+ * channel-scoped override but nothing sets one, so the join downstream takes server-scoped
+ * rows only rather than silently picking an arbitrary row if that ever changes.
+ */
+const CastOverrideRowPayload = z.object({
+	character_id: z.union([z.string(), z.number()]),
+	server_id: z.union([z.string(), z.number()]).nullish(),
+	channel_id: z.union([z.string(), z.number()]).nullish(),
+	nickname: z.string().nullish(),
+	pfp_url: z.string().nullish(),
+});
+
 const CastResponsePayload = z.object({
 	characters: z.array(CastCharacterPayload).default([]),
 	primaries: z.array(CastPrimaryPayload).default([]),
 	categories: z.array(CastCategoryPayload).default([]),
+	cast_overrides: z.array(CastOverrideRowPayload).default([]),
 });
 
 /**

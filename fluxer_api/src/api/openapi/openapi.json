@@ -31283,9 +31283,20 @@
 						"anyOf": [{"type": "string"}, {"type": "null"}],
 						"description": "An alternate name for this character"
 					},
-					"ship": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "The ship this character belongs to"}
+					"ship": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The ship this character belongs to"
+					},
+					"nickname": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The per-guild nickname for this character, or null when no override is set"
+					},
+					"pfp_url": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The per-guild avatar URL for this character, or null when no override is set"
+					}
 				},
-				"required": ["id", "name", "alias", "ship"]
+				"required": ["id", "name", "alias", "ship", "nickname", "pfp_url"]
 			},
 			"CastPrimaryResponse": {
 				"type": "object",

@@ -42,6 +42,15 @@ const PRIMARY_DESCRIPTOR = msg({
 });
 
 /**
+ * Nickname wins over the real name whenever one is set: a character with an override is
+ * more commonly referred to by it, so showing the real name would be the surprising choice.
+ * The API normalises an unset override to null, so a single nullish check is enough here.
+ */
+function castDisplayName(character: CastCharacter): string {
+	return character.nickname ?? character.name ?? character.id;
+}
+
+/**
  * The list renders flat: nothing in the schema links a character to an AU or category, so
  * there is no honest way to group them. Grouping can come back if that link is ever added.
  */
@@ -66,12 +75,16 @@ const GuildCastTab: React.FC<{guildId: string}> = observer(({guildId}) => {
 
 	const handleEditClick = useCallback(
 		(character: CastCharacter) => {
-			// The override values are not in the guild-scoped read (the API deliberately does not
-			// echo cast_overrides), so the modal opens with what the tab can see and the user
-			// re-states both fields. Prefilling from stale local guesses would be worse.
+			// Prefilled from the read, which now carries the override. Editing one field no longer
+			// silently clears the other, which is what happened while both opened blank.
 			ModalCommands.push(
 				ModalCommands.modal(() => (
-					<CastEditOverrideModal guildId={guildId} character={character} currentNickname={null} currentPfpUrl={null} />
+					<CastEditOverrideModal
+						guildId={guildId}
+						character={character}
+						currentNickname={character.nickname}
+						currentPfpUrl={character.pfp_url}
+					/>
 				)),
 			);
 		},
@@ -80,7 +93,7 @@ const GuildCastTab: React.FC<{guildId: string}> = observer(({guildId}) => {
 
 	const handleRemoveClick = useCallback(
 		(character: CastCharacter) => {
-			const label = character.name ?? character.id;
+			const label = castDisplayName(character);
 			ModalCommands.push(
 				ModalCommands.modal(() => (
 					<ConfirmModal
@@ -193,7 +206,7 @@ const GuildCastTab: React.FC<{guildId: string}> = observer(({guildId}) => {
 								data-flx="guild.guild-tabs.guild-cast-tab.character-item"
 							>
 								<span className={styles.characterName} data-flx="guild.guild-tabs.guild-cast-tab.character-name">
-									{character.name ?? character.id}
+									{castDisplayName(character)}
 								</span>
 								{character.alias != null && character.alias !== '' && (
 									<span className={styles.characterAlias} data-flx="guild.guild-tabs.guild-cast-tab.character-alias">

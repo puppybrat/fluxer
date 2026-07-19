@@ -46,14 +46,45 @@ function toBoolean(value: boolean | number | string | null | undefined): boolean
  * Projects the external payload onto the trimmed shape Fluxer exposes. Anything not named
  * here is dropped on purpose — see CastSchemas for why.
  */
+/**
+ * Normalises an override field to null. The personal site clears by writing null, but an
+ * empty string is equally "unset" from a display perspective — collapsing both here means
+ * clients can test one condition instead of two.
+ */
+function toOverrideValue(value: string | null | undefined): string | null {
+	if (value == null) {
+		return null;
+	}
+	const trimmed = value.trim();
+	return trimmed === '' ? null : trimmed;
+}
+
 function toCastResponse(payload: CastPayload) {
+	// Server-scoped rows only: channel_id is always null today, and taking a channel-scoped
+	// row here would attribute a narrower override to the whole guild.
+	const overridesByCharacterId = new Map<string, {nickname: string | null; pfp_url: string | null}>();
+	for (const override of payload.cast_overrides) {
+		if (override.channel_id != null) {
+			continue;
+		}
+		overridesByCharacterId.set(String(override.character_id), {
+			nickname: toOverrideValue(override.nickname),
+			pfp_url: toOverrideValue(override.pfp_url),
+		});
+	}
+
 	return {
-		characters: payload.characters.map((character) => ({
-			id: String(character.id),
-			name: character.name ?? null,
-			alias: character.alias ?? null,
-			ship: character.ship ?? null,
-		})),
+		characters: payload.characters.map((character) => {
+			const override = overridesByCharacterId.get(String(character.id));
+			return {
+				id: String(character.id),
+				name: character.name ?? null,
+				alias: character.alias ?? null,
+				ship: character.ship ?? null,
+				nickname: override?.nickname ?? null,
+				pfp_url: override?.pfp_url ?? null,
+			};
+		}),
 		primaries: payload.primaries.map((primary) => ({
 			character_id: String(primary.character_id),
 			channel_id: toStringOrNull(primary.channel_id),
@@ -184,11 +215,15 @@ export function CastController(app: HonoApp) {
 			}
 
 			return ctx.json({
+				// Always null here: this listing is not guild-scoped, so there is no guild whose
+				// override could apply. The picker shows real names, which is what it should.
 				characters: result.data.characters.map((character) => ({
 					id: String(character.id),
 					name: character.name ?? null,
 					alias: character.alias ?? null,
 					ship: character.ship ?? null,
+					nickname: null,
+					pfp_url: null,
 				})),
 			});
 		},

@@ -13,6 +13,19 @@ export const CastCharacterResponse = z.object({
 	name: z.string().nullable().describe('The display name of this character'),
 	alias: z.string().nullable().describe('An alternate name for this character'),
 	ship: z.string().nullable().describe('The ship this character belongs to'),
+	/**
+	 * Null rather than empty string when unset. The personal site clears an override by
+	 * writing null, and an empty string reaching a client would be indistinguishable from a
+	 * deliberate blank nickname — so the projection normalises '' to null on the way out.
+	 */
+	nickname: z
+		.string()
+		.nullable()
+		.describe('The per-guild nickname for this character, or null when no override is set'),
+	pfp_url: z
+		.string()
+		.nullable()
+		.describe('The per-guild avatar URL for this character, or null when no override is set'),
 });
 
 export const CastPrimaryResponse = z.object({
