@@ -14,6 +14,13 @@ export const CastCharacterResponse = z.object({
 	alias: z.string().nullable().describe('An alternate name for this character'),
 	ship: z.string().nullable().describe('The ship this character belongs to'),
 	/**
+	 * Which person owns this character on the personal site. Every row carries 1 or 2 today,
+	 * but this is a plain nullable number rather than a 1 | 2 literal union on purpose: a
+	 * third owner appearing upstream would make a strict union fail validation and take down
+	 * the whole cast read, which is a poor trade for a field nothing branches on yet.
+	 */
+	owner: z.number().nullable().describe('The personal-site owner this character belongs to'),
+	/**
 	 * Null rather than empty string when unset. The personal site clears an override by
 	 * writing null, and an empty string reaching a client would be indistinguishable from a
 	 * deliberate blank nickname — so the projection normalises '' to null on the way out.

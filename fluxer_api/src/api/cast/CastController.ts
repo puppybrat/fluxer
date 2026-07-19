@@ -43,9 +43,17 @@ function toBoolean(value: boolean | number | string | null | undefined): boolean
 }
 
 /**
- * Projects the external payload onto the trimmed shape Fluxer exposes. Anything not named
- * here is dropped on purpose — see CastSchemas for why.
+ * Coerces the endpoint's owner column to a number. Non-numeric or absent becomes null rather
+ * than NaN, so a client never has to guard against a number that is not one.
  */
+function toOwner(value: string | number | null | undefined): number | null {
+	if (value == null) {
+		return null;
+	}
+	const parsed = typeof value === 'number' ? value : Number(value);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
  * Normalises an override field to null. The personal site clears by writing null, but an
  * empty string is equally "unset" from a display perspective — collapsing both here means
@@ -59,6 +67,10 @@ function toOverrideValue(value: string | null | undefined): string | null {
 	return trimmed === '' ? null : trimmed;
 }
 
+/**
+ * Projects the external payload onto the trimmed shape Fluxer exposes. Anything not named
+ * here is dropped on purpose — see CastSchemas for why.
+ */
 function toCastResponse(payload: CastPayload) {
 	// Server-scoped rows only: channel_id is always null today, and taking a channel-scoped
 	// row here would attribute a narrower override to the whole guild.
@@ -81,6 +93,7 @@ function toCastResponse(payload: CastPayload) {
 				name: character.name ?? null,
 				alias: character.alias ?? null,
 				ship: character.ship ?? null,
+				owner: toOwner(character.owner),
 				nickname: override?.nickname ?? null,
 				pfp_url: override?.pfp_url ?? null,
 			};
@@ -222,6 +235,7 @@ export function CastController(app: HonoApp) {
 					name: character.name ?? null,
 					alias: character.alias ?? null,
 					ship: character.ship ?? null,
+					owner: toOwner(character.owner),
 					nickname: null,
 					pfp_url: null,
 				})),

@@ -31287,6 +31287,10 @@
 						"anyOf": [{"type": "string"}, {"type": "null"}],
 						"description": "The ship this character belongs to"
 					},
+					"owner": {
+						"anyOf": [{"type": "number"}, {"type": "null"}],
+						"description": "The personal-site owner this character belongs to"
+					},
 					"nickname": {
 						"anyOf": [{"type": "string"}, {"type": "null"}],
 						"description": "The per-guild nickname for this character, or null when no override is set"
@@ -31296,7 +31300,7 @@
 						"description": "The per-guild avatar URL for this character, or null when no override is set"
 					}
 				},
-				"required": ["id", "name", "alias", "ship", "nickname", "pfp_url"]
+				"required": ["id", "name", "alias", "ship", "owner", "nickname", "pfp_url"]
 			},
 			"CastPrimaryResponse": {
 				"type": "object",

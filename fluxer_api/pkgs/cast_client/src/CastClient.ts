@@ -23,6 +23,9 @@ const CastCharacterPayload = z.object({
 	name: z.string().nullish(),
 	alias: z.string().nullish(),
 	ship: z.string().nullish(),
+	// Accepts string as well as number: every row is an int today, but the endpoint returns
+	// other numeric columns as strings, so a future change of that kind must not fail the read.
+	owner: z.union([z.string(), z.number()]).nullish(),
 });
 
 const CastPrimaryPayload = z.object({
