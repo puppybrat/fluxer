@@ -46,7 +46,18 @@ const CastResponsePayload = z.object({
 	categories: z.array(CastCategoryPayload).default([]),
 });
 
+/**
+ * The all-characters listing is not guild-scoped, so it carries no primaries or categories.
+ * It reuses CastCharacterPayload for the rows rather than redeclaring those fields, but gets
+ * its own envelope: returning the guild-shaped payload with empty primaries/categories would
+ * imply this call knows something about guild state, which it does not.
+ */
+const CastAllCharactersPayload = z.object({
+	characters: z.array(CastCharacterPayload).default([]),
+});
+
 export type CastPayload = z.infer<typeof CastResponsePayload>;
+export type CastAllCharactersData = z.infer<typeof CastAllCharactersPayload>;
 
 /**
  * Write-side wire shapes. Deliberately permissive for the same reason as the read payload:
@@ -101,6 +112,10 @@ export type CastFetchFailure =
 
 export type CastFetchResult = {ok: true; data: CastPayload; cached: boolean} | {ok: false; failure: CastFetchFailure};
 
+export type CastAllCharactersResult =
+	| {ok: true; data: CastAllCharactersData; cached: boolean}
+	| {ok: false; failure: CastFetchFailure};
+
 export interface CastClientConfig {
 	apiUrl: string;
 	apiSecret: string;
@@ -124,6 +139,10 @@ interface CacheEntry {
  */
 export class CastClient {
 	private readonly cache = new Map<string, CacheEntry>();
+	// Held separately from the guild-keyed cache rather than under a sentinel key: the two
+	// hold different shapes, and a sentinel would have to be provably un-collidable with a
+	// server id forever.
+	private allCharactersCache: {data: CastAllCharactersData; expiresAt: number} | null = null;
 	private readonly http: HttpClient;
 	private readonly timeoutMs: number;
 	private readonly cacheTtlMs: number;
@@ -144,6 +163,62 @@ export class CastClient {
 
 	clearCache(): void {
 		this.cache.clear();
+		this.allCharactersCache = null;
+	}
+
+	/**
+	 * Lists every character on the personal site, ignoring guild scoping — the roster a picker
+	 * needs in order to offer characters that are not in the cast yet.
+	 *
+	 * Same never-throws contract and TTL as fetchForServer. Writes do NOT invalidate this: they
+	 * change cast membership and overrides, not the characters table, so a stale entry here
+	 * cannot misreport the result of a write.
+	 */
+	async listAllCharacters(): Promise<CastAllCharactersResult> {
+		if (!this.isConfigured()) {
+			return {ok: false, failure: {kind: 'not_configured'}};
+		}
+
+		if (this.allCharactersCache && this.allCharactersCache.expiresAt > Date.now()) {
+			return {ok: true, data: this.allCharactersCache.data, cached: true};
+		}
+
+		let status: number;
+		let body: string;
+		try {
+			const url = new URL(this.config.apiUrl);
+			url.searchParams.set('list', 'all_characters');
+			const response = await this.http.sendRequest({
+				url: url.toString(),
+				method: 'GET',
+				headers: {[CAST_SECRET_HEADER]: this.config.apiSecret, Accept: 'application/json'},
+				timeout: this.timeoutMs,
+				serviceName: 'cast',
+			});
+			status = response.status;
+			body = await this.readBody(response.stream);
+		} catch (error) {
+			return {ok: false, failure: {kind: 'network', detail: errorDetail(error)}};
+		}
+
+		if (status < 200 || status >= 300) {
+			return {ok: false, failure: {kind: 'http_status', status}};
+		}
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(body);
+		} catch (error) {
+			return {ok: false, failure: {kind: 'malformed_json', detail: errorDetail(error)}};
+		}
+
+		const result = CastAllCharactersPayload.safeParse(parsed);
+		if (!result.success) {
+			return {ok: false, failure: {kind: 'invalid_shape', detail: result.error.issues[0]?.message ?? 'unknown'}};
+		}
+
+		this.allCharactersCache = {data: result.data, expiresAt: Date.now() + this.cacheTtlMs};
+		return {ok: true, data: result.data, cached: false};
 	}
 
 	/**

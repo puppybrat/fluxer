@@ -34,6 +34,15 @@ export const CastResponse = z.object({
 });
 
 /**
+ * The full character roster, not scoped to any guild — what a picker needs to offer
+ * characters that are not in the cast yet. Reuses CastCharacterResponse so the trimmed
+ * projection stays defined in exactly one place.
+ */
+export const CastAllCharactersResponse = z.object({
+	characters: z.array(CastCharacterResponse).describe('Every character available on the personal site'),
+});
+
+/**
  * Per-guild display overrides for a cast character. `nickname` is capped at 100 to match
  * the personal site's column width — a longer value is rejected here rather than silently
  * truncated on write.
@@ -71,4 +80,5 @@ export type CastResponseType = z.infer<typeof CastResponse>;
 export type CastOverrideResponseType = z.infer<typeof CastOverrideResponse>;
 export type CastOverrideUpdateRequestType = z.infer<typeof CastOverrideUpdateRequest>;
 export type CastSetPrimaryRequestType = z.infer<typeof CastSetPrimaryRequest>;
+export type CastAllCharactersResponseType = z.infer<typeof CastAllCharactersResponse>;
 export type CastMutationResponseType = z.infer<typeof CastMutationResponse>;

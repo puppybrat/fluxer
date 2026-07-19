@@ -5,6 +5,7 @@ import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {BadGatewayError} from '@fluxer/errors/src/domains/core/BadGatewayError';
 import {BadRequestError} from '@fluxer/errors/src/domains/core/BadRequestError';
 import {
+	CastAllCharactersResponse,
 	CastMutationResponse,
 	CastOverrideUpdateRequest,
 	CastResponse,
@@ -141,6 +142,55 @@ export function CastController(app: HonoApp) {
 
 			Logger.warn({guild_id: guildId.toString(), failure: result.failure}, 'Cast lookup failed');
 			throw new BadGatewayError();
+		},
+	);
+
+	// Path is a sibling of /cast/characters/:character_id, not a literal segment underneath it.
+	// `/cast/characters/all` would sit exactly where a parameterized route already matches, and
+	// a later GET on :character_id would shadow it — the failure this codebase has already hit
+	// once (see RelocateMessagesController's registration order). Avoided by construction here
+	// rather than by depending on registration order staying correct.
+	app.get(
+		'/guilds/:guild_id/cast/all-characters',
+		RateLimitMiddleware(RateLimitConfigs.GUILD_CAST_LIST_ALL),
+		LoginRequired,
+		Validator('param', GuildIdParam),
+		OpenAPI({
+			operationId: 'list_all_cast_characters',
+			summary: 'List all cast characters',
+			responseSchema: CastAllCharactersResponse,
+			statusCode: 200,
+			security: ['botToken', 'bearerToken', 'sessionToken'],
+			tags: ['Guilds'],
+			description:
+				'List every character available on the personal site, regardless of whether it is in this guild cast. Intended for pickers that need to offer characters not yet added. Requires the MANAGE_GUILD permission.',
+		}),
+		async (ctx) => {
+			const userId = ctx.get('user').id;
+			const guildId = createGuildID(ctx.req.valid('param').guild_id);
+
+			// Gated as a write despite being a read: this exposes the whole roster rather than
+			// anything scoped to the guild, and reusing the existing gate avoids inventing a
+			// third permission concept for one route.
+			await authorizeCastWrite(ctx.get('guildService'), userId, guildId);
+
+			const result = await getCastClient().listAllCharacters();
+			if (!result.ok) {
+				if (result.failure.kind === 'not_configured') {
+					return ctx.json({characters: []});
+				}
+				Logger.warn({guild_id: guildId.toString(), failure: result.failure}, 'Cast character listing failed');
+				throw new BadGatewayError();
+			}
+
+			return ctx.json({
+				characters: result.data.characters.map((character) => ({
+					id: String(character.id),
+					name: character.name ?? null,
+					alias: character.alias ?? null,
+					ship: character.ship ?? null,
+				})),
+			});
 		},
 	);
 

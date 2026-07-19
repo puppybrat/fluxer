@@ -80,6 +80,10 @@ export const GuildRateLimitConfigs = {
 		bucket: 'guild:cast:set_primary::guild_id',
 		config: {limit: 20, windowMs: ms('10 seconds')},
 	} as RouteRateLimitConfig,
+	GUILD_CAST_LIST_ALL: {
+		bucket: 'guild:cast:list_all::guild_id',
+		config: {limit: 30, windowMs: ms('10 seconds')},
+	} as RouteRateLimitConfig,
 	GUILD_CHANNEL_CREATE: {
 		bucket: 'guild:channel:create::guild_id',
 		config: {limit: 10, windowMs: ms('1 minute')},
