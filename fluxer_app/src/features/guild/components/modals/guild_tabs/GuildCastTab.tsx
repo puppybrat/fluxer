@@ -42,12 +42,28 @@ const PRIMARY_DESCRIPTOR = msg({
 });
 
 /**
- * Nickname wins over the real name whenever one is set: a character with an override is
- * more commonly referred to by it, so showing the real name would be the surprising choice.
- * The API normalises an unset override to null, so a single nullish check is enough here.
+ * The primary name is always the character's real name — a per-guild nickname is a display
+ * detail, not a change of identity, so it must not replace the name anywhere that identifies
+ * the character (row heading, remove confirmation, toasts).
  */
-function castDisplayName(character: CastCharacter): string {
-	return character.nickname ?? character.name ?? character.id;
+function castPrimaryName(character: CastCharacter): string {
+	return character.name ?? character.id;
+}
+
+/**
+ * The secondary line carries the nickname when one is set and falls back to the alias
+ * otherwise, so a nickname displaces the alias rather than the name. Null when neither
+ * exists, which the caller uses to omit the element entirely.
+ * The API normalises an unset override to null, so a single nullish check suffices.
+ */
+function castSecondaryLabel(character: CastCharacter): string | null {
+	if (character.nickname != null && character.nickname !== '') {
+		return character.nickname;
+	}
+	if (character.alias != null && character.alias !== '') {
+		return character.alias;
+	}
+	return null;
 }
 
 /**
@@ -93,7 +109,7 @@ const GuildCastTab: React.FC<{guildId: string}> = observer(({guildId}) => {
 
 	const handleRemoveClick = useCallback(
 		(character: CastCharacter) => {
-			const label = castDisplayName(character);
+			const label = castPrimaryName(character);
 			ModalCommands.push(
 				ModalCommands.modal(() => (
 					<ConfirmModal
@@ -206,11 +222,11 @@ const GuildCastTab: React.FC<{guildId: string}> = observer(({guildId}) => {
 								data-flx="guild.guild-tabs.guild-cast-tab.character-item"
 							>
 								<span className={styles.characterName} data-flx="guild.guild-tabs.guild-cast-tab.character-name">
-									{castDisplayName(character)}
+									{castPrimaryName(character)}
 								</span>
-								{character.alias != null && character.alias !== '' && (
+								{castSecondaryLabel(character) != null && (
 									<span className={styles.characterAlias} data-flx="guild.guild-tabs.guild-cast-tab.character-alias">
-										{character.alias}
+										{castSecondaryLabel(character)}
 									</span>
 								)}
 								{Cast.isPrimary(character.id) && (
