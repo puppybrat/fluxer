@@ -7806,6 +7806,82 @@
 				}
 			}
 		},
+		"/guilds/{guild_id}/cast/owner-accounts": {
+			"get": {
+				"operationId": "list_cast_owner_accounts",
+				"summary": "List cast owner accounts",
+				"tags": ["Guilds"],
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/CastOwnerAccountsResponse"}}}
+					},
+					"400": {
+						"description": "Bad Request - The request was malformed or contained invalid data",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"401": {
+						"description": "Unauthorized - Authentication is required or the token is invalid",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"403": {
+						"description": "Forbidden - You do not have permission to perform this action",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"429": {
+						"description": "Too Many Requests - You are being rate limited",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"code": {"type": "string", "enum": ["RATE_LIMITED"]},
+										"message": {"type": "string"},
+										"retry_after": {"type": "number", "description": "Seconds to wait before retrying"},
+										"global": {"type": "boolean", "description": "Whether this is a global rate limit"}
+									},
+									"required": ["code", "message", "retry_after"]
+								}
+							}
+						},
+						"headers": {
+							"Retry-After": {
+								"description": "Number of seconds to wait before retrying (only on 429)",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Limit": {
+								"description": "The number of requests that can be made in the current window",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Remaining": {
+								"description": "The number of remaining requests that can be made",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Reset": {
+								"description": "Unix timestamp when the rate limit resets",
+								"schema": {"type": "integer"}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal Server Error - An unexpected error occurred",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					}
+				},
+				"x-mint": {"metadata": {"title": "List cast owner accounts"}},
+				"description": "List the personal-site owner indices and the Fluxer accounts they map to. Not scoped to the guild — the guild is only the authorization context. Requires the MANAGE_GUILD permission.",
+				"security": [{"botToken": []}, {"sessionToken": []}],
+				"parameters": [
+					{
+						"name": "guild_id",
+						"in": "path",
+						"required": true,
+						"schema": {"$ref": "#/components/schemas/SnowflakeType"},
+						"description": "The ID of the guild"
+					}
+				]
+			}
+		},
 		"/guilds/{guild_id}/channels": {
 			"get": {
 				"operationId": "list_guild_channels",
@@ -31386,6 +31462,25 @@
 					"is_primary": {"type": "boolean", "description": "Whether this character is a primary for the guild"}
 				},
 				"required": ["is_primary"]
+			},
+			"CastOwnerAccountsResponse": {
+				"type": "object",
+				"properties": {
+					"owner_accounts": {
+						"type": "array",
+						"items": {"$ref": "#/components/schemas/CastOwnerAccountResponse"},
+						"description": "Every configured owner index to Fluxer account mapping"
+					}
+				},
+				"required": ["owner_accounts"]
+			},
+			"CastOwnerAccountResponse": {
+				"type": "object",
+				"properties": {
+					"fluxer_user_id": {"type": "string", "description": "The Fluxer user this owner index corresponds to"},
+					"owner_index": {"type": "number", "description": "The owner index used by the personal site characters table"}
+				},
+				"required": ["fluxer_user_id", "owner_index"]
 			},
 			"ChannelCreateRequest": {
 				"oneOf": [

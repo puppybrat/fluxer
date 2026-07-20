@@ -73,8 +73,25 @@ const CastAllCharactersPayload = z.object({
 	characters: z.array(CastCharacterPayload).default([]),
 });
 
+/**
+ * Maps a personal-site owner index onto the Fluxer account that owns it. Not guild-scoped:
+ * the mapping is a property of the two people, not of any community.
+ *
+ * `fluxer_user_id` stays a string all the way through — it is a snowflake, and parsing it as
+ * a number would silently lose precision past 2^53.
+ */
+const CastOwnerAccountPayload = z.object({
+	fluxer_user_id: z.union([z.string(), z.number()]),
+	owner_index: z.union([z.string(), z.number()]),
+});
+
+const CastOwnerAccountsPayload = z.object({
+	owner_accounts: z.array(CastOwnerAccountPayload).default([]),
+});
+
 export type CastPayload = z.infer<typeof CastResponsePayload>;
 export type CastAllCharactersData = z.infer<typeof CastAllCharactersPayload>;
+export type CastOwnerAccountsData = z.infer<typeof CastOwnerAccountsPayload>;
 
 /**
  * Write-side wire shapes. Deliberately permissive for the same reason as the read payload:
@@ -133,6 +150,10 @@ export type CastAllCharactersResult =
 	| {ok: true; data: CastAllCharactersData; cached: boolean}
 	| {ok: false; failure: CastFetchFailure};
 
+export type CastOwnerAccountsResult =
+	| {ok: true; data: CastOwnerAccountsData; cached: boolean}
+	| {ok: false; failure: CastFetchFailure};
+
 export interface CastClientConfig {
 	apiUrl: string;
 	apiSecret: string;
@@ -160,6 +181,7 @@ export class CastClient {
 	// hold different shapes, and a sentinel would have to be provably un-collidable with a
 	// server id forever.
 	private allCharactersCache: {data: CastAllCharactersData; expiresAt: number} | null = null;
+	private ownerAccountsCache: {data: CastOwnerAccountsData; expiresAt: number} | null = null;
 	private readonly http: HttpClient;
 	private readonly timeoutMs: number;
 	private readonly cacheTtlMs: number;
@@ -181,6 +203,7 @@ export class CastClient {
 	clearCache(): void {
 		this.cache.clear();
 		this.allCharactersCache = null;
+		this.ownerAccountsCache = null;
 	}
 
 	/**
@@ -290,6 +313,60 @@ export class CastClient {
 		}
 
 		this.cache.set(serverId, {data: result.data, expiresAt: Date.now() + this.cacheTtlMs});
+		return {ok: true, data: result.data, cached: false};
+	}
+
+	/**
+	 * Lists the personal-site owner indices and the Fluxer accounts they map to. Needed to
+	 * resolve which account a character belongs to; not guild-scoped, so it takes no server id.
+	 *
+	 * Same never-throws contract and TTL as the other reads. Writes do NOT invalidate it: none
+	 * of the write actions touch this mapping, so a stale entry cannot misreport a write.
+	 */
+	async listOwnerAccounts(): Promise<CastOwnerAccountsResult> {
+		if (!this.isConfigured()) {
+			return {ok: false, failure: {kind: 'not_configured'}};
+		}
+
+		if (this.ownerAccountsCache && this.ownerAccountsCache.expiresAt > Date.now()) {
+			return {ok: true, data: this.ownerAccountsCache.data, cached: true};
+		}
+
+		let status: number;
+		let body: string;
+		try {
+			const url = new URL(this.config.apiUrl);
+			url.searchParams.set('list', 'owner_accounts');
+			const response = await this.http.sendRequest({
+				url: url.toString(),
+				method: 'GET',
+				headers: {[CAST_SECRET_HEADER]: this.config.apiSecret, Accept: 'application/json'},
+				timeout: this.timeoutMs,
+				serviceName: 'cast',
+			});
+			status = response.status;
+			body = await this.readBody(response.stream);
+		} catch (error) {
+			return {ok: false, failure: {kind: 'network', detail: errorDetail(error)}};
+		}
+
+		if (status < 200 || status >= 300) {
+			return {ok: false, failure: {kind: 'http_status', status}};
+		}
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(body);
+		} catch (error) {
+			return {ok: false, failure: {kind: 'malformed_json', detail: errorDetail(error)}};
+		}
+
+		const result = CastOwnerAccountsPayload.safeParse(parsed);
+		if (!result.success) {
+			return {ok: false, failure: {kind: 'invalid_shape', detail: result.error.issues[0]?.message ?? 'unknown'}};
+		}
+
+		this.ownerAccountsCache = {data: result.data, expiresAt: Date.now() + this.cacheTtlMs};
 		return {ok: true, data: result.data, cached: false};
 	}
 

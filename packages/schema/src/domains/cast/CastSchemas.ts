@@ -78,6 +78,23 @@ export const CastOverrideUpdateRequest = z.object({
 	pfp_url: z.string().url().max(2048).nullish().describe('The avatar URL to show, or null to clear it'),
 });
 
+/**
+ * Maps each personal-site owner index onto the Fluxer account that owns it — the lookup an
+ * IC/OOC resolver needs to answer "whose character is this". Its own shape rather than a
+ * reuse of the character schemas: it describes people, not characters.
+ *
+ * `fluxer_user_id` is a string because it is a snowflake; serialising it as a number would
+ * lose precision past 2^53.
+ */
+export const CastOwnerAccountResponse = z.object({
+	fluxer_user_id: z.string().describe('The Fluxer user this owner index corresponds to'),
+	owner_index: z.number().describe('The owner index used by the personal site characters table'),
+});
+
+export const CastOwnerAccountsResponse = z.object({
+	owner_accounts: z.array(CastOwnerAccountResponse).describe('Every configured owner index to Fluxer account mapping'),
+});
+
 export const CastSetPrimaryRequest = z.object({
 	is_primary: z.boolean().describe('Whether this character is a primary for the guild'),
 });
@@ -101,4 +118,6 @@ export type CastOverrideResponseType = z.infer<typeof CastOverrideResponse>;
 export type CastOverrideUpdateRequestType = z.infer<typeof CastOverrideUpdateRequest>;
 export type CastSetPrimaryRequestType = z.infer<typeof CastSetPrimaryRequest>;
 export type CastAllCharactersResponseType = z.infer<typeof CastAllCharactersResponse>;
+export type CastOwnerAccountResponseType = z.infer<typeof CastOwnerAccountResponse>;
+export type CastOwnerAccountsResponseType = z.infer<typeof CastOwnerAccountsResponse>;
 export type CastMutationResponseType = z.infer<typeof CastMutationResponse>;

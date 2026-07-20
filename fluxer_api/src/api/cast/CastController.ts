@@ -8,6 +8,7 @@ import {
 	CastAllCharactersResponse,
 	CastMutationResponse,
 	CastOverrideUpdateRequest,
+	CastOwnerAccountsResponse,
 	CastResponse,
 	CastSetPrimaryRequest,
 } from '@fluxer/schema/src/domains/cast/CastSchemas';
@@ -238,6 +239,50 @@ export function CastController(app: HonoApp) {
 					owner: toOwner(character.owner),
 					nickname: null,
 					pfp_url: null,
+				})),
+			});
+		},
+	);
+
+	// Sibling path for the same reason as /cast/all-characters: a literal segment placed under
+	// /cast/characters/ would sit where :character_id already matches and could be shadowed by
+	// a later GET on that param.
+	app.get(
+		'/guilds/:guild_id/cast/owner-accounts',
+		RateLimitMiddleware(RateLimitConfigs.GUILD_CAST_OWNER_ACCOUNTS),
+		LoginRequired,
+		Validator('param', GuildIdParam),
+		OpenAPI({
+			operationId: 'list_cast_owner_accounts',
+			summary: 'List cast owner accounts',
+			responseSchema: CastOwnerAccountsResponse,
+			statusCode: 200,
+			security: ['botToken', 'bearerToken', 'sessionToken'],
+			tags: ['Guilds'],
+			description:
+				'List the personal-site owner indices and the Fluxer accounts they map to. Not scoped to the guild — the guild is only the authorization context. Requires the MANAGE_GUILD permission.',
+		}),
+		async (ctx) => {
+			const userId = ctx.get('user').id;
+			const guildId = createGuildID(ctx.req.valid('param').guild_id);
+
+			// Same gate as all-characters: this exposes account identity rather than anything
+			// scoped to the guild, so it reuses the write gate rather than inventing a new one.
+			await authorizeCastWrite(ctx.get('guildService'), userId, guildId);
+
+			const result = await getCastClient().listOwnerAccounts();
+			if (!result.ok) {
+				if (result.failure.kind === 'not_configured') {
+					return ctx.json({owner_accounts: []});
+				}
+				Logger.warn({guild_id: guildId.toString(), failure: result.failure}, 'Cast owner account listing failed');
+				throw new BadGatewayError();
+			}
+
+			return ctx.json({
+				owner_accounts: result.data.owner_accounts.map((account) => ({
+					fluxer_user_id: String(account.fluxer_user_id),
+					owner_index: toOwner(account.owner_index) ?? 0,
 				})),
 			});
 		},
