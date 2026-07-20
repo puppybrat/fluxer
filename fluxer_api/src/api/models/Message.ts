@@ -34,6 +34,8 @@ export class Message {
 	readonly messageSnapshots: Array<MessageSnapshot>;
 	readonly call: CallInfo | null;
 	readonly nsfwEmojis: Set<EmojiID>;
+	readonly ic: boolean;
+	readonly castCharacterIds: Array<string>;
 	readonly hasReaction: boolean | null;
 	readonly version: number;
 
@@ -67,6 +69,8 @@ export class Message {
 		this.messageSnapshots = (row.message_snapshots ?? []).map((snapshot) => new MessageSnapshot(snapshot));
 		this.call = row.call ? new CallInfo(row.call) : null;
 		this.nsfwEmojis = row.nsfw_emojis ?? new Set();
+		this.ic = row.ic ?? false;
+		this.castCharacterIds = row.cast_character_ids ?? [];
 		this.hasReaction = row.has_reaction ?? null;
 		this.version = row.version;
 	}
@@ -97,6 +101,8 @@ export class Message {
 				this.messageSnapshots.length > 0 ? this.messageSnapshots.map((snapshot) => snapshot.toMessageSnapshot()) : null,
 			call: this.call?.toMessageCall() ?? null,
 			nsfw_emojis: this.nsfwEmojis.size > 0 ? this.nsfwEmojis : null,
+			ic: this.ic ? true : null,
+			cast_character_ids: this.castCharacterIds.length > 0 ? this.castCharacterIds : null,
 			has_reaction: this.hasReaction ?? null,
 			version: this.version,
 		};

@@ -42,6 +42,8 @@ export const MEILISEARCH_INDEX_DEFINITIONS: Record<FluxerSearchIndexName, Meilis
 			'linkHostnames',
 			'attachmentFilenames',
 			'attachmentExtensions',
+			'ic',
+			'castCharacterIds',
 		],
 		sortableAttributes: ['createdAt', 'id'],
 		// `sort` leads so an explicit timestamp sort orders every hit. With the

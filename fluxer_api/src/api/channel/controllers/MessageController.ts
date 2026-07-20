@@ -22,7 +22,7 @@ import {
 	MessageRequestSchema,
 	MessagesQuery,
 	MessageUpdateRequestSchema,
-} from '@fluxer/schema/src/domains/message/MessageRequestSchemas';
+	MessageIcUpdateRequestSchema,} from '@fluxer/schema/src/domains/message/MessageRequestSchemas';
 import {
 	BulkMessageFetchResponse,
 	MessageResponseSchema,
@@ -316,6 +316,43 @@ export function MessageController(app: HonoApp) {
 					messageId,
 					data: validatedData as MessageUpdateRequest,
 					requestCache,
+				}),
+			);
+		},
+	);
+	// Sub-path of :message_id rather than a literal in its position, so it cannot be shadowed
+	// by (or shadow) the message routes registered above.
+	app.patch(
+		'/channels/:channel_id/messages/:message_id/ic',
+		RateLimitMiddleware(RateLimitConfigs.CHANNEL_MESSAGE_IC_UPDATE),
+		LoginRequired,
+		Validator('param', ChannelIdMessageIdParam),
+		Validator('json', MessageIcUpdateRequestSchema),
+		OpenAPI({
+			operationId: 'set_message_ic',
+			summary: 'Set message in-character state',
+			responseSchema: MessageResponseSchema,
+			requestSchema: MessageIcUpdateRequestSchema,
+			statusCode: 200,
+			security: ['botToken', 'bearerToken', 'sessionToken'],
+			tags: ['Channels', 'Messages'],
+			description:
+				"Marks a message as in-character and attributes it to cast characters. Any guild member may toggle any message. With ic=true and no character_ids, the author's primary characters for the guild are resolved and stored; resolution is locked in and never recomputed. Explicit character_ids must belong to the message author. ic=false clears the attribution.",
+		}),
+		async (ctx) => {
+			const {channel_id, message_id} = ctx.req.valid('param');
+			const {ic, character_ids} = ctx.req.valid('json');
+			const userId = ctx.get('user').id;
+			const channelId = createChannelID(channel_id);
+			const messageId = createMessageID(message_id);
+			return ctx.json(
+				await ctx.get('messageRequestService').setMessageIc({
+					userId,
+					channelId,
+					messageId,
+					ic,
+					characterIds: character_ids,
+					requestCache: ctx.get('requestCache'),
 				}),
 			);
 		},

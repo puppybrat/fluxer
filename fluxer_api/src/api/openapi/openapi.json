@@ -3960,6 +3960,93 @@
 				]
 			}
 		},
+		"/channels/{channel_id}/messages/{message_id}/ic": {
+			"patch": {
+				"operationId": "set_message_ic",
+				"summary": "Set message in-character state",
+				"tags": ["Channels", "Messages"],
+				"responses": {
+					"200": {
+						"description": "Success",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/MessageResponseSchema"}}}
+					},
+					"400": {
+						"description": "Bad Request - The request was malformed or contained invalid data",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"401": {
+						"description": "Unauthorized - Authentication is required or the token is invalid",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"403": {
+						"description": "Forbidden - You do not have permission to perform this action",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					},
+					"429": {
+						"description": "Too Many Requests - You are being rate limited",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"code": {"type": "string", "enum": ["RATE_LIMITED"]},
+										"message": {"type": "string"},
+										"retry_after": {"type": "number", "description": "Seconds to wait before retrying"},
+										"global": {"type": "boolean", "description": "Whether this is a global rate limit"}
+									},
+									"required": ["code", "message", "retry_after"]
+								}
+							}
+						},
+						"headers": {
+							"Retry-After": {
+								"description": "Number of seconds to wait before retrying (only on 429)",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Limit": {
+								"description": "The number of requests that can be made in the current window",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Remaining": {
+								"description": "The number of remaining requests that can be made",
+								"schema": {"type": "integer"}
+							},
+							"X-RateLimit-Reset": {
+								"description": "Unix timestamp when the rate limit resets",
+								"schema": {"type": "integer"}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal Server Error - An unexpected error occurred",
+						"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+					}
+				},
+				"x-mint": {"metadata": {"title": "Set message in-character state"}},
+				"description": "Marks a message as in-character and attributes it to cast characters. Any guild member may toggle any message. With ic=true and no character_ids, the author's primary characters for the guild are resolved and stored; resolution is locked in and never recomputed. Explicit character_ids must belong to the message author. ic=false clears the attribution.",
+				"security": [{"botToken": []}, {"sessionToken": []}],
+				"parameters": [
+					{
+						"name": "channel_id",
+						"in": "path",
+						"required": true,
+						"schema": {"$ref": "#/components/schemas/SnowflakeType"},
+						"description": "The ID of the channel"
+					},
+					{
+						"name": "message_id",
+						"in": "path",
+						"required": true,
+						"schema": {"$ref": "#/components/schemas/SnowflakeType"},
+						"description": "The ID of the message"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {"application/json": {"schema": {"$ref": "#/components/schemas/MessageIcUpdateRequestSchema"}}}
+				}
+			}
+		},
 		"/channels/{channel_id}/messages/{message_id}/memes": {
 			"post": {
 				"operationId": "create_meme_from_message",
@@ -25727,6 +25814,9 @@
 					"BOT_USER_GENERATION_FAILED",
 					"BOT_USER_NOT_FOUND",
 					"CALL_ALREADY_EXISTS",
+					"CAST_CHARACTER_NOT_OWNED",
+					"CAST_NO_PRIMARY_CHARACTER",
+					"CAST_OWNER_NOT_LINKED",
 					"CANNOT_EDIT_OTHER_USER_MESSAGE",
 					"CANNOT_EXECUTE_ON_DM",
 					"CANNOT_BLOCK_SYSTEM_USER",
@@ -26044,6 +26134,9 @@
 					"Bot user generation failed.",
 					"Bot user wasn't found.",
 					"A call is already in progress in this channel.",
+					"That character doesn't belong to this message's author.",
+					"No primary character is set for this author in this community.",
+					"This account is not linked to a cast owner.",
 					"You can't edit another user's message.",
 					"This action can't be performed in a DM.",
 					"You can't block the system user.",
@@ -29833,6 +29926,19 @@
 					"mention_count": {"$ref": "#/components/schemas/Int32Type"},
 					"manual": {"type": "boolean", "description": "Whether this is a manual acknowledgement"}
 				}
+			},
+			"MessageIcUpdateRequestSchema": {
+				"type": "object",
+				"properties": {
+					"ic": {"type": "boolean", "description": "Whether this message is in-character"},
+					"character_ids": {
+						"type": "array",
+						"items": {"type": "string", "maxLength": 32},
+						"maxItems": 16,
+						"description": "Explicit cast characters to attribute; resolved from the author primary when omitted"
+					}
+				},
+				"required": ["ic"]
 			},
 			"FavoriteMemeResponse": {
 				"type": "object",

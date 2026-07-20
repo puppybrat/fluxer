@@ -134,6 +134,11 @@ const MessageBaseResponseSchema = z.object({
 	edited_timestamp: z.iso.datetime().nullish().describe('The ISO 8601 timestamp of when the message was last edited'),
 	pinned: z.boolean().describe('Whether the message is pinned'),
 	mention_everyone: z.boolean().describe('Whether the message mentions @everyone'),
+	ic: z.boolean().nullish().describe('Whether this message is in-character'),
+	cast_character_ids: z
+		.array(z.string())
+		.nullish()
+		.describe('Cast characters this message is attributed to, resolved when it was marked in-character'),
 	tts: z.boolean().describe('Whether the message was sent as text-to-speech'),
 	mentions: z.array(z.lazy(() => UserPartialResponse)).describe('The users mentioned in the message'),
 	mention_roles: z.array(z.string()).describe('The role IDs mentioned in the message'),

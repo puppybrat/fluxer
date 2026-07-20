@@ -148,6 +148,13 @@ export interface MessageRow {
 	message_reference: Nullish<MessageReference>;
 	message_snapshots: Nullish<Array<MessageSnapshot>>;
 	call: Nullish<MessageCall>;
+	/**
+	 * In-character flag and the cast characters the message is attributed to. Resolution is
+	 * locked in when the message is toggled and never recomputed, so a later change to the
+	 * sender's primary character does not retroactively rewrite old messages.
+	 */
+	ic?: Nullish<boolean>;
+	cast_character_ids?: Nullish<Array<string>>;
 	nsfw_emojis: Nullish<Set<EmojiID>>;
 	has_reaction: Nullish<boolean>;
 	version: number;
@@ -178,6 +185,8 @@ export const MESSAGE_COLUMNS = [
 	'call',
 	'nsfw_emojis',
 	'has_reaction',
+	'ic',
+	'cast_character_ids',
 	'version',
 ] as const satisfies ReadonlyArray<keyof MessageRow>;
 

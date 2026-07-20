@@ -40,6 +40,10 @@ export const ChannelRateLimitConfigs = {
 		bucket: 'channel:message:update::channel_id',
 		config: {limit: 20, windowMs: ms('10 seconds')},
 	} as RouteRateLimitConfig,
+	CHANNEL_MESSAGE_IC_UPDATE: {
+		bucket: 'channel:message:ic::channel_id',
+		config: {limit: 20, windowMs: ms('10 seconds')},
+	} as RouteRateLimitConfig,
 	CHANNEL_MESSAGE_DELETE: {
 		bucket: 'channel:message:delete::channel_id',
 		config: {limit: 20, windowMs: ms('10 seconds')},

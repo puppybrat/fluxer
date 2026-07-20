@@ -232,6 +232,8 @@ export function convertToSearchableMessage(message: Message, authorIsBot?: boole
 		linkHostnames: acc.linkHostnames,
 		attachmentFilenames: acc.attachmentFilenames,
 		attachmentExtensions: acc.attachmentExtensions,
+		ic: message.ic,
+		castCharacterIds: message.castCharacterIds,
 	};
 }
 

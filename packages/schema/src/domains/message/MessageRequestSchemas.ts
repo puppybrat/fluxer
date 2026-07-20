@@ -386,6 +386,22 @@ export const MessageUpdateRequestSchema = MessageRequestSchema.pick({
 		),
 });
 
+/**
+ * Marks a message in or out of character. `character_ids` is optional: omitted, the server
+ * resolves the author's primary character(s) for this guild; supplied, it must name characters
+ * the message author owns. Omitted with ic=false is the normal way to clear.
+ */
+export const MessageIcUpdateRequestSchema = z.object({
+	ic: z.boolean().describe('Whether this message is in-character'),
+	character_ids: z
+		.array(z.string().max(32))
+		.max(16)
+		.optional()
+		.describe('Explicit cast characters to attribute; resolved from the author primary when omitted'),
+});
+
+export type MessageIcUpdateRequestSchemaType = z.infer<typeof MessageIcUpdateRequestSchema>;
+
 export type MessageUpdateRequestSchemaType = z.infer<typeof MessageUpdateRequestSchema>;
 
 export const MessagesQuery = z.object({

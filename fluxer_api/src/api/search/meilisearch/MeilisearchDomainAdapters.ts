@@ -63,6 +63,11 @@ function buildMessageFilters(filters: MessageSearchFilters): Array<MeilisearchFi
 	if (filters.excludeAuthorType && filters.excludeAuthorType.length > 0) {
 		clauses.push(...meiliExcludeAny('authorType', filters.excludeAuthorType));
 	}
+	if (filters.ic !== undefined) clauses.push(`ic = ${filters.ic}`);
+	if (filters.castCharacterIds && filters.castCharacterIds.length > 0)
+		clauses.push(meiliTermsFilter('castCharacterIds', filters.castCharacterIds));
+	if (filters.excludeCastCharacterIds && filters.excludeCastCharacterIds.length > 0)
+		clauses.push(...meiliExcludeAny('castCharacterIds', filters.excludeCastCharacterIds));
 	if (filters.mentions && filters.mentions.length > 0)
 		clauses.push(...meiliAndTerms('mentionedUserIds', filters.mentions));
 	if (filters.excludeMentions && filters.excludeMentions.length > 0) {

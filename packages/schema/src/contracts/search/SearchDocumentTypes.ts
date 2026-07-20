@@ -30,6 +30,10 @@ export interface SearchableMessage {
 	linkHostnames: Array<string>;
 	attachmentFilenames: Array<string>;
 	attachmentExtensions: Array<string>;
+	/** In-character flag and attributed cast characters. castCharacterIds is filterable so a
+	 *  "From character" search can select on it, the same way mentionedUserIds works. */
+	ic: boolean;
+	castCharacterIds: Array<string>;
 }
 
 export interface MessageSearchFilters {
@@ -46,6 +50,9 @@ export interface MessageSearchFilters {
 	authorType?: Array<string>;
 	excludeAuthorType?: Array<string>;
 	excludeAuthorIds?: Array<string>;
+	ic?: boolean;
+	castCharacterIds?: Array<string>;
+	excludeCastCharacterIds?: Array<string>;
 	mentions?: Array<string>;
 	excludeMentions?: Array<string>;
 	mentionEveryone?: boolean;

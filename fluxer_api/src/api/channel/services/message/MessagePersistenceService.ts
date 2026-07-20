@@ -404,6 +404,25 @@ export class MessagePersistenceService {
 		return enqueueDeferredEmbeds;
 	}
 
+	/**
+	 * Narrow write for the in-character toggle. Deliberately does not go through updateMessage:
+	 * that path is built around content/embed edits and stamps edited_timestamp, and marking a
+	 * message in-character is not an edit of what was said.
+	 */
+	async setIcState(params: {
+		message: Message;
+		ic: boolean;
+		castCharacterIds: Array<string>;
+	}): Promise<Message> {
+		const oldRow = params.message.toRow();
+		const row = {
+			...oldRow,
+			ic: params.ic ? true : null,
+			cast_character_ids: params.castCharacterIds.length > 0 ? params.castCharacterIds : null,
+		};
+		return this.channelRepository.messages.upsertMessage(row, oldRow);
+	}
+
 	async updateMessage(params: {
 		message: Message;
 		messageId: MessageID;
