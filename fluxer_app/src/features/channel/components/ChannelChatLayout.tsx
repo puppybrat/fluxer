@@ -5,6 +5,7 @@ import styles from '@app/features/channel/components/ChannelChatLayout.module.cs
 import {SlowmodeIndicator} from '@app/features/channel/components/SlowmodeIndicator';
 import {TypingUsers} from '@app/features/channel/components/TypingUsers';
 import type {Channel} from '@app/features/channel/models/Channel';
+import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
 import Messages from '@app/features/messaging/state/MessagingMessages';
 import {useSlowmode} from '@app/features/slowmode/hooks/useSlowmode';
 import {msg} from '@lingui/core/macro';
@@ -58,6 +59,13 @@ export const ChannelChatLayout = observer(({channel, messages, textarea, hideBot
 		if (!shouldFetchSlowmode) return;
 		void fetchSlowmodeState(channel.id);
 	}, [channel.id, shouldFetchSlowmode]);
+	// Loaded once per guild, on channel mount rather than per in-character message, so a
+	// message never renders as its sender and then visibly flips to a character. Guilds
+	// without a cast configured resolve to an empty map and cost one request per session.
+	useEffect(() => {
+		if (!channel.guildId) return;
+		void GuildCastDisplay.ensureLoaded(channel.guildId);
+	}, [channel.guildId]);
 	const {showTypingUsers, showSlowmodeIndicator} = getChannelChatStatusVisibility({
 		hideBottomBar,
 		isSlowmodeEnabled,

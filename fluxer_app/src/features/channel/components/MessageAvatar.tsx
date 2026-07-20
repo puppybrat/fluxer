@@ -17,6 +17,7 @@ export const MessageAvatar = observer(
 		size,
 		className,
 		isHovering,
+		avatarUrl,
 	}: {
 		user: User;
 		message: Message;
@@ -25,6 +26,9 @@ export const MessageAvatar = observer(
 		className: string;
 		isHovering: boolean;
 		isPreview: boolean;
+		/** Overrides the rendered image only. The popout still resolves the real user, so
+		 *  clicking an in-character avatar shows who actually sent the message. */
+		avatarUrl?: string | null;
 	}) => {
 		const onPopoutToggle = useMaybeMessageViewContext()?.onPopoutToggle;
 		const handlePopoutOpen = useCallback(() => onPopoutToggle?.(true), [onPopoutToggle]);
@@ -45,6 +49,7 @@ export const MessageAvatar = observer(
 				<FocusRing data-flx="channel.message-avatar.focus-ring">
 					<Avatar
 						user={user}
+						avatarUrl={avatarUrl}
 						size={size}
 						className={className}
 						forceAnimate={isHovering}

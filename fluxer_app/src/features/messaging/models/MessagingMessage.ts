@@ -146,6 +146,10 @@ export class Message {
 	readonly flags: number;
 	readonly pinned: boolean;
 	readonly mentionEveryone: boolean;
+	/** In-character flag and attributed cast characters; absent on every message that
+	 *  predates the feature, so both default rather than being required. */
+	readonly ic: boolean;
+	readonly castCharacterIds: ReadonlyArray<string>;
 	readonly tts: boolean;
 	readonly content: string;
 	readonly timestamp: Date;
@@ -198,6 +202,8 @@ export class Message {
 		this.flags = message.flags;
 		this.pinned = message.pinned;
 		this.mentionEveryone = message.mention_everyone;
+		this.ic = message.ic ?? false;
+		this.castCharacterIds = message.cast_character_ids ?? [];
 		this.tts = message.tts ?? false;
 		this.content = message.content;
 		this.timestamp = new Date(message.timestamp);

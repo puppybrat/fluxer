@@ -347,6 +347,8 @@ export interface Message {
 	readonly pinned: boolean;
 	readonly tts: boolean;
 	readonly mention_everyone: boolean;
+	readonly ic?: boolean | null;
+	readonly cast_character_ids?: ReadonlyArray<string> | null;
 	readonly content: string;
 	readonly timestamp: string;
 	readonly edited_timestamp?: string;
