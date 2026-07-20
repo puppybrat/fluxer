@@ -193,6 +193,12 @@ pub struct Message {
     pub call: Option<MessageCall>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message_snapshots: Option<Vec<MessageSnapshot>>,
+    /// In-character flag and the cast characters the message is attributed to. Both default
+    /// so rows written before these columns existed still deserialize.
+    #[serde(default)]
+    pub ic: Option<bool>,
+    #[serde(default)]
+    pub cast_character_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -463,6 +469,12 @@ pub struct ApiMessageResponse {
     pub call: Option<ApiMessageCallResponse>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub referenced_message: Option<Box<ApiMessageResponse>>,
+    /// Omitted entirely when unset, so responses for the ~1.1M messages that predate the
+    /// in-character feature keep exactly the shape they had before.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ic: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cast_character_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

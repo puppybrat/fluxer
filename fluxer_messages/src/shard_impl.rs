@@ -1175,6 +1175,14 @@ impl MessagesShard {
             nonce: options.nonce.clone(),
             call: message.call.as_ref().map(map_call),
             referenced_message,
+            ic: message.ic,
+            // Passed through only when non-empty: an empty vec would serialise as [] and read
+            // as "attributed to nobody" rather than "not in character".
+            cast_character_ids: message
+                .cast_character_ids
+                .as_ref()
+                .filter(|ids| !ids.is_empty())
+                .cloned(),
         }
     }
 
@@ -3048,6 +3056,11 @@ impl From<MessageDbRow> for Message {
             message_snapshots: row
                 .message_snapshots
                 .map(|v| v.into_iter().map(convert_message_snapshot).collect()),
+            // MessageDbRow mirrors an explicit SELECT that does not include these columns, and
+            // BuildResponse takes its message from the request payload rather than this path,
+            // so a direct DB read carries no in-character data.
+            ic: None,
+            cast_character_ids: None,
         }
     }
 }
