@@ -7,6 +7,8 @@ import type {
 	CastCategoryResponseType,
 	CastCharacterResponseType,
 	CastMutationResponseType,
+	CastOwnerAccountResponseType,
+	CastOwnerAccountsResponseType,
 	CastPrimaryResponseType,
 	CastResponseType,
 } from '@fluxer/schema/src/domains/cast/CastSchemas';
@@ -16,6 +18,7 @@ export type CastPrimary = CastPrimaryResponseType;
 export type CastCategory = CastCategoryResponseType;
 export type CastData = CastResponseType;
 export type CastMutation = CastMutationResponseType;
+export type CastOwnerAccount = CastOwnerAccountResponseType;
 
 export interface CastOverrideUpdate {
 	nickname?: string | null;
@@ -38,6 +41,15 @@ export async function getGuildCast(guildId: string): Promise<CastData> {
 export async function getAllCharacters(guildId: string): Promise<Array<CastCharacter>> {
 	const response = await http.get<CastAllCharactersResponseType>(Endpoints.GUILD_CAST_ALL_CHARACTERS(guildId));
 	return response.body.characters;
+}
+
+/**
+ * Maps each personal-site owner index onto the Fluxer account that owns it. The guild is only the
+ * authorization context — this route requires MANAGE_GUILD, so a caller without it gets a 403.
+ */
+export async function getOwnerAccounts(guildId: string): Promise<Array<CastOwnerAccount>> {
+	const response = await http.get<CastOwnerAccountsResponseType>(Endpoints.GUILD_CAST_OWNER_ACCOUNTS(guildId));
+	return response.body.owner_accounts;
 }
 
 export async function addCharacter(guildId: string, characterId: string): Promise<CastMutation> {

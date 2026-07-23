@@ -5,6 +5,7 @@ import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
 import {useContextMenuHoverState} from '@app/features/app/hooks/useContextMenuHoverState';
 import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import {Limits} from '@app/features/app/utils/UserLimits';
+import ComposerInCharacter from '@app/features/cast/state/ComposerInCharacter';
 import {Autocomplete} from '@app/features/channel/components/Autocomplete';
 import {ChannelAttachmentArea} from '@app/features/channel/components/ChannelAttachmentArea';
 import {EditBar} from '@app/features/channel/components/ChannelEditBar';
@@ -173,11 +174,25 @@ const ChannelTextareaContent = observer(
 			setIsFocused(false);
 			setIsInputAreaFocused(false);
 		}, [inputSuppressed]);
+		// Resolve in-character eligibility once per guild on mount, so the composer toggle is
+		// present or absent from first paint rather than popping in after a per-message check.
+		useEffect(() => {
+			if (!channel.guildId) return;
+			void ComposerInCharacter.ensureEligibility(channel.guildId);
+		}, [channel.guildId]);
 		const showGifButton = Accessibility.showGifButton && RuntimeConfig.gifEnabled;
 		const showMemesButton = Accessibility.showMemesButton;
 		const showStickersButton = Accessibility.showStickersButton;
 		const showEmojiButton = Accessibility.showEmojiButton;
 		const showMessageSendButton = Accessibility.showMessageSendButton;
+		// In-character composer toggle, gated on the current user having a primary character in this
+		// guild's cast (resolved once per guild). Hidden entirely otherwise, matching how the other
+		// expression buttons are conditionally rendered rather than disabled.
+		const showInCharacterButton = ComposerInCharacter.hasUsablePrimary(channel.guildId ?? undefined);
+		const inCharacterActive = ComposerInCharacter.isChannelInCharacter(channel.id);
+		const handleInCharacterToggle = useCallback(() => {
+			ComposerInCharacter.toggleChannel(channel.id);
+		}, [channel.id]);
 		const editingMessageId = MessageEdit.getEditingMessageId(channel.id);
 		const editingMobileMessageId = MessageEditMobile.getEditingMobileMessageId(channel.id);
 		const isEditingMessageInComposer = editingMobileMessageId != null;
@@ -1200,6 +1215,9 @@ const ChannelTextareaContent = observer(
 											showMemesButton={showMemesButton}
 											showStickersButton={showStickersButton}
 											showEmojiButton={showEmojiButton}
+											showInCharacterButton={showInCharacterButton}
+											inCharacterActive={inCharacterActive}
+											onInCharacterToggle={handleInCharacterToggle}
 											showMessageSendButton={showMessageSendButton}
 											showVoiceMessageButton={false}
 											expressionPickerOpen={expressionPickerOpen}

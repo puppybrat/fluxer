@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import ComposerInCharacter from '@app/features/cast/state/ComposerInCharacter';
 import type {Channel} from '@app/features/channel/models/Channel';
 import * as DraftCommands from '@app/features/messaging/commands/DraftCommands';
 import * as MessageCommands from '@app/features/messaging/commands/MessageCommands';
@@ -135,6 +136,12 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			}).then((sentMessage) => {
 				if (sentMessage) {
 					SlowmodeCommands.recordMessageSend(channel.id);
+					if (ComposerInCharacter.isChannelInCharacter(channel.id)) {
+						// Message create carries no ic field, so flip it once the real id is known.
+						// The message renders OOC briefly, then flips when the PATCH's MESSAGE_UPDATE
+						// dispatch lands — an accepted flash, not something to eliminate here.
+						void MessageCommands.setMessageIc(channel.id, sentMessage.id, true);
+					}
 				}
 			});
 			ComponentDispatch.dispatch('MESSAGE_SENT', {channelId: channel.id});
@@ -200,6 +207,12 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			}).then((sentMessage) => {
 				if (sentMessage) {
 					SlowmodeCommands.recordMessageSend(channel.id);
+					if (ComposerInCharacter.isChannelInCharacter(channel.id)) {
+						// Message create carries no ic field, so flip it once the real id is known.
+						// The message renders OOC briefly, then flips when the PATCH's MESSAGE_UPDATE
+						// dispatch lands — an accepted flash, not something to eliminate here.
+						void MessageCommands.setMessageIc(channel.id, sentMessage.id, true);
+					}
 				}
 			});
 			ComponentDispatch.dispatch('MESSAGE_SENT', {channelId: channel.id});

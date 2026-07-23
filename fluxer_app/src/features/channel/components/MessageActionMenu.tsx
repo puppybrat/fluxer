@@ -22,6 +22,8 @@ import {
 	COPY_MESSAGE_LINK_DESCRIPTOR,
 	DELETE_MESSAGE_DESCRIPTOR,
 	EDIT_MESSAGE_DESCRIPTOR,
+	MARK_AS_IC_DESCRIPTOR,
+	MARK_AS_OOC_DESCRIPTOR,
 	MARK_AS_UNREAD_DESCRIPTOR,
 	PIN_MESSAGE_DESCRIPTOR,
 	REMOVE_BOOKMARK_DESCRIPTOR,
@@ -46,6 +48,7 @@ import {
 	DeleteIcon,
 	EditMessageIcon,
 	ForwardIcon,
+	InCharacterIcon,
 	MarkAsUnreadIcon,
 	PinIcon,
 	RemoveAllReactionsIcon,
@@ -123,6 +126,7 @@ export const messageActionMenuItemIds = {
 	forward: 'forward',
 	edit: 'edit',
 	pinMessage: 'message_pin',
+	toggleIc: 'message_toggle_ic',
 	bookmarkMessage: 'message_bookmark',
 	suppressEmbeds: 'suppress_embeds',
 	markUnread: 'message_mark_unread',
@@ -310,6 +314,23 @@ export const useMessageActionMenuData = (
 					label: message.pinned ? i18n._(UNPIN_MESSAGE_DESCRIPTOR) : i18n._(PIN_MESSAGE_DESCRIPTOR),
 					onClick: handlers.handlePinMessage,
 					shortcut: <KeybindHint action="message_pin" data-flx="channel.message-action-menu.groups.keybind-hint--6" />,
+				});
+			}
+			// In-character toggle. Guild-only (IC attribution is per-guild); any guild member may
+			// toggle any message, so this is not gated on a permission — the server resolves the
+			// message author's primary character and rejects if the author has none.
+			if (message.isUserMessage() && message.guildId != null) {
+				managementActions.push({
+					id: messageActionMenuItemIds.toggleIc,
+					icon: (
+						<InCharacterIcon
+							size={20}
+							filled={message.ic}
+							data-flx="channel.message-action-menu.groups.in-character-icon"
+						/>
+					),
+					label: message.ic ? i18n._(MARK_AS_OOC_DESCRIPTOR) : i18n._(MARK_AS_IC_DESCRIPTOR),
+					onClick: handlers.handleToggleIc,
 				});
 			}
 			if (message.isUserMessage() && supportsInteractiveActions) {

@@ -40,11 +40,11 @@ import * as NavigationCommands from '@app/features/navigation/commands/Navigatio
 import Permission from '@app/features/permissions/state/Permission';
 import {http} from '@app/features/platform/transport/RestTransport';
 import {HttpError} from '@app/features/platform/types/EndpointError';
+import type {RestResponse} from '@app/features/platform/types/TransportTypes';
 import {Logger} from '@app/features/platform/utils/AppLogger';
 import {ComponentDispatch} from '@app/features/platform/utils/ComponentBus';
 import {failureCode} from '@app/features/platform/utils/ResponseInspection';
 import * as ReadStateCommands from '@app/features/read_state/commands/ReadStateCommands';
-import type {RestResponse} from '@app/features/platform/types/TransportTypes';
 import ReadStates from '@app/features/read_state/state/ReadStates';
 import * as SlowmodeCommands from '@app/features/slowmode/commands/SlowmodeCommands';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
@@ -510,8 +510,7 @@ export async function send(channelId: string, params: SendMessageParams): Promis
 		MessageQueue.rejectLocalRateLimitedSend(channelId, params.nonce, params.hasAttachments);
 		return null;
 	}
-	const sendOrder =
-		Accessibility.sequentialFileSend && params.hasAttachments ? nextChannelOrder(channelId) : -1;
+	const sendOrder = Accessibility.sequentialFileSend && params.hasAttachments ? nextChannelOrder(channelId) : -1;
 	const prepared = await prepareSendAttachments(channelId, params);
 	if (!prepared) {
 		if (Accessibility.sequentialFileSend) {
@@ -657,6 +656,21 @@ export async function remove(channelId: string, messageId: string): Promise<void
 	})();
 	pendingDeletePromises.set(messageId, deletePromise);
 	return deletePromise;
+}
+
+/**
+ * Marks a message in or out of character. No character_ids are sent: the server resolves the
+ * author's primary character(s) for the guild. Connected clients update live off the
+ * MESSAGE_UPDATE this dispatches, so nothing is applied optimistically here.
+ */
+export async function setMessageIc(channelId: string, messageId: string, ic: boolean): Promise<void> {
+	try {
+		logger.debug(`Setting ic=${ic} on message ${messageId} in channel ${channelId}`);
+		await http.patch(Endpoints.CHANNEL_MESSAGE_IC(channelId, messageId), {body: {ic}});
+	} catch (error) {
+		logger.error(`Failed to set ic on message ${messageId} in channel ${channelId}:`, error);
+		throw error;
+	}
 }
 
 interface ShowDeleteConfirmationOptions {

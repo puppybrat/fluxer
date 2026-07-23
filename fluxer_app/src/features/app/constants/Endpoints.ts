@@ -61,6 +61,7 @@ export const Endpoints = {
 	CHANNEL_MESSAGES_BULK: '/channels/messages/bulk',
 	CHANNEL_MESSAGE_SCHEDULE: (channelId: string) => `/channels/${channelId}/messages/schedule`,
 	CHANNEL_MESSAGE: (channelId: string, messageId: string) => `/channels/${channelId}/messages/${messageId}`,
+	CHANNEL_MESSAGE_IC: (channelId: string, messageId: string) => `/channels/${channelId}/messages/${messageId}/ic`,
 	CHANNEL_MESSAGE_ATTACHMENT: (channelId: string, messageId: string, attachmentId: string) =>
 		`/channels/${channelId}/messages/${messageId}/attachments/${attachmentId}`,
 	CHANNEL_MESSAGE_ACK: (channelId: string, messageId: string) => `/channels/${channelId}/messages/${messageId}/ack`,
@@ -93,6 +94,7 @@ export const Endpoints = {
 	GUILD_CAST_CHARACTER: (guildId: string, characterId: string) => `/guilds/${guildId}/cast/characters/${characterId}`,
 	GUILD_CAST_CHARACTER_PRIMARY: (guildId: string, characterId: string) =>
 		`/guilds/${guildId}/cast/characters/${characterId}/primary`,
+	GUILD_CAST_OWNER_ACCOUNTS: (guildId: string) => `/guilds/${guildId}/cast/owner-accounts`,
 	GUILD_CHANNELS: (guildId: string) => `/guilds/${guildId}/channels`,
 	GUILD_MEMBER: (guildId: string, query = ME) => `/guilds/${guildId}/members/${query}`,
 	GUILD_MEMBERS: (guildId: string) => `/guilds/${guildId}/members`,

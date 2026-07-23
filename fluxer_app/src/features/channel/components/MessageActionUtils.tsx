@@ -295,6 +295,7 @@ export interface MessageActionHandlers {
 	handleToggleSuppressEmbeds: () => void;
 	handleReply: (event?: React.MouseEvent | React.KeyboardEvent) => void;
 	handlePinMessage: (event?: React.MouseEvent | React.KeyboardEvent) => void;
+	handleToggleIc: () => void;
 	handleEditMessage: () => void;
 	handleRetryMessage: () => void;
 	handleFailedMessageDelete: () => void;
@@ -365,6 +366,12 @@ export function createMessageActionHandlers(
 		}
 		pinMessage();
 	};
+	const handleToggleIc = () => {
+		// No character_ids: the server resolves the author's primary. Connected clients (including
+		// this one) update off the MESSAGE_UPDATE the route dispatches, so nothing is applied here.
+		void MessageCommands.setMessageIc(message.channelId, message.id, !message.ic);
+		onClose?.();
+	};
 	const handleEditMessage = () => {
 		startMessageEdit(message);
 		onClose?.();
@@ -404,6 +411,7 @@ export function createMessageActionHandlers(
 		handleToggleSuppressEmbeds,
 		handleReply,
 		handlePinMessage,
+		handleToggleIc,
 		handleEditMessage,
 		handleRetryMessage,
 		handleFailedMessageDelete,

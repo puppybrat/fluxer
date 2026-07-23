@@ -535,6 +535,14 @@ export const PIN_MESSAGE_DESCRIPTOR = msg({
 	message: 'Pin message',
 	comment: 'Generic action label that pins a message to the channel pins.',
 });
+export const MARK_AS_IC_DESCRIPTOR = msg({
+	message: 'Mark as in-character',
+	comment: 'Message action that marks a message as in-character (attributed to a cast character).',
+});
+export const MARK_AS_OOC_DESCRIPTOR = msg({
+	message: 'Mark as out-of-character',
+	comment: 'Message action that clears a message’s in-character attribution.',
+});
 export const CHANGE_FRIEND_NICKNAME_DESCRIPTOR = msg({
 	message: 'Change friend nickname',
 	comment: 'Generic action label that opens the friend-nickname edit flow.',

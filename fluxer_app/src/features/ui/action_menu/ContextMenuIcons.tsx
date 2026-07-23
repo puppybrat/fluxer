@@ -46,6 +46,7 @@ import {
 	LinkBreakIcon,
 	LinkIcon,
 	MagnifyingGlassIcon,
+	MaskHappyIcon,
 	MicrophoneIcon,
 	MicrophoneSlashIcon,
 	MonitorPlayIcon,
@@ -130,6 +131,13 @@ export const BookmarkIcon: React.FC<IconProps & {filled?: boolean}> = observer((
 		size={size}
 		weight={filled ? 'fill' : 'regular'}
 		data-flx="ui.action-menu.context-menu-icons.bookmark-icon.bookmark-simple-icon"
+	/>
+));
+export const InCharacterIcon: React.FC<IconProps & {filled?: boolean}> = observer(({size = 16, filled = false}) => (
+	<MaskHappyIcon
+		size={size}
+		weight={filled ? 'fill' : 'regular'}
+		data-flx="ui.action-menu.context-menu-icons.in-character-icon.mask-happy-icon"
 	/>
 ));
 export const FavoriteIcon: React.FC<IconProps & {filled?: boolean}> = observer(({size = 16, filled = false}) => (

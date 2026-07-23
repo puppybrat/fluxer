@@ -18,6 +18,7 @@ import {useLingui} from '@lingui/react/macro';
 import {
 	GifIcon,
 	ImageSquareIcon,
+	MaskHappyIcon,
 	MicrophoneIcon,
 	PaperPlaneRightIcon,
 	SmileyIcon,
@@ -35,6 +36,11 @@ const SEND_MESSAGE_DESCRIPTOR = msg({
 	message: 'Send message',
 	comment: 'Button or menu action label in the channel and chat textarea buttons. Keep it concise.',
 });
+const IN_CHARACTER_DESCRIPTOR = msg({
+	message: 'In-character',
+	comment:
+		'Label for the composer toggle that sends the next message in-character (as a cast character). Keep it concise.',
+});
 
 interface TextareaButtonsProps {
 	disabled: boolean;
@@ -43,6 +49,9 @@ interface TextareaButtonsProps {
 	showMemesButton: boolean;
 	showStickersButton: boolean;
 	showEmojiButton: boolean;
+	showInCharacterButton: boolean;
+	inCharacterActive: boolean;
+	onInCharacterToggle: () => void;
 	showMessageSendButton: boolean;
 	showVoiceMessageButton?: boolean;
 	onVoiceMessageClick?: () => void;
@@ -70,6 +79,9 @@ export const TextareaButtons = React.forwardRef<HTMLDivElement, TextareaButtonsP
 			showMemesButton,
 			showStickersButton,
 			showEmojiButton,
+			showInCharacterButton,
+			inCharacterActive,
+			onInCharacterToggle,
 			showMessageSendButton,
 			showVoiceMessageButton,
 			onVoiceMessageClick,
@@ -145,6 +157,16 @@ export const TextareaButtons = React.forwardRef<HTMLDivElement, TextareaButtonsP
 								data-expression-picker-tab="stickers"
 								keybindAction="chat_toggle_sticker"
 								data-flx="channel.textarea.textarea-buttons.textarea-button.expression-picker-toggle--3"
+							/>
+						)}
+						{showInCharacterButton && (
+							<TextareaButton
+								icon={MaskHappyIcon}
+								iconProps={{weight: inCharacterActive ? 'fill' : 'regular'}}
+								label={i18n._(IN_CHARACTER_DESCRIPTOR)}
+								isSelected={inCharacterActive}
+								onClick={onInCharacterToggle}
+								data-flx="channel.textarea.textarea-buttons.textarea-button.in-character-toggle"
 							/>
 						)}
 					</>
