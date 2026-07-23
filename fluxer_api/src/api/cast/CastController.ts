@@ -17,6 +17,7 @@ import type {CastFetchFailure, CastPayload} from '@pkgs/cast_client/src/CastClie
 import {getCastClient} from '@pkgs/cast_client/src/CastClient';
 import type {GuildID, UserID} from '../BrandedTypes';
 import {createGuildID} from '../BrandedTypes';
+import type {IMediaService} from '../infrastructure/IMediaService';
 import {Logger} from '../Logger';
 import {LoginRequired} from '../middleware/AuthMiddleware';
 
@@ -69,10 +70,21 @@ function toOverrideValue(value: string | null | undefined): string | null {
 }
 
 /**
+ * Serves a character's avatar override through the media proxy so it lands on a CSP-allowed
+ * domain, exactly as embeds and external GIFs already are. The stored value is an admin-pasted
+ * external URL (any host, by design); the browser's img-src allowlist would otherwise block it
+ * outright, and the proxy is also where SSRF/NSFW checks live.
+ */
+function toProxiedPfpUrl(mediaService: IMediaService, value: string | null | undefined): string | null {
+	const normalized = toOverrideValue(value);
+	return normalized == null ? null : mediaService.getExternalMediaProxyURL(normalized);
+}
+
+/**
  * Projects the external payload onto the trimmed shape Fluxer exposes. Anything not named
  * here is dropped on purpose — see CastSchemas for why.
  */
-function toCastResponse(payload: CastPayload) {
+function toCastResponse(payload: CastPayload, mediaService: IMediaService) {
 	// Server-scoped rows only: channel_id is always null today, and taking a channel-scoped
 	// row here would attribute a narrower override to the whole guild.
 	const overridesByCharacterId = new Map<string, {nickname: string | null; pfp_url: string | null}>();
@@ -96,7 +108,7 @@ function toCastResponse(payload: CastPayload) {
 				ship: character.ship ?? null,
 				owner: toOwner(character.owner),
 				nickname: override?.nickname ?? null,
-				pfp_url: override?.pfp_url ?? null,
+				pfp_url: toProxiedPfpUrl(mediaService, override?.pfp_url ?? null),
 			};
 		}),
 		primaries: payload.primaries.map((primary) => ({
@@ -176,7 +188,7 @@ export function CastController(app: HonoApp) {
 
 			const result = await getCastClient().fetchForServer(guildId.toString());
 			if (result.ok) {
-				return ctx.json(toCastResponse(result.data));
+				return ctx.json(toCastResponse(result.data, ctx.get('mediaService')));
 			}
 
 			// A deployment with no cast endpoint configured is a normal state, not an error:
@@ -386,7 +398,7 @@ export function CastController(app: HonoApp) {
 					? {
 							character_id: String(character_id),
 							nickname: result.override.nickname,
-							pfp_url: result.override.pfpUrl,
+							pfp_url: toProxiedPfpUrl(ctx.get('mediaService'), result.override.pfpUrl),
 						}
 					: null,
 			});
