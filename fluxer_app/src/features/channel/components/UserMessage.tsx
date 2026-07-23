@@ -7,6 +7,7 @@ import {
 	subscribeAnimatedMediaPlaybackChange,
 	useAnimatedMediaPlaybackAllowed,
 } from '@app/features/app/hooks/useAnimatedMediaPlayback';
+import {useInCharacterOverride} from '@app/features/cast/hooks/useInCharacterOverride';
 import {UserTag} from '@app/features/channel/components/ChannelUserTag';
 import {CompactAuthorPrefix, CompactMessageLayout} from '@app/features/channel/components/CompactMessageLayout';
 import {EditingMessageInput} from '@app/features/channel/components/EditingMessageInput';
@@ -165,6 +166,11 @@ export const UserMessage = observer(() => {
 	const hasStyleableTextContent = useMemo(() => hasStyleableMessageText(astNodes), [astNodes]);
 	const guild = Guilds.getGuild(channel.guildId ?? '');
 	const member = GuildMembers.getMember(guild?.id ?? '', author?.id ?? '');
+	// In-character substitution for the head-message render, which draws the name and avatar
+	// inline here rather than through MessageAuthorInfo. A caller preview override always wins.
+	const inCharacterOverride = useInCharacterOverride(message, guild?.id);
+	const headOverrides: {usernameColor?: string; displayName?: string; avatarUrl?: string | null} | undefined =
+		previewOverrides ?? inCharacterOverride;
 	const shouldAppearAuthorless = false;
 	const mobileLayout = MobileLayout;
 	const shouldShowFailedFooter =
@@ -286,7 +292,7 @@ export const UserMessage = observer(() => {
 			showTimeoutIndicator={true}
 			isHovering={isHovering}
 			previewContext={previewContext}
-			previewOverrides={previewOverrides}
+			previewOverrides={headOverrides}
 			data-flx="channel.user-message.compact-author-prefix"
 		/>
 	);
@@ -632,8 +638,8 @@ export const UserMessage = observer(() => {
 										member={member ?? undefined}
 										className={styles.messageUsername}
 										isPreview={!!previewContext}
-										previewColor={previewOverrides?.usernameColor}
-										previewName={previewOverrides?.displayName}
+										previewColor={headOverrides?.usernameColor}
+										previewName={headOverrides?.displayName}
 										data-flx="channel.user-message.message-username--2"
 									/>
 									{author.bot && (
@@ -693,7 +699,7 @@ export const UserMessage = observer(() => {
 					isHovering={isHovering}
 					formattedDate={formattedDate}
 					previewContext={previewContext}
-					previewOverrides={previewOverrides}
+					previewOverrides={headOverrides}
 					data-flx="channel.user-message.message-author-info--3"
 				/>
 			)}
@@ -708,6 +714,7 @@ export const UserMessage = observer(() => {
 						className={styles.messageAvatar}
 						isHovering={isHovering}
 						isPreview={!!previewContext}
+						avatarUrl={headOverrides?.avatarUrl}
 						data-flx="channel.user-message.message-avatar--2"
 					/>
 					<div className={styles.messageGutterRight} data-flx="channel.user-message.message-gutter-right--2" />
@@ -731,8 +738,8 @@ export const UserMessage = observer(() => {
 									member={member ?? undefined}
 									className={styles.messageUsername}
 									isPreview={!!previewContext}
-									previewColor={previewOverrides?.usernameColor}
-									previewName={previewOverrides?.displayName}
+									previewColor={headOverrides?.usernameColor}
+									previewName={headOverrides?.displayName}
 									data-flx="channel.user-message.message-username--3"
 								/>
 								{author.bot && (

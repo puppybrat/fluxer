@@ -39,6 +39,7 @@ interface CompactAuthorPrefixProps {
 	previewOverrides?: {
 		usernameColor?: string;
 		displayName?: string;
+		avatarUrl?: string | null;
 	};
 }
 
@@ -189,6 +190,7 @@ export function CompactAuthorPrefix({
 					className={styles.messageAvatarCompact}
 					isHovering={isHovering}
 					isPreview={isPreview}
+					avatarUrl={previewOverrides?.avatarUrl}
 					data-flx="channel.compact-message-layout.compact-author-prefix.message-avatar-compact"
 				/>
 			)}

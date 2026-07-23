@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {UserTag} from '@app/features/channel/components/ChannelUserTag';
-import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
+import {useInCharacterOverride} from '@app/features/cast/hooks/useInCharacterOverride';
 import {MessageAvatar} from '@app/features/channel/components/MessageAvatar';
 import {MessageTimeoutIndicator} from '@app/features/channel/components/MessageTimeoutIndicator';
 import {MessageUsername} from '@app/features/channel/components/MessageUsername';
@@ -52,28 +52,13 @@ export const MessageAuthorInfo = observer((props: MessageAuthorInfoProps) => {
 	const isPreview = useMemo(() => Boolean(previewContext), [previewContext]);
 
 	/**
-	 * In-character substitution. An explicit preview override always wins — those come from
-	 * preview surfaces that are deliberately rendering something other than the real message.
-	 *
-	 * Only single-character messages substitute. Multi-character attribution needs a combined
-	 * name and stacked avatars that do not exist yet, so those render as the real sender
-	 * rather than picking one character arbitrarily. A character that no longer resolves —
-	 * removed from the cast after the message was marked — also falls back to the sender,
-	 * since a stale name would assert an identity this guild no longer recognises.
+	 * In-character substitution. An explicit caller preview override always wins — those come
+	 * from preview surfaces that are deliberately rendering something other than the real
+	 * message. Otherwise the message's own cast attribution resolves the displayed identity.
 	 */
-	const previewOverrides = useMemo(() => {
-		if (callerPreviewOverrides) {
-			return callerPreviewOverrides;
-		}
-		if (!message.ic || message.castCharacterIds.length !== 1) {
-			return undefined;
-		}
-		const identity = GuildCastDisplay.getIdentity(message.guildId ?? guild?.id, message.castCharacterIds[0]);
-		if (!identity) {
-			return undefined;
-		}
-		return {displayName: identity.name, avatarUrl: identity.avatarUrl};
-	}, [callerPreviewOverrides, message.ic, message.castCharacterIds, message.guildId, guild?.id]);
+	const inCharacterOverride = useInCharacterOverride(message, guild?.id);
+	const previewOverrides: {usernameColor?: string; displayName?: string; avatarUrl?: string | null} | undefined =
+		callerPreviewOverrides ?? inCharacterOverride;
 	const timeoutIndicator = (
 		<MessageTimeoutIndicator
 			guildId={message.guildId}
