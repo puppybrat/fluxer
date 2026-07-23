@@ -218,6 +218,15 @@ export class MessageRequestService {
 		// false matches how the value is derived for a normal user message.
 		void this.channelService.messages.search.indexMessage(updated, false);
 
+		// Broadcast the same MESSAGE_UPDATE an edit emits, so connected clients reflect the
+		// in-character change live rather than only on a manual refresh. Without this the toggle
+		// is a local-only view for whoever pressed it.
+		await this.channelService.messages.dispatch.dispatchMessageUpdate({
+			channel: authChannel.channel,
+			message: updated,
+			requestCache: params.requestCache,
+		});
+
 		const access = await this.channelService.messages.retrieval.getResponseAccessContext({
 			userId: params.userId,
 			channelId: params.channelId,

@@ -327,6 +327,11 @@ export class Message {
 				pinned: updates.pinned ?? this.pinned,
 				mention_everyone: 'mention_everyone' in updates ? (updates.mention_everyone ?? false) : this.mentionEveryone,
 				tts: 'tts' in updates ? (updates.tts ?? false) : this.tts,
+				// Carried through like every other field: a MESSAGE_UPDATE that omits these (e.g. an
+				// ordinary edit) must preserve the message's in-character state, not reset it to a
+				// plain message. Without this, editing an IC message reverts it to the real sender.
+				ic: 'ic' in updates ? (updates.ic ?? false) : this.ic,
+				cast_character_ids: updates.cast_character_ids ?? this.castCharacterIds,
 				content: updates.content ?? this.content,
 				timestamp: this.timestamp.toISOString(),
 				edited_timestamp: updates.edited_timestamp ?? this.editedTimestamp?.toISOString(),
