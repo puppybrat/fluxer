@@ -203,7 +203,11 @@ export class Message {
 		this.pinned = message.pinned;
 		this.mentionEveryone = message.mention_everyone;
 		this.ic = message.ic ?? false;
-		this.castCharacterIds = message.cast_character_ids ?? [];
+		// A message is only attributed to characters while it is in-character. Enforcing that here
+		// keeps client state consistent even when an update clears ic but omits cast_character_ids
+		// (the server drops the key when empty), so an IC→OOC toggle regroups live instead of
+		// keeping a stale attribution until a reload's full refetch.
+		this.castCharacterIds = this.ic ? (message.cast_character_ids ?? []) : [];
 		this.tts = message.tts ?? false;
 		this.content = message.content;
 		this.timestamp = new Date(message.timestamp);
