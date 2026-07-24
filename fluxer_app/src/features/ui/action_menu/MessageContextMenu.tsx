@@ -503,6 +503,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = observer(
 		const forwardItem = itemById.get(ids.forward);
 		const copyMessageItem = itemById.get(ids.copyMessage);
 		const pinMessageItem = itemById.get(ids.pinMessage);
+		const toggleIcItem = itemById.get(ids.toggleIc);
 		const bookmarkMessageItem = itemById.get(ids.bookmarkMessage);
 		const markUnreadItem = itemById.get(ids.markUnread);
 		const copyMessageLinkItem = itemById.get(ids.copyMessageLink);
@@ -595,6 +596,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = observer(
 			const hasAny =
 				copyTextAvailable ||
 				pinMessageItem ||
+				toggleIcItem ||
 				bookmarkMessageItem ||
 				markUnreadItem ||
 				copyMessageLinkItem ||
@@ -604,6 +606,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = observer(
 				<MenuGroup data-flx="ui.action-menu.message-context-menu.render-utility-group.menu-group">
 					{renderCopyTextItem()}
 					{pinMessageItem && renderDataMenuItem(pinMessageItem, 'pin-message')}
+					{toggleIcItem && renderDataMenuItem(toggleIcItem, 'toggle-ic')}
 					{bookmarkMessageItem && renderDataMenuItem(bookmarkMessageItem, 'bookmark-message')}
 					{markUnreadItem && renderDataMenuItem(markUnreadItem, 'mark-unread')}
 					{copyMessageLinkItem && renderDataMenuItem(copyMessageLinkItem, 'copy-message-link')}
