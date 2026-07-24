@@ -14,7 +14,7 @@ import {Scroller, type ScrollerHandle} from '@app/features/ui/components/Scrolle
 import {getReducedMotionProps, type MotionAnimation} from '@app/features/ui/utils/ReducedMotionAnimation';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
-import {ArrowUpIcon, PlusIcon, SmileyIcon} from '@phosphor-icons/react';
+import {ArrowUpIcon, PlusIcon, SmileyIcon, UserSwitchIcon} from '@phosphor-icons/react';
 import {clsx} from 'clsx';
 import {AnimatePresence, motion} from 'framer-motion';
 import type React from 'react';
@@ -27,6 +27,11 @@ const OPEN_MENU_DESCRIPTOR = msg({
 const SEND_MESSAGE_DESCRIPTOR = msg({
 	message: 'Send message',
 	comment: 'Button or menu action label in the channel and chat mobile textarea layout. Keep it concise.',
+});
+const IN_CHARACTER_DESCRIPTOR = msg({
+	message: 'In-character',
+	comment:
+		'Label for the composer toggle that sends the next message in-character (as a cast character). Keep it concise.',
 });
 const MOBILE_BUTTON_SWAP_MOTION: MotionAnimation = {
 	initial: {opacity: 0, scale: 0.86, y: 3},
@@ -71,6 +76,9 @@ interface MobileTextareaLayoutProps {
 	onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 	onPlusClick: () => void;
 	onEmojiClick: () => void;
+	showInCharacterButton: boolean;
+	inCharacterActive: boolean;
+	onInCharacterToggle: () => void;
 }
 
 export function MobileTextareaLayout({
@@ -105,6 +113,9 @@ export function MobileTextareaLayout({
 	onKeyDown,
 	onPlusClick,
 	onEmojiClick,
+	showInCharacterButton,
+	inCharacterActive,
+	onInCharacterToggle,
 }: MobileTextareaLayoutProps) {
 	const {i18n} = useLingui();
 	const buttonSwapMotion = getReducedMotionProps(MOBILE_BUTTON_SWAP_MOTION, Accessibility.useReducedMotion);
@@ -208,7 +219,10 @@ export function MobileTextareaLayout({
 									autocompleteListId={autocompleteListId}
 									autocompleteOptions={autocompleteOptions}
 									selectedIndex={selectedIndex}
-									className={textareaStyles.textareaMobile}
+									className={clsx(
+										textareaStyles.textareaMobile,
+										showInCharacterButton && textareaStyles.textareaMobileWithSecondaryButton,
+									)}
 									onFocus={onFocus}
 									onBlur={onBlur}
 									onChange={onChange}
@@ -229,6 +243,22 @@ export function MobileTextareaLayout({
 							className={styles.mobileEmojiButtonContainer}
 							data-flx="channel.textarea.mobile-textarea-layout.mobile-emoji-button-container"
 						>
+							{showInCharacterButton && (
+								<button
+									type="button"
+									className={clsx(styles.mobileEmojiButton, inCharacterActive && styles.mobileInCharacterButtonActive)}
+									onClick={onInCharacterToggle}
+									aria-label={i18n._(IN_CHARACTER_DESCRIPTOR)}
+									aria-pressed={inCharacterActive}
+									data-flx="channel.textarea.mobile-textarea-layout.mobile-in-character-button.in-character-click"
+								>
+									<UserSwitchIcon
+										className={styles.mobileEmojiButtonIcon}
+										weight={inCharacterActive ? 'fill' : 'regular'}
+										data-flx="channel.textarea.mobile-textarea-layout.mobile-in-character-button-icon"
+									/>
+								</button>
+							)}
 							<button
 								type="button"
 								className={styles.mobileEmojiButton}

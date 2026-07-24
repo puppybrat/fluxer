@@ -46,7 +46,6 @@ import {
 	LinkBreakIcon,
 	LinkIcon,
 	MagnifyingGlassIcon,
-	MaskHappyIcon,
 	MicrophoneIcon,
 	MicrophoneSlashIcon,
 	MonitorPlayIcon,
@@ -81,6 +80,7 @@ import {
 	UserListIcon,
 	UserMinusIcon,
 	UserPlusIcon,
+	UserSwitchIcon,
 	UsersIcon,
 	VideoCameraIcon,
 	VideoCameraSlashIcon,
@@ -134,10 +134,10 @@ export const BookmarkIcon: React.FC<IconProps & {filled?: boolean}> = observer((
 	/>
 ));
 export const InCharacterIcon: React.FC<IconProps & {filled?: boolean}> = observer(({size = 16, filled = false}) => (
-	<MaskHappyIcon
+	<UserSwitchIcon
 		size={size}
 		weight={filled ? 'fill' : 'regular'}
-		data-flx="ui.action-menu.context-menu-icons.in-character-icon.mask-happy-icon"
+		data-flx="ui.action-menu.context-menu-icons.in-character-icon.user-switch-icon"
 	/>
 ));
 export const FavoriteIcon: React.FC<IconProps & {filled?: boolean}> = observer(({size = 16, filled = false}) => (

@@ -206,6 +206,15 @@
 	padding: 0.4375rem 3rem 0.4375rem 0.75rem;
 }
 
+/*
+ * A second absolutely-positioned button (the in-character toggle) sits to the left of the emoji
+ * button inside the input pill. Reserve extra right padding so typed text stops before it instead
+ * of creeping underneath — the emoji-only case keeps the 3rem above.
+ */
+.textareaMobileWithSecondaryButton {
+	padding-right: 5rem;
+}
+
 .mainWrapperDense {
 	display: grid;
 	grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);

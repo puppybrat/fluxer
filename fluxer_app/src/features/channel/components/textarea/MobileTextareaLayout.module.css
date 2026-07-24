@@ -96,6 +96,11 @@
 	height: 1.375rem;
 }
 
+/* Active in-character state: brighten from muted to primary, matching the desktop toggle. */
+.mobileInCharacterButtonActive {
+	color: var(--text-primary);
+}
+
 .mobileRightButtonContainer {
 	flex-shrink: 0;
 	display: flex;

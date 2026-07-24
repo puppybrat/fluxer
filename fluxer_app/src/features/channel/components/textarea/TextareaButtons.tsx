@@ -18,11 +18,11 @@ import {useLingui} from '@lingui/react/macro';
 import {
 	GifIcon,
 	ImageSquareIcon,
-	MaskHappyIcon,
 	MicrophoneIcon,
 	PaperPlaneRightIcon,
 	SmileyIcon,
 	StickerIcon,
+	UserSwitchIcon,
 } from '@phosphor-icons/react';
 import {clsx} from 'clsx';
 import {AnimatePresence, motion} from 'framer-motion';
@@ -161,7 +161,7 @@ export const TextareaButtons = React.forwardRef<HTMLDivElement, TextareaButtonsP
 						)}
 						{showInCharacterButton && (
 							<TextareaButton
-								icon={MaskHappyIcon}
+								icon={UserSwitchIcon}
 								iconProps={{weight: inCharacterActive ? 'fill' : 'regular'}}
 								label={i18n._(IN_CHARACTER_DESCRIPTOR)}
 								isSelected={inCharacterActive}

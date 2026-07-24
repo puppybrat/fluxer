@@ -1093,6 +1093,9 @@ const ChannelTextareaContent = observer(
 									<MobileTextareaLayout
 										disabled={textareaInputDisabled}
 										canAttachFiles={canAttachFiles}
+										showInCharacterButton={showInCharacterButton}
+										inCharacterActive={inCharacterActive}
+										onInCharacterToggle={handleInCharacterToggle}
 										value={value}
 										placeholderText={placeholderText}
 										textareaRef={textareaRef}
