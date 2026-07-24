@@ -318,8 +318,10 @@ export const useMessageActionMenuData = (
 			}
 			// In-character toggle. Guild-only (IC attribution is per-guild); any guild member may
 			// toggle any message, so this is not gated on a permission — the server resolves the
-			// message author's primary character and rejects if the author has none.
-			if (message.isUserMessage() && message.guildId != null) {
+			// message author's primary character and rejects if the author has none. Gated on the
+			// channel's guild, not message.guildId, which is absent on messages hydrated from the
+			// REST history (the wire omits guild_id) and would otherwise hide the action.
+			if (message.isUserMessage() && channel?.guildId != null) {
 				managementActions.push({
 					id: messageActionMenuItemIds.toggleIc,
 					icon: (
@@ -467,6 +469,7 @@ export const useMessageActionMenuData = (
 		return groups;
 	}, [
 		message,
+		channel,
 		handlers,
 		isSaved,
 		onClose,
