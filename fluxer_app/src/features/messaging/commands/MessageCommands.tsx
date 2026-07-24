@@ -289,6 +289,7 @@ interface SendMessageParams {
 	favoriteMemeId?: string;
 	stickers?: Array<MessageStickerItem>;
 	tts?: boolean;
+	ic?: boolean;
 }
 
 export function jumpToPresent(channelId: string, limit = MAX_MESSAGES_PER_CHANNEL): void {
@@ -532,6 +533,7 @@ export async function send(channelId: string, params: SendMessageParams): Promis
 		favoriteMemeId: params.favoriteMemeId,
 		stickers: params.stickers,
 		tts: params.tts,
+		ic: params.ic,
 	};
 	if (params.hasAttachments) {
 		logger.debug(`Sending attachment message immediately for channel ${channelId}`);

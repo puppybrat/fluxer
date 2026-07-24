@@ -64,6 +64,7 @@ import {
 	isOperationDisabled,
 	isPersonalNotesChannel,
 } from './MessageHelpers';
+import {resolveIcCharacterIds} from './MessageIcResolutionService';
 import type {MessageMentionService} from './MessageMentionService';
 import type {MessageOperationsHelpers} from './MessageOperationsHelpers';
 import type {MessagePersistenceService} from './MessagePersistenceService';
@@ -911,10 +912,31 @@ export class MessageSendService {
 			});
 			suppressDmRecipientDelivery = spamDecision.shouldSuppressRecipientDelivery;
 		}
+		// Resolve in-character attribution at insert time so the message is written and broadcast
+		// as IC in one step — no intermediate OOC state any client could observe. Failure is
+		// non-fatal: an author who cannot be attributed (no owner link or no primary) sends OOC
+		// rather than losing the message, matching the prior send-then-toggle fallback.
+		let ic = false;
+		let castCharacterIds: Array<string> = [];
+		if (data.ic && guild) {
+			try {
+				const resolved = await resolveIcCharacterIds({
+					guildId: createGuildID(BigInt(guild.id)),
+					senderId: user.id,
+					characterIds: data.character_ids,
+				});
+				ic = true;
+				castCharacterIds = resolved.characterIds;
+			} catch {
+				// Swallowed on purpose — see comment above.
+			}
+		}
 		const {message, enqueueDeferredEmbeds} = await this.deps.persistenceService.createMessage({
 			messageId,
 			channelId,
 			user,
+			ic,
+			castCharacterIds,
 			type: this.getMessageTypeForRequest(data),
 			content: data.content,
 			flags: this.deps.validationService.calculateMessageFlags(data),

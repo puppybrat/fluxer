@@ -19,7 +19,7 @@ import {makeAutoObservable, runInAction} from 'mobx';
  */
 class ComposerInCharacter {
 	private readonly icByChannel = new Map<string, boolean>();
-	private readonly eligibleByGuild = new Map<string, boolean>();
+	private readonly primaryIdsByGuild = new Map<string, ReadonlyArray<string>>();
 	private readonly inFlight = new Set<string>();
 
 	constructor() {
@@ -44,10 +44,19 @@ class ComposerInCharacter {
 	 * lookup failed, or a user with no primary.
 	 */
 	hasUsablePrimary(guildId: string | undefined): boolean {
+		return this.getPrimaryCharacterIds(guildId).length > 0;
+	}
+
+	/**
+	 * The current user's primary character ids in this guild, or empty. Used to render a just-sent
+	 * message in-character optimistically, so the sender sees no OOC→IC flash before the server
+	 * confirms. Mirrors the server's resolution, which attributes to all of the author's primaries.
+	 */
+	getPrimaryCharacterIds(guildId: string | undefined): ReadonlyArray<string> {
 		if (!guildId) {
-			return false;
+			return EMPTY_IDS;
 		}
-		return this.eligibleByGuild.get(guildId) ?? false;
+		return this.primaryIdsByGuild.get(guildId) ?? EMPTY_IDS;
 	}
 
 	/**
@@ -55,14 +64,14 @@ class ComposerInCharacter {
 	 * has completed, are no-ops. A failure leaves the guild unresolved so a later mount can retry.
 	 */
 	async ensureEligibility(guildId: string): Promise<void> {
-		if (this.eligibleByGuild.has(guildId) || this.inFlight.has(guildId)) {
+		if (this.primaryIdsByGuild.has(guildId) || this.inFlight.has(guildId)) {
 			return;
 		}
 		this.inFlight.add(guildId);
 		try {
-			const eligible = await resolveEligibility(guildId);
+			const primaryIds = await resolvePrimaryCharacterIds(guildId);
 			runInAction(() => {
-				this.eligibleByGuild.set(guildId, eligible);
+				this.primaryIdsByGuild.set(guildId, primaryIds);
 			});
 		} catch {
 			// Swallowed on purpose: a member without MANAGE_GUILD gets a 403 from owner-accounts,
@@ -77,20 +86,23 @@ class ComposerInCharacter {
 
 	reset(): void {
 		this.icByChannel.clear();
-		this.eligibleByGuild.clear();
+		this.primaryIdsByGuild.clear();
 		this.inFlight.clear();
 	}
 }
 
+const EMPTY_IDS: ReadonlyArray<string> = [];
+
 /**
  * Mirrors the server's resolution (MessageIcResolutionService): map the current user to an owner
- * index, then check whether any character primary in this guild belongs to that owner. Primaries
- * are not filtered by channel scope here, matching how the server resolves them.
+ * index, then collect this guild's primary characters belonging to that owner. Primaries are not
+ * filtered by channel scope here, matching how the server resolves them. Returns empty when the
+ * user has no owner mapping or no primary.
  */
-async function resolveEligibility(guildId: string): Promise<boolean> {
+async function resolvePrimaryCharacterIds(guildId: string): Promise<ReadonlyArray<string>> {
 	const currentUserId = Authentication.currentUserId;
 	if (!currentUserId) {
-		return false;
+		return EMPTY_IDS;
 	}
 	const [ownerAccounts, cast] = await Promise.all([
 		CastCommands.getOwnerAccounts(guildId),
@@ -98,14 +110,14 @@ async function resolveEligibility(guildId: string): Promise<boolean> {
 	]);
 	const ownerAccount = ownerAccounts.find((account) => account.fluxer_user_id === currentUserId);
 	if (!ownerAccount) {
-		return false;
+		return EMPTY_IDS;
 	}
 	const primaryCharacterIds = new Set(
 		cast.primaries.filter((primary) => primary.is_primary).map((primary) => primary.character_id),
 	);
-	return cast.characters.some(
-		(character) => character.owner === ownerAccount.owner_index && primaryCharacterIds.has(character.id),
-	);
+	return cast.characters
+		.filter((character) => character.owner === ownerAccount.owner_index && primaryCharacterIds.has(character.id))
+		.map((character) => character.id);
 }
 
 export default new ComposerInCharacter();

@@ -48,6 +48,7 @@ export interface MessageCreateRequest {
 	favorite_meme_id?: string;
 	sticker_ids?: Array<string>;
 	tts?: true;
+	ic?: boolean;
 }
 
 export interface MessageEditRequest {
@@ -67,6 +68,7 @@ export interface MessageCreatePayload {
 	favoriteMemeId?: string;
 	stickers?: Array<MessageStickerItem>;
 	tts?: boolean;
+	ic?: boolean;
 }
 
 export interface NormalizedMessageContent {
@@ -88,7 +90,7 @@ export function normalizeMessageEditContent(content: string): string {
 }
 
 export function buildMessageCreateRequest(payload: MessageCreatePayload): MessageCreateRequest {
-	const {content, nonce, attachments, allowedMentions, messageReference, flags, favoriteMemeId, stickers, tts} =
+	const {content, nonce, attachments, allowedMentions, messageReference, flags, favoriteMemeId, stickers, tts, ic} =
 		payload;
 	const requestBody: MessageCreateRequest = {};
 	if (content != null && hasVisibleMessageContent(content)) {
@@ -117,6 +119,9 @@ export function buildMessageCreateRequest(payload: MessageCreatePayload): Messag
 	}
 	if (tts) {
 		requestBody.tts = true;
+	}
+	if (ic) {
+		requestBody.ic = true;
 	}
 	return requestBody;
 }

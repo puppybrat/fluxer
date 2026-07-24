@@ -110,6 +110,7 @@ interface SendMessagePayload extends BaseMessagePayload {
 	favoriteMemeId?: string;
 	stickers?: Array<MessageStickerItem>;
 	tts?: boolean;
+	ic?: boolean;
 }
 
 interface EditMessagePayload extends BaseMessagePayload {
@@ -853,6 +854,7 @@ export class MessageQueue extends Queue<MessageQueuePayload, RestResponse<Messag
 			favoriteMemeId: payload.favoriteMemeId,
 			stickers: payload.stickers,
 			tts: payload.tts,
+			ic: payload.ic,
 		});
 		logger.debug(`Sending message to channel ${channelId}`);
 		const outcome = await this.attemptMessageSend(channelId, nonce, requestBody, payload.preparedFiles);

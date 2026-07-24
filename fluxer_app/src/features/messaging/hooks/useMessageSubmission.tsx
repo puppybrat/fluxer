@@ -105,6 +105,13 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			);
 			const hasAttachmentsFinal = uploadingAttachments.length > 0 || hasAttachments;
 			const allowedMentions: AllowedMentions = {replied_user: replyingMessage?.mentioning ?? true};
+			// In-character send is resolved server-side at insert (one step, no OOC ever broadcast).
+			// The optimistic message is rendered IC up front using the caller's own primaries, so the
+			// sender sees no OOC→IC transition either; a mismatch is corrected by the create response.
+			const inCharacter = ComposerInCharacter.isChannelInCharacter(channel.id);
+			const castCharacterIds = inCharacter
+				? ComposerInCharacter.getPrimaryCharacterIds(channel.guildId ?? undefined)
+				: undefined;
 			const message = MessageSubmitUtils.createOptimisticMessage(
 				{
 					content,
@@ -115,6 +122,8 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 					replyMentioning: replyingMessage?.mentioning,
 					stickers,
 					favoriteMemeId,
+					ic: inCharacter,
+					castCharacterIds,
 				},
 				uploadingAttachments,
 			);
@@ -133,15 +142,10 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 				stickers,
 				favoriteMemeId,
 				tts,
+				ic: inCharacter,
 			}).then((sentMessage) => {
 				if (sentMessage) {
 					SlowmodeCommands.recordMessageSend(channel.id);
-					if (ComposerInCharacter.isChannelInCharacter(channel.id)) {
-						// Message create carries no ic field, so flip it once the real id is known.
-						// The message renders OOC briefly, then flips when the PATCH's MESSAGE_UPDATE
-						// dispatch lands — an accepted flash, not something to eliminate here.
-						void MessageCommands.setMessageIc(channel.id, sentMessage.id, true);
-					}
 				}
 			});
 			ComponentDispatch.dispatch('MESSAGE_SENT', {channelId: channel.id});
@@ -167,6 +171,10 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			if (!MessageCommands.reserveSend(channel.id, nonce)) return;
 			TypingUtils.clear(channel.id);
 			MessageCommands.stopReply(channel.id);
+			const inCharacter = ComposerInCharacter.isChannelInCharacter(channel.id);
+			const castCharacterIds = inCharacter
+				? ComposerInCharacter.getPrimaryCharacterIds(channel.guildId ?? undefined)
+				: undefined;
 			const message = new Message({
 				id: nonce,
 				channel_id: channel.id,
@@ -175,6 +183,8 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 				flags: 0,
 				pinned: false,
 				mention_everyone: false,
+				ic: inCharacter,
+				cast_character_ids: castCharacterIds ? [...castCharacterIds] : undefined,
 				content: messageData.content,
 				timestamp: new Date().toISOString(),
 				mentions: [...(referencedMessage && replyingMessage?.mentioning ? [referencedMessage.author.toJSON()] : [])],
@@ -204,15 +214,10 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 				flags: 0,
 				stickers: messageData.stickers || [],
 				favoriteMemeId: sendOptions.favoriteMemeId,
+				ic: inCharacter,
 			}).then((sentMessage) => {
 				if (sentMessage) {
 					SlowmodeCommands.recordMessageSend(channel.id);
-					if (ComposerInCharacter.isChannelInCharacter(channel.id)) {
-						// Message create carries no ic field, so flip it once the real id is known.
-						// The message renders OOC briefly, then flips when the PATCH's MESSAGE_UPDATE
-						// dispatch lands — an accepted flash, not something to eliminate here.
-						void MessageCommands.setMessageIc(channel.id, sentMessage.id, true);
-					}
 				}
 			});
 			ComponentDispatch.dispatch('MESSAGE_SENT', {channelId: channel.id});

@@ -104,6 +104,8 @@ interface CreateMessageParams {
 	};
 	allowEmbeds?: boolean;
 	dmNsfwContext?: DmNsfwContext;
+	ic?: boolean;
+	castCharacterIds?: Array<string>;
 }
 
 export class MessagePersistenceService {
@@ -250,6 +252,9 @@ export class MessagePersistenceService {
 			call: null,
 			nsfw_emojis: nsfwEmojiIds.size > 0 ? nsfwEmojiIds : null,
 			has_reaction: false,
+			ic: params.ic ? true : null,
+			cast_character_ids:
+				params.castCharacterIds && params.castCharacterIds.length > 0 ? params.castCharacterIds : null,
 			version: 1,
 		};
 		const message = await this.channelRepository.messages.upsertMessage(messageRowData);
@@ -409,11 +414,7 @@ export class MessagePersistenceService {
 	 * that path is built around content/embed edits and stamps edited_timestamp, and marking a
 	 * message in-character is not an edit of what was said.
 	 */
-	async setIcState(params: {
-		message: Message;
-		ic: boolean;
-		castCharacterIds: Array<string>;
-	}): Promise<Message> {
+	async setIcState(params: {message: Message; ic: boolean; castCharacterIds: Array<string>}): Promise<Message> {
 		const oldRow = params.message.toRow();
 		const row = {
 			...oldRow,

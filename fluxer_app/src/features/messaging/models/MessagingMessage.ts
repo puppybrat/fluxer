@@ -537,6 +537,8 @@ export class Message {
 			flags: this.flags,
 			pinned: this.pinned,
 			mention_everyone: this.mentionEveryone,
+			ic: this.ic,
+			cast_character_ids: this.castCharacterIds,
 			tts: this.tts,
 			content: this.content,
 			timestamp: this.timestamp.toISOString(),

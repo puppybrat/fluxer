@@ -347,6 +347,15 @@ export const MessageRequestSchema = z
 		favorite_meme_id: SnowflakeType.nullish().describe('ID of a favorite meme to attach'),
 		sticker_ids: z.array(SnowflakeType).max(3).nullish().describe('Array of sticker IDs to include (max 3)'),
 		tts: z.boolean().optional().describe('Whether this is a text-to-speech message'),
+		ic: z
+			.boolean()
+			.optional()
+			.describe('Send the message in-character, attributed to the author’s primary cast character(s) for the guild'),
+		character_ids: z
+			.array(z.string().max(32))
+			.max(16)
+			.optional()
+			.describe('Explicit cast characters to attribute when ic is true; resolved from the author primary when omitted'),
 	})
 	.partial();
 

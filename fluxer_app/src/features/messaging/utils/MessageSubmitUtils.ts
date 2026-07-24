@@ -25,6 +25,8 @@ interface MessageSubmitData {
 	replyMentioning?: boolean;
 	stickers?: Array<MessageStickerItem>;
 	favoriteMemeId?: string;
+	ic?: boolean;
+	castCharacterIds?: ReadonlyArray<string>;
 }
 
 export function createUploadingAttachments(
@@ -51,6 +53,8 @@ export function createOptimisticMessage(data: MessageSubmitData, attachments: Ar
 		flags,
 		pinned: false,
 		mention_everyone: false,
+		ic: data.ic ?? false,
+		cast_character_ids: data.castCharacterIds ? [...data.castCharacterIds] : undefined,
 		content,
 		timestamp: new Date().toISOString(),
 		mentions: [...(data.referencedMessage && data.replyMentioning ? [data.referencedMessage.author.toJSON()] : [])],
