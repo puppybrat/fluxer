@@ -101,8 +101,12 @@ export class Message {
 				this.messageSnapshots.length > 0 ? this.messageSnapshots.map((snapshot) => snapshot.toMessageSnapshot()) : null,
 			call: this.call?.toMessageCall() ?? null,
 			nsfw_emojis: this.nsfwEmojis.size > 0 ? this.nsfwEmojis : null,
-			ic: this.ic ? true : null,
-			cast_character_ids: this.castCharacterIds.length > 0 ? this.castCharacterIds : null,
+			// Always emitted (like mention_everyone), never null-collapsed: the response pipeline
+			// strips null keys, so `ic: null` for a cleared message would drop the key entirely and
+			// a client merging a MESSAGE_UPDATE would read "key absent" as "unchanged", silently
+			// keeping the stale in-character state until a full refetch. Explicit false/[] clears it.
+			ic: this.ic,
+			cast_character_ids: this.castCharacterIds,
 			has_reaction: this.hasReaction ?? null,
 			version: this.version,
 		};
