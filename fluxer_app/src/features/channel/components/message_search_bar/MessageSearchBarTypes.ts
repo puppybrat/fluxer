@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type {CastDisplayCharacter} from '@app/features/cast/state/GuildCastDisplay';
 import type {Channel} from '@app/features/channel/models/Channel';
 import type {SearchHistoryEntry} from '@app/features/search/state/SearchHistory';
 import type {SearchSegment} from '@app/features/search/utils/SearchSegmentManager';
@@ -18,16 +19,18 @@ export interface SearchBarProps {
 	highContrast?: boolean;
 }
 
-export type AutocompleteType = 'filters' | 'users' | 'channels' | 'values' | 'date' | 'history' | null;
+export type AutocompleteType = 'filters' | 'users' | 'characters' | 'channels' | 'values' | 'date' | 'history' | null;
 
 export interface SearchHints {
 	usersByTag: Record<string, string>;
 	channelsByName: Record<string, string>;
+	charactersByName: Record<string, string>;
 }
 
 export type AutocompleteOption =
 	| SearchFilterOption
 	| User
+	| CastDisplayCharacter
 	| Channel
 	| {
 			value: string;

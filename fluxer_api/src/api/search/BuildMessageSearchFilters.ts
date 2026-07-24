@@ -52,6 +52,12 @@ export function buildMessageSearchFilters(
 	if (searchParams.exclude_mentions) {
 		filters.excludeMentions = searchParams.exclude_mentions.map((id: bigint) => id.toString());
 	}
+	if (searchParams.cast_character_ids) {
+		filters.castCharacterIds = searchParams.cast_character_ids;
+	}
+	if (searchParams.exclude_cast_character_ids) {
+		filters.excludeCastCharacterIds = searchParams.exclude_cast_character_ids;
+	}
 	if (searchParams.mention_everyone !== undefined) {
 		filters.mentionEveryone = searchParams.mention_everyone;
 	}

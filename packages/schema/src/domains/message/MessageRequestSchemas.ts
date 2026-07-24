@@ -241,6 +241,16 @@ export const MessageSearchRequest = z.object({
 	exclude_author_id: z.array(SnowflakeType).max(100).optional().describe('Author user IDs to exclude'),
 	mentions: z.array(SnowflakeType).max(100).optional().describe('User IDs that must be mentioned'),
 	exclude_mentions: z.array(SnowflakeType).max(100).optional().describe('User IDs that must not be mentioned'),
+	cast_character_ids: z
+		.array(createStringType(1, 32))
+		.max(100)
+		.optional()
+		.describe('Cast character IDs the message must be attributed to (in-character messages)'),
+	exclude_cast_character_ids: z
+		.array(createStringType(1, 32))
+		.max(100)
+		.optional()
+		.describe('Cast character IDs the message must not be attributed to'),
 	mention_everyone: z.boolean().optional().describe('Filter by whether message mentions everyone'),
 	pinned: z.boolean().optional().describe('Filter by pinned status'),
 	has: z

@@ -9,6 +9,12 @@ export interface CastDisplayIdentity {
 	avatarUrl: string | null;
 }
 
+export interface CastDisplayCharacter {
+	id: string;
+	name: string;
+	avatarUrl: string | null;
+}
+
 /**
  * Per-guild cast lookup for rendering in-character messages.
  *
@@ -64,6 +70,21 @@ class GuildCastDisplay {
 			return null;
 		}
 		return this.byGuild.get(guildId)?.get(characterId) ?? null;
+	}
+
+	/**
+	 * Every loaded character for a guild, for the "From character" search picker. Empty until the
+	 * guild's cast has loaded (ensureLoaded) or when the guild has no cast configured.
+	 */
+	listCharacters(guildId: string | undefined): Array<CastDisplayCharacter> {
+		if (!guildId) {
+			return [];
+		}
+		const map = this.byGuild.get(guildId);
+		if (!map) {
+			return [];
+		}
+		return Array.from(map, ([id, identity]) => ({id, name: identity.name, avatarUrl: identity.avatarUrl}));
 	}
 
 	reset(): void {

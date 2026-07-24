@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import GuildCastDisplay, {type CastDisplayCharacter} from '@app/features/cast/state/GuildCastDisplay';
 import type {
 	AutocompleteOption,
 	AutocompleteType,
@@ -89,7 +90,7 @@ export function useMessageSearchAutocomplete({
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	const [suppressAutoOpen, setSuppressAutoOpen] = useState(false);
 	const suppressAutoOpenRef = useRef(false);
-	const hintsRef = useRef<SearchHints>({usersByTag: {}, channelsByName: {}});
+	const hintsRef = useRef<SearchHints>({usersByTag: {}, channelsByName: {}, charactersByName: {}});
 	const searchContextRef = useRef<SearchContext | null>(null);
 	const [memberSearchResults, setMemberSearchResults] = useState<Array<User>>([]);
 	const memberFetchDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -309,6 +310,12 @@ export function useMessageSearchAutocomplete({
 			}
 		}
 	}, [autocompleteType, currentFilter]);
+	useEffect(() => {
+		// Load the guild's cast once so the character picker has names/avatars to suggest.
+		if (autocompleteType === 'characters' && currentGuildIdForScope) {
+			void GuildCastDisplay.ensureLoaded(currentGuildIdForScope);
+		}
+	}, [autocompleteType, currentGuildIdForScope]);
 	const getAutocompleteTypeForFilter = useCallback(
 		(filter: SearchFilterOption): AutocompleteType => {
 			const keyBase = normalizeFilterKey(filter.key);
@@ -321,6 +328,8 @@ export function useMessageSearchAutocomplete({
 				case 'from':
 				case 'mentions':
 					return 'users';
+				case 'from-character':
+					return 'characters';
 				case 'in':
 					return isInGuildChannel ? 'channels' : 'values';
 				default:
@@ -392,6 +401,15 @@ export function useMessageSearchAutocomplete({
 					}).slice(0, 12);
 				}
 				return [];
+			}
+			case 'characters': {
+				if (!currentFilter || !currentGuildIdForScope) return [];
+				const searchTerm = currentWord.slice(currentFilter.syntax.length).trim();
+				const characters = GuildCastDisplay.listCharacters(currentGuildIdForScope);
+				if (!searchTerm) {
+					return characters.slice(0, 12);
+				}
+				return matchSorter(characters, searchTerm, {keys: ['name']}).slice(0, 12);
 			}
 			case 'channels': {
 				if (!currentFilter) return [];
@@ -674,6 +692,18 @@ export function useMessageSearchAutocomplete({
 					type: 'channel',
 					filterKey: currentFilter!.key,
 					id: ch.id,
+				});
+				shouldSubmit = true;
+				break;
+			}
+			case 'characters': {
+				const character = option as CastDisplayCharacter;
+				insertToken(currentFilter!.syntax, character.name);
+				hintsRef.current.charactersByName[character.name] = character.id;
+				newSegments = buildUpdatedSegments({
+					type: 'character',
+					filterKey: currentFilter!.key,
+					id: character.id,
 				});
 				shouldSubmit = true;
 				break;

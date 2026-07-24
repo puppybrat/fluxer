@@ -102,6 +102,14 @@ const HINT_EXCLUDE_USER_DESCRIPTOR = msg({
 	message: 'exclude a user',
 	comment: 'Hint shown beside -from: and -mentions: (negation). Sentence case, no trailing punctuation.',
 });
+const HINT_CHARACTER_DESCRIPTOR = msg({
+	message: 'a cast character',
+	comment: 'Hint shown beside from-character:. Sentence case, no trailing punctuation.',
+});
+const HINT_EXCLUDE_CHARACTER_DESCRIPTOR = msg({
+	message: 'exclude a cast character',
+	comment: 'Hint shown beside -from-character: (negation). Sentence case, no trailing punctuation.',
+});
 const HINT_HAS_VALUES_DESCRIPTOR = msg({
 	message: 'link, embed, image, video, sound, file, sticker, poll, or forward',
 	comment: 'Hint shown beside has:. Lists all supported content categories in lowercase.',
@@ -195,6 +203,8 @@ export interface MessageSearchParams {
 	excludeAuthorId?: Array<string>;
 	mentions?: Array<string>;
 	excludeMentions?: Array<string>;
+	castCharacterIds?: Array<string>;
+	excludeCastCharacterIds?: Array<string>;
 	mentionEveryone?: boolean;
 	pinned?: boolean;
 	has?: Array<'image' | 'sound' | 'video' | 'file' | 'sticker' | 'embed' | 'link' | 'poll' | 'snapshot'>;
@@ -363,6 +373,22 @@ export function getSearchFilterOptions(i18n: I18n): Array<SearchFilterOption> {
 			description: i18n._(HINT_EXCLUDE_USER_DESCRIPTOR),
 			syntax: '-from:',
 			requiresValue: true,
+		},
+		{
+			key: 'from-character',
+			label: 'from-character:',
+			description: i18n._(HINT_CHARACTER_DESCRIPTOR),
+			syntax: 'from-character:',
+			requiresValue: true,
+			requiresGuild: true,
+		},
+		{
+			key: '-from-character',
+			label: '-from-character:',
+			description: i18n._(HINT_EXCLUDE_CHARACTER_DESCRIPTOR),
+			syntax: '-from-character:',
+			requiresValue: true,
+			requiresGuild: true,
 		},
 		{
 			key: 'mentions',
@@ -541,6 +567,8 @@ export function toApiParams(params: MessageSearchParams, extraParams?: MessageSe
 		exclude_author_id: params.excludeAuthorId,
 		mentions: params.mentions,
 		exclude_mentions: params.excludeMentions,
+		cast_character_ids: params.castCharacterIds,
+		exclude_cast_character_ids: params.excludeCastCharacterIds,
 		mention_everyone: params.mentionEveryone,
 		pinned: params.pinned,
 		has: params.has,
@@ -584,6 +612,7 @@ function extractSegmentValue(segment: SearchSegment): string | null {
 function buildHintsFromSegments(segments: Array<SearchSegment>) {
 	const usersByTag: Record<string, string> = {};
 	const channelsByName: Record<string, string> = {};
+	const charactersByName: Record<string, string> = {};
 	for (const segment of segments) {
 		const value = extractSegmentValue(segment);
 		if (!value) {
@@ -595,11 +624,16 @@ function buildHintsFromSegments(segments: Array<SearchSegment>) {
 		}
 		if (segment.type === 'channel') {
 			channelsByName[value] = segment.id;
+			continue;
+		}
+		if (segment.type === 'character') {
+			charactersByName[value] = segment.id;
 		}
 	}
 	return {
 		usersByTag: Object.keys(usersByTag).length > 0 ? usersByTag : undefined,
 		channelsByName: Object.keys(channelsByName).length > 0 ? channelsByName : undefined,
+		charactersByName: Object.keys(charactersByName).length > 0 ? charactersByName : undefined,
 	};
 }
 
@@ -649,6 +683,14 @@ function applySegmentsToParams(
 			} else {
 				params.channelId = addUnique(params.channelId, segment.id);
 			}
+			continue;
+		}
+		if (segment.type === 'character' && filterKey === 'from-character') {
+			if (isExclude) {
+				params.excludeCastCharacterIds = addUnique(params.excludeCastCharacterIds, segment.id);
+			} else {
+				params.castCharacterIds = addUnique(params.castCharacterIds, segment.id);
+			}
 		}
 	}
 	return params;
@@ -682,11 +724,29 @@ export function parseSearchQueryWithSegments(
 		...(entry?.hints?.channelsByName ?? {}),
 		...(segmentHints.channelsByName ?? {}),
 	};
+	// Character segments are resolved by applySegmentsToParams (via segment.id), so drop their
+	// values from the parseQuery hints to avoid attributing them twice — the same reason user
+	// segment values are stripped above.
+	const segmentCharacterValues = new Set<string>();
+	for (const segment of segments) {
+		if (segment.type !== 'character' || !segmentMatchesQuery(query, segment)) {
+			continue;
+		}
+		const value = extractSegmentValue(segment);
+		if (value) {
+			segmentCharacterValues.add(value);
+		}
+	}
+	const charactersByName = {...(entry?.hints?.charactersByName ?? {})};
+	for (const value of segmentCharacterValues) {
+		delete charactersByName[value];
+	}
 	const params = parseQuery(
 		query,
 		{
 			usersByTag: Object.keys(usersByTag).length > 0 ? usersByTag : undefined,
 			channelsByName: Object.keys(channelsByName).length > 0 ? channelsByName : undefined,
+			charactersByName: Object.keys(charactersByName).length > 0 ? charactersByName : undefined,
 		},
 		{guildId: ctx?.guildId ?? null},
 	);

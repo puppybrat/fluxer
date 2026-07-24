@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type {CastDisplayCharacter} from '@app/features/cast/state/GuildCastDisplay';
 import {ChannelsSection} from '@app/features/channel/components/message_search_bar/ChannelsSection';
+import {CharactersSection} from '@app/features/channel/components/message_search_bar/CharactersSection';
 import {DateSection} from '@app/features/channel/components/message_search_bar/DateSection';
 import {FiltersSection} from '@app/features/channel/components/message_search_bar/FilterOption';
 import {HistorySection} from '@app/features/channel/components/message_search_bar/HistorySection';
@@ -278,6 +280,19 @@ export const MessageSearchBar = observer(
 							guildId={currentGuildIdForScope}
 							isInGuild={isInGuildChannel}
 							data-flx="channel.message-search-bar.message-search-bar.render-autocomplete-content.users-section.autocomplete-select"
+						/>
+					);
+				case 'characters':
+					return (
+						<CharactersSection
+							options={getAutocompleteOptions() as Array<CastDisplayCharacter>}
+							selectedIndex={keyboardFocusIndex}
+							hoverIndex={hoverIndexForRender}
+							onSelect={handleAutocompleteSelect}
+							onMouseEnter={handleOptionMouseEnter}
+							onMouseLeave={handleOptionMouseLeave}
+							listboxId={listboxId}
+							data-flx="channel.message-search-bar.message-search-bar.render-autocomplete-content.characters-section.autocomplete-select"
 						/>
 					);
 				case 'channels':

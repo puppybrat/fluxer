@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-export type SearchSegmentType = 'user' | 'channel';
+export type SearchSegmentType = 'user' | 'channel' | 'character';
 
 export interface SearchSegment {
 	type: SearchSegmentType;

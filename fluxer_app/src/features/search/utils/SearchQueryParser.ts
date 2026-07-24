@@ -15,6 +15,7 @@ export interface ParserContext {
 export interface SearchHints {
 	usersByTag?: Record<string, string>;
 	channelsByName?: Record<string, string>;
+	charactersByName?: Record<string, string>;
 }
 
 export interface ParsedToken {
@@ -32,6 +33,8 @@ const isQuoteChar = (ch: string | undefined): boolean => ch !== undefined && QUO
 const KNOWN_KEYS = new Set([
 	'from',
 	'-from',
+	'from-character',
+	'-from-character',
 	'mentions',
 	'-mentions',
 	'in',
@@ -288,6 +291,13 @@ const tryResolveUser = (tag: string, hints?: SearchHints): string | null => {
 	const user = Users.getUserByTag(trimmedTag);
 	return user?.id ?? null;
 };
+const tryResolveCharacter = (name: string, hints?: SearchHints): string | null => {
+	const trimmed = name.trim();
+	if (!trimmed) return null;
+	// Character names are not globally resolvable (no username-style lookup), so a value only
+	// resolves through a hint recorded when the user picked it from the character suggestions.
+	return hints?.charactersByName?.[trimmed] ?? null;
+};
 const tryResolveChannel = (name: string, guildId?: string | null, hints?: SearchHints): string | null => {
 	if (hints?.channelsByName?.[name]) return hints.channelsByName[name];
 	if (!guildId) return null;
@@ -376,6 +386,20 @@ export function parseQuery(query: string, hints?: SearchHints, ctx?: ParseContex
 							params.excludeAuthorId = add(params.excludeAuthorId, id);
 						} else {
 							params.authorId = add(params.authorId, id);
+						}
+					}
+				}
+				break;
+			}
+			case 'from-character': {
+				const values = splitCSV(tok.value);
+				for (const name of values) {
+					const id = tryResolveCharacter(name, hints);
+					if (id) {
+						if (isExcludeKey) {
+							params.excludeCastCharacterIds = add(params.excludeCastCharacterIds, id);
+						} else {
+							params.castCharacterIds = add(params.castCharacterIds, id);
 						}
 					}
 				}
