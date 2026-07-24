@@ -7,7 +7,9 @@ import {
 	subscribeAnimatedMediaPlaybackChange,
 	useAnimatedMediaPlaybackAllowed,
 } from '@app/features/app/hooks/useAnimatedMediaPlayback';
+import {MultiCharacterHeads} from '@app/features/cast/components/MultiCharacterHeads';
 import {useInCharacterOverride} from '@app/features/cast/hooks/useInCharacterOverride';
+import {useMultiCharacterHeads} from '@app/features/cast/hooks/useMultiCharacterHeads';
 import {UserTag} from '@app/features/channel/components/ChannelUserTag';
 import {CompactAuthorPrefix, CompactMessageLayout} from '@app/features/channel/components/CompactMessageLayout';
 import {EditingMessageInput} from '@app/features/channel/components/EditingMessageInput';
@@ -171,6 +173,11 @@ export const UserMessage = observer(() => {
 	const inCharacterOverride = useInCharacterOverride(message, guild?.id);
 	const headOverrides: {usernameColor?: string; displayName?: string; avatarUrl?: string | null} | undefined =
 		previewOverrides ?? inCharacterOverride;
+	// Multi-character attribution (two or more characters). Rendered as its own avatar+name pairs in
+	// place of the single header, and only in the cozy layout — a caller preview override is a
+	// single-identity substitution and takes precedence, so multi heads stand down under one.
+	const multiCharacterHeads = useMultiCharacterHeads(message, guild?.id);
+	const multiHeads = previewOverrides ? undefined : multiCharacterHeads;
 	const shouldAppearAuthorless = false;
 	const mobileLayout = MobileLayout;
 	const shouldShowFailedFooter =
@@ -622,7 +629,27 @@ export const UserMessage = observer(() => {
 			{(message.content || isEditing) && (!shouldHideContent || isEditing) && (
 				<div className={styles.messageContent} data-flx="channel.user-message.message-content--2">
 					{!shouldGroup && jumpHeading}
-					{!shouldGroup && (
+					{!shouldGroup && multiHeads && (
+						<AuthorHeading
+							className={styles.messageAuthorInfo}
+							data-flx="channel.user-message.message-author-info--multi"
+						>
+							<MultiCharacterHeads
+								heads={multiHeads}
+								timestampSlot={
+									<TimestampWithTooltip
+										date={message.timestamp}
+										className={styles.messageTimestamp}
+										data-flx="channel.user-message.message-timestamp--multi"
+									>
+										{formattedDate}
+									</TimestampWithTooltip>
+								}
+								data-flx="channel.user-message.multi-character-heads"
+							/>
+						</AuthorHeading>
+					)}
+					{!shouldGroup && !multiHeads && (
 						<AuthorHeading className={styles.messageAuthorInfo} data-flx="channel.user-message.message-author-info--2">
 							<span className={styles.messageAuthorRow} data-flx="channel.user-message.message-author-row--2">
 								<span className={styles.messageAuthorPart} data-flx="channel.user-message.message-author-part--2">
@@ -703,7 +730,7 @@ export const UserMessage = observer(() => {
 					data-flx="channel.user-message.message-author-info--3"
 				/>
 			)}
-			{!shouldGroup && (
+			{!shouldGroup && !multiHeads && (
 				<>
 					<div className={styles.messageGutterLeft} data-flx="channel.user-message.message-gutter-left--2" />
 					<MessageAvatar
@@ -722,7 +749,27 @@ export const UserMessage = observer(() => {
 			)}
 			<div className={styles.container} data-flx="channel.user-message.container--3">
 				{((!message.content && !isEditing) || (shouldHideContent && !isEditing)) && !shouldGroup && jumpHeading}
-				{((!message.content && !isEditing) || (shouldHideContent && !isEditing)) && !shouldGroup && (
+				{((!message.content && !isEditing) || (shouldHideContent && !isEditing)) && !shouldGroup && multiHeads && (
+					<AuthorHeading
+						className={styles.messageAuthorInfo}
+						data-flx="channel.user-message.message-author-info--multi-2"
+					>
+						<MultiCharacterHeads
+							heads={multiHeads}
+							timestampSlot={
+								<TimestampWithTooltip
+									date={message.timestamp}
+									className={styles.messageTimestamp}
+									data-flx="channel.user-message.message-timestamp--multi-2"
+								>
+									{formattedDate}
+								</TimestampWithTooltip>
+							}
+							data-flx="channel.user-message.multi-character-heads--2"
+						/>
+					</AuthorHeading>
+				)}
+				{((!message.content && !isEditing) || (shouldHideContent && !isEditing)) && !shouldGroup && !multiHeads && (
 					<AuthorHeading className={styles.messageAuthorInfo} data-flx="channel.user-message.message-author-info--4">
 						<span className={styles.messageAuthorRow} data-flx="channel.user-message.message-author-row--3">
 							<span className={styles.messageAuthorPart} data-flx="channel.user-message.message-author-part--3">

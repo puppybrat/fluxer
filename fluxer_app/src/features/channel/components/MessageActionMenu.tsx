@@ -22,6 +22,7 @@ import {
 	COPY_MESSAGE_LINK_DESCRIPTOR,
 	DELETE_MESSAGE_DESCRIPTOR,
 	EDIT_MESSAGE_DESCRIPTOR,
+	MANAGE_CHARACTERS_DESCRIPTOR,
 	MARK_AS_IC_DESCRIPTOR,
 	MARK_AS_OOC_DESCRIPTOR,
 	MARK_AS_UNREAD_DESCRIPTOR,
@@ -49,6 +50,7 @@ import {
 	EditMessageIcon,
 	ForwardIcon,
 	InCharacterIcon,
+	ManageCharactersIcon,
 	MarkAsUnreadIcon,
 	PinIcon,
 	RemoveAllReactionsIcon,
@@ -127,6 +129,7 @@ export const messageActionMenuItemIds = {
 	edit: 'edit',
 	pinMessage: 'message_pin',
 	toggleIc: 'message_toggle_ic',
+	manageCharacters: 'message_manage_characters',
 	bookmarkMessage: 'message_bookmark',
 	suppressEmbeds: 'suppress_embeds',
 	markUnread: 'message_mark_unread',
@@ -333,6 +336,17 @@ export const useMessageActionMenuData = (
 					),
 					label: message.ic ? i18n._(MARK_AS_OOC_DESCRIPTOR) : i18n._(MARK_AS_IC_DESCRIPTOR),
 					onClick: handlers.handleToggleIc,
+				});
+			}
+			// Fine-grained attribution: swap, add, or remove the specific characters an in-character
+			// message speaks as. Only offered once the message is in-character (the toggle above is the
+			// way in); the picker itself shows only characters the message author owns.
+			if (message.isUserMessage() && channel?.guildId != null && message.ic) {
+				managementActions.push({
+					id: messageActionMenuItemIds.manageCharacters,
+					icon: <ManageCharactersIcon size={20} data-flx="channel.message-action-menu.groups.manage-characters-icon" />,
+					label: i18n._(MANAGE_CHARACTERS_DESCRIPTOR),
+					onClick: handlers.handleManageCharacters,
 				});
 			}
 			if (message.isUserMessage() && supportsInteractiveActions) {

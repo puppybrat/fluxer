@@ -52,6 +52,33 @@ export async function getOwnerAccounts(guildId: string): Promise<Array<CastOwner
 	return response.body.owner_accounts;
 }
 
+/**
+ * The characters a given Fluxer user owns in this guild's cast, for the "Manage characters" picker.
+ * Mirrors the server's ownership check (MessageIcResolutionService): map the user to an owner index
+ * via owner-accounts, then take this guild's cast characters belonging to that owner. Unlike
+ * resolvePrimaryCharacterIds, this returns ALL owned characters (not just primaries), since the
+ * picker lets the user attribute any of their own characters. Name/avatar precedence matches
+ * GuildCastDisplay. Returns empty when the user has no owner mapping. Requires MANAGE_GUILD (the
+ * owner-accounts route is gated), matching the existing IC toggle's visibility.
+ */
+export async function getOwnedCharacters(
+	guildId: string,
+	fluxerUserId: string,
+): Promise<Array<{id: string; name: string; avatarUrl: string | null}>> {
+	const [ownerAccounts, cast] = await Promise.all([getOwnerAccounts(guildId), getGuildCast(guildId)]);
+	const ownerAccount = ownerAccounts.find((account) => account.fluxer_user_id === fluxerUserId);
+	if (!ownerAccount) {
+		return [];
+	}
+	return cast.characters
+		.filter((character) => character.owner === ownerAccount.owner_index)
+		.map((character) => ({
+			id: character.id,
+			name: character.nickname ?? character.name ?? character.id,
+			avatarUrl: character.pfp_url ?? null,
+		}));
+}
+
 export async function addCharacter(guildId: string, characterId: string): Promise<CastMutation> {
 	const response = await http.post<CastMutation>(Endpoints.GUILD_CAST_CHARACTER(guildId, characterId));
 	return response.body;

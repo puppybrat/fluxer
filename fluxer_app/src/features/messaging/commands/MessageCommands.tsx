@@ -661,14 +661,22 @@ export async function remove(channelId: string, messageId: string): Promise<void
 }
 
 /**
- * Marks a message in or out of character. No character_ids are sent: the server resolves the
- * author's primary character(s) for the guild. Connected clients update live off the
- * MESSAGE_UPDATE this dispatches, so nothing is applied optimistically here.
+ * Marks a message in or out of character. When characterIds is omitted, the server resolves the
+ * author's primary character(s) for the guild. When provided (from the "Manage characters" picker),
+ * those explicit ids are attributed instead — the server still validates each against the author's
+ * ownership. Connected clients update live off the MESSAGE_UPDATE this dispatches, so nothing is
+ * applied optimistically here.
  */
-export async function setMessageIc(channelId: string, messageId: string, ic: boolean): Promise<void> {
+export async function setMessageIc(
+	channelId: string,
+	messageId: string,
+	ic: boolean,
+	characterIds?: ReadonlyArray<string>,
+): Promise<void> {
 	try {
 		logger.debug(`Setting ic=${ic} on message ${messageId} in channel ${channelId}`);
-		await http.patch(Endpoints.CHANNEL_MESSAGE_IC(channelId, messageId), {body: {ic}});
+		const body = characterIds === undefined ? {ic} : {ic, character_ids: characterIds};
+		await http.patch(Endpoints.CHANNEL_MESSAGE_IC(channelId, messageId), {body});
 	} catch (error) {
 		logger.error(`Failed to set ic on message ${messageId} in channel ${channelId}:`, error);
 		throw error;

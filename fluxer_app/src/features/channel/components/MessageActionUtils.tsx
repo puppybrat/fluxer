@@ -2,6 +2,7 @@
 
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
 import Authentication from '@app/features/auth/state/Authentication';
+import {ManageCastCharactersModal} from '@app/features/cast/components/ManageCastCharactersModal';
 import * as ChannelPinCommands from '@app/features/channel/commands/ChannelPinsCommands';
 import {useMaybeMessageViewContext} from '@app/features/channel/components/MessageViewContext';
 import type {Channel} from '@app/features/channel/models/Channel';
@@ -296,6 +297,7 @@ export interface MessageActionHandlers {
 	handleReply: (event?: React.MouseEvent | React.KeyboardEvent) => void;
 	handlePinMessage: (event?: React.MouseEvent | React.KeyboardEvent) => void;
 	handleToggleIc: () => void;
+	handleManageCharacters: () => void;
 	handleEditMessage: () => void;
 	handleRetryMessage: () => void;
 	handleFailedMessageDelete: () => void;
@@ -372,6 +374,14 @@ export function createMessageActionHandlers(
 		void MessageCommands.setMessageIc(message.channelId, message.id, !message.ic);
 		onClose?.();
 	};
+	const handleManageCharacters = () => {
+		const openPicker = () => ModalCommands.push(modal(() => <ManageCastCharactersModal message={message} />));
+		if (onClose) {
+			ModalCommands.runAfterBottomSheetClose(onClose, openPicker);
+			return;
+		}
+		openPicker();
+	};
 	const handleEditMessage = () => {
 		startMessageEdit(message);
 		onClose?.();
@@ -412,6 +422,7 @@ export function createMessageActionHandlers(
 		handleReply,
 		handlePinMessage,
 		handleToggleIc,
+		handleManageCharacters,
 		handleEditMessage,
 		handleRetryMessage,
 		handleFailedMessageDelete,

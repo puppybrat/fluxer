@@ -543,6 +543,10 @@ export const MARK_AS_OOC_DESCRIPTOR = msg({
 	message: 'Mark as out-of-character',
 	comment: 'Message action that clears a message’s in-character attribution.',
 });
+export const MANAGE_CHARACTERS_DESCRIPTOR = msg({
+	message: 'Manage characters',
+	comment: 'Message action that opens a picker to choose which cast characters an in-character message speaks as.',
+});
 export const CHANGE_FRIEND_NICKNAME_DESCRIPTOR = msg({
 	message: 'Change friend nickname',
 	comment: 'Generic action label that opens the friend-nickname edit flow.',

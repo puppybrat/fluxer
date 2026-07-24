@@ -140,6 +140,13 @@ export const InCharacterIcon: React.FC<IconProps & {filled?: boolean}> = observe
 		data-flx="ui.action-menu.context-menu-icons.in-character-icon.user-switch-icon"
 	/>
 ));
+export const ManageCharactersIcon: React.FC<IconProps> = observer(({size = 16}) => (
+	<UserListIcon
+		size={size}
+		weight="regular"
+		data-flx="ui.action-menu.context-menu-icons.manage-characters-icon.user-list-icon"
+	/>
+));
 export const FavoriteIcon: React.FC<IconProps & {filled?: boolean}> = observer(({size = 16, filled = false}) => (
 	<StarIcon
 		size={size}
