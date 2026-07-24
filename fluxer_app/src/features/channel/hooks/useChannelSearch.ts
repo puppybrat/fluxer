@@ -43,6 +43,7 @@ export interface ChannelSearchFilters {
 	excludeAuthorIds?: Array<string>;
 	mentionIds?: Array<string>;
 	excludeMentionIds?: Array<string>;
+	castCharacterIds?: Array<string>;
 	channelIds?: Array<string>;
 	excludeChannelIds?: Array<string>;
 	has?: Array<'image' | 'sound' | 'video' | 'file' | 'sticker' | 'embed' | 'link' | 'poll'>;
@@ -119,6 +120,9 @@ const filtersToParams = (filters: ChannelSearchFilters): MessageSearchParams => 
 	}
 	if (filters.excludeMentionIds?.length) {
 		params.excludeMentions = filters.excludeMentionIds;
+	}
+	if (filters.castCharacterIds?.length) {
+		params.castCharacterIds = filters.castCharacterIds;
 	}
 	if (filters.channelIds?.length) {
 		params.channelId = filters.channelIds;

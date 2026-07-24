@@ -4,6 +4,7 @@ import {msg} from '@lingui/core/macro';
 import '@app/features/channel/components/ChannelSearchHighlight.css';
 import sharedStyles from '@app/features/app/components/bottomsheets/shared.module.css';
 import {LongPressable} from '@app/features/app/components/LongPressable';
+import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
 import {Message as MessageComponent} from '@app/features/channel/components/ChannelMessage';
 import {CollapsedMessageVisibilityProvider} from '@app/features/channel/components/CollapsedMessageVisibilityContext';
 import {MessageActionBottomSheet} from '@app/features/channel/components/MessageActionBottomSheet';
@@ -35,6 +36,7 @@ import LocalUserSpamOverride from '@app/features/moderation/state/LocalUserSpamO
 import {shouldDisableAutofocusOnMobile} from '@app/features/platform/utils/AutofocusUtils';
 import {PASSWORD_MANAGER_IGNORE_ATTRIBUTES} from '@app/features/platform/utils/PasswordManagerAutocomplete';
 import {ChannelFilterSheet} from '@app/features/search/components/search/ChannelFilterSheet';
+import {CharacterFilterSheet} from '@app/features/search/components/search/CharacterFilterSheet';
 import {HasFilterSheet, type HasFilterType} from '@app/features/search/components/search/HasFilterSheet';
 import {ScopeSheet} from '@app/features/search/components/search/ScopeSheet';
 import {SearchFilterChip} from '@app/features/search/components/search/SearchFilterChip';
@@ -45,6 +47,7 @@ import {
 	CloseIcon,
 	ExpandChevronIcon,
 	FilterIcon,
+	InCharacterIcon,
 	LoadingIcon,
 	NextIcon,
 	PreviousIcon,
@@ -133,6 +136,19 @@ const FROM_DESCRIPTOR = msg({
 	message: 'From',
 	comment: 'Filter category label in the mobile channel search sheet for the from: user filter.',
 });
+const CHARACTER_DESCRIPTOR = msg({
+	message: 'Character',
+	comment: 'Filter category label in the mobile channel search sheet for the from-character cast filter.',
+});
+const FROM_CHARACTER_DESCRIPTOR = msg({
+	message: 'From character',
+	comment: 'Section header in the mobile channel search character picker. Filters by attributed cast character.',
+});
+const CHARACTERS_COUNT_DESCRIPTOR = msg({
+	message: '{length} characters',
+	comment:
+		'Summary chip text in the mobile channel search sheet when more than one character is selected. length is the count.',
+});
 const HAS_DESCRIPTOR = msg({
 	message: 'Has',
 	comment: 'Filter category label in the mobile channel search sheet for the has: content type filter.',
@@ -186,10 +202,12 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 		const inputRef = useRef<HTMLInputElement>(null);
 		const [hasFilters, setHasFilters] = useState<Array<HasFilterType>>([]);
 		const [fromUserIds, setFromUserIds] = useState<Array<string>>([]);
+		const [fromCharacterIds, setFromCharacterIds] = useState<Array<string>>([]);
 		const [inChannelIds, setInChannelIds] = useState<Array<string>>([]);
 		const [revealedGroupKeys, setRevealedGroupKeys] = useState<Set<string>>(new Set());
 		const [hasSheetOpen, setHasSheetOpen] = useState(false);
 		const [userSheetOpen, setUserSheetOpen] = useState(false);
+		const [characterSheetOpen, setCharacterSheetOpen] = useState(false);
 		const [channelSheetOpen, setChannelSheetOpen] = useState(false);
 		const [sortSheetOpen, setSortSheetOpen] = useState(false);
 		const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
@@ -269,12 +287,19 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 				content: contentQuery.trim() || undefined,
 				has: hasFilters.length > 0 ? hasFilters : undefined,
 				authorIds: fromUserIds.length > 0 ? fromUserIds : undefined,
+				castCharacterIds: fromCharacterIds.length > 0 ? fromCharacterIds : undefined,
 				channelIds: inChannelIds.length > 0 ? inChannelIds : undefined,
 			};
-		}, [contentQuery, hasFilters, fromUserIds, inChannelIds]);
+		}, [contentQuery, hasFilters, fromUserIds, fromCharacterIds, inChannelIds]);
 		const handleSearch = useCallback(() => {
 			const filters = buildFilters();
-			if (!filters.content && !filters.has?.length && !filters.authorIds?.length && !filters.channelIds?.length) {
+			if (
+				!filters.content &&
+				!filters.has?.length &&
+				!filters.authorIds?.length &&
+				!filters.castCharacterIds?.length &&
+				!filters.channelIds?.length
+			) {
 				return;
 			}
 			performFilterSearch(filters);
@@ -283,6 +308,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 			setContentQuery('');
 			setHasFilters([]);
 			setFromUserIds([]);
+			setFromCharacterIds([]);
 			setInChannelIds([]);
 			reset();
 		}, [reset]);
@@ -348,11 +374,17 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 		useEffect(() => {
 			if (hasSearched) {
 				const filters = buildFilters();
-				if (filters.content || filters.has?.length || filters.authorIds?.length || filters.channelIds?.length) {
+				if (
+					filters.content ||
+					filters.has?.length ||
+					filters.authorIds?.length ||
+					filters.castCharacterIds?.length ||
+					filters.channelIds?.length
+				) {
 					performFilterSearch(filters);
 				}
 			}
-		}, [hasFilters, fromUserIds, inChannelIds]);
+		}, [hasFilters, fromUserIds, fromCharacterIds, inChannelIds]);
 		useEffect(() => {
 			setRevealedGroupKeys(new Set());
 		}, [machineState.status === 'success' ? machineState.results : null]);
@@ -376,7 +408,8 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 				clearChannelSearchHighlight();
 			};
 		}, [machineState, contentQuery]);
-		const hasActiveFilters = hasFilters.length > 0 || fromUserIds.length > 0 || inChannelIds.length > 0;
+		const hasActiveFilters =
+			hasFilters.length > 0 || fromUserIds.length > 0 || fromCharacterIds.length > 0 || inChannelIds.length > 0;
 		const canSearch = contentQuery.trim() || hasActiveFilters;
 		const getFromUserLabel = (): string => {
 			if (fromUserIds.length === 0) return '';
@@ -385,6 +418,13 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 				return user ? NicknameUtils.getDisplayName(user) : i18n._(MESSAGE_1_USER_DESCRIPTOR);
 			}
 			return i18n._(USERS_DESCRIPTOR, {length: fromUserIds.length});
+		};
+		const getFromCharacterLabel = (): string => {
+			if (fromCharacterIds.length === 0) return '';
+			if (fromCharacterIds.length === 1) {
+				return GuildCastDisplay.getIdentity(channel.guildId, fromCharacterIds[0])?.name ?? '';
+			}
+			return i18n._(CHARACTERS_COUNT_DESCRIPTOR, {length: fromCharacterIds.length});
 		};
 		const getInChannelLabel = (): string => {
 			if (inChannelIds.length === 0) return '';
@@ -794,6 +834,19 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 								/>
 								{channel.guildId && (
 									<SearchFilterChip
+										label={i18n._(CHARACTER_DESCRIPTOR)}
+										value={getFromCharacterLabel()}
+										icon={
+											<InCharacterIcon size={14} data-flx="channel.channel-search-bottom-sheet.in-character-icon" />
+										}
+										onPress={() => setCharacterSheetOpen(true)}
+										onRemove={fromCharacterIds.length > 0 ? () => setFromCharacterIds([]) : undefined}
+										isActive={fromCharacterIds.length > 0}
+										data-flx="channel.channel-search-bottom-sheet.search-filter-chip.set-character-sheet-open"
+									/>
+								)}
+								{channel.guildId && (
+									<SearchFilterChip
 										label={i18n._(IN_DESCRIPTOR)}
 										value={getInChannelLabel()}
 										icon={<HashIcon size={14} weight="bold" data-flx="channel.channel-search-bottom-sheet.hash-icon" />}
@@ -864,6 +917,17 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 					title={i18n._(FROM_USER_DESCRIPTOR)}
 					data-flx="channel.channel-search-bottom-sheet.user-filter-sheet"
 				/>
+				{channel.guildId && (
+					<CharacterFilterSheet
+						isOpen={characterSheetOpen}
+						onClose={() => setCharacterSheetOpen(false)}
+						channel={channel}
+						selectedCharacterIds={fromCharacterIds}
+						onCharactersChange={setFromCharacterIds}
+						title={i18n._(FROM_CHARACTER_DESCRIPTOR)}
+						data-flx="channel.channel-search-bottom-sheet.character-filter-sheet"
+					/>
+				)}
 				{channel.guildId && (
 					<ChannelFilterSheet
 						isOpen={channelSheetOpen}
