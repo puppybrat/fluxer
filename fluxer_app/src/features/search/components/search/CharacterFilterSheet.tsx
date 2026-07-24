@@ -47,10 +47,11 @@ export const CharacterFilterSheet: React.FC<CharacterFilterSheetProps> = observe
 				}
 			}
 		}, [isOpen, channel.guildId]);
-		const availableCharacters = useMemo(
-			(): Array<CastDisplayCharacter> => GuildCastDisplay.listCharacters(channel.guildId),
-			[channel.guildId],
-		);
+		// Read the store during render (this is an observer) rather than behind a useMemo keyed on
+		// guildId: the guild's cast loads lazily via ensureLoaded, so a guildId-keyed memo computes
+		// once — empty, before the async load lands — and never recomputes, leaving the sheet
+		// permanently empty. Reading here re-renders populated the moment the cast loads.
+		const availableCharacters: Array<CastDisplayCharacter> = GuildCastDisplay.listCharacters(channel.guildId);
 		const filteredCharacters = useMemo(() => {
 			if (!searchTerm.trim()) {
 				return availableCharacters.slice(0, 50);
