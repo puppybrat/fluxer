@@ -37,6 +37,18 @@ export interface ChannelStreamItem {
 
 export const MESSAGE_GROUP_TIMEOUT = 7 * 60 * 1000;
 
+function castCharacterIdsEqual(a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean {
+	if (a.length !== b.length) {
+		return false;
+	}
+	for (let i = 0; i < a.length; i++) {
+		if (a[i] !== b[i]) {
+			return false;
+		}
+	}
+	return true;
+}
+
 export function isNewMessageGroup(
 	_channel: Channel | undefined,
 	prevMessage: Message | undefined,
@@ -64,6 +76,15 @@ export function isNewMessageGroup(
 		return true;
 	}
 	if (currentMessage.webhookId && prevMessage.author.username !== currentMessage.author.username) {
+		return true;
+	}
+	// In-character attribution is part of a message's identity: an IC message must not inherit an
+	// adjacent OOC message's header, nor a different character's. Split when either differs. This
+	// re-evaluates live — the stream is rebuilt on every message version bump, which a toggle causes.
+	if (
+		prevMessage.ic !== currentMessage.ic ||
+		!castCharacterIdsEqual(prevMessage.castCharacterIds, currentMessage.castCharacterIds)
+	) {
 		return true;
 	}
 	if (!prevMessage.timestamp || !currentMessage.timestamp) {
