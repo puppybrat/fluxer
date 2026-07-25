@@ -2,12 +2,13 @@
 
 import styles from '@app/features/cast/components/MultiCharacterHeads.module.css';
 import type {MultiCharacterHead} from '@app/features/cast/hooks/useMultiCharacterHeads';
-import {UserSwitchIcon} from '@phosphor-icons/react';
+import * as AvatarUtils from '@app/features/user/utils/AvatarUtils';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
 
 interface MultiCharacterHeadsProps {
 	heads: ReadonlyArray<MultiCharacterHead>;
+	authorId: string;
 	timestampSlot?: React.ReactNode;
 }
 
@@ -16,28 +17,23 @@ interface MultiCharacterHeadsProps {
  * self-contained avatar + name pair at full header weight; pairs sit side by side and wrap to
  * further lines as needed (there is no cap beyond the server's own limit). Single-character and
  * out-of-character messages never reach here — they keep their existing single-avatar header.
+ *
+ * A character with no pfp override falls back to the message author's default avatar via the exact
+ * same getUserAvatarURL call the single-character path uses (Avatar's fallbackAvatarUrl), so the
+ * no-pfp case looks identical whether one or many characters are attributed.
  */
-export const MultiCharacterHeads: React.FC<MultiCharacterHeadsProps> = observer(({heads, timestampSlot}) => (
+export const MultiCharacterHeads: React.FC<MultiCharacterHeadsProps> = observer(({heads, authorId, timestampSlot}) => (
 	<div className={styles.container} data-flx="cast.multi-character-heads.container">
 		{heads.map((head) => (
 			<span key={head.id} className={styles.pair} data-flx="cast.multi-character-heads.pair">
-				{head.avatarUrl ? (
-					<img
-						src={head.avatarUrl}
-						alt=""
-						width={40}
-						height={40}
-						className={styles.avatar}
-						data-flx="cast.multi-character-heads.avatar"
-					/>
-				) : (
-					<UserSwitchIcon
-						size={40}
-						weight="fill"
-						className={styles.avatar}
-						data-flx="cast.multi-character-heads.avatar-fallback"
-					/>
-				)}
+				<img
+					src={head.avatarUrl ?? AvatarUtils.getUserAvatarURL({id: authorId, avatar: null})}
+					alt=""
+					width={40}
+					height={40}
+					className={styles.avatar}
+					data-flx="cast.multi-character-heads.avatar"
+				/>
 				<span className={styles.name} data-flx="cast.multi-character-heads.name">
 					{head.displayName}
 				</span>

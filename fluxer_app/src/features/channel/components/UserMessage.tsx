@@ -636,6 +636,7 @@ export const UserMessage = observer(() => {
 						>
 							<MultiCharacterHeads
 								heads={multiHeads}
+								authorId={author.id}
 								timestampSlot={
 									<TimestampWithTooltip
 										date={message.timestamp}
@@ -756,6 +757,7 @@ export const UserMessage = observer(() => {
 					>
 						<MultiCharacterHeads
 							heads={multiHeads}
+							authorId={author.id}
 							timestampSlot={
 								<TimestampWithTooltip
 									date={message.timestamp}

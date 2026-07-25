@@ -7,6 +7,12 @@
 	gap: 0.375rem 0.75rem;
 	min-height: var(--message-avatar-size);
 	padding-block: 0.125rem;
+	/*
+	 * The header renders inside the message's content grid-area, whose left edge is offset from the
+	 * avatar column by the avatar width plus its gutter. Pull it back by exactly that so the first
+	 * character's avatar lines up with where a normal (single-avatar) message's avatar sits.
+	 */
+	margin-inline-start: calc(-1 * (var(--message-avatar-size) + var(--message-gutter)));
 }
 
 .pair {
