@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {CastCategory, CastCharacter, CastOverrideUpdate, CastPrimary} from '@app/features/cast/commands/CastCommands';
+import type {
+	CastCategory,
+	CastCharacter,
+	CastOverrideUpdate,
+	CastPrimary,
+} from '@app/features/cast/commands/CastCommands';
 import * as CastCommands from '@app/features/cast/commands/CastCommands';
+import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
 import {makeAutoObservable, runInAction} from 'mobx';
 
 class Cast {
@@ -133,6 +139,10 @@ class Cast {
 		try {
 			await action();
 			await this.load(guildId);
+			// Keep message rendering in sync: GuildCastDisplay caches a guild's cast once and is not
+			// otherwise invalidated, so without this a new character or changed pfp only appears after a
+			// reload. Fire-and-forget — the message list updates when the refetch lands.
+			void GuildCastDisplay.refresh(guildId);
 			runInAction(() => {
 				this.pendingCharacterIds.delete(characterId);
 			});

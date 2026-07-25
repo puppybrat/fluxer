@@ -87,6 +87,24 @@ class GuildCastDisplay {
 		return Array.from(map, ([id, identity]) => ({id, name: identity.name, avatarUrl: identity.avatarUrl}));
 	}
 
+	/**
+	 * Forces a re-fetch of a guild's cast, replacing the cached identities in place. Called after a
+	 * cast write (add/remove/override/primary) so open message lists pick up a newly added character
+	 * or a changed pfp without a reload — ensureLoaded alone cannot, as it deliberately no-ops once a
+	 * guild is loaded. Errors are swallowed: a failed refresh leaves the last-known identities, the
+	 * same non-breaking fallback ensureLoaded takes.
+	 */
+	async refresh(guildId: string): Promise<void> {
+		try {
+			const cast = await CastCommands.getGuildCast(guildId);
+			runInAction(() => {
+				this.byGuild.set(guildId, buildIdentityMap(cast.characters));
+			});
+		} catch {
+			// Swallowed on purpose: a failed refresh must never break the write flow or rendering.
+		}
+	}
+
 	reset(): void {
 		this.byGuild.clear();
 		this.inFlight.clear();
