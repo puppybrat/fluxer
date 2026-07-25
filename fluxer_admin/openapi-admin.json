@@ -9770,6 +9770,9 @@
 					"BOT_USER_GENERATION_FAILED",
 					"BOT_USER_NOT_FOUND",
 					"CALL_ALREADY_EXISTS",
+					"CAST_CHARACTER_NOT_OWNED",
+					"CAST_NO_PRIMARY_CHARACTER",
+					"CAST_OWNER_NOT_LINKED",
 					"CANNOT_EDIT_OTHER_USER_MESSAGE",
 					"CANNOT_EXECUTE_ON_DM",
 					"CANNOT_BLOCK_SYSTEM_USER",
@@ -13540,6 +13543,13 @@
 					},
 					"pinned": {"type": "boolean", "description": "Whether the message is pinned"},
 					"mention_everyone": {"type": "boolean", "description": "Whether the message mentions @everyone"},
+					"ic": {"description": "Whether this message is in-character", "nullable": true, "type": "boolean"},
+					"cast_character_ids": {
+						"description": "Cast characters this message is attributed to, resolved when it was marked in-character",
+						"nullable": true,
+						"type": "array",
+						"items": {"type": "string"}
+					},
 					"tts": {"type": "boolean", "description": "Whether the message was sent as text-to-speech"},
 					"mentions": {
 						"type": "array",
@@ -13688,6 +13698,13 @@
 							},
 							"pinned": {"type": "boolean", "description": "Whether the message is pinned"},
 							"mention_everyone": {"type": "boolean", "description": "Whether the message mentions @everyone"},
+							"ic": {"description": "Whether this message is in-character", "nullable": true, "type": "boolean"},
+							"cast_character_ids": {
+								"description": "Cast characters this message is attributed to, resolved when it was marked in-character",
+								"nullable": true,
+								"type": "array",
+								"items": {"type": "string"}
+							},
 							"tts": {"type": "boolean", "description": "Whether the message was sent as text-to-speech"},
 							"mentions": {
 								"type": "array",

@@ -54,6 +54,7 @@ const CastOverrideRowPayload = z.object({
 	channel_id: z.union([z.string(), z.number()]).nullish(),
 	nickname: z.string().nullish(),
 	pfp_url: z.string().nullish(),
+	reference_image_url: z.string().nullish(),
 });
 
 const CastResponsePayload = z.object({
@@ -103,6 +104,7 @@ const CastOverridePayload = z.object({
 	character_id: z.union([z.string(), z.number()]).nullish(),
 	nickname: z.string().nullish(),
 	pfp_url: z.string().nullish(),
+	reference_image_url: z.string().nullish(),
 	is_primary: z.union([z.boolean(), z.number()]).nullish(),
 });
 
@@ -116,11 +118,13 @@ const CastWritePayload = z.object({
 	override: CastOverridePayload.nullish(),
 	nickname: z.string().nullish(),
 	pfp_url: z.string().nullish(),
+	reference_image_url: z.string().nullish(),
 });
 
 export interface CastOverride {
 	nickname: string | null;
 	pfpUrl: string | null;
+	referenceImageUrl: string | null;
 }
 
 export type CastWriteResult = {ok: true; override: CastOverride | null} | {ok: false; failure: CastFetchFailure};
@@ -128,6 +132,7 @@ export type CastWriteResult = {ok: true; override: CastOverride | null} | {ok: f
 export interface CastOverrideUpdate {
 	nickname?: string | null;
 	pfpUrl?: string | null;
+	referenceImageUrl?: string | null;
 }
 
 /**
@@ -399,6 +404,9 @@ export class CastClient {
 		if (update.pfpUrl !== undefined) {
 			body.pfp_url = update.pfpUrl;
 		}
+		if (update.referenceImageUrl !== undefined) {
+			body.reference_image_url = update.referenceImageUrl;
+		}
 		return this.write(serverId, body);
 	}
 
@@ -473,10 +481,16 @@ export class CastClient {
 		this.invalidate(serverId);
 
 		const override = result.data.override ?? result.data.row ?? result.data;
-		const hasOverride = override.nickname != null || override.pfp_url != null;
+		const hasOverride = override.nickname != null || override.pfp_url != null || override.reference_image_url != null;
 		return {
 			ok: true,
-			override: hasOverride ? {nickname: override.nickname ?? null, pfpUrl: override.pfp_url ?? null} : null,
+			override: hasOverride
+				? {
+						nickname: override.nickname ?? null,
+						pfpUrl: override.pfp_url ?? null,
+						referenceImageUrl: override.reference_image_url ?? null,
+					}
+				: null,
 		};
 	}
 

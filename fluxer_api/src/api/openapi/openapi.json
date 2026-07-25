@@ -7782,7 +7782,7 @@
 					}
 				},
 				"x-mint": {"metadata": {"title": "Update cast character override"}},
-				"description": "Update the per-guild nickname and avatar override for a cast character. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
+				"description": "Update the per-guild nickname, avatar, and reference image override for a cast character. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
 				"security": [{"botToken": []}, {"sessionToken": []}],
 				"parameters": [
 					{
@@ -27192,6 +27192,14 @@
 					},
 					"pinned": {"type": "boolean", "description": "Whether the message is pinned"},
 					"mention_everyone": {"type": "boolean", "description": "Whether the message mentions @everyone"},
+					"ic": {
+						"anyOf": [{"type": "boolean"}, {"type": "null"}],
+						"description": "Whether this message is in-character"
+					},
+					"cast_character_ids": {
+						"anyOf": [{"type": "array", "items": {"type": "string"}}, {"type": "null"}],
+						"description": "Cast characters this message is attributed to, resolved when it was marked in-character"
+					},
 					"tts": {"type": "boolean", "description": "Whether the message was sent as text-to-speech"},
 					"mentions": {
 						"type": "array",
@@ -27370,6 +27378,14 @@
 									},
 									"pinned": {"type": "boolean", "description": "Whether the message is pinned"},
 									"mention_everyone": {"type": "boolean", "description": "Whether the message mentions @everyone"},
+									"ic": {
+										"anyOf": [{"type": "boolean"}, {"type": "null"}],
+										"description": "Whether this message is in-character"
+									},
+									"cast_character_ids": {
+										"anyOf": [{"type": "array", "items": {"type": "string"}}, {"type": "null"}],
+										"description": "Cast characters this message is attributed to, resolved when it was marked in-character"
+									},
 									"tts": {"type": "boolean", "description": "Whether the message was sent as text-to-speech"},
 									"mentions": {
 										"type": "array",
@@ -29184,7 +29200,17 @@
 						],
 						"description": "Array of sticker IDs to include (max 3)"
 					},
-					"tts": {"type": "boolean", "description": "Whether this is a text-to-speech message"}
+					"tts": {"type": "boolean", "description": "Whether this is a text-to-speech message"},
+					"ic": {
+						"type": "boolean",
+						"description": "Send the message in-character, attributed to the author’s primary cast character(s) for the guild"
+					},
+					"character_ids": {
+						"type": "array",
+						"items": {"type": "string", "maxLength": 32},
+						"maxItems": 16,
+						"description": "Explicit cast characters to attribute when ic is true; resolved from the author primary when omitted"
+					}
 				}
 			},
 			"MessageContentRequest": {
@@ -29507,6 +29533,14 @@
 							},
 							"pinned": {"type": "boolean", "description": "Whether the message is pinned"},
 							"mention_everyone": {"type": "boolean", "description": "Whether the message mentions @everyone"},
+							"ic": {
+								"anyOf": [{"type": "boolean"}, {"type": "null"}],
+								"description": "Whether this message is in-character"
+							},
+							"cast_character_ids": {
+								"anyOf": [{"type": "array", "items": {"type": "string"}}, {"type": "null"}],
+								"description": "Cast characters this message is attributed to, resolved when it was marked in-character"
+							},
 							"tts": {"type": "boolean", "description": "Whether the message was sent as text-to-speech"},
 							"mentions": {
 								"type": "array",
@@ -29820,6 +29854,16 @@
 						"description": "Array of sticker IDs to include (max 3)"
 					},
 					"tts": {"type": "boolean", "description": "Whether this is a text-to-speech message"},
+					"ic": {
+						"type": "boolean",
+						"description": "Send the message in-character, attributed to the author’s primary cast character(s) for the guild"
+					},
+					"character_ids": {
+						"type": "array",
+						"items": {"type": "string", "maxLength": 32},
+						"maxItems": 16,
+						"description": "Explicit cast characters to attribute when ic is true; resolved from the author primary when omitted"
+					},
 					"scheduled_local_at": {
 						"type": "string",
 						"description": "ISO 8601 timestamp expressed in the user local timezone for when the message should be delivered"
@@ -31480,9 +31524,13 @@
 					"pfp_url": {
 						"anyOf": [{"type": "string"}, {"type": "null"}],
 						"description": "The per-guild avatar URL for this character, or null when no override is set"
+					},
+					"reference_image_url": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The per-guild reference image URL for this character, or null when no override is set"
 					}
 				},
-				"required": ["id", "name", "alias", "ship", "owner", "nickname", "pfp_url"]
+				"required": ["id", "name", "alias", "ship", "owner", "nickname", "pfp_url", "reference_image_url"]
 			},
 			"CastPrimaryResponse": {
 				"type": "object",
@@ -31545,9 +31593,13 @@
 					"pfp_url": {
 						"anyOf": [{"type": "string"}, {"type": "null"}],
 						"description": "The avatar URL shown for this character in this guild"
+					},
+					"reference_image_url": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The reference image URL shown for this character in this guild"
 					}
 				},
-				"required": ["character_id", "nickname", "pfp_url"]
+				"required": ["character_id", "nickname", "pfp_url", "reference_image_url"]
 			},
 			"CastOverrideUpdateRequest": {
 				"type": "object",
@@ -31559,6 +31611,10 @@
 					"pfp_url": {
 						"anyOf": [{"type": "string", "maxLength": 2048, "format": "uri"}, {"type": "null"}],
 						"description": "The avatar URL to show, or null to clear it"
+					},
+					"reference_image_url": {
+						"anyOf": [{"type": "string", "maxLength": 2048, "format": "uri"}, {"type": "null"}],
+						"description": "The reference image URL to show, or null to clear it"
 					}
 				}
 			},
@@ -34694,6 +34750,14 @@
 								},
 								"pinned": {"type": "boolean", "description": "Whether the message is pinned"},
 								"mention_everyone": {"type": "boolean", "description": "Whether the message mentions @everyone"},
+								"ic": {
+									"anyOf": [{"type": "boolean"}, {"type": "null"}],
+									"description": "Whether this message is in-character"
+								},
+								"cast_character_ids": {
+									"anyOf": [{"type": "array", "items": {"type": "string"}}, {"type": "null"}],
+									"description": "Cast characters this message is attributed to, resolved when it was marked in-character"
+								},
 								"tts": {"type": "boolean", "description": "Whether the message was sent as text-to-speech"},
 								"mentions": {
 									"type": "array",
@@ -34967,6 +35031,18 @@
 						"items": {"$ref": "#/components/schemas/SnowflakeType"},
 						"maxItems": 100,
 						"description": "User IDs that must not be mentioned"
+					},
+					"cast_character_ids": {
+						"type": "array",
+						"items": {"type": "string"},
+						"maxItems": 100,
+						"description": "Cast character IDs the message must be attributed to (in-character messages)"
+					},
+					"exclude_cast_character_ids": {
+						"type": "array",
+						"items": {"type": "string"},
+						"maxItems": 100,
+						"description": "Cast character IDs the message must not be attributed to"
 					},
 					"mention_everyone": {"type": "boolean", "description": "Filter by whether message mentions everyone"},
 					"pinned": {"type": "boolean", "description": "Filter by pinned status"},

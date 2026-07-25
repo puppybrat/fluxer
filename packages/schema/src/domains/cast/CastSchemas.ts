@@ -33,6 +33,10 @@ export const CastCharacterResponse = z.object({
 		.string()
 		.nullable()
 		.describe('The per-guild avatar URL for this character, or null when no override is set'),
+	reference_image_url: z
+		.string()
+		.nullable()
+		.describe('The per-guild reference image URL for this character, or null when no override is set'),
 });
 
 export const CastPrimaryResponse = z.object({
@@ -71,11 +75,18 @@ export const CastOverrideResponse = z.object({
 	character_id: z.string().describe('The character this override applies to'),
 	nickname: z.string().nullable().describe('The nickname shown for this character in this guild'),
 	pfp_url: z.string().nullable().describe('The avatar URL shown for this character in this guild'),
+	reference_image_url: z.string().nullable().describe('The reference image URL shown for this character in this guild'),
 });
 
 export const CastOverrideUpdateRequest = z.object({
 	nickname: z.string().max(100).nullish().describe('The nickname to show, or null to clear it'),
 	pfp_url: z.string().url().max(2048).nullish().describe('The avatar URL to show, or null to clear it'),
+	reference_image_url: z
+		.string()
+		.url()
+		.max(2048)
+		.nullish()
+		.describe('The reference image URL to show, or null to clear it'),
 });
 
 /**

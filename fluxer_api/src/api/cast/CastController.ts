@@ -87,7 +87,10 @@ function toProxiedPfpUrl(mediaService: IMediaService, value: string | null | und
 function toCastResponse(payload: CastPayload, mediaService: IMediaService) {
 	// Server-scoped rows only: channel_id is always null today, and taking a channel-scoped
 	// row here would attribute a narrower override to the whole guild.
-	const overridesByCharacterId = new Map<string, {nickname: string | null; pfp_url: string | null}>();
+	const overridesByCharacterId = new Map<
+		string,
+		{nickname: string | null; pfp_url: string | null; reference_image_url: string | null}
+	>();
 	for (const override of payload.cast_overrides) {
 		if (override.channel_id != null) {
 			continue;
@@ -95,6 +98,7 @@ function toCastResponse(payload: CastPayload, mediaService: IMediaService) {
 		overridesByCharacterId.set(String(override.character_id), {
 			nickname: toOverrideValue(override.nickname),
 			pfp_url: toOverrideValue(override.pfp_url),
+			reference_image_url: toOverrideValue(override.reference_image_url),
 		});
 	}
 
@@ -109,6 +113,7 @@ function toCastResponse(payload: CastPayload, mediaService: IMediaService) {
 				owner: toOwner(character.owner),
 				nickname: override?.nickname ?? null,
 				pfp_url: toProxiedPfpUrl(mediaService, override?.pfp_url ?? null),
+				reference_image_url: toProxiedPfpUrl(mediaService, override?.reference_image_url ?? null),
 			};
 		}),
 		primaries: payload.primaries.map((primary) => ({
@@ -251,6 +256,7 @@ export function CastController(app: HonoApp) {
 					owner: toOwner(character.owner),
 					nickname: null,
 					pfp_url: null,
+					reference_image_url: null,
 				})),
 			});
 		},
@@ -374,12 +380,12 @@ export function CastController(app: HonoApp) {
 			security: ['botToken', 'bearerToken', 'sessionToken'],
 			tags: ['Guilds'],
 			description:
-				'Update the per-guild nickname and avatar override for a cast character. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
+				'Update the per-guild nickname, avatar, and reference image override for a cast character. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
 		}),
 		async (ctx) => {
 			const userId = ctx.get('user').id;
 			const {guild_id, character_id} = ctx.req.valid('param');
-			const {nickname, pfp_url} = ctx.req.valid('json');
+			const {nickname, pfp_url, reference_image_url} = ctx.req.valid('json');
 			const guildId = createGuildID(guild_id);
 
 			await authorizeCastWrite(ctx.get('guildService'), userId, guildId);
@@ -387,6 +393,7 @@ export function CastController(app: HonoApp) {
 			const result = await getCastClient().updateOverride(guildId.toString(), character_id, {
 				nickname,
 				pfpUrl: pfp_url,
+				referenceImageUrl: reference_image_url,
 			});
 			if (!result.ok) {
 				throwCastWriteFailure(guildId, result.failure);
@@ -399,6 +406,7 @@ export function CastController(app: HonoApp) {
 							character_id: String(character_id),
 							nickname: result.override.nickname,
 							pfp_url: toProxiedPfpUrl(ctx.get('mediaService'), result.override.pfpUrl),
+							reference_image_url: toProxiedPfpUrl(ctx.get('mediaService'), result.override.referenceImageUrl),
 						}
 					: null,
 			});
