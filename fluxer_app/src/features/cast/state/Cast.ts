@@ -7,6 +7,7 @@ import type {
 	CastPrimary,
 } from '@app/features/cast/commands/CastCommands';
 import * as CastCommands from '@app/features/cast/commands/CastCommands';
+import ComposerInCharacter from '@app/features/cast/state/ComposerInCharacter';
 import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
 import {makeAutoObservable, runInAction} from 'mobx';
 
@@ -143,6 +144,10 @@ class Cast {
 			// otherwise invalidated, so without this a new character or changed pfp only appears after a
 			// reload. Fire-and-forget — the message list updates when the refetch lands.
 			void GuildCastDisplay.refresh(guildId);
+			// Same for the composer's optimistic in-character resolution: it caches this guild's
+			// primaries independently, so a primary change must refresh it too or the next send flashes
+			// the previous primary before the server's MESSAGE_UPDATE corrects it.
+			void ComposerInCharacter.refresh(guildId);
 			runInAction(() => {
 				this.pendingCharacterIds.delete(characterId);
 			});

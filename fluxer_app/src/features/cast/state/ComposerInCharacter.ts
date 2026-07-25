@@ -84,6 +84,25 @@ class ComposerInCharacter {
 		}
 	}
 
+	/**
+	 * Re-resolves and replaces this guild's cached primary-character ids. Called after a cast write
+	 * (e.g. changing which character is primary) so the optimistic in-character render on the next
+	 * send reflects current primaries — ensureEligibility caches its snapshot once and would
+	 * otherwise leave the sender briefly showing the previous primary until the server's
+	 * MESSAGE_UPDATE corrects it.
+	 */
+	async refresh(guildId: string): Promise<void> {
+		try {
+			const primaryIds = await resolvePrimaryCharacterIds(guildId);
+			runInAction(() => {
+				this.primaryIdsByGuild.set(guildId, primaryIds);
+			});
+		} catch {
+			// Swallowed on purpose: a failed refresh keeps the last-known eligibility rather than
+			// dropping the toggle, matching how ensureEligibility treats a failed lookup.
+		}
+	}
+
 	reset(): void {
 		this.icByChannel.clear();
 		this.primaryIdsByGuild.clear();
