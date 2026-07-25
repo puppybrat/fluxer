@@ -50,6 +50,12 @@ export const MessageAvatar = observer(
 					<Avatar
 						user={user}
 						avatarUrl={avatarUrl}
+						// When the image is overridden (in-character), pin the hover/animated variant to the
+						// same override. Otherwise Avatar derives the hover avatar from the real user, so an
+						// open user-card popout — or a row hover — would swap an in-character avatar to the
+						// sender's real one and flash back on release. Undefined (no override) keeps the
+						// normal real-user hover behaviour untouched.
+						hoverAvatarUrl={avatarUrl}
 						size={size}
 						className={className}
 						forceAnimate={isHovering}
