@@ -3,6 +3,7 @@
 import * as Modal from '@app/features/app/components/dialogs/Modal';
 import * as CastCommands from '@app/features/cast/commands/CastCommands';
 import styles from '@app/features/cast/components/ManageCastCharactersModal.module.css';
+import Channels from '@app/features/channel/state/Channels';
 import {CANCEL_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import * as MessageCommands from '@app/features/messaging/commands/MessageCommands';
 import type {Message} from '@app/features/messaging/models/MessagingMessage';
@@ -10,9 +11,10 @@ import {PASSWORD_MANAGER_IGNORE_ATTRIBUTES} from '@app/features/platform/utils/P
 import {Button} from '@app/features/ui/button/Button';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {Scroller} from '@app/features/ui/components/Scroller';
+import * as AvatarUtils from '@app/features/user/utils/AvatarUtils';
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
-import {CheckIcon, MagnifyingGlassIcon, UserSwitchIcon, XIcon} from '@phosphor-icons/react';
+import {CheckIcon, MagnifyingGlassIcon, XIcon} from '@phosphor-icons/react';
 import {clsx} from 'clsx';
 import {matchSorter} from 'match-sorter';
 import {observer} from 'mobx-react-lite';
@@ -46,7 +48,10 @@ interface ManageCastCharactersModalProps {
  */
 export const ManageCastCharactersModal = observer(({message}: ManageCastCharactersModalProps) => {
 	const {i18n} = useLingui();
-	const guildId = message.guildId;
+	// Source the guild from the channel, not message.guildId: REST-hydrated history messages carry no
+	// guild_id over the wire, so an older message would resolve to undefined and the picker would show
+	// nothing. The channel always knows its guild. (Same fix the IC toggle gating already uses.)
+	const guildId = Channels.getChannel(message.channelId)?.guildId;
 	const [characters, setCharacters] = useState<Array<OwnedCharacter>>([]);
 	const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
 	const [loading, setLoading] = useState(true);
@@ -198,23 +203,14 @@ export const ManageCastCharactersModal = observer(({message}: ManageCastCharacte
 										onClick={() => toggleCharacter(character.id)}
 										data-flx="cast.manage-cast-characters-modal.character-item.toggle-character.button"
 									>
-										{character.avatarUrl ? (
-											<img
-												src={character.avatarUrl}
-												alt=""
-												width={36}
-												height={36}
-												className={styles.avatar}
-												data-flx="cast.manage-cast-characters-modal.avatar"
-											/>
-										) : (
-											<UserSwitchIcon
-												size={36}
-												weight="fill"
-												className={styles.avatar}
-												data-flx="cast.manage-cast-characters-modal.avatar-fallback"
-											/>
-										)}
+										<img
+											src={character.avatarUrl ?? AvatarUtils.getUserAvatarURL({id: character.id, avatar: null})}
+											alt=""
+											width={36}
+											height={36}
+											className={styles.avatar}
+											data-flx="cast.manage-cast-characters-modal.avatar"
+										/>
 										<span className={styles.characterName} data-flx="cast.manage-cast-characters-modal.character-name">
 											{character.name}
 										</span>
