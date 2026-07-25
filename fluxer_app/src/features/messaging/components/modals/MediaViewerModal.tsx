@@ -887,20 +887,32 @@ const MediaViewerModalComponent: FC = observer(() => {
 			if (currentItem.animated) return i18n._(ANIMATED_IMAGE_DESCRIPTOR);
 			return i18n._(IMAGE_DESCRIPTOR);
 		})();
+		// An item may carry no natural size when it is opened by bare URL (e.g. a cast reference
+		// image, whose dimensions are not known ahead of the load). Clamping maxWidth/maxHeight to
+		// `${0}px` would size the image 0×0 (it loads but renders blank), and "0/0" is an invalid
+		// aspect-ratio, so fall back to the container bounds and let the image size itself. Callers
+		// that know the dimensions (attachments and embeds) keep the exact prior behaviour.
+		const hasNaturalImageDimensions = currentItem.naturalWidth > 0 && currentItem.naturalHeight > 0;
 		return (
 			<RenderReadyImage
 				src={imageSrc}
 				alt={imageAlt}
-				width={currentItem.naturalWidth}
-				height={currentItem.naturalHeight}
+				width={hasNaturalImageDimensions ? currentItem.naturalWidth : undefined}
+				height={hasNaturalImageDimensions ? currentItem.naturalHeight : undefined}
 				className={styles.image}
 				sharpenWhenZoomed={shouldUseSharpCanvasForItem(currentItem, imageSrc)}
 				style={{
 					width: 'auto',
 					height: 'auto',
-					maxWidth: `min(var(--media-fit-max-width, 100%), ${currentItem.naturalWidth}px)`,
-					maxHeight: `min(var(--media-fit-max-height, 100%), ${currentItem.naturalHeight}px)`,
-					aspectRatio: `${currentItem.naturalWidth}/${currentItem.naturalHeight}`,
+					maxWidth: hasNaturalImageDimensions
+						? `min(var(--media-fit-max-width, 100%), ${currentItem.naturalWidth}px)`
+						: 'var(--media-fit-max-width, 100%)',
+					maxHeight: hasNaturalImageDimensions
+						? `min(var(--media-fit-max-height, 100%), ${currentItem.naturalHeight}px)`
+						: 'var(--media-fit-max-height, 100%)',
+					aspectRatio: hasNaturalImageDimensions
+						? `${currentItem.naturalWidth}/${currentItem.naturalHeight}`
+						: undefined,
 					objectFit: 'contain',
 				}}
 				draggable={false}
