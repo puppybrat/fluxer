@@ -556,6 +556,13 @@ export function useMessageSearchAutocomplete({
 				setHasNavigated(false);
 				return;
 			}
+			if (filterKeyBase === 'from-character' && isInGuildChannel) {
+				setAutocompleteType('characters');
+				setCurrentFilter(matchingFilter);
+				setSelectedIndex(0);
+				setHasNavigated(false);
+				return;
+			}
 			if (matchingFilter.values) {
 				setAutocompleteType('values');
 				setCurrentFilter(matchingFilter);
