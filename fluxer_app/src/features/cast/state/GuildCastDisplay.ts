@@ -7,6 +7,8 @@ import {makeAutoObservable, runInAction} from 'mobx';
 export interface CastDisplayIdentity {
 	name: string;
 	avatarUrl: string | null;
+	/** The per-guild reference image, or null. Shown when an in-character avatar is tapped. */
+	referenceImageUrl: string | null;
 }
 
 export interface CastDisplayCharacter {
@@ -117,7 +119,11 @@ function buildIdentityMap(characters: ReadonlyArray<CastCharacter>): Map<string,
 		// Same precedence the cast tab uses: a nickname is what this guild calls the character,
 		// so it wins over the real name. Falls back to the id so there is always something.
 		const name = character.nickname ?? character.name ?? character.id;
-		map.set(character.id, {name, avatarUrl: character.pfp_url ?? null});
+		map.set(character.id, {
+			name,
+			avatarUrl: character.pfp_url ?? null,
+			referenceImageUrl: character.reference_image_url ?? null,
+		});
 	}
 	return map;
 }

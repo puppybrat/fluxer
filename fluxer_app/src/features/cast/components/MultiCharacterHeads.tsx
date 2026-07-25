@@ -2,6 +2,7 @@
 
 import styles from '@app/features/cast/components/MultiCharacterHeads.module.css';
 import type {MultiCharacterHead} from '@app/features/cast/hooks/useMultiCharacterHeads';
+import {openCharacterImageViewer} from '@app/features/cast/utils/CharacterImageViewer';
 import * as AvatarUtils from '@app/features/user/utils/AvatarUtils';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
@@ -24,21 +25,34 @@ interface MultiCharacterHeadsProps {
  */
 export const MultiCharacterHeads: React.FC<MultiCharacterHeadsProps> = observer(({heads, authorId, timestampSlot}) => (
 	<div className={styles.container} data-flx="cast.multi-character-heads.container">
-		{heads.map((head) => (
-			<span key={head.id} className={styles.pair} data-flx="cast.multi-character-heads.pair">
-				<img
-					src={head.avatarUrl ?? AvatarUtils.getUserAvatarURL({id: authorId, avatar: null})}
-					alt=""
-					width={40}
-					height={40}
-					className={styles.avatar}
-					data-flx="cast.multi-character-heads.avatar"
-				/>
-				<span className={styles.name} data-flx="cast.multi-character-heads.name">
-					{head.displayName}
+		{heads.map((head) => {
+			const displayedAvatarUrl = head.avatarUrl ?? AvatarUtils.getUserAvatarURL({id: authorId, avatar: null});
+			// Tapping opens the character's reference image, falling back to the pfp already shown as
+			// the avatar — the same behaviour as the single-character path.
+			const viewerImageUrl = head.referenceImageUrl ?? displayedAvatarUrl;
+			return (
+				<span key={head.id} className={styles.pair} data-flx="cast.multi-character-heads.pair">
+					<button
+						type="button"
+						className={styles.avatarButton}
+						onClick={() => openCharacterImageViewer(viewerImageUrl)}
+						data-flx="cast.multi-character-heads.avatar-button.open"
+					>
+						<img
+							src={displayedAvatarUrl}
+							alt=""
+							width={40}
+							height={40}
+							className={styles.avatar}
+							data-flx="cast.multi-character-heads.avatar"
+						/>
+					</button>
+					<span className={styles.name} data-flx="cast.multi-character-heads.name">
+						{head.displayName}
+					</span>
 				</span>
-			</span>
-		))}
+			);
+		})}
 		{timestampSlot != null && (
 			<span className={styles.timestamp} data-flx="cast.multi-character-heads.timestamp">
 				{timestampSlot}

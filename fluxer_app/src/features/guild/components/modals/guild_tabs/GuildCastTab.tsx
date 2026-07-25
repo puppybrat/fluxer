@@ -2,9 +2,9 @@
 
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
 import {StatusSlate} from '@app/features/app/components/dialogs/shared/StatusSlate';
+import type {CastCharacter} from '@app/features/cast/commands/CastCommands';
 import {CastAddCharacterModal} from '@app/features/cast/components/modals/CastAddCharacterModal';
 import {CastEditOverrideModal} from '@app/features/cast/components/modals/CastEditOverrideModal';
-import type {CastCharacter} from '@app/features/cast/commands/CastCommands';
 import Cast from '@app/features/cast/state/Cast';
 import styles from '@app/features/guild/components/modals/guild_tabs/GuildCastTab.module.css';
 import {CANCEL_DESCRIPTOR, TRY_AGAIN_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
@@ -100,6 +100,7 @@ const GuildCastTab: React.FC<{guildId: string}> = observer(({guildId}) => {
 						character={character}
 						currentNickname={character.nickname}
 						currentPfpUrl={character.pfp_url}
+						currentReferenceImageUrl={character.reference_image_url}
 					/>
 				)),
 			);

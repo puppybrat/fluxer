@@ -1,0 +1,16 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* The in-character avatar is a button so tapping opens the media viewer. Strip the button chrome so
+ * it lays out exactly like the plain avatar it replaces; the grid-area/sizing comes from the shared
+ * messageAvatar class also applied to it. */
+.characterImageButton {
+	appearance: none;
+	border: none;
+	background: none;
+	padding: 0;
+	margin-inline: 0;
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}

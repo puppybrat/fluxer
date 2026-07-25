@@ -8,6 +8,8 @@ export interface InCharacterOverride {
 	displayName: string;
 	avatarUrl: string | null;
 	usernameColor: string;
+	/** The character's reference image, or null when unset. Shown when the avatar is tapped. */
+	referenceImageUrl: string | null;
 }
 
 /**
@@ -43,8 +45,13 @@ export function useInCharacterOverride(message: Message, guildId: string | undef
 	return useMemo(
 		() =>
 			identity
-				? {displayName: identity.name, avatarUrl: identity.avatarUrl, usernameColor: CHARACTER_NAME_COLOR}
+				? {
+						displayName: identity.name,
+						avatarUrl: identity.avatarUrl,
+						usernameColor: CHARACTER_NAME_COLOR,
+						referenceImageUrl: identity.referenceImageUrl,
+					}
 				: undefined,
-		[identity?.name, identity?.avatarUrl],
+		[identity?.name, identity?.avatarUrl, identity?.referenceImageUrl],
 	);
 }

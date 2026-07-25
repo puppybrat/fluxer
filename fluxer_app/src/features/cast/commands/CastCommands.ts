@@ -23,6 +23,7 @@ export type CastOwnerAccount = CastOwnerAccountResponseType;
 export interface CastOverrideUpdate {
 	nickname?: string | null;
 	pfpUrl?: string | null;
+	referenceImageUrl?: string | null;
 }
 
 async function requestGuildCast(guildId: string): Promise<CastData> {
@@ -104,6 +105,9 @@ export async function updateOverride(
 	}
 	if (update.pfpUrl !== undefined) {
 		body.pfp_url = update.pfpUrl;
+	}
+	if (update.referenceImageUrl !== undefined) {
+		body.reference_image_url = update.referenceImageUrl;
 	}
 	const response = await http.patch<CastMutation>(Endpoints.GUILD_CAST_CHARACTER(guildId, characterId), {body});
 	return response.body;

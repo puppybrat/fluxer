@@ -50,6 +50,7 @@ import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {Tooltip} from '@app/features/ui/tooltip/Tooltip';
 import UserSettings from '@app/features/user/state/UserSettings';
 import Users from '@app/features/user/state/Users';
+import * as AvatarUtils from '@app/features/user/utils/AvatarUtils';
 import * as DateUtils from '@app/features/user/utils/DateFormatting';
 import * as NicknameUtils from '@app/features/user/utils/NicknameUtils';
 import {FLUXERBOT_ID} from '@fluxer/constants/src/AppConstants';
@@ -178,6 +179,15 @@ export const UserMessage = observer(() => {
 	// single-identity substitution and takes precedence, so multi heads stand down under one.
 	const multiCharacterHeads = useMultiCharacterHeads(message, guild?.id);
 	const multiHeads = previewOverrides ? undefined : multiCharacterHeads;
+	// For a single-character in-character head, tapping the avatar opens the character's reference
+	// image (or its pfp, or the shown default avatar, as fallbacks) in the media viewer instead of the
+	// user popout. Undefined for non-IC and preview heads, which keep the popout untouched.
+	const inCharacterViewerImageUrl =
+		!previewOverrides && inCharacterOverride
+			? (inCharacterOverride.referenceImageUrl ??
+				inCharacterOverride.avatarUrl ??
+				AvatarUtils.getUserAvatarURL({id: author.id, avatar: null}))
+			: undefined;
 	const shouldAppearAuthorless = false;
 	const mobileLayout = MobileLayout;
 	const shouldShowFailedFooter =
@@ -743,6 +753,7 @@ export const UserMessage = observer(() => {
 						isHovering={isHovering}
 						isPreview={!!previewContext}
 						avatarUrl={headOverrides?.avatarUrl}
+						characterImageUrl={inCharacterViewerImageUrl}
 						data-flx="channel.user-message.message-avatar--2"
 					/>
 					<div className={styles.messageGutterRight} data-flx="channel.user-message.message-gutter-right--2" />

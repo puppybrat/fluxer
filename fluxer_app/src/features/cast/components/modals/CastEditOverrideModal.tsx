@@ -29,6 +29,10 @@ const PFP_URL_DESCRIPTOR = msg({
 	message: 'Avatar URL',
 	comment: 'Short label in the cast character override modal. Keep it concise.',
 });
+const REFERENCE_IMAGE_URL_DESCRIPTOR = msg({
+	message: 'Reference Image URL',
+	comment: 'Short label in the cast character override modal. Keep it concise.',
+});
 const INVALID_URL_DESCRIPTOR = msg({
 	message: 'Enter a valid http or https URL.',
 	comment: 'Validation error shown when the avatar URL in the cast override modal is not a usable URL.',
@@ -62,6 +66,7 @@ function isUsableUrl(value: string): boolean {
 interface OverrideFormValues {
 	nickname: string;
 	pfpUrl: string;
+	referenceImageUrl: string;
 }
 
 export const CastEditOverrideModal: React.FC<{
@@ -69,18 +74,26 @@ export const CastEditOverrideModal: React.FC<{
 	character: CastCharacter;
 	currentNickname: string | null;
 	currentPfpUrl: string | null;
-}> = observer(({guildId, character, currentNickname, currentPfpUrl}) => {
+	currentReferenceImageUrl: string | null;
+}> = observer(({guildId, character, currentNickname, currentPfpUrl, currentReferenceImageUrl}) => {
 	const {i18n} = useLingui();
 	const form = useForm<OverrideFormValues>({
 		defaultValues: {
 			nickname: currentNickname ?? '',
 			pfpUrl: currentPfpUrl ?? '',
+			referenceImageUrl: currentReferenceImageUrl ?? '',
 		},
 	});
 	const nicknameField = form.register('nickname', {maxLength: MAX_NICKNAME_LENGTH});
 	const pfpUrlField = form.register('pfpUrl', {
 		maxLength: MAX_PFP_URL_LENGTH,
-		validate: (value: string) => (value.trim() === '' || isUsableUrl(value.trim()) ? true : i18n._(INVALID_URL_DESCRIPTOR)),
+		validate: (value: string) =>
+			value.trim() === '' || isUsableUrl(value.trim()) ? true : i18n._(INVALID_URL_DESCRIPTOR),
+	});
+	const referenceImageUrlField = form.register('referenceImageUrl', {
+		maxLength: MAX_PFP_URL_LENGTH,
+		validate: (value: string) =>
+			value.trim() === '' || isUsableUrl(value.trim()) ? true : i18n._(INVALID_URL_DESCRIPTOR),
 	});
 	const nicknameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -94,11 +107,13 @@ export const CastEditOverrideModal: React.FC<{
 		async (data: OverrideFormValues) => {
 			const nickname = data.nickname.trim();
 			const pfpUrl = data.pfpUrl.trim();
+			const referenceImageUrl = data.referenceImageUrl.trim();
 			// Empty clears the field rather than leaving it untouched, which is what the user
 			// means by deleting the contents of an input they can see.
 			const ok = await Cast.updateOverride(guildId, character.id, {
 				nickname: nickname === '' ? null : nickname,
 				pfpUrl: pfpUrl === '' ? null : pfpUrl,
+				referenceImageUrl: referenceImageUrl === '' ? null : referenceImageUrl,
 			});
 			if (!ok) {
 				form.setError('nickname', {message: i18n._(SAVE_FAILED_DESCRIPTOR)});
@@ -143,6 +158,15 @@ export const CastEditOverrideModal: React.FC<{
 							maxLength={MAX_PFP_URL_LENGTH}
 							disabled={isSubmitting}
 							error={form.formState.errors.pfpUrl?.message}
+						/>
+						<Input
+							type="text"
+							label={i18n._(REFERENCE_IMAGE_URL_DESCRIPTOR)}
+							data-flx="cast.edit-override-modal.input.reference-image-url"
+							{...referenceImageUrlField}
+							maxLength={MAX_PFP_URL_LENGTH}
+							disabled={isSubmitting}
+							error={form.formState.errors.referenceImageUrl?.message}
 						/>
 					</Modal.ContentLayout>
 				</Modal.Content>

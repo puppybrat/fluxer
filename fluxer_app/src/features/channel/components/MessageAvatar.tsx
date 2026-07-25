@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {openCharacterImageViewer} from '@app/features/cast/utils/CharacterImageViewer';
+import styles from '@app/features/channel/components/MessageAvatar.module.css';
 import {useMaybeMessageViewContext} from '@app/features/channel/components/MessageViewContext';
 import {PreloadableUserPopout} from '@app/features/channel/components/PreloadableUserPopout';
 import type {Message} from '@app/features/messaging/models/MessagingMessage';
@@ -18,6 +20,7 @@ export const MessageAvatar = observer(
 		className,
 		isHovering,
 		avatarUrl,
+		characterImageUrl,
 	}: {
 		user: User;
 		message: Message;
@@ -29,10 +32,47 @@ export const MessageAvatar = observer(
 		/** Overrides the rendered image only. The popout still resolves the real user, so
 		 *  clicking an in-character avatar shows who actually sent the message. */
 		avatarUrl?: string | null;
+		/** When set, this is an in-character avatar: tapping opens this image (the character's
+		 *  reference image, or its pfp as fallback) in the media viewer instead of the user popout.
+		 *  Undefined leaves the normal popout-on-tap behaviour untouched for non-IC avatars. */
+		characterImageUrl?: string;
 	}) => {
 		const onPopoutToggle = useMaybeMessageViewContext()?.onPopoutToggle;
 		const handlePopoutOpen = useCallback(() => onPopoutToggle?.(true), [onPopoutToggle]);
 		const handlePopoutClose = useCallback(() => onPopoutToggle?.(false), [onPopoutToggle]);
+		const handleCharacterImageOpen = useCallback(() => {
+			if (characterImageUrl) {
+				openCharacterImageViewer(characterImageUrl);
+			}
+		}, [characterImageUrl]);
+
+		// In-character avatars open the character's image in the viewer rather than the user popout.
+		// The grid-area class must sit on the direct grid child, so the button carries it and the
+		// avatar inside is unclassed.
+		if (characterImageUrl) {
+			return (
+				<FocusRing data-flx="channel.message-avatar.focus-ring--ic">
+					<button
+						type="button"
+						className={`${className} ${styles.characterImageButton}`}
+						onClick={handleCharacterImageOpen}
+						data-flx="channel.message-avatar.character-image-button.open"
+					>
+						<Avatar
+							user={user}
+							avatarUrl={avatarUrl}
+							hoverAvatarUrl={avatarUrl}
+							size={size}
+							forceAnimate={isHovering}
+							guildId={guildId}
+							data-user-id={user.id}
+							data-guild-id={guildId}
+							data-flx="channel.message-avatar.avatar--ic"
+						/>
+					</button>
+				</FocusRing>
+			);
+		}
 		return (
 			<PreloadableUserPopout
 				user={user}
