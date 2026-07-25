@@ -7,7 +7,17 @@ import {useMemo} from 'react';
 export interface InCharacterOverride {
 	displayName: string;
 	avatarUrl: string | null;
+	usernameColor: string;
 }
+
+/**
+ * A character name always renders in the default text colour, never the real sender's role colour.
+ * MessageUsername resolves colour as `previewColor || member.getColorString()`, so without an explicit
+ * colour here the character name would inherit the sender's highest-role colour. Forcing the default
+ * text token (the same colour the multi-character header uses) suppresses that in every head path
+ * (cozy and compact both read this through headOverrides.usernameColor).
+ */
+const CHARACTER_NAME_COLOR = 'var(--text-primary)';
 
 /**
  * Resolves the character identity to render in place of the real sender for an in-character
@@ -25,16 +35,16 @@ export interface InCharacterOverride {
  * after mount; a deps-gated memo would cache the pre-load miss and never recover. useMemo only
  * stabilises the returned object reference against its own contents.
  */
-export function useInCharacterOverride(
-	message: Message,
-	guildId: string | undefined,
-): InCharacterOverride | undefined {
+export function useInCharacterOverride(message: Message, guildId: string | undefined): InCharacterOverride | undefined {
 	const identity =
 		message.ic && message.castCharacterIds.length === 1
 			? GuildCastDisplay.getIdentity(message.guildId ?? guildId, message.castCharacterIds[0])
 			: null;
 	return useMemo(
-		() => (identity ? {displayName: identity.name, avatarUrl: identity.avatarUrl} : undefined),
+		() =>
+			identity
+				? {displayName: identity.name, avatarUrl: identity.avatarUrl, usernameColor: CHARACTER_NAME_COLOR}
+				: undefined,
 		[identity?.name, identity?.avatarUrl],
 	);
 }

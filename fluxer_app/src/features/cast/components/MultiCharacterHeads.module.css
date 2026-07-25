@@ -18,7 +18,10 @@
 .pair {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.4375rem;
+	/* Match the single-character header's avatar-to-name gap exactly: that gap is the message grid's
+	 * avatar/content gutter (--message-gutter), so use the same variable rather than a hand-picked
+	 * value that only looks close. */
+	gap: var(--message-gutter);
 	min-width: 0;
 }
 
