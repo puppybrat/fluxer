@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {CastCharacter} from '@app/features/cast/commands/CastCommands';
+import type {CastCharacter, CastOverrideRow} from '@app/features/cast/commands/CastCommands';
 import * as CastCommands from '@app/features/cast/commands/CastCommands';
 import {makeAutoObservable, runInAction} from 'mobx';
 
@@ -30,6 +30,10 @@ export interface CastDisplayCharacter {
  */
 class GuildCastDisplay {
 	private readonly byGuild = new Map<string, Map<string, CastDisplayIdentity>>();
+	// Raw per-scope override rows per guild, stored alongside the flattened identity map. Not
+	// consumed yet — held so the future server -> category -> channel resolution walk has the
+	// per-scope data it needs; this plumbing change only stops it being dropped.
+	private readonly overridesByGuild = new Map<string, ReadonlyArray<CastOverrideRow>>();
 	private readonly inFlight = new Set<string>();
 
 	constructor() {
@@ -50,6 +54,7 @@ class GuildCastDisplay {
 			const cast = await CastCommands.getGuildCast(guildId);
 			runInAction(() => {
 				this.byGuild.set(guildId, buildIdentityMap(cast.characters));
+				this.overridesByGuild.set(guildId, cast.overrides);
 			});
 		} catch {
 			// Swallowed on purpose: a cast lookup failing must never break message rendering.
@@ -101,14 +106,27 @@ class GuildCastDisplay {
 			const cast = await CastCommands.getGuildCast(guildId);
 			runInAction(() => {
 				this.byGuild.set(guildId, buildIdentityMap(cast.characters));
+				this.overridesByGuild.set(guildId, cast.overrides);
 			});
 		} catch {
 			// Swallowed on purpose: a failed refresh must never break the write flow or rendering.
 		}
 	}
 
+	/**
+	 * The raw per-scope override rows for a guild (server/category/channel), or empty when unloaded.
+	 * Exposed as-is for the future resolution walk; nothing resolves or merges them here yet.
+	 */
+	getOverrides(guildId: string | undefined): ReadonlyArray<CastOverrideRow> {
+		if (!guildId) {
+			return [];
+		}
+		return this.overridesByGuild.get(guildId) ?? [];
+	}
+
 	reset(): void {
 		this.byGuild.clear();
+		this.overridesByGuild.clear();
 		this.inFlight.clear();
 	}
 }

@@ -85,8 +85,9 @@ function toProxiedPfpUrl(mediaService: IMediaService, value: string | null | und
  * here is dropped on purpose — see CastSchemas for why.
  */
 function toCastResponse(payload: CastPayload, mediaService: IMediaService) {
-	// Server-scoped rows only: channel_id is always null today, and taking a channel-scoped
-	// row here would attribute a narrower override to the whole guild.
+	// Server-scope rows only, used to keep the flattened nickname/pfp on `characters` below —
+	// existing single-scope rendering reads those and must be unchanged. The full per-scope data
+	// (including category/channel rows) is exposed raw in `overrides` for the resolution walk.
 	const overridesByCharacterId = new Map<
 		string,
 		{nickname: string | null; pfp_url: string | null; reference_image_url: string | null}
@@ -125,6 +126,18 @@ function toCastResponse(payload: CastPayload, mediaService: IMediaService) {
 			pair_slug: category.pair_slug ?? null,
 			au_slug: category.au_slug ?? null,
 			category_id: String(category.category_id ?? ''),
+		})),
+		// Raw per-scope override rows — every scope (server/category/channel), each tagged with its
+		// own channel_id and excluded flag, NOT flattened or resolved. pfp/reference proxying is
+		// applied per row exactly as the server-scope merge above does. The inheritance walk that
+		// picks the most specific applicable row is a later, separate consumer of this.
+		overrides: payload.cast_overrides.map((override) => ({
+			character_id: String(override.character_id),
+			channel_id: toStringOrNull(override.channel_id),
+			nickname: toOverrideValue(override.nickname),
+			pfp_url: toProxiedPfpUrl(mediaService, override.pfp_url),
+			reference_image_url: toProxiedPfpUrl(mediaService, override.reference_image_url),
+			excluded: toBoolean(override.excluded),
 		})),
 	};
 }
@@ -380,20 +393,22 @@ export function CastController(app: HonoApp) {
 			security: ['botToken', 'bearerToken', 'sessionToken'],
 			tags: ['Guilds'],
 			description:
-				'Update the per-guild nickname, avatar, and reference image override for a cast character. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
+				'Update the per-guild nickname, avatar, reference image, and exclusion override for a cast character, optionally scoped to a category or channel via channel_id (omit/null for the server-wide scope). The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
 		}),
 		async (ctx) => {
 			const userId = ctx.get('user').id;
 			const {guild_id, character_id} = ctx.req.valid('param');
-			const {nickname, pfp_url, reference_image_url} = ctx.req.valid('json');
+			const {channel_id, nickname, pfp_url, reference_image_url, excluded} = ctx.req.valid('json');
 			const guildId = createGuildID(guild_id);
 
 			await authorizeCastWrite(ctx.get('guildService'), userId, guildId);
 
 			const result = await getCastClient().updateOverride(guildId.toString(), character_id, {
+				channelId: channel_id,
 				nickname,
 				pfpUrl: pfp_url,
 				referenceImageUrl: reference_image_url,
+				excluded,
 			});
 			if (!result.ok) {
 				throwCastWriteFailure(guildId, result.failure);
@@ -404,9 +419,11 @@ export function CastController(app: HonoApp) {
 				override: result.override
 					? {
 							character_id: String(character_id),
+							channel_id: result.override.channelId,
 							nickname: result.override.nickname,
 							pfp_url: toProxiedPfpUrl(ctx.get('mediaService'), result.override.pfpUrl),
 							reference_image_url: toProxiedPfpUrl(ctx.get('mediaService'), result.override.referenceImageUrl),
+							excluded: result.override.excluded,
 						}
 					: null,
 			});

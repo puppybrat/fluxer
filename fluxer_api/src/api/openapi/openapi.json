@@ -7782,7 +7782,7 @@
 					}
 				},
 				"x-mint": {"metadata": {"title": "Update cast character override"}},
-				"description": "Update the per-guild nickname, avatar, and reference image override for a cast character. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
+				"description": "Update the per-guild nickname, avatar, reference image, and exclusion override for a cast character, optionally scoped to a category or channel via channel_id (omit/null for the server-wide scope). The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
 				"security": [{"botToken": []}, {"sessionToken": []}],
 				"parameters": [
 					{
@@ -31493,9 +31493,14 @@
 						"type": "array",
 						"items": {"$ref": "#/components/schemas/CastCategoryResponse"},
 						"description": "Category to pair/AU mappings for this guild"
+					},
+					"overrides": {
+						"type": "array",
+						"items": {"$ref": "#/components/schemas/CastOverrideRowResponse"},
+						"description": "Raw per-scope override rows (server/category/channel), for the resolution walk to consume"
 					}
 				},
-				"required": ["characters", "primaries", "categories"]
+				"required": ["characters", "primaries", "categories", "overrides"]
 			},
 			"CastCharacterResponse": {
 				"type": "object",
@@ -31559,6 +31564,30 @@
 				},
 				"required": ["pair_slug", "au_slug", "category_id"]
 			},
+			"CastOverrideRowResponse": {
+				"type": "object",
+				"properties": {
+					"character_id": {"type": "string", "description": "The character this override row applies to"},
+					"channel_id": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The category/channel this override is scoped to, or null for the server-wide scope"
+					},
+					"nickname": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The nickname shown at this scope, or null"
+					},
+					"pfp_url": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The avatar URL shown at this scope, or null"
+					},
+					"reference_image_url": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The reference image URL shown at this scope, or null"
+					},
+					"excluded": {"type": "boolean", "description": "Whether the character is excluded (hidden) at this scope"}
+				},
+				"required": ["character_id", "channel_id", "nickname", "pfp_url", "reference_image_url", "excluded"]
+			},
 			"CastAllCharactersResponse": {
 				"type": "object",
 				"properties": {
@@ -31586,6 +31615,10 @@
 				"type": "object",
 				"properties": {
 					"character_id": {"type": "string", "description": "The character this override applies to"},
+					"channel_id": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The category/channel this override is scoped to, or null for the server-wide scope"
+					},
 					"nickname": {
 						"anyOf": [{"type": "string"}, {"type": "null"}],
 						"description": "The nickname shown for this character in this guild"
@@ -31597,13 +31630,18 @@
 					"reference_image_url": {
 						"anyOf": [{"type": "string"}, {"type": "null"}],
 						"description": "The reference image URL shown for this character in this guild"
-					}
+					},
+					"excluded": {"type": "boolean", "description": "Whether the character is excluded (hidden) at this scope"}
 				},
-				"required": ["character_id", "nickname", "pfp_url", "reference_image_url"]
+				"required": ["character_id", "channel_id", "nickname", "pfp_url", "reference_image_url", "excluded"]
 			},
 			"CastOverrideUpdateRequest": {
 				"type": "object",
 				"properties": {
+					"channel_id": {
+						"anyOf": [{"type": "string", "maxLength": 32}, {"type": "null"}],
+						"description": "The category/channel to scope this override to, or null/omitted for the server-wide scope"
+					},
 					"nickname": {
 						"anyOf": [{"type": "string", "maxLength": 100}, {"type": "null"}],
 						"description": "The nickname to show, or null to clear it"
@@ -31615,6 +31653,10 @@
 					"reference_image_url": {
 						"anyOf": [{"type": "string", "maxLength": 2048, "format": "uri"}, {"type": "null"}],
 						"description": "The reference image URL to show, or null to clear it"
+					},
+					"excluded": {
+						"anyOf": [{"type": "boolean"}, {"type": "null"}],
+						"description": "Whether to exclude (hide) the character at this scope"
 					}
 				}
 			},

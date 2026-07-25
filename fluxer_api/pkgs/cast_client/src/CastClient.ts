@@ -44,9 +44,11 @@ const CastCategoryPayload = z.object({
 });
 
 /**
- * Per-guild display override rows. `channel_id` is always null today — the endpoint models a
- * channel-scoped override but nothing sets one, so the join downstream takes server-scoped
- * rows only rather than silently picking an arbitrary row if that ever changes.
+ * Per-guild display override rows. A row is scoped by `channel_id`: null is the server-wide
+ * override, a non-null value scopes it to a category or channel. The endpoint now returns every
+ * scope flat, so all rows are parsed and passed through raw — the resolution walk that picks the
+ * most specific applicable row lives downstream, not here. `excluded` (0/1 upstream) marks a
+ * character hidden at that scope.
  */
 const CastOverrideRowPayload = z.object({
 	character_id: z.union([z.string(), z.number()]),
@@ -55,6 +57,7 @@ const CastOverrideRowPayload = z.object({
 	nickname: z.string().nullish(),
 	pfp_url: z.string().nullish(),
 	reference_image_url: z.string().nullish(),
+	excluded: z.union([z.boolean(), z.number(), z.string()]).nullish(),
 });
 
 const CastResponsePayload = z.object({
@@ -102,9 +105,11 @@ export type CastOwnerAccountsData = z.infer<typeof CastOwnerAccountsPayload>;
  */
 const CastOverridePayload = z.object({
 	character_id: z.union([z.string(), z.number()]).nullish(),
+	channel_id: z.union([z.string(), z.number()]).nullish(),
 	nickname: z.string().nullish(),
 	pfp_url: z.string().nullish(),
 	reference_image_url: z.string().nullish(),
+	excluded: z.union([z.boolean(), z.number(), z.string()]).nullish(),
 	is_primary: z.union([z.boolean(), z.number()]).nullish(),
 });
 
@@ -116,23 +121,29 @@ const CastWritePayload = z.object({
 	// override while the value persisted correctly upstream.
 	row: CastOverridePayload.nullish(),
 	override: CastOverridePayload.nullish(),
+	channel_id: z.union([z.string(), z.number()]).nullish(),
 	nickname: z.string().nullish(),
 	pfp_url: z.string().nullish(),
 	reference_image_url: z.string().nullish(),
+	excluded: z.union([z.boolean(), z.number(), z.string()]).nullish(),
 });
 
 export interface CastOverride {
+	channelId: string | null;
 	nickname: string | null;
 	pfpUrl: string | null;
 	referenceImageUrl: string | null;
+	excluded: boolean;
 }
 
 export type CastWriteResult = {ok: true; override: CastOverride | null} | {ok: false; failure: CastFetchFailure};
 
 export interface CastOverrideUpdate {
+	channelId?: string | null;
 	nickname?: string | null;
 	pfpUrl?: string | null;
 	referenceImageUrl?: string | null;
+	excluded?: boolean | null;
 }
 
 /**
@@ -398,6 +409,11 @@ export class CastClient {
 			server_id: serverId,
 			character_id: characterId,
 		};
+		// channel_id scopes the override: undefined omits it (server scope, unchanged behaviour),
+		// a value targets that category/channel, which the endpoint now honours.
+		if (update.channelId !== undefined) {
+			body.channel_id = update.channelId;
+		}
 		if (update.nickname !== undefined) {
 			body.nickname = update.nickname;
 		}
@@ -406,6 +422,9 @@ export class CastClient {
 		}
 		if (update.referenceImageUrl !== undefined) {
 			body.reference_image_url = update.referenceImageUrl;
+		}
+		if (update.excluded !== undefined) {
+			body.excluded = update.excluded;
 		}
 		return this.write(serverId, body);
 	}
@@ -481,14 +500,18 @@ export class CastClient {
 		this.invalidate(serverId);
 
 		const override = result.data.override ?? result.data.row ?? result.data;
-		const hasOverride = override.nickname != null || override.pfp_url != null || override.reference_image_url != null;
+		const excluded = coerceExcluded(override.excluded);
+		const hasOverride =
+			override.nickname != null || override.pfp_url != null || override.reference_image_url != null || excluded;
 		return {
 			ok: true,
 			override: hasOverride
 				? {
+						channelId: override.channel_id != null ? String(override.channel_id) : null,
 						nickname: override.nickname ?? null,
 						pfpUrl: override.pfp_url ?? null,
 						referenceImageUrl: override.reference_image_url ?? null,
+						excluded,
 					}
 				: null,
 		};
@@ -532,6 +555,14 @@ export class CastClient {
 
 function errorDetail(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * The endpoint reports `excluded` as 0/1 (and could report a boolean or "1"/"true" string on a
+ * changed deployment), so normalise any of those truthy encodings to a definite boolean.
+ */
+function coerceExcluded(value: boolean | number | string | null | undefined): boolean {
+	return value === true || value === 1 || value === '1' || value === 'true';
 }
 
 let defaultClient: CastClient | null = null;

@@ -51,10 +51,33 @@ export const CastCategoryResponse = z.object({
 	category_id: z.string().describe('The channel category this mapping applies to'),
 });
 
+/**
+ * A single raw per-scope override row, exactly as stored: `channel_id` null is the server-wide
+ * override, a non-null value scopes it to that category or channel. These are deliberately NOT
+ * flattened or resolved — the server -> category -> channel inheritance walk that picks the most
+ * specific applicable row is a consumer of this array, not part of it. `excluded` hides the
+ * character at that scope. Distinct from CastCharacterResponse's merged nickname/pfp fields, which
+ * remain the server-scope projection so existing single-scope rendering is unchanged.
+ */
+export const CastOverrideRowResponse = z.object({
+	character_id: z.string().describe('The character this override row applies to'),
+	channel_id: z
+		.string()
+		.nullable()
+		.describe('The category/channel this override is scoped to, or null for the server-wide scope'),
+	nickname: z.string().nullable().describe('The nickname shown at this scope, or null'),
+	pfp_url: z.string().nullable().describe('The avatar URL shown at this scope, or null'),
+	reference_image_url: z.string().nullable().describe('The reference image URL shown at this scope, or null'),
+	excluded: z.boolean().describe('Whether the character is excluded (hidden) at this scope'),
+});
+
 export const CastResponse = z.object({
 	characters: z.array(CastCharacterResponse).describe('Characters available for this guild'),
 	primaries: z.array(CastPrimaryResponse).describe('Primary character assignments for this guild'),
 	categories: z.array(CastCategoryResponse).describe('Category to pair/AU mappings for this guild'),
+	overrides: z
+		.array(CastOverrideRowResponse)
+		.describe('Raw per-scope override rows (server/category/channel), for the resolution walk to consume'),
 });
 
 /**
@@ -73,12 +96,22 @@ export const CastAllCharactersResponse = z.object({
  */
 export const CastOverrideResponse = z.object({
 	character_id: z.string().describe('The character this override applies to'),
+	channel_id: z
+		.string()
+		.nullable()
+		.describe('The category/channel this override is scoped to, or null for the server-wide scope'),
 	nickname: z.string().nullable().describe('The nickname shown for this character in this guild'),
 	pfp_url: z.string().nullable().describe('The avatar URL shown for this character in this guild'),
 	reference_image_url: z.string().nullable().describe('The reference image URL shown for this character in this guild'),
+	excluded: z.boolean().describe('Whether the character is excluded (hidden) at this scope'),
 });
 
 export const CastOverrideUpdateRequest = z.object({
+	channel_id: z
+		.string()
+		.max(32)
+		.nullish()
+		.describe('The category/channel to scope this override to, or null/omitted for the server-wide scope'),
 	nickname: z.string().max(100).nullish().describe('The nickname to show, or null to clear it'),
 	pfp_url: z.string().url().max(2048).nullish().describe('The avatar URL to show, or null to clear it'),
 	reference_image_url: z
@@ -87,6 +120,7 @@ export const CastOverrideUpdateRequest = z.object({
 		.max(2048)
 		.nullish()
 		.describe('The reference image URL to show, or null to clear it'),
+	excluded: z.boolean().nullish().describe('Whether to exclude (hide) the character at this scope'),
 });
 
 /**
@@ -124,6 +158,7 @@ export const CastMutationResponse = z.object({
 export type CastCharacterResponseType = z.infer<typeof CastCharacterResponse>;
 export type CastPrimaryResponseType = z.infer<typeof CastPrimaryResponse>;
 export type CastCategoryResponseType = z.infer<typeof CastCategoryResponse>;
+export type CastOverrideRowResponseType = z.infer<typeof CastOverrideRowResponse>;
 export type CastResponseType = z.infer<typeof CastResponse>;
 export type CastOverrideResponseType = z.infer<typeof CastOverrideResponse>;
 export type CastOverrideUpdateRequestType = z.infer<typeof CastOverrideUpdateRequest>;

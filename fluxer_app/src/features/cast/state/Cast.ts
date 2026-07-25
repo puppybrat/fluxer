@@ -3,6 +3,7 @@
 import type {
 	CastCategory,
 	CastCharacter,
+	CastOverrideRow,
 	CastOverrideUpdate,
 	CastPrimary,
 } from '@app/features/cast/commands/CastCommands';
@@ -15,6 +16,12 @@ class Cast {
 	characters: Array<CastCharacter> = [];
 	primaries: Array<CastPrimary> = [];
 	categories: Array<CastCategory> = [];
+	/**
+	 * Raw per-scope override rows (server/category/channel), stored as delivered. Not consumed yet —
+	 * this is the data the future server -> category -> channel resolution walk will read; kept here
+	 * so it stops being dropped, matching the plumbing-only scope of this change.
+	 */
+	overrides: Array<CastOverrideRow> = [];
 	loading = false;
 	/**
 	 * The actual error, not a boolean. Cast reads cross a service boundary (Fluxer -> the
@@ -67,6 +74,7 @@ class Cast {
 				this.characters = result.characters;
 				this.primaries = result.primaries;
 				this.categories = result.categories;
+				this.overrides = result.overrides;
 				this.loading = false;
 			});
 		} catch (error) {
@@ -187,6 +195,7 @@ class Cast {
 		this.characters = [];
 		this.primaries = [];
 		this.categories = [];
+		this.overrides = [];
 		this.allCharacters = [];
 		this.loading = false;
 		this.allCharactersLoading = false;

@@ -7,6 +7,7 @@ import type {
 	CastCategoryResponseType,
 	CastCharacterResponseType,
 	CastMutationResponseType,
+	CastOverrideRowResponseType,
 	CastOwnerAccountResponseType,
 	CastOwnerAccountsResponseType,
 	CastPrimaryResponseType,
@@ -16,14 +17,18 @@ import type {
 export type CastCharacter = CastCharacterResponseType;
 export type CastPrimary = CastPrimaryResponseType;
 export type CastCategory = CastCategoryResponseType;
+/** A raw per-scope override row (server/category/channel), as delivered for the resolution walk. */
+export type CastOverrideRow = CastOverrideRowResponseType;
 export type CastData = CastResponseType;
 export type CastMutation = CastMutationResponseType;
 export type CastOwnerAccount = CastOwnerAccountResponseType;
 
 export interface CastOverrideUpdate {
+	channelId?: string | null;
 	nickname?: string | null;
 	pfpUrl?: string | null;
 	referenceImageUrl?: string | null;
+	excluded?: boolean | null;
 }
 
 async function requestGuildCast(guildId: string): Promise<CastData> {
@@ -100,6 +105,9 @@ export async function updateOverride(
 	update: CastOverrideUpdate,
 ): Promise<CastMutation> {
 	const body: Record<string, unknown> = {};
+	if (update.channelId !== undefined) {
+		body.channel_id = update.channelId;
+	}
 	if (update.nickname !== undefined) {
 		body.nickname = update.nickname;
 	}
@@ -108,6 +116,9 @@ export async function updateOverride(
 	}
 	if (update.referenceImageUrl !== undefined) {
 		body.reference_image_url = update.referenceImageUrl;
+	}
+	if (update.excluded !== undefined) {
+		body.excluded = update.excluded;
 	}
 	const response = await http.patch<CastMutation>(Endpoints.GUILD_CAST_CHARACTER(guildId, characterId), {body});
 	return response.body;
