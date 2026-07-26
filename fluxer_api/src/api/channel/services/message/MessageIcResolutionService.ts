@@ -117,6 +117,17 @@ export async function resolveIcCharacterIds(params: {
 	const ownerIndex = await loadOwnerIndex(params.senderId);
 	const {owned, primaries, overrides} = await loadCastForSender(params.guildId, ownerIndex);
 
+	// The channel's effective cast, resolved through the channel -> category -> server walk. Both
+	// paths below consult it: a character absent (never added, or excluded) at this channel must not
+	// be attributable here, whether it was auto-resolved or named explicitly.
+	const effective = resolveEffectiveCast({
+		primaries,
+		overrides,
+		channelId: params.channelId,
+		ancestorChain: params.ancestorChain,
+	});
+	const presentIds = new Set(effective.map((row) => row.character_id));
+
 	if (params.characterIds !== undefined) {
 		const notOwned = params.characterIds.filter((id) => !owned.has(id));
 		if (notOwned.length > 0) {
@@ -125,17 +136,21 @@ export async function resolveIcCharacterIds(params: {
 				message: `Character(s) ${notOwned.join(', ')} do not belong to the author of this message in this community.`,
 			});
 		}
+		// Owned but not present here — excluded at this channel/category, or never in this community's
+		// cast at all. Attributing a message to such a character would make it unfilterable and
+		// contradict the channel's own cast configuration.
+		const notInChannel = params.characterIds.filter((id) => !presentIds.has(id));
+		if (notInChannel.length > 0) {
+			throw new BadRequestError({
+				code: APIErrorCodes.CAST_CHARACTER_NOT_IN_CHANNEL,
+				message: `Character(s) ${notInChannel.join(', ')} are not available in this channel.`,
+			});
+		}
 		return {characterIds: [...new Set(params.characterIds)]};
 	}
 
 	// Auto-resolution: the sender's owned characters that are present AND primary in THIS channel,
 	// resolved through the channel -> category -> server walk rather than the server scope alone.
-	const effective = resolveEffectiveCast({
-		primaries,
-		overrides,
-		channelId: params.channelId,
-		ancestorChain: params.ancestorChain,
-	});
 	const primary = effective
 		.filter((row) => row.is_primary && owned.has(row.character_id))
 		.map((row) => row.character_id);

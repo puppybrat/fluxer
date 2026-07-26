@@ -44,6 +44,7 @@ export const ErrorCodeToI18nKey = {
 	[APIErrorCodes.BOT_USER_GENERATION_FAILED]: 'bots.bot_user_generation_failed',
 	[APIErrorCodes.BOT_USER_NOT_FOUND]: 'bots.bot_user_not_found',
 	[APIErrorCodes.CALL_ALREADY_EXISTS]: 'calls_and_voice.call_already_exists',
+	[APIErrorCodes.CAST_CHARACTER_NOT_IN_CHANNEL]: 'cast.character_not_in_channel',
 	[APIErrorCodes.CAST_CHARACTER_NOT_OWNED]: 'cast.character_not_owned',
 	[APIErrorCodes.CAST_NO_PRIMARY_CHARACTER]: 'cast.no_primary_character',
 	[APIErrorCodes.CAST_OWNER_NOT_LINKED]: 'cast.owner_not_linked',

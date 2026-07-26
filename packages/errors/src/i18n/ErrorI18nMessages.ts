@@ -200,6 +200,7 @@ export const ERROR_I18N_MESSAGES = {
 	'calls_and_voice.voice_messages_require_single_attachment': 'Voice messages must contain exactly one attachment.',
 	'captcha.invalid': 'Invalid captcha.',
 	'captcha.required': 'Captcha is required.',
+	'cast.character_not_in_channel': "That character isn't available in this channel.",
 	'cast.character_not_owned': "That character doesn't belong to this message's author.",
 	'cast.no_primary_character': 'No primary character is set for this author in this community.',
 	'cast.owner_not_linked': 'This account is not linked to a cast owner.',
