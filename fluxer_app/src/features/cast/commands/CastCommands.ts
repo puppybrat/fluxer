@@ -31,13 +31,21 @@ export interface CastOverrideUpdate {
 	excluded?: boolean | null;
 }
 
-async function requestGuildCast(guildId: string): Promise<CastData> {
-	const response = await http.get<CastData>(Endpoints.GUILD_CAST(guildId));
+/**
+ * `channelId` scopes the read: omitted (or null) is the server-wide view, a value asks for the
+ * effective cast resolved for that channel — the response then also carries `resolved_cast`. The
+ * raw `primaries`/`overrides` arrays stay unfiltered (every scope) either way, so a scoped caller
+ * can still tell which rows are decided locally at that channel.
+ */
+async function requestGuildCast(guildId: string, channelId?: string | null): Promise<CastData> {
+	const response = await http.get<CastData>(Endpoints.GUILD_CAST(guildId), {
+		query: {channel_id: channelId ?? undefined},
+	});
 	return response.body;
 }
 
-export async function getGuildCast(guildId: string): Promise<CastData> {
-	return requestGuildCast(guildId);
+export async function getGuildCast(guildId: string, channelId?: string | null): Promise<CastData> {
+	return requestGuildCast(guildId, channelId);
 }
 
 /**
@@ -85,13 +93,35 @@ export async function getOwnedCharacters(
 		}));
 }
 
-export async function addCharacter(guildId: string, characterId: string): Promise<CastMutation> {
-	const response = await http.post<CastMutation>(Endpoints.GUILD_CAST_CHARACTER(guildId, characterId));
+/**
+ * `channelId` scopes the membership: omitted (or null) adds server-wide, a value adds only at that
+ * category/channel scope. A scoped add is what gives a character a local presence row there, which
+ * both an explicit local override and (per the backend) any per-scope override then require.
+ */
+export async function addCharacter(
+	guildId: string,
+	characterId: string,
+	channelId?: string | null,
+): Promise<CastMutation> {
+	const response = await http.post<CastMutation>(Endpoints.GUILD_CAST_CHARACTER(guildId, characterId), {
+		query: {channel_id: channelId ?? undefined},
+	});
 	return response.body;
 }
 
-export async function removeCharacter(guildId: string, characterId: string): Promise<CastMutation> {
-	const response = await http.delete<CastMutation>(Endpoints.GUILD_CAST_CHARACTER(guildId, characterId));
+/**
+ * `channelId` scopes the removal: omitted (or null) removes the server-wide membership, a value
+ * removes only that scope's row. The backend cascades — removing a scope's membership also drops
+ * that scope's override row — so this is the single call behind both "remove locally" and "un-hide".
+ */
+export async function removeCharacter(
+	guildId: string,
+	characterId: string,
+	channelId?: string | null,
+): Promise<CastMutation> {
+	const response = await http.delete<CastMutation>(Endpoints.GUILD_CAST_CHARACTER(guildId, characterId), {
+		query: {channel_id: channelId ?? undefined},
+	});
 	return response.body;
 }
 
@@ -124,9 +154,23 @@ export async function updateOverride(
 	return response.body;
 }
 
-export async function setPrimary(guildId: string, characterId: string, isPrimary: boolean): Promise<CastMutation> {
+/**
+ * `channelId` scopes the primary flag: omitted leaves the body's channel_id out entirely (server
+ * scope, unchanged behaviour for the guild tab), a value sets it for that scope. The character must
+ * already be in the cast at the scope, matching the backend's constraint.
+ */
+export async function setPrimary(
+	guildId: string,
+	characterId: string,
+	isPrimary: boolean,
+	channelId?: string | null,
+): Promise<CastMutation> {
+	const body: Record<string, unknown> = {is_primary: isPrimary};
+	if (channelId !== undefined) {
+		body.channel_id = channelId;
+	}
 	const response = await http.patch<CastMutation>(Endpoints.GUILD_CAST_CHARACTER_PRIMARY(guildId, characterId), {
-		body: {is_primary: isPrimary},
+		body,
 	});
 	return response.body;
 }

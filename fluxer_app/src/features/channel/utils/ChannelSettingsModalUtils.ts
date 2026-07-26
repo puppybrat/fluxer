@@ -20,10 +20,15 @@ export function getAvailableTabs(i18n: I18n, channelId: string): Array<ChannelSe
 	if (!channel) return getChannelSettingsTabs(i18n);
 	let filteredTabs = getChannelSettingsTabs(i18n);
 	if (channel.type === ChannelTypes.GUILD_CATEGORY) {
-		filteredTabs = filteredTabs.filter((tab) => tab.type === 'overview' || tab.type === 'permissions');
+		// Categories keep only overview + permissions, plus Cast: a category is a cast scope in its own
+		// right (its overrides are inherited by every channel inside it).
+		filteredTabs = filteredTabs.filter(
+			(tab) => tab.type === 'overview' || tab.type === 'permissions' || tab.type === 'cast',
+		);
 	}
 	if (channel.type === ChannelTypes.GUILD_LINK) {
-		filteredTabs = filteredTabs.filter((tab) => tab.type !== 'webhooks');
+		// A link channel carries no messages, so neither webhooks nor a cast scope apply to it.
+		filteredTabs = filteredTabs.filter((tab) => tab.type !== 'webhooks' && tab.type !== 'cast');
 	}
 	const permissionContext = {channelId: channel.id, guildId: channel.guildId};
 	const canUpdateRtcRegion =

@@ -4,6 +4,7 @@ import * as Modal from '@app/features/app/components/dialogs/Modal';
 import {useFormSubmit} from '@app/features/app/hooks/useFormSubmit';
 import type {CastCharacter} from '@app/features/cast/commands/CastCommands';
 import Cast from '@app/features/cast/state/Cast';
+import ChannelCast from '@app/features/cast/state/ChannelCast';
 import {CANCEL_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {Button} from '@app/features/ui/button/Button';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
@@ -69,13 +70,21 @@ interface OverrideFormValues {
 	referenceImageUrl: string;
 }
 
+/**
+ * With a `channelId` the save targets that scope through `ChannelCast` (so the scoped tab refetches
+ * and the write carries the channel_id); without it, the server-scope guild tab path is unchanged.
+ * The `current*` props MUST be the values from the override row at this exact scope (empty when none
+ * exists locally) — pre-filling from an inherited/resolved value would silently promote it into a
+ * real local override on an unchanged save.
+ */
 export const CastEditOverrideModal: React.FC<{
 	guildId: string;
+	channelId?: string | null;
 	character: CastCharacter;
 	currentNickname: string | null;
 	currentPfpUrl: string | null;
 	currentReferenceImageUrl: string | null;
-}> = observer(({guildId, character, currentNickname, currentPfpUrl, currentReferenceImageUrl}) => {
+}> = observer(({guildId, channelId, character, currentNickname, currentPfpUrl, currentReferenceImageUrl}) => {
 	const {i18n} = useLingui();
 	const form = useForm<OverrideFormValues>({
 		defaultValues: {
@@ -110,11 +119,15 @@ export const CastEditOverrideModal: React.FC<{
 			const referenceImageUrl = data.referenceImageUrl.trim();
 			// Empty clears the field rather than leaving it untouched, which is what the user
 			// means by deleting the contents of an input they can see.
-			const ok = await Cast.updateOverride(guildId, character.id, {
+			const update = {
 				nickname: nickname === '' ? null : nickname,
 				pfpUrl: pfpUrl === '' ? null : pfpUrl,
 				referenceImageUrl: referenceImageUrl === '' ? null : referenceImageUrl,
-			});
+			};
+			const ok =
+				channelId != null
+					? await ChannelCast.updateOverride(character.id, update)
+					: await Cast.updateOverride(guildId, character.id, update);
 			if (!ok) {
 				form.setError('nickname', {message: i18n._(SAVE_FAILED_DESCRIPTOR)});
 				return;
@@ -125,7 +138,7 @@ export const CastEditOverrideModal: React.FC<{
 				children: <Trans>Updated character display</Trans>,
 			});
 		},
-		[character.id, form, guildId, i18n],
+		[channelId, character.id, form, guildId, i18n],
 	);
 
 	const {handleSubmit, isSubmitting} = useFormSubmit({form, onSubmit, defaultErrorField: 'nickname'});
