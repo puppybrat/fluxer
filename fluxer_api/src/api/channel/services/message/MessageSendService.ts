@@ -33,6 +33,7 @@ import {
 	createUserID,
 } from '../../../BrandedTypes';
 import {Config} from '../../../Config';
+import {buildAncestorChain} from '../../../cast/CastResolution';
 import {SYSTEM_USER_ID} from '../../../constants/Core';
 import type {MessageAttachment, MessageReference} from '../../../database/types/MessageTypes';
 import type {IFavoriteMemeRepository} from '../../../favorite_meme/IFavoriteMemeRepository';
@@ -920,11 +921,20 @@ export class MessageSendService {
 		let castCharacterIds: Array<string> = [];
 		if (data.ic && guild) {
 			try {
+				const ancestorChain = await buildAncestorChain(
+					channel.parentId ? channel.parentId.toString() : null,
+					async (ancestorChannelId) => {
+						const ancestor = await this.deps.channelRepository.channelData.findUnique(
+							createChannelID(BigInt(ancestorChannelId)),
+						);
+						return ancestor?.parentId ? ancestor.parentId.toString() : null;
+					},
+				);
 				const resolved = await resolveIcCharacterIds({
 					guildId: createGuildID(BigInt(guild.id)),
 					senderId: user.id,
 					channelId: channelId.toString(),
-					categoryId: channel.parentId ? channel.parentId.toString() : null,
+					ancestorChain,
 					characterIds: data.character_ids,
 				});
 				ic = true;

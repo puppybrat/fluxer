@@ -5,10 +5,12 @@
  * cast for one channel. Deliberately free of any database, framework, or model dependency — every
  * input is a plain value — so it can be unit-tested in complete isolation.
  *
- * Scoping model (confirmed): a category is literally a channel, nesting is exactly one level deep.
- * A row's channel_id identifies its scope: null is server-wide, a value equal to the target
- * channel's parent category id is the category scope, a value equal to the channel id is the
- * channel scope. Scopes are considered most-specific first: channel -> category -> server.
+ * Scoping model: a category is literally a channel. A row's channel_id identifies its scope: null is
+ * server-wide, a value equal to the channel id is the channel scope, and a value equal to any of the
+ * channel's ancestor category ids is that ancestor's scope. Scopes are considered most-specific
+ * first: channel -> nearest ancestor -> ... -> outermost ancestor -> server. The ancestor chain is
+ * whatever the caller supplies, so this generalizes to any nesting depth (today's data has at most
+ * one ancestor, since categories cannot yet nest, but the walk does not assume that).
  */
 
 /** A raw-but-normalised character_primaries row. `is_primary` is already a boolean. */
@@ -54,36 +56,45 @@ function firstNonNull(values: ReadonlyArray<string | null | undefined>): string 
 /**
  * Resolves the effective cast for a channel:
  *
- * PRESENCE — for each candidate, walk channel -> category -> server, most specific first. At each
- * scope: an override with excluded=true means NOT present (stop); a primaries row means present
- * (stop) with is_primary taken from THAT row; neither defers to the next broader scope. Reaching
- * the server scope with neither means not present.
+ * PRESENCE — for each candidate, walk channel -> ancestors (nearest first) -> server, most specific
+ * first. At each scope: an override with excluded=true means NOT present (stop); a primaries row
+ * means present (stop) with is_primary taken from THAT row; neither defers to the next broader
+ * scope. Reaching the server scope with neither means not present.
  *
  * PER-FIELD OVERRIDES — nickname, pfp_url and reference_image_url each independently take the value
  * from the most specific scope that has a non-null value for THAT field, falling through per field
  * rather than per row.
  *
  * CANDIDATES — the union of every character_id with any primaries OR override row (excluded or not)
- * at the server, category, or channel scope.
+ * at the server, any ancestor, or the channel scope.
+ *
+ * `ancestorChain` is the channel's category ancestors, most specific first (immediate parent
+ * category, then its parent, and so on); an empty array is a top-level channel with no category.
  */
 export function resolveEffectiveCast(params: {
 	primaries: ReadonlyArray<ScopedPrimaryRow>;
 	overrides: ReadonlyArray<ScopedOverrideRow>;
 	channelId: string | null;
-	categoryId: string | null;
+	ancestorChain: ReadonlyArray<string>;
 }): Array<EffectiveCharacter> {
-	// Most-specific-first: channel, then its category, then server (null), which always terminates
-	// the walk. Non-null scopes are only added when present and distinct (a top-level channel has no
-	// category, so the category hop is skipped entirely).
+	// Most-specific-first: channel, then each ancestor from nearest to outermost, then server (null),
+	// which always terminates the walk. Scopes are added only when distinct — a repeated or self-
+	// referential id (or a top-level channel's empty ancestor chain) simply contributes nothing extra.
 	const scopes: Array<string | null> = [];
 	const seenScopes = new Set<string>();
+	const pushScope = (scope: string): void => {
+		if (!seenScopes.has(scope)) {
+			seenScopes.add(scope);
+			scopes.push(scope);
+		}
+	};
 	if (params.channelId != null) {
-		seenScopes.add(params.channelId);
-		scopes.push(params.channelId);
+		pushScope(params.channelId);
 	}
-	if (params.categoryId != null && !seenScopes.has(params.categoryId)) {
-		seenScopes.add(params.categoryId);
-		scopes.push(params.categoryId);
+	for (const ancestorId of params.ancestorChain) {
+		if (ancestorId != null) {
+			pushScope(ancestorId);
+		}
 	}
 	scopes.push(null);
 	const relevantScopes = new Set(scopes);
@@ -141,4 +152,29 @@ export function resolveEffectiveCast(params: {
 	// Stable order so callers and tests do not depend on Set iteration order.
 	result.sort((a, b) => (a.character_id < b.character_id ? -1 : a.character_id > b.character_id ? 1 : 0));
 	return result;
+}
+
+/**
+ * Builds the ancestor chain (most specific first) that resolveEffectiveCast consumes, by walking
+ * parent links outward from a channel's immediate parent until there is none. `lookupParentId`
+ * returns the parent id of a category id, or null once the top is reached.
+ *
+ * Deliberately imposes no depth limit: today categories cannot nest, so the walk stops after one
+ * step (or zero, for a top-level channel), but it will transparently produce a deeper chain the day
+ * nesting lands. A seen-set guards against a malformed parent cycle looping forever. Kept free of any
+ * repository dependency — the lookup is injected — so it stays as testable as the resolver itself.
+ */
+export async function buildAncestorChain(
+	immediateParentId: string | null,
+	lookupParentId: (channelId: string) => Promise<string | null>,
+): Promise<Array<string>> {
+	const chain: Array<string> = [];
+	const seen = new Set<string>();
+	let current = immediateParentId;
+	while (current != null && !seen.has(current)) {
+		seen.add(current);
+		chain.push(current);
+		current = await lookupParentId(current);
+	}
+	return chain;
 }

@@ -10,6 +10,10 @@ import {
 
 const CHANNEL = '9000000000000000001';
 const CATEGORY = '9000000000000000002';
+// A second, nearer ancestor for the deeper-nesting simulations. Real data cannot produce this today
+// (categories cannot nest), but the resolver must walk it anyway: SUBCATEGORY is the channel's
+// immediate parent and CATEGORY is SUBCATEGORY's parent, so the chain is [SUBCATEGORY, CATEGORY].
+const SUBCATEGORY = '9000000000000000003';
 
 function primary(character_id: string, channel_id: string | null, is_primary: boolean): ScopedPrimaryRow {
 	return {character_id, channel_id, is_primary};
@@ -40,7 +44,7 @@ describe('resolveEffectiveCast', () => {
 			primaries: [primary('A', null, true)],
 			overrides: [],
 			channelId: CHANNEL,
-			categoryId: CATEGORY,
+			ancestorChain: [CATEGORY],
 		});
 		expect(result).toEqual([
 			{character_id: 'A', is_primary: true, nickname: null, pfp_url: null, reference_image_url: null},
@@ -52,7 +56,7 @@ describe('resolveEffectiveCast', () => {
 			primaries: [primary('B', CATEGORY, false)],
 			overrides: [],
 			channelId: CHANNEL,
-			categoryId: CATEGORY,
+			ancestorChain: [CATEGORY],
 		});
 		expect(byId(result).get('B')).toMatchObject({character_id: 'B', is_primary: false});
 
@@ -62,7 +66,7 @@ describe('resolveEffectiveCast', () => {
 			primaries: [primary('B', CATEGORY, false)],
 			overrides: [],
 			channelId: CHANNEL,
-			categoryId: '9000000000000000099',
+			ancestorChain: ['9000000000000000099'],
 		});
 		expect(otherChannel).toEqual([]);
 	});
@@ -72,7 +76,7 @@ describe('resolveEffectiveCast', () => {
 			primaries: [primary('C', null, true)],
 			overrides: [override('C', CATEGORY, {excluded: true})],
 			channelId: CHANNEL,
-			categoryId: CATEGORY,
+			ancestorChain: [CATEGORY],
 		});
 		expect(result).toEqual([]);
 	});
@@ -82,7 +86,7 @@ describe('resolveEffectiveCast', () => {
 			primaries: [primary('E', null, true), primary('E', CHANNEL, false)],
 			overrides: [override('E', CATEGORY, {excluded: true})],
 			channelId: CHANNEL,
-			categoryId: CATEGORY,
+			ancestorChain: [CATEGORY],
 		});
 		// Channel scope is most specific: its primaries row makes E present before the category
 		// exclusion is ever consulted, and is_primary comes from the channel row.
@@ -99,7 +103,7 @@ describe('resolveEffectiveCast', () => {
 				override('F', CHANNEL, {pfp_url: 'https://media/chan.png'}),
 			],
 			channelId: CHANNEL,
-			categoryId: CATEGORY,
+			ancestorChain: [CATEGORY],
 		});
 		expect(result).toEqual([
 			{
@@ -117,7 +121,7 @@ describe('resolveEffectiveCast', () => {
 			primaries: [primary('G', null, false), primary('G', CHANNEL, true)],
 			overrides: [],
 			channelId: CHANNEL,
-			categoryId: CATEGORY,
+			ancestorChain: [CATEGORY],
 		});
 		expect(result).toEqual([
 			{character_id: 'G', is_primary: true, nickname: null, pfp_url: null, reference_image_url: null},
@@ -130,7 +134,7 @@ describe('resolveEffectiveCast', () => {
 			// A category-scoped row must be irrelevant when the channel has no category.
 			overrides: [override('H', CATEGORY, {excluded: true})],
 			channelId: CHANNEL,
-			categoryId: null,
+			ancestorChain: [],
 		});
 		// The category exclusion does not apply (no category hop); channel scope decides: present,
 		// is_primary=false.
@@ -143,8 +147,59 @@ describe('resolveEffectiveCast', () => {
 			primaries: [primary('I', CATEGORY, true)],
 			overrides: [],
 			channelId: CHANNEL,
-			categoryId: null,
+			ancestorChain: [],
 		});
 		expect(onlyCategory).toEqual([]);
+	});
+
+	// The next two prove the walk is not hardcoded to a single category hop: with a two-level ancestor
+	// chain it must reach the farther ancestor AND still honour most-specific-first across both.
+
+	it('walks past the nearest ancestor to a farther one (2-level chain)', () => {
+		const result = resolveEffectiveCast({
+			// J is present ONLY at the outer category, two hops from the channel. Neither the channel
+			// nor the nearer subcategory has any row for it, so a one-hop walk would miss it.
+			primaries: [primary('J', CATEGORY, true)],
+			overrides: [override('J', CATEGORY, {nickname: 'OuterNick'})],
+			channelId: CHANNEL,
+			ancestorChain: [SUBCATEGORY, CATEGORY],
+		});
+		expect(result).toEqual([
+			{character_id: 'J', is_primary: true, nickname: 'OuterNick', pfp_url: null, reference_image_url: null},
+		]);
+	});
+
+	it('honours most-specific-first across a 2-level chain (nearer ancestor wins over farther)', () => {
+		const result = resolveEffectiveCast({
+			// K is a primary at the outer category, but the nearer subcategory excludes it: the nearer
+			// ancestor is consulted first, so K is not present despite the farther primary.
+			primaries: [primary('K', CATEGORY, true)],
+			overrides: [override('K', SUBCATEGORY, {excluded: true})],
+			channelId: CHANNEL,
+			ancestorChain: [SUBCATEGORY, CATEGORY],
+		});
+		expect(result).toEqual([]);
+
+		// L is present at the outer category; each display field is set at a different level, and the
+		// nearer subcategory's value must win where both provide one (pfp), while non-overlapping
+		// fields fall through independently (nickname from the outer category).
+		const perField = resolveEffectiveCast({
+			primaries: [primary('L', CATEGORY, false)],
+			overrides: [
+				override('L', CATEGORY, {nickname: 'OuterNick', pfp_url: 'https://media/outer.png'}),
+				override('L', SUBCATEGORY, {pfp_url: 'https://media/inner.png'}),
+			],
+			channelId: CHANNEL,
+			ancestorChain: [SUBCATEGORY, CATEGORY],
+		});
+		expect(perField).toEqual([
+			{
+				character_id: 'L',
+				is_primary: false,
+				nickname: 'OuterNick', // only the outer category set it
+				pfp_url: 'https://media/inner.png', // nearer subcategory wins over the outer category
+				reference_image_url: null,
+			},
+		]);
 	});
 });

@@ -612,7 +612,10 @@ export const ServiceMiddleware = createMiddleware<HonoEnv>(async (ctx, next) => 
 	ctx.set('cacheService', cacheService);
 	ctx.set('channelService', channelService);
 	ctx.set('channelRequestService', new ChannelRequestService(channelService, userCacheService));
-	ctx.set('messageRequestService', new MessageRequestService(channelService, createMessageResponseDataService()));
+	ctx.set(
+		'messageRequestService',
+		new MessageRequestService(channelService, createMessageResponseDataService(), channelRepository),
+	);
 	ctx.set('channelRepository', channelRepository);
 	ctx.set('connectionService', connectionService);
 	ctx.set(

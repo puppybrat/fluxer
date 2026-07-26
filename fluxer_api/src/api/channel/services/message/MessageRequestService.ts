@@ -9,7 +9,9 @@ import type {
 	BulkMessageFetchResponse,
 	MessageResponse,
 } from '@fluxer/schema/src/domains/message/MessageResponseSchemas';
-import type {ChannelID, MessageID, UserID} from '../../../BrandedTypes';
+import {type ChannelID, createChannelID, type MessageID, type UserID} from '../../../BrandedTypes';
+import {buildAncestorChain} from '../../../cast/CastResolution';
+import type {IChannelRepository} from '../../../channel/IChannelRepository';
 import type {RequestCache} from '../../../middleware/RequestCacheMiddleware';
 import type {User} from '../../../models/User';
 import type {MessageRequest, MessageUpdateRequest} from '../../MessageTypes';
@@ -22,6 +24,7 @@ export class MessageRequestService {
 	constructor(
 		private readonly channelService: ChannelService,
 		private readonly responseDataService: MessageResponseDataService,
+		private readonly channelRepository: IChannelRepository,
 	) {}
 
 	async listMessages(params: {
@@ -201,11 +204,18 @@ export class MessageRequestService {
 					message: 'This message has no author to attribute characters to.',
 				});
 			}
+			const ancestorChain = await buildAncestorChain(
+				authChannel.channel.parentId ? authChannel.channel.parentId.toString() : null,
+				async (channelId) => {
+					const ancestor = await this.channelRepository.findUnique(createChannelID(BigInt(channelId)));
+					return ancestor?.parentId ? ancestor.parentId.toString() : null;
+				},
+			);
 			const resolved = await resolveIcCharacterIds({
 				guildId,
 				senderId: authorId,
 				channelId: params.channelId.toString(),
-				categoryId: authChannel.channel.parentId ? authChannel.channel.parentId.toString() : null,
+				ancestorChain,
 				characterIds: params.characterIds,
 			});
 			characterIds = resolved.characterIds;

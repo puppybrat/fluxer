@@ -27,7 +27,7 @@ import {OpenAPI} from '../middleware/ResponseTypeMiddleware';
 import {RateLimitConfigs} from '../RateLimitConfig';
 import type {HonoApp} from '../types/HonoEnv';
 import {Validator} from '../Validator';
-import {resolveEffectiveCast} from './CastResolution';
+import {buildAncestorChain, resolveEffectiveCast} from './CastResolution';
 
 function toStringOrNull(value: string | number | null | undefined): string | null {
 	return value == null ? null : String(value);
@@ -219,13 +219,15 @@ export function CastController(app: HonoApp) {
 			// be readable by an authenticated user who is not in the guild.
 			await ctx.get('guildService').getGuildAuthenticated({userId, guildId});
 
-			// Resolve the target channel's category up front (and confirm it belongs to this guild)
-			// so a channel-scoped read cannot leak resolution across guilds. Null category = the
-			// channel is top-level, so the walk is server -> channel with no category hop.
+			// Resolve the target channel's ancestor categories up front (and confirm it belongs to
+			// this guild) so a channel-scoped read cannot leak resolution across guilds. An empty
+			// chain = the channel is top-level, so the walk is server -> channel with no category
+			// hop. The walk imposes no depth limit, so it follows deeper nesting once that lands.
 			let scopedChannelId: string | null = null;
-			let scopedCategoryId: string | null = null;
+			let scopedAncestorChain: Array<string> = [];
 			if (channel_id !== undefined) {
-				const channel = await ctx.get('channelRepository').findUnique(createChannelID(BigInt(channel_id)));
+				const channelRepository = ctx.get('channelRepository');
+				const channel = await channelRepository.findUnique(createChannelID(BigInt(channel_id)));
 				if (!channel || channel.guildId?.toString() !== guildId.toString()) {
 					throw new BadRequestError({
 						code: APIErrorCodes.INVALID_REQUEST,
@@ -233,7 +235,13 @@ export function CastController(app: HonoApp) {
 					});
 				}
 				scopedChannelId = channel_id;
-				scopedCategoryId = channel.parentId ? channel.parentId.toString() : null;
+				scopedAncestorChain = await buildAncestorChain(
+					channel.parentId ? channel.parentId.toString() : null,
+					async (ancestorChannelId) => {
+						const ancestor = await channelRepository.findUnique(createChannelID(BigInt(ancestorChannelId)));
+						return ancestor?.parentId ? ancestor.parentId.toString() : null;
+					},
+				);
 			}
 
 			const result = await getCastClient().fetchForServer(guildId.toString());
@@ -246,7 +254,7 @@ export function CastController(app: HonoApp) {
 					primaries: response.primaries,
 					overrides: response.overrides,
 					channelId: scopedChannelId,
-					categoryId: scopedCategoryId,
+					ancestorChain: scopedAncestorChain,
 				});
 				return ctx.json({...response, resolved_cast});
 			}

@@ -102,14 +102,16 @@ async function loadCastForSender(
  * toggle anyone's message, but a message can only ever be attributed to characters its own
  * author owns. Otherwise one user could put words in another's character's mouth.
  *
- * `channelId`/`categoryId` scope the auto-resolution: primary status is taken from the most specific
- * scope (channel -> category -> server) that applies, via the resolution walk.
+ * `channelId`/`ancestorChain` scope the auto-resolution: primary status is taken from the most
+ * specific scope (channel -> ancestors, nearest first -> server) that applies, via the resolution
+ * walk. `ancestorChain` is the channel's category ancestors most specific first (empty for a
+ * top-level channel); the caller builds it so this stays agnostic to how deep nesting can go.
  */
 export async function resolveIcCharacterIds(params: {
 	guildId: GuildID;
 	senderId: UserID;
 	channelId: string;
-	categoryId: string | null;
+	ancestorChain: ReadonlyArray<string>;
 	characterIds?: Array<string>;
 }): Promise<ResolvedCast> {
 	const ownerIndex = await loadOwnerIndex(params.senderId);
@@ -132,7 +134,7 @@ export async function resolveIcCharacterIds(params: {
 		primaries,
 		overrides,
 		channelId: params.channelId,
-		categoryId: params.categoryId,
+		ancestorChain: params.ancestorChain,
 	});
 	const primary = effective
 		.filter((row) => row.is_primary && owned.has(row.character_id))
