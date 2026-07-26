@@ -35,16 +35,21 @@ const resolvedRow = (id: string, name: string) => ({
 	reference_image_url: null,
 });
 
-/** Serves a cast containing exactly the given characters, as the API would for guild and channel. */
-function serveCast(ids: Array<[string, string]>): void {
+/**
+ * Serves a cast as the API does. `roster` is the guild-wide characters list; `resolved` is the
+ * channel's effective cast. They differ for an EXCLUDED character: the API keeps it in the roster
+ * (it is still in the guild's cast) but drops it from resolved_cast for that channel. Removing a
+ * character instead drops it from both. Defaults to the two agreeing.
+ */
+function serveCast(roster: Array<[string, string]>, resolved: Array<[string, string]> = roster): void {
 	vi.mocked(CastCommands.getGuildCast).mockImplementation(
 		async () =>
 			({
-				characters: ids.map(([id, name]) => character(id, name)),
+				characters: roster.map(([id, name]) => character(id, name)),
 				primaries: [],
 				categories: [],
 				overrides: [],
-				resolved_cast: ids.map(([id, name]) => resolvedRow(id, name)),
+				resolved_cast: resolved.map(([id, name]) => resolvedRow(id, name)),
 			}) as never,
 	);
 }
@@ -79,8 +84,8 @@ function renderLayout(message: Message): {layout: string; names: Array<string>} 
 	return result;
 }
 
-async function loadCast(ids: Array<[string, string]>): Promise<void> {
-	serveCast(ids);
+async function loadCast(roster: Array<[string, string]>, resolved: Array<[string, string]> = roster): Promise<void> {
+	serveCast(roster, resolved);
 	await GuildCastDisplay.refresh(GUILD);
 	await GuildCastDisplay.refreshChannel(GUILD, CHANNEL);
 }
@@ -127,6 +132,50 @@ describe('in-character head layout follows the RESOLVED character count', () => 
 		]);
 
 		expect(renderLayout(message)).toEqual({layout: 'multi', names: ['Rowan', 'Sable']});
+	});
+
+	it('collapses to single layout when one is EXCLUDED at this scope', async () => {
+		const message = messageWith(['ch1', 'ch2']);
+		expect(renderLayout(message).layout).toBe('multi');
+
+		// Exclusion, not removal: ch2 stays in the guild roster but drops out of this channel's
+		// effective cast. It is no longer resolvable HERE, so it must behave exactly like a removal.
+		await loadCast(
+			[
+				['ch1', 'Rowan'],
+				['ch2', 'Sable'],
+			],
+			[['ch1', 'Rowan']],
+		);
+
+		expect(renderLayout(message)).toEqual({layout: 'single', names: ['Rowan']});
+	});
+
+	it('falls back to the sender when all are excluded at this scope', async () => {
+		const message = messageWith(['ch1', 'ch2']);
+		await loadCast(
+			[
+				['ch1', 'Rowan'],
+				['ch2', 'Sable'],
+			],
+			[],
+		);
+
+		expect(renderLayout(message)).toEqual({layout: 'sender', names: []});
+	});
+
+	it('still shows a character before the channel cast has loaded', async () => {
+		// The guild-identity fallback exists to avoid a sender -> character flash in the window before
+		// a channel's resolved_cast arrives. Only the channel load is skipped here, so absence must be
+		// read as "unknown yet", not as "excluded".
+		GuildCastDisplay.reset();
+		serveCast([
+			['ch1', 'Rowan'],
+			['ch2', 'Sable'],
+		]);
+		await GuildCastDisplay.ensureLoaded(GUILD);
+
+		expect(renderLayout(messageWith(['ch1', 'ch2']))).toEqual({layout: 'multi', names: ['Rowan', 'Sable']});
 	});
 
 	it('never renders multi and single at the same time', async () => {

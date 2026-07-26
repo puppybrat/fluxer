@@ -112,10 +112,19 @@ class GuildCastDisplay {
 	}
 
 	/**
-	 * The identity to render for a character in a specific channel: the channel's effective (walked)
-	 * identity when the character is present there, otherwise the guild-wide identity. The fallback
-	 * covers a character excluded from the channel after a message was attributed to it, and the window
-	 * before the channel's cast has loaded — in both cases a sensible guild identity shows, never a gap.
+	 * The identity to render for a character in a specific channel, or null when it does not resolve
+	 * here.
+	 *
+	 * Once a channel's effective cast is loaded it is AUTHORITATIVE: a character absent from it is
+	 * excluded here (or was never in this scope's cast), and must render as the real sender exactly
+	 * the way a character removed from the guild's cast already does. Both mean "not currently
+	 * resolvable in this channel", so they cannot be allowed to look different.
+	 *
+	 * The guild-wide fallback therefore applies only while this channel's cast is UNKNOWN — before the
+	 * first load, or after one failed. That is what it was for: covering the window before
+	 * resolved_cast arrives so a message does not visibly flash from sender to character. Treating an
+	 * absent entry in a loaded channel as a fallback case instead is what let an excluded character
+	 * keep rendering indefinitely, since the guild roster still contains it.
 	 */
 	getChannelIdentity(
 		guildId: string | undefined,
@@ -123,9 +132,9 @@ class GuildCastDisplay {
 		characterId: string,
 	): CastDisplayIdentity | null {
 		if (channelId) {
-			const channelIdentity = this.byChannel.get(channelId)?.get(characterId);
-			if (channelIdentity) {
-				return channelIdentity;
+			const channelIdentities = this.byChannel.get(channelId);
+			if (channelIdentities) {
+				return channelIdentities.get(characterId) ?? null;
 			}
 		}
 		return this.getIdentity(guildId, characterId);
