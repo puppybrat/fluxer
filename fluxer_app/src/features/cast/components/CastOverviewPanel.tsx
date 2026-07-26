@@ -78,6 +78,9 @@ export const CastOverviewPanel: React.FC<CastOverviewPanelProps> = observer(func
 					name: channel.name ?? null,
 					parentId: channel.parentId,
 					isCategory: channel.isGuildCategory(),
+					// Ordering comes from the same field the real sidebar sorts on, so the overview's
+					// order tracks the channel list rather than drifting into its own alphabetical one.
+					position: channel.position ?? null,
 				},
 			]),
 		);

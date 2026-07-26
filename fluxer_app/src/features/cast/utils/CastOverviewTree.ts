@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type {CastCharacter, CastOverrideRow, CastPrimary} from '@app/features/cast/commands/CastCommands';
+import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
+import {compareChannelOrdering} from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
 
 /**
  * What a scope did to a character LOCALLY, in precedence order:
@@ -46,6 +48,8 @@ export interface CastOverviewChannelInfo {
 	name: string | null;
 	parentId: string | null;
 	isCategory: boolean;
+	/** The sidebar ordering field. Optional exactly as Channel.position is; absent sorts as 0. */
+	position?: number | null;
 }
 
 interface BuildArgs {
@@ -61,17 +65,28 @@ function compareByName(a: {name: string}, b: {name: string}): number {
 }
 
 /**
- * Groups sort on the RAW channel name, never the rendered label. Channel labels carry a leading `#`,
- * which sorts before every letter, so sorting on the label would bunch all channels ahead of all
- * categories instead of interleaving them alphabetically as the overview intends.
+ * Groups are ordered the way the real channel sidebar orders itself, not alphabetically.
+ *
+ * The sidebar's order comes from ChannelOrganization.organizeChannels, which sorts everything with
+ * compareChannelOrdering (position, then id as a tiebreak) and then emits the ROOT bucket — the
+ * parentless channels — before any category, each category following in position order with its own
+ * children beneath it. Parentless channels therefore always sit ABOVE every category; the sidebar
+ * never interleaves the two, so neither does this tree.
+ *
+ * compareChannelOrdering is imported rather than reimplemented so the two orderings cannot drift.
  */
 interface SortableGroup {
-	sortKey: string;
+	/**
+	 * Shim satisfying ChannelOrderingChannel. `type` is required by that interface but is not read by
+	 * compareChannelOrdering (which compares position then id); it is filled in faithfully anyway so
+	 * the shim never misrepresents a category as a text channel.
+	 */
+	ordering: {id: string; type: number; position?: number | null};
 	group: CastOverviewGroup;
 }
 
 function compareSortable(a: SortableGroup, b: SortableGroup): number {
-	return a.sortKey.localeCompare(b.sortKey, undefined, {sensitivity: 'base'});
+	return compareChannelOrdering(a.ordering, b.ordering);
 }
 
 function hasDisplayOverride(override: CastOverrideRow): boolean {
@@ -126,10 +141,13 @@ function buildEntriesForScope(
 /**
  * Builds the two-level Cast Overview tree from ONE unscoped cast read.
  *
- * Shape: the server group always first, then category groups and parentless channel groups
- * interleaved alphabetically at the top level (a parentless channel has nothing to nest under, so it
- * sits alongside the categories rather than under a fabricated parent), with each category's own
- * overridden channels nested beneath it alphabetically.
+ * Shape mirrors the real channel sidebar (ChannelOrganization.organizeChannels): the server group
+ * first, then parentless channel groups in sidebar order, then category groups in sidebar order with
+ * each category's own overridden channels nested beneath it, also in sidebar order.
+ *
+ * Parentless channels sit ABOVE the categories rather than interleaved among them because that is
+ * what the sidebar does — organizeChannels emits the root bucket before any category, so position
+ * only orders within each partition and can never lift a channel between two categories.
  *
  * A category with overridden children but no local delta of its own is still emitted, flagged
  * `structuralOnly`, so its children remain visibly grouped under the right category name.
@@ -151,11 +169,12 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 	const topLevelChannelGroups: Array<SortableGroup> = [];
 	const pendingChildren = new Map<string, Array<SortableGroup>>();
 
-	/** The raw name to sort on — the channel's own name, or its id when unknown. Never prefixed. */
-	const sortKeyFor = (id: string, info: CastOverviewChannelInfo | undefined): string => {
-		const name = info?.name;
-		return name == null || name === '' ? id : name;
-	};
+	/** What compareChannelOrdering reads: the sidebar position, with the id as its stable tiebreak. */
+	const orderingFor = (id: string, info: CastOverviewChannelInfo | undefined) => ({
+		id,
+		type: info?.isCategory ? ChannelTypes.GUILD_CATEGORY : ChannelTypes.GUILD_TEXT,
+		position: info?.position ?? null,
+	});
 
 	const displayName = (id: string, info: CastOverviewChannelInfo | undefined, isCategory: boolean): string => {
 		const name = info?.name;
@@ -175,7 +194,7 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 		}
 		if (info?.isCategory) {
 			categoryGroups.set(scopeId, {
-				sortKey: sortKeyFor(scopeId, info),
+				ordering: orderingFor(scopeId, info),
 				group: {
 					kind: 'category',
 					scopeId,
@@ -188,7 +207,7 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 			continue;
 		}
 		const group: SortableGroup = {
-			sortKey: sortKeyFor(scopeId, info),
+			ordering: orderingFor(scopeId, info),
 			group: {
 				kind: 'channel',
 				scopeId,
@@ -221,7 +240,7 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 		}
 		const info = channelsById.get(parentId);
 		categoryGroups.set(parentId, {
-			sortKey: sortKeyFor(parentId, info),
+			ordering: orderingFor(parentId, info),
 			group: {
 				kind: 'category',
 				scopeId: parentId,
@@ -242,8 +261,10 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 		children: [],
 	};
 
-	const topLevel = [...categoryGroups.values(), ...topLevelChannelGroups]
-		.sort(compareSortable)
-		.map((entry) => entry.group);
+	// Root bucket before categories, exactly as organizeChannels emits them.
+	const topLevel = [
+		...topLevelChannelGroups.sort(compareSortable),
+		...[...categoryGroups.values()].sort(compareSortable),
+	].map((entry) => entry.group);
 	return [serverGroup, ...topLevel];
 }

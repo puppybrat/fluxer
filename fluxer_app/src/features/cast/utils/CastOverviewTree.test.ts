@@ -37,12 +37,19 @@ const override = (
 	excluded: fields.excluded ?? false,
 });
 
-const cat = (id: string, name: string): CastOverviewChannelInfo => ({id, name, parentId: null, isCategory: true});
-const chan = (id: string, name: string, parentId: string | null): CastOverviewChannelInfo => ({
+const cat = (id: string, name: string, position = 0): CastOverviewChannelInfo => ({
+	id,
+	name,
+	parentId: null,
+	isCategory: true,
+	position,
+});
+const chan = (id: string, name: string, parentId: string | null, position = 0): CastOverviewChannelInfo => ({
 	id,
 	name,
 	parentId,
 	isCategory: false,
+	position,
 });
 
 function channels(...infos: Array<CastOverviewChannelInfo>): ReadonlyMap<string, CastOverviewChannelInfo> {
@@ -95,30 +102,67 @@ describe('Cast Overview tree', () => {
 		]);
 	});
 
-	it('sorts categories and parentless channels together, alphabetically, after the server group', () => {
+	/**
+	 * Matches ChannelOrganization.organizeChannels, which the real sidebar renders: parentless
+	 * channels are emitted as the root bucket BEFORE any category, so they sit above the categories
+	 * regardless of position, and position only orders within each partition.
+	 */
+	it('puts parentless channels above the categories, like the sidebar does', () => {
 		const tree = buildCastOverviewTree({
 			characters: [character('c1', 'Rowan')],
 			primaries: [primary('c1', 'zebra-cat'), primary('c1', 'alpha-cat'), primary('c1', 'loose')],
 			overrides: [],
 			channelsById: channels(
-				cat('zebra-cat', 'Zebra'),
-				cat('alpha-cat', 'Alpha'),
-				chan('loose', 'middle', null), // no parent category -> flat, alongside the categories
+				cat('zebra-cat', 'Zebra', 0),
+				cat('alpha-cat', 'Alpha', 1),
+				// position 3 is AFTER both categories, but a parentless channel still renders above them.
+				chan('loose', 'middle', null, 3),
 			),
 		});
-		expect(tree.map((g) => g.name)).toEqual(['', 'Alpha', '#middle', 'Zebra']);
-		expect(tree[2]!.kind).toBe('channel');
-		expect(tree[2]!.children).toEqual([]);
+		expect(tree.map((g) => g.name)).toEqual(['', '#middle', 'Zebra', 'Alpha']);
+		expect(tree[1]!.kind).toBe('channel');
+		expect(tree[1]!.children).toEqual([]);
 	});
 
-	it('sorts channels alphabetically within their category', () => {
+	it('orders categories by position, not alphabetically', () => {
+		const tree = buildCastOverviewTree({
+			characters: [character('c1', 'Rowan')],
+			primaries: [primary('c1', 'a'), primary('c1', 'z')],
+			overrides: [],
+			// Alphabetical would give Alpha, Zebra; position says otherwise.
+			channelsById: channels(cat('a', 'Alpha', 5), cat('z', 'Zebra', 1)),
+		});
+		expect(tree.map((g) => g.name)).toEqual(['', 'Zebra', 'Alpha']);
+	});
+
+	it('orders parentless channels among themselves by position', () => {
+		const tree = buildCastOverviewTree({
+			characters: [character('c1', 'Rowan')],
+			primaries: [primary('c1', 'a'), primary('c1', 'z')],
+			overrides: [],
+			channelsById: channels(chan('a', 'aaa', null, 9), chan('z', 'zzz', null, 2)),
+		});
+		expect(tree.map((g) => g.name)).toEqual(['', '#zzz', '#aaa']);
+	});
+
+	it('orders channels within a category by position, not alphabetically', () => {
 		const tree = buildCastOverviewTree({
 			characters: [character('c1', 'Rowan')],
 			primaries: [primary('c1', 'zed'), primary('c1', 'abe')],
 			overrides: [],
-			channelsById: channels(cat('c', 'Cat'), chan('zed', 'zed', 'c'), chan('abe', 'abe', 'c')),
+			channelsById: channels(cat('c', 'Cat'), chan('zed', 'zed', 'c', 0), chan('abe', 'abe', 'c', 1)),
 		});
-		expect(tree[1]!.children.map((c) => c.name)).toEqual(['#abe', '#zed']);
+		expect(tree[1]!.children.map((c) => c.name)).toEqual(['#zed', '#abe']);
+	});
+
+	it('falls back to the id as a stable tiebreak when positions are equal', () => {
+		const tree = buildCastOverviewTree({
+			characters: [character('c1', 'Rowan')],
+			primaries: [primary('c1', 'b'), primary('c1', 'a')],
+			overrides: [],
+			channelsById: channels(cat('b', 'Bee', 0), cat('a', 'Ay', 0)),
+		});
+		expect(tree.map((g) => g.name)).toEqual(['', 'Ay', 'Bee']);
 	});
 
 	it('keeps a category that has BOTH its own delta and overridden children', () => {
