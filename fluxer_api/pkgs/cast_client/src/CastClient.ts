@@ -390,12 +390,26 @@ export class CastClient {
 	 * Adds a character to a guild's cast. Idempotency is the personal site's business, not
 	 * this client's — a repeat add is whatever the endpoint decides it is.
 	 */
-	async addToCast(serverId: string, characterId: number): Promise<CastWriteResult> {
-		return this.write(serverId, {action: 'add_to_cast', server_id: serverId, character_id: characterId});
+	async addToCast(serverId: string, characterId: number, channelId?: string | null): Promise<CastWriteResult> {
+		const body: Record<string, unknown> = {action: 'add_to_cast', server_id: serverId, character_id: characterId};
+		// channel_id scopes the membership: undefined omits it (server scope), a value targets that
+		// category/channel. Omitting keeps the pre-existing server-scope-only behaviour byte-for-byte.
+		if (channelId !== undefined) {
+			body.channel_id = channelId;
+		}
+		return this.write(serverId, body);
 	}
 
-	async removeFromCast(serverId: string, characterId: number): Promise<CastWriteResult> {
-		return this.write(serverId, {action: 'remove_from_cast', server_id: serverId, character_id: characterId});
+	async removeFromCast(serverId: string, characterId: number, channelId?: string | null): Promise<CastWriteResult> {
+		const body: Record<string, unknown> = {
+			action: 'remove_from_cast',
+			server_id: serverId,
+			character_id: characterId,
+		};
+		if (channelId !== undefined) {
+			body.channel_id = channelId;
+		}
+		return this.write(serverId, body);
 	}
 
 	/**
@@ -434,13 +448,22 @@ export class CastClient {
 	 * and is a precondition, not something this creates: the endpoint answers 409 when the
 	 * character is not already in the cast, which surfaces here as an http_status failure.
 	 */
-	async setPrimary(serverId: string, characterId: number, isPrimary: boolean): Promise<CastWriteResult> {
-		return this.write(serverId, {
+	async setPrimary(
+		serverId: string,
+		characterId: number,
+		isPrimary: boolean,
+		channelId?: string | null,
+	): Promise<CastWriteResult> {
+		const body: Record<string, unknown> = {
 			action: 'set_primary',
 			server_id: serverId,
 			character_id: characterId,
 			is_primary: isPrimary,
-		});
+		};
+		if (channelId !== undefined) {
+			body.channel_id = channelId;
+		}
+		return this.write(serverId, body);
 	}
 
 	/**

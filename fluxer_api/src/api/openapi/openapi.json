@@ -7620,7 +7620,7 @@
 					}
 				},
 				"x-mint": {"metadata": {"title": "Add cast character"}},
-				"description": "Add a character to the guild cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
+				"description": "Add a character to the guild cast, optionally scoped to a category or channel via the channel_id query parameter (omit for the server-wide scope). The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
 				"security": [{"botToken": []}, {"sessionToken": []}],
 				"parameters": [
 					{
@@ -7636,6 +7636,16 @@
 						"required": true,
 						"schema": {"type": "string"},
 						"description": "The character id"
+					},
+					{
+						"name": "channel_id",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"maxLength": 32,
+							"description": "Scope the action to this category/channel; omit for the server-wide scope"
+						}
 					}
 				]
 			},
@@ -7701,7 +7711,7 @@
 					}
 				},
 				"x-mint": {"metadata": {"title": "Remove cast character"}},
-				"description": "Remove a character from the guild cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
+				"description": "Remove a character from the guild cast, optionally scoped to a category or channel via the channel_id query parameter (omit for the server-wide scope). The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
 				"security": [{"botToken": []}, {"sessionToken": []}],
 				"parameters": [
 					{
@@ -7717,6 +7727,16 @@
 						"required": true,
 						"schema": {"type": "string"},
 						"description": "The character id"
+					},
+					{
+						"name": "channel_id",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"maxLength": 32,
+							"description": "Scope the action to this category/channel; omit for the server-wide scope"
+						}
 					}
 				]
 			},
@@ -7869,7 +7889,7 @@
 					}
 				},
 				"x-mint": {"metadata": {"title": "Set cast character primary"}},
-				"description": "Set whether a cast character is a primary for the guild. The character must already be in the cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
+				"description": "Set whether a cast character is a primary for the guild, optionally scoped to a category or channel via channel_id (omit/null for the server-wide scope). The character must already be in the cast at that scope. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.",
 				"security": [{"botToken": []}, {"sessionToken": []}],
 				"parameters": [
 					{
@@ -31663,6 +31683,10 @@
 			"CastSetPrimaryRequest": {
 				"type": "object",
 				"properties": {
+					"channel_id": {
+						"anyOf": [{"type": "string", "maxLength": 32}, {"type": "null"}],
+						"description": "The category/channel to scope this primary to, or null/omitted for the server-wide scope"
+					},
 					"is_primary": {"type": "boolean", "description": "Whether this character is a primary for the guild"}
 				},
 				"required": ["is_primary"]

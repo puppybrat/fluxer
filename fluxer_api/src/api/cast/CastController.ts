@@ -4,12 +4,14 @@ import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
 import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {BadGatewayError} from '@fluxer/errors/src/domains/core/BadGatewayError';
 import {BadRequestError} from '@fluxer/errors/src/domains/core/BadRequestError';
+import {ConflictError} from '@fluxer/errors/src/domains/core/ConflictError';
 import {
 	CastAllCharactersResponse,
 	CastMutationResponse,
 	CastOverrideUpdateRequest,
 	CastOwnerAccountsResponse,
 	CastResponse,
+	CastScopeQuery,
 	CastSetPrimaryRequest,
 } from '@fluxer/schema/src/domains/cast/CastSchemas';
 import {GuildIdCastCharacterIdParam, GuildIdParam} from '@fluxer/schema/src/domains/common/CommonParamSchemas';
@@ -171,11 +173,22 @@ async function authorizeCastWrite(
  */
 function throwCastWriteFailure(guildId: GuildID, failure: CastFetchFailure): never {
 	Logger.warn({guild_id: guildId.toString(), failure}, 'Cast write failed');
-	if (failure.kind === 'http_status' && failure.status >= 400 && failure.status < 500) {
-		throw new BadRequestError({
-			code: APIErrorCodes.INVALID_REQUEST,
-			message: failure.message ?? 'The cast service rejected this request',
-		});
+	if (failure.kind === 'http_status') {
+		// A 409 from the personal site is a genuine conflict (e.g. update_override before the
+		// character has membership at that scope). Surface it as a 409 rather than collapsing it
+		// into a generic 400, which mislabels a valid request as malformed.
+		if (failure.status === 409) {
+			throw new ConflictError({
+				code: APIErrorCodes.CONFLICT,
+				message: failure.message ?? 'The cast service rejected this request',
+			});
+		}
+		if (failure.status >= 400 && failure.status < 500) {
+			throw new BadRequestError({
+				code: APIErrorCodes.INVALID_REQUEST,
+				message: failure.message ?? 'The cast service rejected this request',
+			});
+		}
 	}
 	throw new BadGatewayError();
 }
@@ -324,6 +337,7 @@ export function CastController(app: HonoApp) {
 		RateLimitMiddleware(RateLimitConfigs.GUILD_CAST_ADD),
 		LoginRequired,
 		Validator('param', GuildIdCastCharacterIdParam),
+		Validator('query', CastScopeQuery),
 		OpenAPI({
 			operationId: 'add_guild_cast_character',
 			summary: 'Add cast character',
@@ -332,16 +346,17 @@ export function CastController(app: HonoApp) {
 			security: ['botToken', 'bearerToken', 'sessionToken'],
 			tags: ['Guilds'],
 			description:
-				'Add a character to the guild cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
+				'Add a character to the guild cast, optionally scoped to a category or channel via the channel_id query parameter (omit for the server-wide scope). The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
 		}),
 		async (ctx) => {
 			const userId = ctx.get('user').id;
 			const {guild_id, character_id} = ctx.req.valid('param');
+			const {channel_id} = ctx.req.valid('query');
 			const guildId = createGuildID(guild_id);
 
 			await authorizeCastWrite(ctx.get('guildService'), userId, guildId);
 
-			const result = await getCastClient().addToCast(guildId.toString(), character_id);
+			const result = await getCastClient().addToCast(guildId.toString(), character_id, channel_id);
 			if (!result.ok) {
 				throwCastWriteFailure(guildId, result.failure);
 			}
@@ -354,6 +369,7 @@ export function CastController(app: HonoApp) {
 		RateLimitMiddleware(RateLimitConfigs.GUILD_CAST_REMOVE),
 		LoginRequired,
 		Validator('param', GuildIdCastCharacterIdParam),
+		Validator('query', CastScopeQuery),
 		OpenAPI({
 			operationId: 'remove_guild_cast_character',
 			summary: 'Remove cast character',
@@ -362,16 +378,17 @@ export function CastController(app: HonoApp) {
 			security: ['botToken', 'bearerToken', 'sessionToken'],
 			tags: ['Guilds'],
 			description:
-				'Remove a character from the guild cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
+				'Remove a character from the guild cast, optionally scoped to a category or channel via the channel_id query parameter (omit for the server-wide scope). The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
 		}),
 		async (ctx) => {
 			const userId = ctx.get('user').id;
 			const {guild_id, character_id} = ctx.req.valid('param');
+			const {channel_id} = ctx.req.valid('query');
 			const guildId = createGuildID(guild_id);
 
 			await authorizeCastWrite(ctx.get('guildService'), userId, guildId);
 
-			const result = await getCastClient().removeFromCast(guildId.toString(), character_id);
+			const result = await getCastClient().removeFromCast(guildId.toString(), character_id, channel_id);
 			if (!result.ok) {
 				throwCastWriteFailure(guildId, result.failure);
 			}
@@ -433,8 +450,8 @@ export function CastController(app: HonoApp) {
 	// Kept separate from the override PATCH above rather than folded in as another body field:
 	// the two write to different upstream actions, so combining them would make one request
 	// fan out to two calls that can half-fail. Primary status also has a precondition the
-	// override does not — the character must already be in the cast — and the endpoint answers
-	// 409 when it is not, which maps here to the same 4xx passthrough as any other rejection.
+	// override does not — the character must already be in the cast at that scope — and the endpoint
+	// answers 409 when it is not, which throwCastWriteFailure surfaces as a 409 Conflict.
 	app.patch(
 		'/guilds/:guild_id/cast/characters/:character_id/primary',
 		RateLimitMiddleware(RateLimitConfigs.GUILD_CAST_SET_PRIMARY),
@@ -449,17 +466,17 @@ export function CastController(app: HonoApp) {
 			security: ['botToken', 'bearerToken', 'sessionToken'],
 			tags: ['Guilds'],
 			description:
-				'Set whether a cast character is a primary for the guild. The character must already be in the cast. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
+				'Set whether a cast character is a primary for the guild, optionally scoped to a category or channel via channel_id (omit/null for the server-wide scope). The character must already be in the cast at that scope. The character ID is the personal site character ID, not a Fluxer snowflake. Requires the MANAGE_GUILD permission.',
 		}),
 		async (ctx) => {
 			const userId = ctx.get('user').id;
 			const {guild_id, character_id} = ctx.req.valid('param');
-			const {is_primary} = ctx.req.valid('json');
+			const {channel_id, is_primary} = ctx.req.valid('json');
 			const guildId = createGuildID(guild_id);
 
 			await authorizeCastWrite(ctx.get('guildService'), userId, guildId);
 
-			const result = await getCastClient().setPrimary(guildId.toString(), character_id, is_primary);
+			const result = await getCastClient().setPrimary(guildId.toString(), character_id, is_primary, channel_id);
 			if (!result.ok) {
 				throwCastWriteFailure(guildId, result.failure);
 			}

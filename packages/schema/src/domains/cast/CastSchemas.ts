@@ -141,7 +141,25 @@ export const CastOwnerAccountsResponse = z.object({
 });
 
 export const CastSetPrimaryRequest = z.object({
+	channel_id: z
+		.string()
+		.max(32)
+		.nullish()
+		.describe('The category/channel to scope this primary to, or null/omitted for the server-wide scope'),
 	is_primary: z.boolean().describe('Whether this character is a primary for the guild'),
+});
+
+/**
+ * Query scope for the add/remove-membership routes. Those take no request body, so the optional
+ * channel_id rides as a query parameter: omitted targets the server-wide scope (unchanged
+ * behaviour), a value scopes the membership to that category or channel.
+ */
+export const CastScopeQuery = z.object({
+	channel_id: z
+		.string()
+		.max(32)
+		.optional()
+		.describe('Scope the action to this category/channel; omit for the server-wide scope'),
 });
 
 /**
@@ -163,6 +181,7 @@ export type CastResponseType = z.infer<typeof CastResponse>;
 export type CastOverrideResponseType = z.infer<typeof CastOverrideResponse>;
 export type CastOverrideUpdateRequestType = z.infer<typeof CastOverrideUpdateRequest>;
 export type CastSetPrimaryRequestType = z.infer<typeof CastSetPrimaryRequest>;
+export type CastScopeQueryType = z.infer<typeof CastScopeQuery>;
 export type CastAllCharactersResponseType = z.infer<typeof CastAllCharactersResponse>;
 export type CastOwnerAccountResponseType = z.infer<typeof CastOwnerAccountResponse>;
 export type CastOwnerAccountsResponseType = z.infer<typeof CastOwnerAccountsResponse>;
