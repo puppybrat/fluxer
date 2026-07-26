@@ -40,7 +40,7 @@ const CHARACTER_NAME_COLOR = 'var(--text-primary)';
 export function useInCharacterOverride(message: Message, guildId: string | undefined): InCharacterOverride | undefined {
 	const identity =
 		message.ic && message.castCharacterIds.length === 1
-			? GuildCastDisplay.getIdentity(message.guildId ?? guildId, message.castCharacterIds[0])
+			? GuildCastDisplay.getChannelIdentity(message.guildId ?? guildId, message.channelId, message.castCharacterIds[0])
 			: null;
 	return useMemo(
 		() =>

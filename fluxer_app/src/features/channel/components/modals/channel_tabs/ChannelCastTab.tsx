@@ -102,13 +102,23 @@ const ChannelCastTab: React.FC<{channelId: string}> = observer(({channelId}) => 
 	}, [guildId, channelId]);
 
 	const handleEditClick = useCallback(
-		(row: CastScopedRow) => {
+		async (row: CastScopedRow) => {
 			if (guildId == null) {
 				return;
 			}
+			// Editing an inherited character takes local control of it first: an override needs a local
+			// membership row at this scope (the backend rejects one otherwise), so silently add it, then
+			// edit. A local row already has membership and skips straight to the modal.
+			if (row.status === 'inherited') {
+				const ok = await ChannelCast.addLocal(row.character.id);
+				if (!ok) {
+					return;
+				}
+			}
 			// Pre-fill strictly from the LOCAL override row at this scope (empty when none exists), never
 			// from the resolved/inherited values — saving unchanged would otherwise promote an inherited
-			// value into a real local override here.
+			// value into a real local override here. A just-promoted character has no override yet, so it
+			// opens blank, which is correct.
 			ModalCommands.push(
 				ModalCommands.modal(() => (
 					<CastEditOverrideModal
@@ -164,7 +174,15 @@ const ChannelCastTab: React.FC<{channelId: string}> = observer(({channelId}) => 
 		void ChannelCast.unexclude(row.character.id);
 	}, []);
 
-	const handlePrimaryChange = useCallback((row: CastScopedRow, isPrimary: boolean) => {
+	const handlePrimaryChange = useCallback(async (row: CastScopedRow, isPrimary: boolean) => {
+		// Same as Edit: setting primary on an inherited character needs a local membership row first,
+		// so silently take local control, then toggle. The character becomes "local" afterward.
+		if (row.status === 'inherited') {
+			const ok = await ChannelCast.addLocal(row.character.id);
+			if (!ok) {
+				return;
+			}
+		}
 		void ChannelCast.setPrimary(row.character.id, isPrimary);
 	}, []);
 
@@ -298,7 +316,11 @@ const ChannelCastTab: React.FC<{channelId: string}> = observer(({channelId}) => 
 									className={styles.characterActions}
 									data-flx="channel.channel-tabs.channel-cast-tab.character-actions"
 								>
-									{row.status === 'local' && (
+									{/* Every present character — local OR inherited — gets Primary + Edit. Acting on an
+									    inherited one silently takes local control first (see the handlers). They differ
+									    only in the destructive action: Remove drops a local character's own rows, while
+									    Exclude hides an inherited one that a broader scope still provides. */}
+									{(row.status === 'local' || row.status === 'inherited') && (
 										<>
 											<Checkbox
 												checked={row.isPrimary}
@@ -317,29 +339,30 @@ const ChannelCastTab: React.FC<{channelId: string}> = observer(({channelId}) => 
 											>
 												{i18n._(EDIT_DESCRIPTOR)}
 											</Button>
-											<Button
-												type="button"
-												variant="danger"
-												small
-												disabled={pending}
-												onClick={() => handleRemoveClick(row)}
-												data-flx="channel.channel-tabs.channel-cast-tab.button.remove"
-											>
-												{i18n._(REMOVE_DESCRIPTOR)}
-											</Button>
+											{row.status === 'local' ? (
+												<Button
+													type="button"
+													variant="danger"
+													small
+													disabled={pending}
+													onClick={() => handleRemoveClick(row)}
+													data-flx="channel.channel-tabs.channel-cast-tab.button.remove"
+												>
+													{i18n._(REMOVE_DESCRIPTOR)}
+												</Button>
+											) : (
+												<Button
+													type="button"
+													variant="secondary"
+													small
+													disabled={pending}
+													onClick={() => handleExcludeClick(row)}
+													data-flx="channel.channel-tabs.channel-cast-tab.button.exclude"
+												>
+													{i18n._(EXCLUDE_DESCRIPTOR)}
+												</Button>
+											)}
 										</>
-									)}
-									{row.status === 'inherited' && (
-										<Button
-											type="button"
-											variant="secondary"
-											small
-											disabled={pending}
-											onClick={() => handleExcludeClick(row)}
-											data-flx="channel.channel-tabs.channel-cast-tab.button.exclude"
-										>
-											{i18n._(EXCLUDE_DESCRIPTOR)}
-										</Button>
 									)}
 									{row.status === 'excluded' && (
 										<Button

@@ -218,13 +218,14 @@ class ChannelCast {
 	}
 
 	/**
-	 * The picker offers the full roster minus what is already decided locally here. Inherited and
-	 * excluded characters stay offered on purpose: adding an inherited one takes local control of it,
-	 * and there is nothing to add for one already local at this scope.
+	 * The picker offers only characters that are FULLY absent here — neither present (local or
+	 * inherited) nor excluded. Every character already shown as a row is handled from its row instead:
+	 * a present one via Edit/Primary (which silently takes local control of an inherited one) or
+	 * Exclude/Remove, an excluded one via Un-exclude. Derived from `rows` so the two cannot disagree.
 	 */
 	get addableCharacters(): Array<CastCharacter> {
-		const localIds = this.localPrimaryIds;
-		return this.allCharacters.filter((character) => !localIds.has(character.id));
+		const shownIds = new Set(this.rows.map((row) => row.character.id));
+		return this.allCharacters.filter((character) => !shownIds.has(character.id));
 	}
 
 	isPending(characterId: string): boolean {
@@ -247,6 +248,9 @@ class ChannelCast {
 			// Mirror the guild tab: message rendering and the composer's optimistic in-character
 			// resolution both cache a guild's cast independently, so refresh them after any write.
 			void GuildCastDisplay.refresh(guildId);
+			// Also refresh THIS scope's channel identities, so an open message list in the edited
+			// channel picks up a new channel/category nickname or pfp without a reload.
+			void GuildCastDisplay.refreshChannel(guildId, channelId);
 			void ComposerInCharacter.refresh(guildId);
 			runInAction(() => {
 				this.pendingCharacterIds.delete(characterId);

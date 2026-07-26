@@ -101,7 +101,7 @@ describe('ChannelCast — scoped picker filter', () => {
 		ChannelCast.reset();
 	});
 
-	it('the picker hides only characters with a LOCAL primaries row at this scope', async () => {
+	it('the picker offers only fully-absent characters (not present or excluded)', async () => {
 		// inh: server row only (inherited). exc: server + channel rows + channel exclude. loc: channel row.
 		const backend = makeBackend([
 			{character_id: 'inh', channel_id: null, is_primary: false},
@@ -127,8 +127,9 @@ describe('ChannelCast — scoped picker filter', () => {
 		expect(byStatus.get('loc')).toBe('local');
 		expect(byStatus.get('exc')).toBe('excluded');
 
-		// Inherited + absent are offered; excluded + local (both have a local row) are hidden.
-		expect(ChannelCast.addableCharacters.map((c) => c.id).sort()).toEqual(['abs', 'inh']);
+		// Only the fully-absent 'abs' is offered. inh (inherited) and loc (local) are present, exc is
+		// excluded — all shown as rows and acted on there (Edit/Primary/Exclude/Remove/Un-exclude).
+		expect(ChannelCast.addableCharacters.map((c) => c.id).sort()).toEqual(['abs']);
 	});
 
 	it('excluding an inherited character removes it from the picker (Issue 1)', async () => {
@@ -137,7 +138,8 @@ describe('ChannelCast — scoped picker filter', () => {
 
 		await ChannelCast.load('g', CH);
 		await ChannelCast.loadAllCharacters('g');
-		expect(ChannelCast.addableCharacters.map((c) => c.id)).toContain('inh');
+		// inh is inherited (present) so it is not in the picker; only the fully-absent 'other' is.
+		expect(ChannelCast.addableCharacters.map((c) => c.id)).toEqual(['other']);
 
 		await ChannelCast.exclude('inh');
 
@@ -169,9 +171,11 @@ describe('ChannelCast — scoped picker filter', () => {
 		// Force the degenerate torn/unset-scope state: scope null while server primaries remain loaded.
 		ChannelCast.channelId = null;
 
-		// The server member must NOT be classified local nor hidden from the picker (the exact inversion
-		// this guards against): both the server member and the absent one stay addable.
+		// The server member must NOT be classified local (the exact inversion this guards against): it
+		// stays 'inherited' (present via the server row), so it shows as a row and the picker offers only
+		// the fully-absent 'abs'. Without the guard it would read as 'local' and warp both.
 		expect(ChannelCast.rows.every((r) => r.status !== 'local')).toBe(true);
-		expect(ChannelCast.addableCharacters.map((c) => c.id).sort()).toEqual(['abs', 'srv']);
+		expect(ChannelCast.rows.find((r) => r.character.id === 'srv')?.status).toBe('inherited');
+		expect(ChannelCast.addableCharacters.map((c) => c.id)).toEqual(['abs']);
 	});
 });

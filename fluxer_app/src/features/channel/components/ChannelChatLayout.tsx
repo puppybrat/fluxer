@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
 import {fetchSlowmodeState} from '@app/features/channel/commands/ChannelCommands';
 import styles from '@app/features/channel/components/ChannelChatLayout.module.css';
 import {SlowmodeIndicator} from '@app/features/channel/components/SlowmodeIndicator';
 import {TypingUsers} from '@app/features/channel/components/TypingUsers';
 import type {Channel} from '@app/features/channel/models/Channel';
-import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
 import Messages from '@app/features/messaging/state/MessagingMessages';
 import {useSlowmode} from '@app/features/slowmode/hooks/useSlowmode';
 import {msg} from '@lingui/core/macro';
@@ -65,7 +65,11 @@ export const ChannelChatLayout = observer(({channel, messages, textarea, hideBot
 	useEffect(() => {
 		if (!channel.guildId) return;
 		void GuildCastDisplay.ensureLoaded(channel.guildId);
-	}, [channel.guildId]);
+		// Also load this channel's effective cast, so a message renders with its channel/category
+		// nickname and pfp rather than the guild-wide identity. Falls back to the guild identity
+		// (loaded above) for any character not present in this channel's resolved cast.
+		void GuildCastDisplay.ensureChannelLoaded(channel.guildId, channel.id);
+	}, [channel.guildId, channel.id]);
 	const {showTypingUsers, showSlowmodeIndicator} = getChannelChatStatusVisibility({
 		hideBottomBar,
 		isSlowmodeEnabled,
