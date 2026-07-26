@@ -68,6 +68,8 @@ class ComposerInCharacter {
 	/**
 	 * Resolves eligibility once per channel. Repeat calls while a request is outstanding, or after one
 	 * has completed, are no-ops. A failure leaves the channel unresolved so a later mount can retry.
+	 * The owner index comes from the per-guild cache, so switching channels within a guild costs only
+	 * the per-channel resolved_cast fetch, not a repeated owner-accounts round trip.
 	 */
 	async ensureEligibility(guildId: string, channelId: string): Promise<void> {
 		if (this.primaryIdsByChannel.has(channelId) || this.inFlight.has(channelId)) {
@@ -75,7 +77,14 @@ class ComposerInCharacter {
 		}
 		this.inFlight.add(channelId);
 		try {
-			const primaryIds = await resolvePrimaryCharacterIds(guildId, channelId);
+			// Both round trips start together so a guild's FIRST channel still overlaps them exactly as
+			// the pre-cache code did; every later channel in the guild gets the owner index from cache
+			// and waits only on its own resolved_cast.
+			const [ownerIndex, cast] = await Promise.all([
+				ownerIndexForGuild(guildId),
+				CastCommands.getGuildCast(guildId, channelId),
+			]);
+			const primaryIds = ownerIndex == null ? EMPTY_IDS : primaryIdsFromCast(cast, ownerIndex);
 			runInAction(() => {
 				this.primaryIdsByChannel.set(channelId, primaryIds);
 				this.guildByChannel.set(channelId, guildId);
@@ -102,10 +111,26 @@ class ComposerInCharacter {
 		const channelIds = Array.from(this.guildByChannel)
 			.filter(([, gid]) => gid === guildId)
 			.map(([channelId]) => channelId);
+		if (channelIds.length === 0) {
+			return;
+		}
+		let ownerIndex: number | null;
+		try {
+			// The owner mapping does not change on a cast write, so reuse the cached index — a refresh
+			// only needs the per-channel resolved_cast refetched, never owner-accounts again.
+			ownerIndex = await ownerIndexForGuild(guildId);
+		} catch {
+			return;
+		}
+		if (ownerIndex == null) {
+			return;
+		}
+		const resolvedOwnerIndex = ownerIndex;
 		await Promise.all(
 			channelIds.map(async (channelId) => {
 				try {
-					const primaryIds = await resolvePrimaryCharacterIds(guildId, channelId);
+					const cast = await CastCommands.getGuildCast(guildId, channelId);
+					const primaryIds = primaryIdsFromCast(cast, resolvedOwnerIndex);
 					runInAction(() => {
 						this.primaryIdsByChannel.set(channelId, primaryIds);
 					});
@@ -122,34 +147,68 @@ class ComposerInCharacter {
 		this.primaryIdsByChannel.clear();
 		this.guildByChannel.clear();
 		this.inFlight.clear();
+		ownerIndexByGuild.clear();
 	}
 }
 
 const EMPTY_IDS: ReadonlyArray<string> = [];
 
 /**
- * Mirrors the server's resolution (MessageIcResolutionService): map the current user to an owner
- * index, then collect the characters that owner owns that are primary in THIS channel's effective
- * cast (the server → category → channel walk, delivered as resolved_cast). Returns empty when the
- * user has no owner mapping or no primary here.
+ * The current user's owner index per guild, resolved from owner-accounts. That mapping is guild-wide
+ * and invariant across channels, so it is fetched once per guild and reused for every channel — only
+ * the resolved_cast primary lookup is genuinely per-channel. Caching the promise rather than the
+ * value also dedupes the concurrent channel mounts that happen on a guild's first open. Held at
+ * module scope, not as a field, because nothing renders from it: it is purely an internal fetch
+ * cache, and keeping it off the observable graph lets the store pass makeAutoObservable an empty
+ * annotation map like every other store here.
  */
-async function resolvePrimaryCharacterIds(guildId: string, channelId: string): Promise<ReadonlyArray<string>> {
+const ownerIndexByGuild = new Map<string, Promise<number | null>>();
+
+/**
+ * The current user's owner index for a guild, fetched from owner-accounts once and cached. A
+ * successful lookup (an index, or null when the user is not a cast owner) is cached and reused
+ * across every channel; only a fetch/permission error is dropped so a later mount can retry.
+ */
+function ownerIndexForGuild(guildId: string): Promise<number | null> {
+	const cached = ownerIndexByGuild.get(guildId);
+	if (cached) {
+		return cached;
+	}
+	const pending = resolveOwnerIndex(guildId).catch((error: unknown) => {
+		ownerIndexByGuild.delete(guildId);
+		throw error;
+	});
+	ownerIndexByGuild.set(guildId, pending);
+	return pending;
+}
+
+/**
+ * The current user's owner index in a guild's cast, or null when the user is not a cast owner (or is
+ * unauthenticated). Guild-wide and invariant across channels — the reason ComposerInCharacter caches
+ * it per guild rather than refetching per channel.
+ */
+async function resolveOwnerIndex(guildId: string): Promise<number | null> {
 	const currentUserId = Authentication.currentUserId;
 	if (!currentUserId) {
-		return EMPTY_IDS;
+		return null;
 	}
-	const [ownerAccounts, cast] = await Promise.all([
-		CastCommands.getOwnerAccounts(guildId),
-		CastCommands.getGuildCast(guildId, channelId),
-	]);
+	const ownerAccounts = await CastCommands.getOwnerAccounts(guildId);
 	const ownerAccount = ownerAccounts.find((account) => account.fluxer_user_id === currentUserId);
-	if (!ownerAccount) {
-		return EMPTY_IDS;
-	}
+	return ownerAccount ? ownerAccount.owner_index : null;
+}
+
+/**
+ * Mirrors the server's resolution (MessageIcResolutionService): given the current user's owner index,
+ * collect the characters that owner owns that are primary in THIS channel's effective cast (the
+ * server → category → channel walk, delivered as resolved_cast). Pure, so the caller owns the fetch
+ * and can overlap it with the per-guild owner-index lookup.
+ */
+function primaryIdsFromCast(
+	cast: Awaited<ReturnType<typeof CastCommands.getGuildCast>>,
+	ownerIndex: number,
+): ReadonlyArray<string> {
 	const ownedIds = new Set(
-		cast.characters
-			.filter((character) => character.owner === ownerAccount.owner_index)
-			.map((character) => character.id),
+		cast.characters.filter((character) => character.owner === ownerIndex).map((character) => character.id),
 	);
 	return (cast.resolved_cast ?? [])
 		.filter((row) => row.is_primary && ownedIds.has(row.character_id))
