@@ -152,6 +152,13 @@ class Cast {
 			// otherwise invalidated, so without this a new character or changed pfp only appears after a
 			// reload. Fire-and-forget — the message list updates when the refetch lands.
 			void GuildCastDisplay.refresh(guildId);
+			// Refreshing the guild map alone is NOT enough, even though this tab only writes server-scoped
+			// rows. A channel's loaded cast is authoritative (getChannelIdentity), so a message list in an
+			// open channel reads the channel map and never consults the guild map — a server-scope edit
+			// would sit invisible there until a reload. The server-scope write also changes what every
+			// channel RESOLVES to, since the walk starts at the server scope. Same call, and same reasoning,
+			// as ChannelCast.runWrite.
+			void GuildCastDisplay.refreshGuildChannels(guildId);
 			// Same for the composer's optimistic in-character resolution: it caches this guild's
 			// primaries independently, so a primary change must refresh it too or the next send flashes
 			// the previous primary before the server's MESSAGE_UPDATE corrects it.
