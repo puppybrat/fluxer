@@ -109,9 +109,7 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			// The optimistic message is rendered IC up front using the caller's own primaries, so the
 			// sender sees no OOC→IC transition either; a mismatch is corrected by the create response.
 			const inCharacter = ComposerInCharacter.isChannelInCharacter(channel.id);
-			const castCharacterIds = inCharacter
-				? ComposerInCharacter.getPrimaryCharacterIds(channel.guildId ?? undefined)
-				: undefined;
+			const castCharacterIds = inCharacter ? ComposerInCharacter.getPrimaryCharacterIds(channel.id) : undefined;
 			const message = MessageSubmitUtils.createOptimisticMessage(
 				{
 					content,
@@ -172,9 +170,7 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			TypingUtils.clear(channel.id);
 			MessageCommands.stopReply(channel.id);
 			const inCharacter = ComposerInCharacter.isChannelInCharacter(channel.id);
-			const castCharacterIds = inCharacter
-				? ComposerInCharacter.getPrimaryCharacterIds(channel.guildId ?? undefined)
-				: undefined;
+			const castCharacterIds = inCharacter ? ComposerInCharacter.getPrimaryCharacterIds(channel.id) : undefined;
 			const message = new Message({
 				id: nonce,
 				channel_id: channel.id,

@@ -174,21 +174,21 @@ const ChannelTextareaContent = observer(
 			setIsFocused(false);
 			setIsInputAreaFocused(false);
 		}, [inputSuppressed]);
-		// Resolve in-character eligibility once per guild on mount, so the composer toggle is
+		// Resolve in-character eligibility once per channel on mount, so the composer toggle is
 		// present or absent from first paint rather than popping in after a per-message check.
 		useEffect(() => {
 			if (!channel.guildId) return;
-			void ComposerInCharacter.ensureEligibility(channel.guildId);
-		}, [channel.guildId]);
+			void ComposerInCharacter.ensureEligibility(channel.guildId, channel.id);
+		}, [channel.guildId, channel.id]);
 		const showGifButton = Accessibility.showGifButton && RuntimeConfig.gifEnabled;
 		const showMemesButton = Accessibility.showMemesButton;
 		const showStickersButton = Accessibility.showStickersButton;
 		const showEmojiButton = Accessibility.showEmojiButton;
 		const showMessageSendButton = Accessibility.showMessageSendButton;
-		// In-character composer toggle, gated on the current user having a primary character in this
-		// guild's cast (resolved once per guild). Hidden entirely otherwise, matching how the other
-		// expression buttons are conditionally rendered rather than disabled.
-		const showInCharacterButton = ComposerInCharacter.hasUsablePrimary(channel.guildId ?? undefined);
+		// In-character composer toggle, gated on the current user having a primary character in THIS
+		// channel's effective cast (resolved once per channel). Hidden entirely otherwise, matching how
+		// the other expression buttons are conditionally rendered rather than disabled.
+		const showInCharacterButton = ComposerInCharacter.hasUsablePrimary(channel.id);
 		const inCharacterActive = ComposerInCharacter.isChannelInCharacter(channel.id);
 		const handleInCharacterToggle = useCallback(() => {
 			ComposerInCharacter.toggleChannel(channel.id);

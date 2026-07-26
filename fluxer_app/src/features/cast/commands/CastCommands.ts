@@ -67,29 +67,40 @@ export async function getOwnerAccounts(guildId: string): Promise<Array<CastOwner
 }
 
 /**
- * The characters a given Fluxer user owns in this guild's cast, for the "Manage characters" picker.
- * Mirrors the server's ownership check (MessageIcResolutionService): map the user to an owner index
- * via owner-accounts, then take this guild's cast characters belonging to that owner. Unlike
- * resolvePrimaryCharacterIds, this returns ALL owned characters (not just primaries), since the
- * picker lets the user attribute any of their own characters. Name/avatar precedence matches
- * GuildCastDisplay. Returns empty when the user has no owner mapping. Requires MANAGE_GUILD (the
- * owner-accounts route is gated), matching the existing IC toggle's visibility.
+ * The characters a given Fluxer user owns AND that are present in a specific channel's effective
+ * cast, for the "Manage characters" picker. Mirrors the server's attribution rules
+ * (MessageIcResolutionService): map the user to an owner index via owner-accounts, keep that owner's
+ * characters, then intersect with the channel's resolved_cast so an excluded/absent character is not
+ * offered (the server would reject it). All owned primaries and non-primaries present here qualify,
+ * since the picker lets the user attribute any of their own present characters. Name/avatar come from
+ * resolved_cast, matching what a message renders in that channel. Returns empty when the user has no
+ * owner mapping. Requires MANAGE_GUILD (the owner-accounts route is gated).
  */
 export async function getOwnedCharacters(
 	guildId: string,
 	fluxerUserId: string,
+	channelId: string,
 ): Promise<Array<{id: string; name: string; avatarUrl: string | null}>> {
-	const [ownerAccounts, cast] = await Promise.all([getOwnerAccounts(guildId), getGuildCast(guildId)]);
+	const [ownerAccounts, cast] = await Promise.all([getOwnerAccounts(guildId), getGuildCast(guildId, channelId)]);
 	const ownerAccount = ownerAccounts.find((account) => account.fluxer_user_id === fluxerUserId);
 	if (!ownerAccount) {
 		return [];
 	}
-	return cast.characters
-		.filter((character) => character.owner === ownerAccount.owner_index)
-		.map((character) => ({
-			id: character.id,
-			name: character.nickname ?? character.name ?? character.id,
-			avatarUrl: character.pfp_url ?? null,
+	// Owned AND present in THIS channel's effective cast: a character excluded or absent here is not a
+	// valid attribution (the server rejects it), so it must not be offered. resolved_cast already
+	// carries the channel-walked name/pfp, so the picker shows the same identity a message renders.
+	const ownedIds = new Set(
+		cast.characters
+			.filter((character) => character.owner === ownerAccount.owner_index)
+			.map((character) => character.id),
+	);
+	const baseNameById = new Map(cast.characters.map((character) => [character.id, character.name]));
+	return (cast.resolved_cast ?? [])
+		.filter((row) => ownedIds.has(row.character_id))
+		.map((row) => ({
+			id: row.character_id,
+			name: row.nickname ?? baseNameById.get(row.character_id) ?? row.character_id,
+			avatarUrl: row.pfp_url ?? null,
 		}));
 }
 

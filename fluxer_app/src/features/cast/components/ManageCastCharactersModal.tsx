@@ -41,10 +41,12 @@ interface ManageCastCharactersModalProps {
 
 /**
  * Multi-select picker for a message's in-character attribution. Shows only the characters owned by
- * the message's author (mirroring the server's ownership rule) and pre-selects the ones the message
- * currently speaks as. Saving with one or more selected marks the message in-character as exactly
- * those; saving with none clears it back to out-of-character. The server is the source of truth —
- * this only issues the PATCH and closes; the live MESSAGE_UPDATE applies the result.
+ * the message's author AND present in the message's channel (mirroring the server's attribution
+ * rules — an excluded/absent character would be rejected on save, so it is not offered) and
+ * pre-selects the ones the message currently speaks as that still qualify. Saving with one or more
+ * selected marks the message in-character as exactly those; saving with none clears it back to
+ * out-of-character. The server is the source of truth — this only issues the PATCH and closes; the
+ * live MESSAGE_UPDATE applies the result.
  */
 export const ManageCastCharactersModal = observer(({message}: ManageCastCharactersModalProps) => {
 	const {i18n} = useLingui();
@@ -67,7 +69,7 @@ export const ManageCastCharactersModal = observer(({message}: ManageCastCharacte
 		let cancelled = false;
 		void (async () => {
 			try {
-				const owned = await CastCommands.getOwnedCharacters(guildId, message.author.id);
+				const owned = await CastCommands.getOwnedCharacters(guildId, message.author.id, message.channelId);
 				if (cancelled) {
 					return;
 				}
@@ -85,7 +87,7 @@ export const ManageCastCharactersModal = observer(({message}: ManageCastCharacte
 		return () => {
 			cancelled = true;
 		};
-	}, [guildId, message.author.id, message.castCharacterIds]);
+	}, [guildId, message.channelId, message.author.id, message.castCharacterIds]);
 
 	const filteredCharacters = useMemo(() => {
 		if (!searchTerm.trim()) {
