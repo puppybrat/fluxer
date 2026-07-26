@@ -130,10 +130,20 @@ class ChannelCast {
 		}
 	}
 
+	/**
+	 * Whether a row's channel_id identifies THIS exact scope. A server-wide row (channel_id null) is
+	 * never local — and the `this.channelId != null` guard is load-bearing: without it, a null scope
+	 * would make `null === null` true and every server membership read as local, inverting the tab
+	 * (inherited characters would vanish from the Add picker while excluded ones would reappear in it).
+	 */
+	private isLocalRow(channelId: string | null): boolean {
+		return this.channelId != null && channelId === this.channelId;
+	}
+
 	/** character_ids with a primaries row at THIS exact scope — i.e. decided locally. */
 	private get localPrimaryIds(): Set<string> {
 		return new Set(
-			this.primaries.filter((primary) => primary.channel_id === this.channelId).map((primary) => primary.character_id),
+			this.primaries.filter((primary) => this.isLocalRow(primary.channel_id)).map((primary) => primary.character_id),
 		);
 	}
 
@@ -141,7 +151,7 @@ class ChannelCast {
 	private get localOverridesByCharacterId(): Map<string, CastOverrideRow> {
 		return new Map(
 			this.overrides
-				.filter((override) => override.channel_id === this.channelId)
+				.filter((override) => this.isLocalRow(override.channel_id))
 				.map((override) => [override.character_id, override]),
 		);
 	}
@@ -189,7 +199,7 @@ class ChannelCast {
 		// Excluded-here characters never appear in resolved_cast (that is what excluded means), so
 		// surface them from the local override rows directly, or the user could never un-hide them.
 		for (const override of this.overrides) {
-			if (override.channel_id === this.channelId && override.excluded && !resolvedIds.has(override.character_id)) {
+			if (this.isLocalRow(override.channel_id) && override.excluded && !resolvedIds.has(override.character_id)) {
 				rows.push({
 					character: characterById.get(override.character_id) ?? fallbackCharacter(override.character_id),
 					status: 'excluded',
