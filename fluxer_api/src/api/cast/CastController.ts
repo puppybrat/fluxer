@@ -18,16 +18,16 @@ import {GuildIdCastCharacterIdParam, GuildIdParam} from '@fluxer/schema/src/doma
 import type {CastFetchFailure, CastPayload} from '@pkgs/cast_client/src/CastClient';
 import {getCastClient} from '@pkgs/cast_client/src/CastClient';
 import type {GuildID, UserID} from '../BrandedTypes';
-import {createGuildID} from '../BrandedTypes';
+import {createChannelID, createGuildID} from '../BrandedTypes';
 import type {IMediaService} from '../infrastructure/IMediaService';
 import {Logger} from '../Logger';
 import {LoginRequired} from '../middleware/AuthMiddleware';
-
 import {RateLimitMiddleware} from '../middleware/RateLimitMiddleware';
 import {OpenAPI} from '../middleware/ResponseTypeMiddleware';
 import {RateLimitConfigs} from '../RateLimitConfig';
 import type {HonoApp} from '../types/HonoEnv';
 import {Validator} from '../Validator';
+import {resolveEffectiveCast} from './CastResolution';
 
 function toStringOrNull(value: string | number | null | undefined): string | null {
 	return value == null ? null : String(value);
@@ -144,7 +144,7 @@ function toCastResponse(payload: CastPayload, mediaService: IMediaService) {
 	};
 }
 
-const EMPTY_CAST_RESPONSE = {characters: [], primaries: [], categories: []};
+const EMPTY_CAST_RESPONSE = {characters: [], primaries: [], categories: [], overrides: []};
 
 interface GuildWriteAuth {
 	checkPermission: (permission: bigint) => Promise<void>;
@@ -199,6 +199,7 @@ export function CastController(app: HonoApp) {
 		RateLimitMiddleware(RateLimitConfigs.GUILD_CAST_GET),
 		LoginRequired,
 		Validator('param', GuildIdParam),
+		Validator('query', CastScopeQuery),
 		OpenAPI({
 			operationId: 'get_guild_cast',
 			summary: 'Get guild cast',
@@ -207,19 +208,47 @@ export function CastController(app: HonoApp) {
 			security: ['botToken', 'bearerToken', 'sessionToken'],
 			tags: ['Guilds'],
 			description:
-				'Get the cast characters, primary assignments and category mappings for a guild. Returns empty arrays when the guild has no cast configured.',
+				'Get the cast characters, primary assignments, category mappings and raw per-scope override rows for a guild. Pass the channel_id query parameter to additionally receive resolved_cast: the effective cast (presence, primary status and display fields) resolved for that channel through the channel -> category -> server walk. Returns empty arrays when the guild has no cast configured.',
 		}),
 		async (ctx) => {
 			const userId = ctx.get('user').id;
 			const guildId = createGuildID(ctx.req.valid('param').guild_id);
+			const {channel_id} = ctx.req.valid('query');
 
 			// Gate on guild access before touching the external service: cast data must never
 			// be readable by an authenticated user who is not in the guild.
 			await ctx.get('guildService').getGuildAuthenticated({userId, guildId});
 
+			// Resolve the target channel's category up front (and confirm it belongs to this guild)
+			// so a channel-scoped read cannot leak resolution across guilds. Null category = the
+			// channel is top-level, so the walk is server -> channel with no category hop.
+			let scopedChannelId: string | null = null;
+			let scopedCategoryId: string | null = null;
+			if (channel_id !== undefined) {
+				const channel = await ctx.get('channelRepository').findUnique(createChannelID(BigInt(channel_id)));
+				if (!channel || channel.guildId?.toString() !== guildId.toString()) {
+					throw new BadRequestError({
+						code: APIErrorCodes.INVALID_REQUEST,
+						message: 'channel_id must be a channel in this guild.',
+					});
+				}
+				scopedChannelId = channel_id;
+				scopedCategoryId = channel.parentId ? channel.parentId.toString() : null;
+			}
+
 			const result = await getCastClient().fetchForServer(guildId.toString());
 			if (result.ok) {
-				return ctx.json(toCastResponse(result.data, ctx.get('mediaService')));
+				const response = toCastResponse(result.data, ctx.get('mediaService'));
+				if (scopedChannelId === null) {
+					return ctx.json(response);
+				}
+				const resolved_cast = resolveEffectiveCast({
+					primaries: response.primaries,
+					overrides: response.overrides,
+					channelId: scopedChannelId,
+					categoryId: scopedCategoryId,
+				});
+				return ctx.json({...response, resolved_cast});
 			}
 
 			// A deployment with no cast endpoint configured is a normal state, not an error:

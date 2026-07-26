@@ -923,6 +923,8 @@ export class MessageSendService {
 				const resolved = await resolveIcCharacterIds({
 					guildId: createGuildID(BigInt(guild.id)),
 					senderId: user.id,
+					channelId: channelId.toString(),
+					categoryId: channel.parentId ? channel.parentId.toString() : null,
 					characterIds: data.character_ids,
 				});
 				ic = true;

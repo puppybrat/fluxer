@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {UnclaimedAccountCannotSendMessagesError} from '@fluxer/errors/src/domains/channel/UnclaimedAccountCannotSendMessagesError';
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
+import {UnclaimedAccountCannotSendMessagesError} from '@fluxer/errors/src/domains/channel/UnclaimedAccountCannotSendMessagesError';
+import {UnknownMessageError} from '@fluxer/errors/src/domains/channel/UnknownMessageError';
 import {BadRequestError} from '@fluxer/errors/src/domains/core/BadRequestError';
 import {CannotExecuteOnDmError} from '@fluxer/errors/src/domains/core/CannotExecuteOnDmError';
-import {UnknownMessageError} from '@fluxer/errors/src/domains/channel/UnknownMessageError';
 import type {
 	BulkMessageFetchResponse,
 	MessageResponse,
@@ -14,8 +14,8 @@ import type {RequestCache} from '../../../middleware/RequestCacheMiddleware';
 import type {User} from '../../../models/User';
 import type {MessageRequest, MessageUpdateRequest} from '../../MessageTypes';
 import type {ChannelService} from '../ChannelService';
-import {resolveIcCharacterIds} from './MessageIcResolutionService';
 import {isPersonalNotesChannel} from './MessageHelpers';
+import {resolveIcCharacterIds} from './MessageIcResolutionService';
 import type {MessageResponseDataService} from './MessageResponseDataService';
 
 export class MessageRequestService {
@@ -204,6 +204,8 @@ export class MessageRequestService {
 			const resolved = await resolveIcCharacterIds({
 				guildId,
 				senderId: authorId,
+				channelId: params.channelId.toString(),
+				categoryId: authChannel.channel.parentId ? authChannel.channel.parentId.toString() : null,
 				characterIds: params.characterIds,
 			});
 			characterIds = resolved.characterIds;

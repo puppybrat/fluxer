@@ -5,17 +5,54 @@ import {BadGatewayError} from '@fluxer/errors/src/domains/core/BadGatewayError';
 import {BadRequestError} from '@fluxer/errors/src/domains/core/BadRequestError';
 import {getCastClient} from '@pkgs/cast_client/src/CastClient';
 import type {GuildID, UserID} from '../../../BrandedTypes';
+import {resolveEffectiveCast, type ScopedOverrideRow, type ScopedPrimaryRow} from '../../../cast/CastResolution';
 
 /**
  * Resolves which cast characters a message is attributed to when it is marked in-character.
  *
  * The chain is: message sender's Fluxer user id -> owner index (owner_accounts) -> that owner's
- * characters that are primary in this guild. Resolution happens once, at toggle time; the stored
- * result is never recomputed, so changing a primary later does not rewrite old messages.
+ * characters that are primary in THIS channel. Primary status is resolved through the
+ * channel -> category -> server walk (CastResolution), so a channel/category primary override wins
+ * over the server default. Resolution happens once, at toggle time; the stored result is never
+ * recomputed, so changing a primary later does not rewrite old messages.
  */
 
 interface ResolvedCast {
 	characterIds: Array<string>;
+}
+
+function toBooleanFlag(value: boolean | number | string | null | undefined): boolean {
+	return value === true || value === 1 || value === '1' || value === 'true';
+}
+
+function toScopedPrimaries(
+	rows: ReadonlyArray<{character_id: string | number; channel_id?: string | number | null; is_primary?: unknown}>,
+): Array<ScopedPrimaryRow> {
+	return rows.map((row) => ({
+		character_id: String(row.character_id),
+		channel_id: row.channel_id != null ? String(row.channel_id) : null,
+		is_primary: toBooleanFlag(row.is_primary as boolean | number | string | null | undefined),
+	}));
+}
+
+function toScopedOverrides(
+	rows: ReadonlyArray<{
+		character_id: string | number;
+		channel_id?: string | number | null;
+		nickname?: string | null;
+		pfp_url?: string | null;
+		reference_image_url?: string | null;
+		excluded?: unknown;
+	}>,
+): Array<ScopedOverrideRow> {
+	return rows.map((row) => ({
+		character_id: String(row.character_id),
+		channel_id: row.channel_id != null ? String(row.channel_id) : null,
+		nickname: row.nickname ?? null,
+		pfp_url: row.pfp_url ?? null,
+		reference_image_url: row.reference_image_url ?? null,
+		excluded: toBooleanFlag(row.excluded as boolean | number | string | null | undefined),
+	}));
 }
 
 async function loadOwnerIndex(senderId: UserID): Promise<number> {
@@ -36,49 +73,47 @@ async function loadOwnerIndex(senderId: UserID): Promise<number> {
 }
 
 /**
- * Characters belonging to `ownerIndex` that are in this guild's cast, split by primary status.
- * Both lists come from one fetch so the two views cannot disagree.
+ * The sender's owned characters, plus the raw per-scope rows needed to resolve primary status for a
+ * specific channel. Everything comes from one fetch so the views cannot disagree.
  */
-async function loadOwnedCharacters(
+async function loadCastForSender(
 	guildId: GuildID,
 	ownerIndex: number,
-): Promise<{owned: Set<string>; primary: Array<string>}> {
+): Promise<{owned: Set<string>; primaries: Array<ScopedPrimaryRow>; overrides: Array<ScopedOverrideRow>}> {
 	const cast = await getCastClient().fetchForServer(guildId.toString());
 	if (!cast.ok) {
 		throw new BadGatewayError();
 	}
-	const primaryIds = new Set(
-		cast.data.primaries
-			.filter((primary) => primary.is_primary === true || primary.is_primary === 1 || primary.is_primary === '1')
-			.map((primary) => String(primary.character_id)),
-	);
 	const owned = new Set<string>();
-	const primary: Array<string> = [];
 	for (const character of cast.data.characters) {
-		if (Number(character.owner) !== ownerIndex) {
-			continue;
-		}
-		const id = String(character.id);
-		owned.add(id);
-		if (primaryIds.has(id)) {
-			primary.push(id);
+		if (Number(character.owner) === ownerIndex) {
+			owned.add(String(character.id));
 		}
 	}
-	return {owned, primary};
+	return {
+		owned,
+		primaries: toScopedPrimaries(cast.data.primaries),
+		overrides: toScopedOverrides(cast.data.cast_overrides),
+	};
 }
 
 /**
  * Explicit ids are validated against the *sender's* characters, not the caller's: anyone may
  * toggle anyone's message, but a message can only ever be attributed to characters its own
  * author owns. Otherwise one user could put words in another's character's mouth.
+ *
+ * `channelId`/`categoryId` scope the auto-resolution: primary status is taken from the most specific
+ * scope (channel -> category -> server) that applies, via the resolution walk.
  */
 export async function resolveIcCharacterIds(params: {
 	guildId: GuildID;
 	senderId: UserID;
+	channelId: string;
+	categoryId: string | null;
 	characterIds?: Array<string>;
 }): Promise<ResolvedCast> {
 	const ownerIndex = await loadOwnerIndex(params.senderId);
-	const {owned, primary} = await loadOwnedCharacters(params.guildId, ownerIndex);
+	const {owned, primaries, overrides} = await loadCastForSender(params.guildId, ownerIndex);
 
 	if (params.characterIds !== undefined) {
 		const notOwned = params.characterIds.filter((id) => !owned.has(id));
@@ -90,6 +125,18 @@ export async function resolveIcCharacterIds(params: {
 		}
 		return {characterIds: [...new Set(params.characterIds)]};
 	}
+
+	// Auto-resolution: the sender's owned characters that are present AND primary in THIS channel,
+	// resolved through the channel -> category -> server walk rather than the server scope alone.
+	const effective = resolveEffectiveCast({
+		primaries,
+		overrides,
+		channelId: params.channelId,
+		categoryId: params.categoryId,
+	});
+	const primary = effective
+		.filter((row) => row.is_primary && owned.has(row.character_id))
+		.map((row) => row.character_id);
 
 	if (primary.length === 0) {
 		// Deliberately an error rather than a fallback: marking a message in-character with no

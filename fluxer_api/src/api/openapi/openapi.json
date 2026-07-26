@@ -7468,7 +7468,7 @@
 					}
 				},
 				"x-mint": {"metadata": {"title": "Get guild cast"}},
-				"description": "Get the cast characters, primary assignments and category mappings for a guild. Returns empty arrays when the guild has no cast configured.",
+				"description": "Get the cast characters, primary assignments, category mappings and raw per-scope override rows for a guild. Pass the channel_id query parameter to additionally receive resolved_cast: the effective cast (presence, primary status and display fields) resolved for that channel through the channel -> category -> server walk. Returns empty arrays when the guild has no cast configured.",
 				"security": [{"botToken": []}, {"sessionToken": []}],
 				"parameters": [
 					{
@@ -7477,6 +7477,16 @@
 						"required": true,
 						"schema": {"$ref": "#/components/schemas/SnowflakeType"},
 						"description": "The ID of the guild"
+					},
+					{
+						"name": "channel_id",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"maxLength": 32,
+							"description": "Scope the action to this category/channel; omit for the server-wide scope"
+						}
 					}
 				]
 			}
@@ -31518,6 +31528,11 @@
 						"type": "array",
 						"items": {"$ref": "#/components/schemas/CastOverrideRowResponse"},
 						"description": "Raw per-scope override rows (server/category/channel), for the resolution walk to consume"
+					},
+					"resolved_cast": {
+						"type": "array",
+						"items": {"$ref": "#/components/schemas/CastResolvedCharacterResponse"},
+						"description": "The effective cast resolved for the requested channel; present only when the channel_id query is given"
 					}
 				},
 				"required": ["characters", "primaries", "categories", "overrides"]
@@ -31607,6 +31622,29 @@
 					"excluded": {"type": "boolean", "description": "Whether the character is excluded (hidden) at this scope"}
 				},
 				"required": ["character_id", "channel_id", "nickname", "pfp_url", "reference_image_url", "excluded"]
+			},
+			"CastResolvedCharacterResponse": {
+				"type": "object",
+				"properties": {
+					"character_id": {
+						"type": "string",
+						"description": "The character present in the effective cast for this channel"
+					},
+					"is_primary": {"type": "boolean", "description": "Whether the character is primary at the resolved scope"},
+					"nickname": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The resolved nickname for this channel, or null"
+					},
+					"pfp_url": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The resolved avatar URL for this channel, or null"
+					},
+					"reference_image_url": {
+						"anyOf": [{"type": "string"}, {"type": "null"}],
+						"description": "The resolved reference image URL for this channel, or null"
+					}
+				},
+				"required": ["character_id", "is_primary", "nickname", "pfp_url", "reference_image_url"]
 			},
 			"CastAllCharactersResponse": {
 				"type": "object",

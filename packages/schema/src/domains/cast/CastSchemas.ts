@@ -71,6 +71,20 @@ export const CastOverrideRowResponse = z.object({
 	excluded: z.boolean().describe('Whether the character is excluded (hidden) at this scope'),
 });
 
+/**
+ * One character in the effective cast resolved for a specific channel: the merged answer of the
+ * server -> category -> channel walk. Only present characters appear; is_primary and the display
+ * fields are the resolved values for that channel. Returned only when the read is scoped to a
+ * channel (the channel_id query parameter).
+ */
+export const CastResolvedCharacterResponse = z.object({
+	character_id: z.string().describe('The character present in the effective cast for this channel'),
+	is_primary: z.boolean().describe('Whether the character is primary at the resolved scope'),
+	nickname: z.string().nullable().describe('The resolved nickname for this channel, or null'),
+	pfp_url: z.string().nullable().describe('The resolved avatar URL for this channel, or null'),
+	reference_image_url: z.string().nullable().describe('The resolved reference image URL for this channel, or null'),
+});
+
 export const CastResponse = z.object({
 	characters: z.array(CastCharacterResponse).describe('Characters available for this guild'),
 	primaries: z.array(CastPrimaryResponse).describe('Primary character assignments for this guild'),
@@ -78,6 +92,10 @@ export const CastResponse = z.object({
 	overrides: z
 		.array(CastOverrideRowResponse)
 		.describe('Raw per-scope override rows (server/category/channel), for the resolution walk to consume'),
+	resolved_cast: z
+		.array(CastResolvedCharacterResponse)
+		.optional()
+		.describe('The effective cast resolved for the requested channel; present only when the channel_id query is given'),
 });
 
 /**
@@ -177,6 +195,7 @@ export type CastCharacterResponseType = z.infer<typeof CastCharacterResponse>;
 export type CastPrimaryResponseType = z.infer<typeof CastPrimaryResponse>;
 export type CastCategoryResponseType = z.infer<typeof CastCategoryResponse>;
 export type CastOverrideRowResponseType = z.infer<typeof CastOverrideRowResponse>;
+export type CastResolvedCharacterResponseType = z.infer<typeof CastResolvedCharacterResponse>;
 export type CastResponseType = z.infer<typeof CastResponse>;
 export type CastOverrideResponseType = z.infer<typeof CastOverrideResponse>;
 export type CastOverrideUpdateRequestType = z.infer<typeof CastOverrideUpdateRequest>;
