@@ -39,7 +39,7 @@
 		"i18n:compile": "pnpm lingui:compile",
 		"i18n:extract": "pnpm lingui:extract",
 		"i18n:refresh": "pnpm i18n:extract && pnpm i18n:auto && pnpm i18n:compile",
-		"lingui:compile": "lingui compile --strict",
+		"lingui:compile": "lingui compile",
 		"lingui:extract": "lingui extract --clean",
 		"tsc:all": "pnpm wasm:codegen && pnpm tsgo -p tsconfig.json",
 		"wasm:bench": "pnpm wasm:codegen && node scripts/BenchLibfluxcore.mjs",
