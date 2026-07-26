@@ -178,6 +178,27 @@ describe('in-character head layout follows the RESOLVED character count', () => 
 		expect(renderLayout(messageWith(['ch1', 'ch2']))).toEqual({layout: 'multi', names: ['Rowan', 'Sable']});
 	});
 
+	it('applies an exclusion written at a CATEGORY scope to the channels under it', async () => {
+		// The Cast tab is shared by channel and category settings, and refreshes "the scope that was
+		// edited". A category is never itself rendering a message list, so refreshing only the edited
+		// scope leaves the real channels underneath holding stale identities.
+		const message = messageWith(['ch1', 'ch2']);
+		expect(renderLayout(message).layout).toBe('multi');
+
+		serveCast(
+			[
+				['ch1', 'Rowan'],
+				['ch2', 'Sable'],
+			],
+			[['ch1', 'Rowan']],
+		);
+		// Exactly what ChannelCast.runWrite does after a write, with the edited scope being a category.
+		await GuildCastDisplay.refresh(GUILD);
+		await GuildCastDisplay.refreshGuildChannels(GUILD);
+
+		expect(renderLayout(message)).toEqual({layout: 'single', names: ['Rowan']});
+	});
+
 	it('never renders multi and single at the same time', async () => {
 		for (const ids of [['ch1'], ['ch1', 'ch2'], ['ch1', 'ch9'], ['ch8', 'ch9']]) {
 			const {layout} = renderLayout(messageWith(ids));

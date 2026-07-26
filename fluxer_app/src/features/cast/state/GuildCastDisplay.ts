@@ -41,6 +41,9 @@ class GuildCastDisplay {
 	// its effective per-channel nickname/pfp; anything not present falls back to the guild identity.
 	private readonly byChannel = new Map<string, Map<string, CastDisplayIdentity>>();
 	private readonly channelInFlight = new Set<string>();
+	// The guild each tracked channel belongs to, so a write at any scope can re-resolve exactly the
+	// channels it could affect without a separate lookup. Mirrors ComposerInCharacter's own mapping.
+	private readonly guildByChannel = new Map<string, string>();
 
 	constructor() {
 		makeAutoObservable(this, {}, {autoBind: true});
@@ -88,6 +91,7 @@ class GuildCastDisplay {
 			const cast = await CastCommands.getGuildCast(guildId, channelId);
 			runInAction(() => {
 				this.byChannel.set(channelId, buildChannelIdentityMap(cast.resolved_cast ?? [], cast.characters));
+				this.guildByChannel.set(channelId, guildId);
 			});
 		} catch {
 			// Swallowed on purpose: same non-breaking fallback as ensureLoaded — rendering drops to the
@@ -187,10 +191,29 @@ class GuildCastDisplay {
 			const cast = await CastCommands.getGuildCast(guildId, channelId);
 			runInAction(() => {
 				this.byChannel.set(channelId, buildChannelIdentityMap(cast.resolved_cast ?? [], cast.characters));
+				this.guildByChannel.set(channelId, guildId);
 			});
 		} catch {
 			// Swallowed on purpose: a failed refresh leaves the last-known channel identities.
 		}
+	}
+
+	/**
+	 * Re-resolves every tracked channel in a guild after a cast write.
+	 *
+	 * Refreshing only the edited scope is not enough: the Cast tab is shared by channel AND category
+	 * settings, so the edited scope is often a category, which never renders a message list and is
+	 * therefore never tracked — refreshChannel would find nothing and return, leaving the real channels
+	 * beneath it holding identities that still show a character just excluded from them. A server-scope
+	 * write has the same reach. Rather than guess which channels a scope covers, re-resolve all of
+	 * them; the map only holds channels the user has actually opened, so this stays small. Same
+	 * reasoning, and same shape, as ComposerInCharacter.refresh.
+	 */
+	async refreshGuildChannels(guildId: string): Promise<void> {
+		const channelIds = Array.from(this.guildByChannel)
+			.filter(([, trackedGuildId]) => trackedGuildId === guildId)
+			.map(([channelId]) => channelId);
+		await Promise.all(channelIds.map((channelId) => this.refreshChannel(guildId, channelId)));
 	}
 
 	/**
@@ -210,6 +233,7 @@ class GuildCastDisplay {
 		this.inFlight.clear();
 		this.byChannel.clear();
 		this.channelInFlight.clear();
+		this.guildByChannel.clear();
 	}
 }
 

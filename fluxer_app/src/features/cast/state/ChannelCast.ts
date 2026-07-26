@@ -248,9 +248,10 @@ class ChannelCast {
 			// Mirror the guild tab: message rendering and the composer's optimistic in-character
 			// resolution both cache a guild's cast independently, so refresh them after any write.
 			void GuildCastDisplay.refresh(guildId);
-			// Also refresh THIS scope's channel identities, so an open message list in the edited
-			// channel picks up a new channel/category nickname or pfp without a reload.
-			void GuildCastDisplay.refreshChannel(guildId, channelId);
+			// Refresh every tracked channel in the guild, not just the edited scope: this tab also edits
+			// CATEGORY scopes, and a category is never itself tracked, so refreshing only the edited
+			// scope would leave the channels under it showing a character just excluded from them.
+			void GuildCastDisplay.refreshGuildChannels(guildId);
 			void ComposerInCharacter.refresh(guildId);
 			runInAction(() => {
 				this.pendingCharacterIds.delete(characterId);
