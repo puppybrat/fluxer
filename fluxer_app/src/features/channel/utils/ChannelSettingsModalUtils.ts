@@ -12,6 +12,8 @@ import type {I18n} from '@lingui/core';
 
 export interface ChannelSettingsModalProps {
 	channelId: string;
+	/** Desktop: the tab to open on, instead of 'overview'. Mirrors GuildSettingsModal's initialTab. */
+	initialTab?: ChannelSettingsTabType;
 	initialMobileTab?: ChannelSettingsTabType;
 }
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {CastOverviewPanel} from '@app/features/cast/components/CastOverviewPanel';
 import {
 	AccountTooNewBarrier,
 	NoPhoneNumberBarrier,
@@ -11,7 +12,6 @@ import {
 import {ChannelChatLayout} from '@app/features/channel/components/ChannelChatLayout';
 import {ChannelHeader} from '@app/features/channel/components/ChannelHeader';
 import styles from '@app/features/channel/components/ChannelIndexPage.module.css';
-import {ChannelMembers} from '@app/features/channel/components/ChannelMembers';
 import {Messages} from '@app/features/channel/components/ChannelMessages';
 import {ChannelSearchResults} from '@app/features/channel/components/ChannelSearchResults';
 import {ChannelTextarea} from '@app/features/channel/components/ChannelTextarea';
@@ -551,11 +551,9 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 							/>
 						</div>
 					) : shouldRenderMemberList ? (
-						<ChannelMembers
-							channel={channel}
-							guild={guild}
-							data-flx="channel.channel-view.guild-channel-view.channel-members--2"
-						/>
+						// This slot (and its header toggle) now opens the read-only Cast Overview instead of
+						// the member list. Members itself is untouched as a feature — only this access point.
+						<CastOverviewPanel guildId={guild.id} />
 					) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
 						<SelectModePanel guild={guild} channel={channel} />
 					) : (
@@ -611,11 +609,9 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 						/>
 					</div>
 				) : shouldRenderMemberList ? (
-					<ChannelMembers
-						channel={channel}
-						guild={guild}
-						data-flx="channel.channel-view.guild-channel-view.channel-members"
-					/>
+					// Same replacement as the voice-call layout above: the Members access point in this
+					// slot now shows the read-only Cast Overview.
+					<CastOverviewPanel guildId={guild.id} />
 				) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
 					<SelectModePanel guild={guild} channel={channel} />
 				) : (

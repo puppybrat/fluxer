@@ -1,0 +1,150 @@
+/*
+ * Styles for CastOverviewPanel — the read-only cast tree that occupies the side panel slot the
+ * Members list used to. Structure deliberately mirrors SelectModePanel.module.css /
+ * MemberListContainer.module.css: the <aside> owns layout + background and hides overflow, and the
+ * Scroller inside carries the padding.
+ */
+
+.container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	width: 16.5rem;
+	min-width: 0;
+	overflow: hidden;
+	background-color: var(--background-secondary-lighter);
+}
+
+.scrollerPadding {
+	flex: 1;
+	min-height: 0;
+	background-color: var(--background-secondary-lighter);
+	padding-top: 0.25rem;
+	padding-left: var(--spacing-2);
+	padding-right: var(--spacing-2);
+	padding-bottom: var(--spacing-4);
+}
+
+.scrollerContent {
+	gap: 12px;
+}
+
+.title {
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	opacity: 0.7;
+	flex-shrink: 0;
+}
+
+.group {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+/* Channel groups nested under a category are indented to show they belong to it. */
+.nested {
+	margin-left: var(--spacing-3);
+	padding-left: var(--spacing-2);
+	border-left: 1px solid var(--background-modifier-accent, rgba(255, 255, 255, 0.08));
+}
+
+.groupHeader {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--spacing-2);
+}
+
+.groupName {
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--text-primary-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.openLink {
+	flex-shrink: 0;
+	font-size: 11px;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	color: var(--text-link, #00a8fc);
+}
+
+.openLink:hover {
+	text-decoration: underline;
+}
+
+.entryList {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.entry {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing-1);
+	font-size: 0.8125rem;
+}
+
+.entryName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.entryNickname {
+	font-size: 11px;
+	opacity: 0.6;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.badge {
+	flex-shrink: 0;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	padding: 1px 5px;
+	border-radius: 4px;
+}
+
+.badgeAdded {
+	background: rgba(67, 181, 129, 0.15);
+	color: #43b581;
+}
+
+.badgeEdited {
+	background: rgba(114, 137, 218, 0.15);
+	color: #7289da;
+}
+
+.badgeExcluded {
+	background: rgba(240, 71, 71, 0.15);
+	color: #f04747;
+}
+
+.muted {
+	font-size: 11px;
+	opacity: 0.45;
+	font-style: italic;
+}
+
+.error {
+	padding: 8px 10px;
+	border-radius: 4px;
+	font-size: 13px;
+	background: rgba(240, 71, 71, 0.15);
+	color: #f04747;
+	word-break: break-word;
+}
