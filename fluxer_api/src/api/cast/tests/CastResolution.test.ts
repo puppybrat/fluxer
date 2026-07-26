@@ -95,6 +95,32 @@ describe('resolveEffectiveCast', () => {
 		]);
 	});
 
+	it('excludes when the Exclude action leaves both rows at one scope', () => {
+		// What the Exclude UI actually writes for an inherited character: the backend rejects an
+		// override at a scope with no local membership, so the action adds a local presence row and
+		// THEN flags it excluded. Both rows therefore land at the same scope, and the exclusion has to
+		// win over the membership row it was forced to create.
+		const result = resolveEffectiveCast({
+			primaries: [primary('X', null, true), primary('X', CHANNEL, false)],
+			overrides: [override('X', CHANNEL, {excluded: true})],
+			channelId: CHANNEL,
+			ancestorChain: [CATEGORY],
+		});
+		expect(result).toEqual([]);
+	});
+
+	it('excludes with both rows at a category scope too', () => {
+		// Same two-write shape, but performed on a category: the exclusion must still win for a
+		// channel that inherits through that category.
+		const result = resolveEffectiveCast({
+			primaries: [primary('Y', null, true), primary('Y', CATEGORY, false)],
+			overrides: [override('Y', CATEGORY, {excluded: true})],
+			channelId: CHANNEL,
+			ancestorChain: [CATEGORY],
+		});
+		expect(result).toEqual([]);
+	});
+
 	it('resolves per-field overrides independently (category nickname + channel pfp both apply)', () => {
 		const result = resolveEffectiveCast({
 			primaries: [primary('F', null, true)],
