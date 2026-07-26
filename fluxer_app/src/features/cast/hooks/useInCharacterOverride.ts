@@ -25,9 +25,12 @@ const CHARACTER_NAME_COLOR = 'var(--text-primary)';
  * Resolves the character identity to render in place of the real sender for an in-character
  * message, or undefined when the message should render as its sender.
  *
- * Only single-character messages substitute: multi-character attribution needs a combined name
- * and stacked avatars that do not exist yet, and a character that no longer resolves in the
- * guild's cast falls back rather than asserting a stale identity.
+ * Substitutes a single character head whenever EXACTLY ONE of the message's attributed characters
+ * still resolves — whether it was sent with one, or with several and all but one were later removed
+ * from the cast. Two or more resolvable go to the multi-character heads instead; zero resolvable
+ * falls back to the real sender rather than asserting a stale identity. Gating on the resolvable
+ * count (not the raw stored count) is what lets a thinned-out multi-character message collapse to a
+ * single head with the right spacing.
  *
  * `guildId` is the channel's guild — messages do not carry guild_id over the wire, so callers
  * pass the resolved guild id, which is the same key ChannelChatLayout loads the cast under.
@@ -38,10 +41,23 @@ const CHARACTER_NAME_COLOR = 'var(--text-primary)';
  * stabilises the returned object reference against its own contents.
  */
 export function useInCharacterOverride(message: Message, guildId: string | undefined): InCharacterOverride | undefined {
-	const identity =
-		message.ic && message.castCharacterIds.length === 1
-			? GuildCastDisplay.getChannelIdentity(message.guildId ?? guildId, message.channelId, message.castCharacterIds[0])
-			: null;
+	const resolvedGuildId = message.guildId ?? guildId;
+	// Collect every attributed character that still resolves; the single head applies only when
+	// exactly one does (matching what the multi-character hook drops out of at two).
+	let identity: ReturnType<typeof GuildCastDisplay.getChannelIdentity> = null;
+	let resolvedCount = 0;
+	if (message.ic) {
+		for (const id of message.castCharacterIds) {
+			const found = GuildCastDisplay.getChannelIdentity(resolvedGuildId, message.channelId, id);
+			if (found) {
+				resolvedCount += 1;
+				identity = found;
+			}
+		}
+	}
+	if (resolvedCount !== 1) {
+		identity = null;
+	}
 	return useMemo(
 		() =>
 			identity
