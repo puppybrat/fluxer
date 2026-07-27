@@ -4,18 +4,18 @@ import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
 import styles from '@app/features/cast/components/CastOverviewRow.module.css';
 import {CastEditOverrideModal} from '@app/features/cast/components/modals/CastEditOverrideModal';
 import {refreshCastDisplayCaches} from '@app/features/cast/state/CastDisplayRefresh';
-import ChannelCast from '@app/features/cast/state/ChannelCast';
 import type {CastOverviewEntry, CastOverviewScopeKind} from '@app/features/cast/utils/CastOverviewTree';
 import {
 	castOverviewRowControls,
 	excludeWrite,
+	openRowModal,
+	overrideWrite,
 	primaryWrite,
 	removeWrite,
 	runCastRowWrite,
 } from '@app/features/cast/utils/CastOverviewRowModel';
 import {CANCEL_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {DataMenuRenderer} from '@app/features/ui/action_menu/DataMenuRenderer';
-import {Checkbox} from '@app/features/ui/checkbox/Checkbox';
 import * as ContextMenuCommands from '@app/features/ui/commands/ContextMenuCommands';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import * as ToastCommands from '@app/features/ui/commands/ToastCommands';
@@ -27,7 +27,15 @@ import {BaseAvatar} from '@app/features/ui/components/BaseAvatar';
 import {clsx} from 'clsx';
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
-import {DotsThreeVerticalIcon, EyeSlashIcon, XIcon} from '@phosphor-icons/react';
+import {
+	ArrowSquareOutIcon,
+	DotsThreeVerticalIcon,
+	EyeIcon,
+	EyeSlashIcon,
+	PencilSimpleIcon,
+	StarIcon,
+	TrashIcon,
+} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
 import {useCallback, useState} from 'react';
@@ -132,10 +140,48 @@ export const CastOverviewRow: React.FC<{
 		[runWrite, guildId, scopeId, entry],
 	);
 
-	const handleRemove = useCallback(() => {
-		const label = entry.name;
-		ModalCommands.push(
-			ModalCommands.modal(() => (
+	/**
+	 * Opening happens through runAfterBottomSheetClose, NOT directly.
+	 *
+	 * A mobile bottom sheet owns a history entry (useBottomSheetBackHandler) and calls history.back()
+	 * as it closes. A modal opened synchronously in the same tick installs its own popstate listener
+	 * (useModalBackHandler) and then sees that pending pop land — whose state is not its own id — so
+	 * it immediately closes itself. That is the flash-then-vanish. The two hooks each have their own
+	 * module-level cleanup guard, so neither suppresses the other; sequencing is the only fix.
+	 */
+	const openModal = useCallback((close: () => void, render: () => React.ReactElement) => {
+		openRowModal(
+			{
+				runAfterBottomSheetClose: ModalCommands.runAfterBottomSheetClose,
+				push: (r) => ModalCommands.push(ModalCommands.modal(r as () => React.ReactElement)),
+			},
+			close,
+			render,
+		);
+	}, []);
+
+	/**
+	 * Saves the edit against THIS row's scope explicitly, rather than letting the modal fall back to
+	 * the ChannelCast store — that store holds one scope at a time, and this page shows many, so the
+	 * store's idea of "the current scope" is not this row's.
+	 */
+	const saveOverride = useCallback(
+		async (update: {nickname: string | null; pfpUrl: string | null; referenceImageUrl: string | null}) => {
+			try {
+				await runCastRowWrite(overrideWrite(guildId, scopeId, entry, update));
+				refreshCastDisplayCaches(guildId);
+				return true;
+			} catch {
+				return false;
+			}
+		},
+		[guildId, entry, scopeId],
+	);
+
+	const handleRemove = useCallback(
+		(close: () => void) => {
+			const label = entry.name;
+			openModal(close, () => (
 				<ConfirmModal
 					title={i18n._(REMOVE_CHARACTER_DESCRIPTOR)}
 					description={
@@ -152,21 +198,14 @@ export const CastOverviewRow: React.FC<{
 					}}
 					data-flx="cast.cast-overview-row.confirm-modal.remove"
 				/>
-			)),
-		);
-	}, [entry, guildId, i18n, runWrite, scopeId]);
+			));
+		},
+		[entry, guildId, i18n, openModal, runWrite, scopeId],
+	);
 
-	/**
-	 * The edit modal writes through ChannelCast when it is given a channelId, so the store has to be
-	 * pointed at THIS row's scope before it opens or the save lands on whichever scope was loaded
-	 * last. Loading first is what makes reusing the modal unchanged safe from this page.
-	 */
-	const handleEdit = useCallback(async () => {
-		if (scopeId != null) {
-			await ChannelCast.load(guildId, scopeId);
-		}
-		ModalCommands.push(
-			ModalCommands.modal(() => (
+	const handleEdit = useCallback(
+		(close: () => void) => {
+			openModal(close, () => (
 				<CastEditOverrideModal
 					guildId={guildId}
 					channelId={scopeId}
@@ -176,10 +215,12 @@ export const CastOverviewRow: React.FC<{
 					currentNickname={entry.localOverride?.nickname ?? null}
 					currentPfpUrl={entry.localOverride?.pfpUrl ?? null}
 					currentReferenceImageUrl={entry.localOverride?.referenceImageUrl ?? null}
+					onSave={saveOverride}
 				/>
-			)),
-		);
-	}, [entry.character, entry.localOverride, guildId, scopeId]);
+			));
+		},
+		[entry.character, entry.localOverride, guildId, openModal, saveOverride, scopeId],
+	);
 
 	const handleViewProfile = useCallback(() => {
 		if (profileUrl == null) {
@@ -199,11 +240,11 @@ export const CastOverviewRow: React.FC<{
 				items: [
 					{
 						id: 'edit',
+						icon: <PencilSimpleIcon size={20} data-flx="cast.cast-overview-row.edit-icon" />,
 						label: i18n._(EDIT_DESCRIPTOR),
-						onClick: () => {
-							close();
-							void handleEdit();
-						},
+						// `close` is handed to the handler rather than called here: it must be sequenced with
+						// the modal open, not fired before it.
+						onClick: () => handleEdit(close),
 					},
 					// Omitted entirely when the roster carries no usable name: the slug would be built from
 					// the character id and link confidently to a page that cannot exist.
@@ -211,6 +252,7 @@ export const CastOverviewRow: React.FC<{
 						? [
 								{
 									id: 'view-profile',
+									icon: <ArrowSquareOutIcon size={20} data-flx="cast.cast-overview-row.profile-icon" />,
 									label: i18n._(VIEW_PROFILE_DESCRIPTOR),
 									onClick: () => {
 										close();
@@ -219,10 +261,23 @@ export const CastOverviewRow: React.FC<{
 								},
 							]
 						: []),
+					// Moved in from a standalone icon so every row action lives in one place. Same
+					// removeCharacter write and the same always-available rule as before.
+					...(canRemove
+						? [
+								{
+									id: 'remove',
+									icon: <TrashIcon size={20} data-flx="cast.cast-overview-row.remove-icon" />,
+									label: i18n._(REMOVE_CHARACTER_DESCRIPTOR),
+									danger: true,
+									onClick: () => handleRemove(close),
+								},
+							]
+						: []),
 				],
 			},
 		],
-		[handleEdit, handleViewProfile, i18n, profileUrl],
+		[canRemove, handleEdit, handleRemove, handleViewProfile, i18n, profileUrl],
 	);
 
 	const handleMenuClick = useCallback(
@@ -278,41 +333,42 @@ export const CastOverviewRow: React.FC<{
 			</div>
 
 			<div className={styles.actions} data-flx="cast.cast-overview-row.actions">
-				<Checkbox
-					checked={isPrimary}
+				{/* Filled star when primary, outline when not — the state IS the icon, so the control is
+				    a toggle button rather than a checkbox with a text label. */}
+				<button
+					type="button"
+					className={clsx(styles.actionsButton, isPrimary && styles.actionsButtonActive)}
+					onClick={() => handlePrimaryChange(!isPrimary)}
 					disabled={pending}
-					onChange={handlePrimaryChange}
-					size="small"
-					className={styles.toggle}
-					data-flx="cast.cast-overview-row.checkbox.primary"
+					aria-pressed={isPrimary}
+					aria-label={i18n._(PRIMARY_DESCRIPTOR)}
+					title={i18n._(PRIMARY_DESCRIPTOR)}
+					data-flx="cast.cast-overview-row.button.primary"
 				>
-					{i18n._(PRIMARY_DESCRIPTOR)}
-				</Checkbox>
+					<StarIcon
+						weight={isPrimary ? 'fill' : 'regular'}
+						size={18}
+						data-flx="cast.cast-overview-row.primary-icon"
+					/>
+				</button>
 
+				{/* Open eye = visible here, slashed eye = hidden here. */}
 				{canExclude && (
-					<Checkbox
-						checked={isExcluded}
-						disabled={pending}
-						onChange={handleExcludeChange}
-						size="small"
-						className={styles.toggle}
-						data-flx="cast.cast-overview-row.checkbox.exclude"
-					>
-						{i18n._(EXCLUDE_DESCRIPTOR)}
-					</Checkbox>
-				)}
-
-				{canRemove && (
 					<button
 						type="button"
-						className={clsx(styles.actionsButton, styles.actionsButtonDanger)}
-						onClick={handleRemove}
+						className={clsx(styles.actionsButton, isExcluded && styles.actionsButtonActive)}
+						onClick={() => handleExcludeChange(!isExcluded)}
 						disabled={pending}
-						aria-label={i18n._(REMOVE_DESCRIPTOR)}
-						title={i18n._(REMOVE_DESCRIPTOR)}
-						data-flx="cast.cast-overview-row.button.remove"
+						aria-pressed={isExcluded}
+						aria-label={i18n._(EXCLUDE_DESCRIPTOR)}
+						title={i18n._(EXCLUDE_DESCRIPTOR)}
+						data-flx="cast.cast-overview-row.button.exclude"
 					>
-						<XIcon weight="bold" size={18} data-flx="cast.cast-overview-row.remove-icon" />
+						{isExcluded ? (
+							<EyeSlashIcon size={18} data-flx="cast.cast-overview-row.exclude-icon-hidden" />
+						) : (
+							<EyeIcon size={18} data-flx="cast.cast-overview-row.exclude-icon-visible" />
+						)}
 					</button>
 				)}
 

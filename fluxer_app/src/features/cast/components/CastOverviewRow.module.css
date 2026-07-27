@@ -143,8 +143,11 @@
 	cursor: default;
 }
 
-/* Same control, but destructive on hover so removal is not visually identical to opening a menu. */
-.actionsButtonDanger:hover:not(:disabled) {
+/*
+ * The "on" state of the star and eye toggles. Uses the same lit treatment as an open menu trigger so
+ * the row has one visual language for "this control is currently engaged".
+ */
+.actionsButtonActive {
 	background-color: var(--background-secondary-alt);
-	color: var(--status-danger);
+	color: var(--text-primary);
 }
