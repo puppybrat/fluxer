@@ -176,7 +176,9 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 							{i18n._(ADD_CHARACTER_DESCRIPTOR)}
 						</button>
 					</div>
-					{group.entries.length > 0 ? (
+					{/* An empty scope renders as just its header and Add button — that is how it gets its
+					    first override, so there is no "nothing here" copy to add. */}
+					{group.entries.length > 0 && (
 						<div className={styles.entryList}>
 							{group.entries.map((entry) => (
 								<CastOverviewRow
@@ -189,12 +191,6 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 								/>
 							))}
 						</div>
-					) : (
-						// A structural-only category has no delta of its own; it is listed purely so its
-						// overridden channels nest under the right name.
-						<span className={styles.muted}>
-							{group.structuralOnly ? 'No changes at this category' : 'No changes here'}
-						</span>
 					)}
 					{group.children.map((child) => renderGroup(child, true))}
 				</div>

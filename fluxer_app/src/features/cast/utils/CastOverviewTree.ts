@@ -53,13 +53,8 @@ export interface CastOverviewGroup {
 	/** The channel/category id this group is scoped to; null for the server-wide group. */
 	scopeId: string | null;
 	name: string;
+	/** This scope's own local rows. Empty is normal and rendered as label + Add. */
 	entries: Array<CastOverviewEntry>;
-	/**
-	 * True when a category appears ONLY to host overridden channels beneath it and has no local
-	 * delta of its own. Such a category is still rendered as a header so its children nest visibly
-	 * under the right name rather than floating at the top level.
-	 */
-	structuralOnly: boolean;
 	/** Channel groups nested under a category. Always empty for channel and server groups. */
 	children: Array<CastOverviewGroup>;
 }
@@ -205,8 +200,9 @@ function buildEntriesForScope(
  * what the sidebar does — organizeChannels emits the root bucket before any category, so position
  * only orders within each partition and can never lift a channel between two categories.
  *
- * A category with overridden children but no local delta of its own is still emitted, flagged
- * `structuralOnly`, so its children remain visibly grouped under the right category name.
+ * EVERY category and channel gets a group, whether or not it has any local cast data. An empty one
+ * renders as just its label and an Add button, which is how a scope gets its first override — build
+ * the tree only from scopes that already have rows and there is no way in.
  *
  * Only categories can have children (the channel model forbids nesting a category under a category),
  * so the tree is at most two levels deep by construction.
@@ -214,7 +210,10 @@ function buildEntriesForScope(
 export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup> {
 	const {primaries, overrides, channelsById} = args;
 
-	const scopedIds = new Set<string>();
+	// The union of every channel in the guild AND every scope carrying rows. The second half is not
+	// redundant: cast rows can outlive the channel they point at (a deleted channel whose overrides
+	// were never cleaned up upstream), and enumerating the store alone would silently hide them.
+	const scopedIds = new Set<string>(channelsById.keys());
 	for (const row of [...primaries, ...overrides]) {
 		if (row.channel_id != null) {
 			scopedIds.add(row.channel_id);
@@ -244,10 +243,8 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 
 	for (const scopeId of scopedIds) {
 		const info = channelsById.get(scopeId);
+		// No empty-scope skip: a scope with nothing local is exactly the one that needs its Add button.
 		const entries = buildEntriesForScope(scopeId, args);
-		if (entries.length === 0) {
-			continue;
-		}
 		if (info?.isCategory) {
 			categoryGroups.set(scopeId, {
 				ordering: orderingFor(scopeId, info),
@@ -256,7 +253,6 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 					scopeId,
 					name: displayName(scopeId, info, true),
 					entries,
-					structuralOnly: false,
 					children: [],
 				},
 			});
@@ -269,7 +265,6 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 				scopeId,
 				name: displayName(scopeId, info, false),
 				entries,
-				structuralOnly: false,
 				children: [],
 			},
 		};
@@ -294,6 +289,8 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 			existing.group.children = children.sort(compareSortable).map((child) => child.group);
 			continue;
 		}
+		// A parent the store does not know about: still emitted so its children stay grouped under
+		// something rather than floating at the top level.
 		const info = channelsById.get(parentId);
 		categoryGroups.set(parentId, {
 			ordering: orderingFor(parentId, info),
@@ -301,8 +298,7 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 				kind: 'category',
 				scopeId: parentId,
 				name: displayName(parentId, info, true),
-				entries: [],
-				structuralOnly: true,
+				entries: buildEntriesForScope(parentId, args),
 				children: children.sort(compareSortable).map((child) => child.group),
 			},
 		});
@@ -313,7 +309,6 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 		scopeId: null,
 		name: '',
 		entries: buildEntriesForScope(null, args),
-		structuralOnly: false,
 		children: [],
 	};
 

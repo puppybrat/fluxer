@@ -56,11 +56,10 @@ function channels(...infos: Array<CastOverviewChannelInfo>): ReadonlyMap<string,
 	return new Map(infos.map((info) => [info.id, info]));
 }
 
-/** Compact shape for assertions: name, whether it is a structural-only header, and its entries. */
+/** Compact shape for assertions: kind, name and entries, with any nested children. */
 const shape = (g: CastOverviewGroup) => ({
 	kind: g.kind,
 	name: g.name,
-	structural: g.structuralOnly,
 	entries: g.entries.map((e) => `${e.name}:${e.status}`),
 	children: g.children.map((c) => ({name: c.name, entries: c.entries.map((e) => `${e.name}:${e.status}`)})),
 });
@@ -91,12 +90,11 @@ describe('Cast Overview tree', () => {
 		});
 
 		expect(tree.map(shape)).toEqual([
-			{kind: 'server', name: '', structural: false, entries: ['Rowan:edited', 'Sable:added'], children: []},
+			{kind: 'server', name: '', entries: ['Rowan:edited', 'Sable:added'], children: []},
 			{
 				kind: 'category',
 				name: 'Text Channels',
-				structural: true, // listed only to host #testing
-				entries: [],
+				entries: [], // no delta of its own, but still listed and still addable
 				children: [{name: '#testing', entries: ['Sable:edited']}],
 			},
 		]);
@@ -173,7 +171,6 @@ describe('Cast Overview tree', () => {
 			channelsById: channels(cat('cat1', 'Both'), chan('chan1', 'kid', 'cat1')),
 		});
 		const group = tree[1]!;
-		expect(group.structuralOnly).toBe(false);
 		expect(group.entries.map((e) => e.name)).toEqual(['Rowan']);
 		expect(group.children.map((c) => c.name)).toEqual(['#kid']);
 	});
@@ -206,16 +203,21 @@ describe('Cast Overview tree', () => {
 		expect(entry.localOverride).toEqual({nickname: 'Xav', pfpUrl: null, referenceImageUrl: null});
 	});
 
-	it('omits a scope whose rows produce no local delta', () => {
+	/**
+	 * The scope still appears — every channel does — but an override row carrying no display fields
+	 * and no exclusion is not a local delta, so it contributes no ENTRY.
+	 */
+	it('lists a scope whose rows produce no local delta, with no entries', () => {
 		const tree = buildCastOverviewTree({
 			characters: [character('c1', 'Rowan')],
-			// An override row carrying no display fields and no exclusion changes nothing locally.
 			primaries: [],
 			overrides: [override('c1', 'ch')],
 			channelsById: channels(chan('ch', 'quiet', null)),
 		});
-		expect(tree).toHaveLength(1);
-		expect(tree[0]!.kind).toBe('server');
+		expect(tree.map(shape)).toEqual([
+			{kind: 'server', name: '', entries: [], children: []},
+			{kind: 'channel', name: '#quiet', entries: [], children: []},
+		]);
 	});
 
 	it('falls back to the raw id for a scope whose channel is unknown, at the top level', () => {
@@ -247,6 +249,88 @@ describe('Cast Overview tree', () => {
 			channelsById: channels(),
 		});
 		expect(tree[0]!.entries[0]!.name).toBe('c1');
+	});
+
+	/**
+	 * Every channel and category gets a section whether or not it has cast data. An empty one is the
+	 * point, not an omission: its Add button is how that scope gets its first override, so building
+	 * the tree only from scopes that already have rows leaves no way in.
+	 */
+	describe('full channel enumeration', () => {
+		it('emits a group for every channel and category, with no cast data at all', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(
+					cat('cat1', 'Text Channels', 0),
+					chan('c-general', 'general', 'cat1', 0),
+					chan('c-testing', 'testing', 'cat1', 1),
+					cat('cat2', 'Voice Channels', 1),
+					chan('c-voice', 'General', 'cat2', 0),
+					chan('c-loose', 'parent-test', null, 3),
+				),
+			});
+
+			// Server first, then the parentless channel, then categories in position order with their
+			// own children nested — the sidebar's ordering, now over the FULL channel list.
+			expect(tree.map(shape)).toEqual([
+				{kind: 'server', name: '', entries: [], children: []},
+				{kind: 'channel', name: '#parent-test', entries: [], children: []},
+				{
+					kind: 'category',
+					name: 'Text Channels',
+					entries: [],
+					children: [
+						{name: '#general', entries: []},
+						{name: '#testing', entries: []},
+					],
+				},
+				{kind: 'category', name: 'Voice Channels', entries: [], children: [{name: '#General', entries: []}]},
+			]);
+		});
+
+		it('still carries local rows onto the scopes that have them', () => {
+			const tree = buildCastOverviewTree({
+				characters: [character('c1', 'Rowan')],
+				primaries: [primary('c1', 'c-general')],
+				overrides: [],
+				channelsById: channels(cat('cat1', 'Text'), chan('c-general', 'general', 'cat1'), chan('c-quiet', 'quiet', 'cat1')),
+			});
+			const category = tree.find((g) => g.name === 'Text')!;
+			expect(category.children.map((c) => ({name: c.name, entries: c.entries.map((e) => e.name)}))).toEqual([
+				{name: '#general', entries: ['Rowan']},
+				{name: '#quiet', entries: []},
+			]);
+		});
+
+		/**
+		 * Cast rows can outlive the channel they point at. Enumerating the store alone would drop the
+		 * scope entirely and silently hide real overrides, so the union keeps it — named by raw id,
+		 * since there is no channel left to name it.
+		 */
+		it('keeps a scope that has rows but no channel record', () => {
+			const tree = buildCastOverviewTree({
+				characters: [character('c1', 'Rowan')],
+				primaries: [primary('c1', 'deleted-channel')],
+				overrides: [],
+				channelsById: channels(chan('c-live', 'live', null)),
+			});
+			const orphan = tree.find((g) => g.scopeId === 'deleted-channel');
+			expect(orphan).toBeDefined();
+			expect(orphan!.name).toBe('deleted-channel');
+			expect(orphan!.entries.map((e) => e.name)).toEqual(['Rowan']);
+		});
+
+		it('emits only the server group for a guild with no channels', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(),
+			});
+			expect(tree.map(shape)).toEqual([{kind: 'server', name: '', entries: [], children: []}]);
+		});
 	});
 
 	/** The row's Primary checkbox reads this; it is per-scope, not a property of the character. */
