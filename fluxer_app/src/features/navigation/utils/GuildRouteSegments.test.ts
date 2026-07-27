@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {describe, expect, it, vi} from 'vitest';
+
+// Routes pulls in marketingUrl, which reaches the runtime config and throws without the bootstrap
+// the proxy injects. Stubbed so the real Routes.guildCast can still be asserted against — the point
+// of importing it here is to check the entry's ACTUAL navigation target, not a copy of it.
+vi.mock('@app/features/messaging/utils/MessagingUrlUtils', () => ({marketingUrl: () => ''}));
+
+import {Routes} from '@app/app/Routes';
 import {
 	asGuildPageSegment,
 	GUILD_PAGE_SEGMENTS,
@@ -8,7 +16,6 @@ import {
 	isGuildPageRoute,
 	showsGuildContent,
 } from '@app/features/navigation/utils/GuildRouteSegments';
-import {describe, expect, it} from 'vitest';
 
 const GUILD = '1517785346346057728';
 const CHANNEL = '1524705144518737920';
@@ -102,6 +109,49 @@ describe('guild route segments', () => {
 			const fromAnyPath = `/channels/${GUILD}/cast`;
 			expect(showsGuildContent(fromAnyPath, GUILD, undefined)).toBe(true);
 			expect(showsGuildContent(fromAnyPath, GUILD, null)).toBe(true);
+		});
+	});
+
+	/**
+	 * The sidebar's pinned Cast entry is not platform-gated: the same list is the desktop sidebar and
+	 * the mobile "no channel selected" screen, so tapping the entry there has to land on the Cast page
+	 * rather than fall back to the channel list.
+	 *
+	 * Built from Routes.guildCast rather than a hand-written path, so the entry's REAL navigation
+	 * target is what gets checked — if that route string ever moves, this fails instead of quietly
+	 * testing a path nothing navigates to.
+	 */
+	describe('the sidebar Cast entry, which mobile now shows too', () => {
+		const castPath = Routes.guildCast(GUILD);
+
+		it('targets the route the layout recognises as guild content', () => {
+			expect(castPath).toBe(`/channels/${GUILD}/cast`);
+			// No :channelId on this route — the exact condition that used to render the channel list.
+			expect(showsGuildContent(castPath, GUILD, undefined)).toBe(true);
+		});
+
+		it('leaves no channel looking selected in the list behind it', () => {
+			expect(getGuildChannelSegment(castPath, GUILD)).toBeNull();
+			expect(asGuildPageSegment(getGuildPathSegment(castPath, GUILD))).toBe('cast');
+		});
+
+		/**
+		 * The entry uses the same transitionTo as a channel tap, and a channel tap still has to behave
+		 * exactly as before — this is the regression the un-gating could plausibly cause.
+		 */
+		it('does not disturb ordinary channel selection', () => {
+			const channelPath = Routes.guildChannel(GUILD, CHANNEL);
+			expect(showsGuildContent(channelPath, GUILD, CHANNEL)).toBe(true);
+			expect(getGuildChannelSegment(channelPath, GUILD)).toBe(CHANNEL);
+			expect(asGuildPageSegment(getGuildPathSegment(channelPath, GUILD))).toBeNull();
+		});
+
+		/** Identical to the guild-header-menu path, because both resolve to the same pathname. */
+		it('is indistinguishable from the guild-header-menu route', () => {
+			expect(Routes.guildCast(GUILD)).toBe(castPath);
+			expect(showsGuildContent(castPath, GUILD, undefined)).toBe(
+				showsGuildContent(`/channels/${GUILD}/cast`, GUILD, undefined),
+			);
 		});
 	});
 });

@@ -46,7 +46,6 @@ import type {ScrollerHandle} from '@app/features/ui/components/Scroller';
 import {Scroller} from '@app/features/ui/components/Scroller';
 import Dimension from '@app/features/ui/state/Dimension';
 import KeyboardMode from '@app/features/ui/state/KeyboardMode';
-import MobileLayout from '@app/features/ui/state/MobileLayout';
 import * as UserGuildSettingsCommands from '@app/features/user/commands/UserGuildSettingsCommands';
 import UserGuildSettings from '@app/features/user/state/UserGuildSettings';
 import MediaEngine from '@app/features/voice/engine/MediaEngineFacade';
@@ -126,11 +125,15 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 	const connectedChannelId = MediaEngine.channelId;
 	const hideMutedChannels = userGuildSettings?.hide_muted_channels ?? false;
 	const showFadedUnreadOnMutedChannels = Accessibility.showFadedUnreadOnMutedChannels;
-	const isMobile = MobileLayout.enabled;
 	// Deliberately reuses MEMBERS_PAGE_PERMISSIONS rather than inventing a cast-specific permission:
-	// this entry occupies the slot the Members entry did, under the same gate, including !isMobile —
-	// mobile reaches the cast page from the guild menu instead.
-	const canViewCast = !isMobile && ((Permission.getGuildPermissions(guild.id) ?? 0n) & MEMBERS_PAGE_PERMISSIONS) !== 0n;
+	// this entry occupies the slot the Members entry did, under the same gate.
+	//
+	// Not gated on platform. This list is the mobile "no channel selected" screen as well as the
+	// desktop sidebar — GuildLayout renders the same GuildNavbar in both — so the entry sits in the
+	// same slot above the channel list either way, and its transitionTo is the same mechanism a
+	// channel tap uses. GuildLayout recognises the resulting route via showsGuildContent, which is
+	// route-based and so does not care which control triggered the navigation.
+	const canViewCast = ((Permission.getGuildPermissions(guild.id) ?? 0n) & MEMBERS_PAGE_PERMISSIONS) !== 0n;
 	// Shared with GuildLayout so the sidebar's idea of "a guild page is open" cannot drift from the
 	// layout's — they disagreeing is exactly what left these routes rendering nothing on mobile.
 	const guildPageSegment = asGuildPageSegment(getGuildPathSegment(location.pathname, guild.id));
