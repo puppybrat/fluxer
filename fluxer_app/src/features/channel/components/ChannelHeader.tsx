@@ -6,7 +6,6 @@ import {NativeDragRegion} from '@app/features/app/components/layout/NativeDragRe
 import {GroupDMAvatar} from '@app/features/app/components/shared/GroupDMAvatar';
 import {useTextOverflow} from '@app/features/app/hooks/useTextOverflow';
 import {ChannelDetailsBottomSheet} from '@app/features/channel/components/bottomsheets/ChannelDetailsBottomSheet';
-import type {ChannelDetailsTab} from '@app/features/channel/components/bottomsheets/ChannelDetailsBottomSheetTypes';
 import {ChannelSearchBottomSheet} from '@app/features/channel/components/bottomsheets/ChannelSearchBottomSheet';
 import styles from '@app/features/channel/components/ChannelHeader.module.css';
 import {UserTag} from '@app/features/channel/components/ChannelUserTag';
@@ -39,9 +38,9 @@ import {ChannelTopicModal} from '@app/features/channel/components/modals/Channel
 import {CreateDMModal} from '@app/features/channel/components/modals/CreateDMModal';
 import {EditGroupModal} from '@app/features/channel/components/modals/EditGroupModal';
 import type {Channel} from '@app/features/channel/models/Channel';
+import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 // LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
 import SelectMode from '@app/features/channel/state/SelectMode';
-import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 import {isGroupDmFull} from '@app/features/channel/utils/GroupDmUtils';
 import {
 	ADD_TO_FAVORITES_DESCRIPTOR,
@@ -165,9 +164,7 @@ export const ChannelHeader = observer(
 			: isMembersOpen;
 		const [channelDetailsOpen, setChannelDetailsOpen] = useState(false);
 		const [searchSheetOpen, setSearchSheetOpen] = useState(false);
-		// undefined means "let the sheet pick its own default", which is now Cast for a guild channel
-		// and Members for a DM. Only an explicit CHANNEL_DETAILS_OPEN payload overrides that.
-		const [initialTab, setInitialTab] = useState<ChannelDetailsTab | undefined>(undefined);
+		const [initialTab, setInitialTab] = useState<'members' | 'pins'>('members');
 		const {
 			searchQuery,
 			searchSegments,
@@ -317,8 +314,8 @@ export const ChannelHeader = observer(
 		}, [channel]);
 		useEffect(() => {
 			const handleChannelDetailsOpen = (payload?: unknown) => {
-				const {initialTab} = (payload ?? {}) as {initialTab?: ChannelDetailsTab};
-				setInitialTab(initialTab);
+				const {initialTab} = (payload ?? {}) as {initialTab?: 'members' | 'pins'};
+				setInitialTab(initialTab || 'members');
 				setChannelDetailsOpen(true);
 			};
 			return ComponentDispatch.subscribe('CHANNEL_DETAILS_OPEN', handleChannelDetailsOpen);
@@ -382,9 +379,7 @@ export const ChannelHeader = observer(
 			}
 		}, [onBackClick, isDM, isGroupDM, isPersonalNotes, isGuildChannel, channel?.guildId, location.pathname]);
 		const handleChannelDetailsClick = () => {
-			// No explicit tab: tapping the channel name lands on the sheet's default, which is Cast on a
-			// guild channel — the mobile counterpart of desktop's Cast Overview taking the Members slot.
-			setInitialTab(undefined);
+			setInitialTab('members');
 			setChannelDetailsOpen(true);
 		};
 		const handleOpenChannelTopic = useCallback(() => {
@@ -999,7 +994,7 @@ export const ChannelHeader = observer(
 							isOpen={channelDetailsOpen}
 							onClose={() => {
 								setChannelDetailsOpen(false);
-								setInitialTab(undefined);
+								setInitialTab('members');
 							}}
 							channel={channel}
 							initialTab={initialTab}

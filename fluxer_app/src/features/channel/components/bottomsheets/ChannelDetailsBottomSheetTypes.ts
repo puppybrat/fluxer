@@ -2,7 +2,7 @@
 
 import type {Channel} from '@app/features/channel/models/Channel';
 
-export type ChannelDetailsTab = 'cast' | 'members' | 'pins';
+export type ChannelDetailsTab = 'members' | 'pins';
 
 export interface ChannelDetailsBottomSheetProps {
 	isOpen: boolean;

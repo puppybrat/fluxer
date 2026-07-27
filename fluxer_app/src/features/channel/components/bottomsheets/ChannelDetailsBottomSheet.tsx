@@ -6,7 +6,6 @@ import {MuteDurationSheet} from '@app/features/app/components/bottomsheets/MuteD
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
 import {ChannelPinsContent} from '@app/features/app/components/shared/ChannelPinsContent';
 import Authentication from '@app/features/auth/state/Authentication';
-import {CastOverviewContent} from '@app/features/cast/components/CastOverviewContent';
 import * as ChannelCommands from '@app/features/channel/commands/ChannelCommands';
 import * as PrivateChannelCommands from '@app/features/channel/commands/PrivateChannelCommands';
 import {
@@ -20,10 +19,6 @@ import type {
 	ChannelDetailsBottomSheetProps,
 	ChannelDetailsTab,
 } from '@app/features/channel/components/bottomsheets/ChannelDetailsBottomSheetTypes';
-import {
-	CHANNEL_DETAILS_TAB_ORDER,
-	resolveDefaultChannelDetailsTab,
-} from '@app/features/channel/components/bottomsheets/ChannelDetailsTabs';
 import {ChannelSearchBottomSheet} from '@app/features/channel/components/bottomsheets/ChannelSearchBottomSheet';
 import {
 	ARE_YOU_SURE_YOU_WANT_TO_CLOSE_YOUR_DESCRIPTOR,
@@ -124,16 +119,15 @@ import {ME} from '@fluxer/constants/src/AppConstants';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {MessageNotifications} from '@fluxer/constants/src/NotificationConstants';
 import {Trans, useLingui} from '@lingui/react/macro';
-import {UsersThreeIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 
+const CHANNEL_DETAILS_TAB_ORDER: ReadonlyArray<ChannelDetailsTab> = ['members', 'pins'];
 export const ChannelDetailsBottomSheet: React.FC<ChannelDetailsBottomSheetProps> = observer(
-	({isOpen, onClose, channel, initialTab}) => {
+	({isOpen, onClose, channel, initialTab = 'members'}) => {
 		const {i18n} = useLingui();
-		const defaultTab = resolveDefaultChannelDetailsTab(channel.guildId);
-		const [activeTab, setActiveTab] = useState<ChannelDetailsTab>(initialTab ?? defaultTab);
+		const [activeTab, setActiveTab] = useState<ChannelDetailsTab>(initialTab);
 		const [muteSheetOpen, setMuteSheetOpen] = useState(false);
 		const [searchSheetOpen, setSearchSheetOpen] = useState(false);
 		const [moreOptionsSheetOpen, setMoreOptionsSheetOpen] = useState(false);
@@ -142,8 +136,8 @@ export const ChannelDetailsBottomSheet: React.FC<ChannelDetailsBottomSheetProps>
 		const leaveGroup = useLeaveGroup();
 		const deleteMyMessagesInChannel = useDeleteMyMessagesInChannel();
 		useEffect(() => {
-			setActiveTab(initialTab ?? defaultTab);
-		}, [initialTab, defaultTab]);
+			setActiveTab(initialTab);
+		}, [initialTab]);
 		const isDM = channel.type === ChannelTypes.DM;
 		const isPersonalNotes = channel.type === ChannelTypes.DM_PERSONAL_NOTES;
 		const isGuildChannel = channel.guildId != null;
@@ -177,10 +171,8 @@ export const ChannelDetailsBottomSheet: React.FC<ChannelDetailsBottomSheetProps>
 		const isFavorited = !!Favorites.getChannel(channel.id);
 		const showFavorites = Accessibility.showFavorites;
 		const isGroupDM = channel.type === ChannelTypes.GROUP_DM;
-		const castTabId = `channel-details-${channel.id}-cast-tab`;
 		const membersTabId = `channel-details-${channel.id}-members-tab`;
 		const pinsTabId = `channel-details-${channel.id}-pins-tab`;
-		const castPanelId = `channel-details-${channel.id}-cast-panel`;
 		const membersPanelId = `channel-details-${channel.id}-members-panel`;
 		const pinsPanelId = `channel-details-${channel.id}-pins-panel`;
 		const developerMode = UserSettings.developerMode;
@@ -205,10 +197,10 @@ export const ChannelDetailsBottomSheet: React.FC<ChannelDetailsBottomSheetProps>
 				event.preventDefault();
 				event.stopPropagation();
 				setActiveTab(nextTab);
-				const targetId = nextTab === 'cast' ? castTabId : nextTab === 'members' ? membersTabId : pinsTabId;
+				const targetId = nextTab === 'members' ? membersTabId : pinsTabId;
 				requestAnimationFrame(() => document.getElementById(targetId)?.focus());
 			},
-			[activeTab, castTabId, membersTabId, pinsTabId],
+			[activeTab, membersTabId, pinsTabId],
 		);
 		const handleMarkAsRead = useCallback(() => {
 			ReadStateCommands.ack(channel.id, true, true);
@@ -578,28 +570,6 @@ export const ChannelDetailsBottomSheet: React.FC<ChannelDetailsBottomSheetProps>
 								aria-label={i18n._(CHANNEL_DETAILS_SECTIONS_DESCRIPTOR)}
 								data-flx="channel.channel-details-bottom-sheet.tab-bar-container"
 							>
-								{isGuildChannel && (
-									<button
-										id={castTabId}
-										type="button"
-										role="tab"
-										aria-selected={activeTab === 'cast'}
-										aria-controls={castPanelId}
-										tabIndex={activeTab === 'cast' ? 0 : -1}
-										onClick={() => setActiveTab('cast')}
-										onKeyDown={handleTabKeyDown}
-										className={`${styles.tabButton} ${activeTab === 'cast' ? styles.tabButtonActive : styles.tabButtonInactive}`}
-										style={activeTab === 'cast' ? {borderBottomColor: 'var(--brand-primary-light)'} : undefined}
-										data-flx="channel.channel-details-bottom-sheet.tab-button.set-active-tab-cast"
-									>
-										<UsersThreeIcon
-											className={styles.tabIcon}
-											aria-hidden="true"
-											data-flx="channel.channel-details-bottom-sheet.tab-icon-cast"
-										/>
-										<Trans>Cast</Trans>
-									</button>
-								)}
 								<button
 									id={membersTabId}
 									type="button"
@@ -642,22 +612,6 @@ export const ChannelDetailsBottomSheet: React.FC<ChannelDetailsBottomSheetProps>
 								</button>
 							</div>
 							<div className={styles.contentArea} data-flx="channel.channel-details-bottom-sheet.content-area">
-								{activeTab === 'cast' && isGuildChannel && (
-									<div
-										id={castPanelId}
-										className={styles.membersTabContent}
-										role="tabpanel"
-										aria-labelledby={castTabId}
-										data-flx="channel.channel-details-bottom-sheet.cast-tab-content"
-									>
-										{/*
-										 * Guild-wide content in a channel-scoped sheet: the Cast Overview covers every
-										 * scope in the community, not just this channel. The sheet is simply the entry
-										 * point mobile already has; channel.guildId is all this needs from it.
-										 */}
-										<CastOverviewContent guildId={channel.guildId} />
-									</div>
-								)}
 								{activeTab === 'members' && (
 									<div
 										id={membersPanelId}
