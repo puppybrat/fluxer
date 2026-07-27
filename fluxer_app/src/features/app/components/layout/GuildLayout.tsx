@@ -24,9 +24,10 @@ import * as InviteUtils from '@app/features/invite/utils/InviteUtils';
 import {adminUrl} from '@app/features/messaging/utils/MessagingUrlUtils';
 import Navigation from '@app/features/navigation/state/Navigation';
 import SelectedChannel from '@app/features/navigation/state/SelectedChannel';
+import {showsGuildContent} from '@app/features/navigation/utils/GuildRouteSegments';
 import Permission from '@app/features/permissions/state/Permission';
 import * as PermissionUtils from '@app/features/permissions/utils/PermissionUtils';
-import {useParams} from '@app/features/platform/components/router/RouterReact';
+import {useLocation, useParams} from '@app/features/platform/components/router/RouterReact';
 import {ComponentDispatch} from '@app/features/platform/utils/ComponentBus';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
@@ -334,6 +335,13 @@ const GuildUnavailable = observer(function GuildUnavailable({
 export const GuildLayout = observer(({children}: {children: React.ReactNode}) => {
 	const {i18n} = useLingui();
 	const {guildId, channelId} = useParams() as {guildId: string; channelId?: string};
+	const layoutLocation = useLocation();
+	/**
+	 * Guild pages (members, cast) replace the channel view but carry no :channelId route param, so
+	 * the mobile branch below cannot decide what to show from channelId alone — without this it reads
+	 * them as "nothing selected" and falls back to the channel list, never mounting the page.
+	 */
+	const hasGuildContent = showsGuildContent(layoutLocation.pathname, guildId, channelId);
 	const mobileLayout = MobileLayout;
 	const guild = Guilds.getGuild(guildId);
 	const unavailableGuilds = GuildAvailability.unavailableGuilds;
@@ -543,13 +551,13 @@ export const GuildLayout = observer(({children}: {children: React.ReactNode}) =>
 			<TopNagbarContext.Provider value={nagbarContextValue}>
 				{guild && (
 					<div
-						className={channelId ? styles.mobileNavbarHidden : styles.mobileNavbarSlot}
+						className={hasGuildContent ? styles.mobileNavbarHidden : styles.mobileNavbarSlot}
 						data-flx="app.guild-layout.mobile-navbar"
 					>
 						<GuildNavbar guild={guild} data-flx="app.guild-layout.guild-navbar" />
 					</div>
 				)}
-				{channelId && (
+				{hasGuildContent && (
 					<div
 						className={hasGuildNagbars ? styles.guildLayoutContainerWithNagbar : styles.guildLayoutContainer}
 						data-flx="app.guild-layout.guild-layout-container--2"

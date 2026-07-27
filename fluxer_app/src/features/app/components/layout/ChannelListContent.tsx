@@ -28,6 +28,11 @@ import Channels from '@app/features/channel/state/Channels';
 import * as GuildCommands from '@app/features/guild/commands/GuildCommands';
 import type {Guild} from '@app/features/guild/models/Guild';
 import {isKeyboardActivationKey} from '@app/features/input/utils/KeyboardUtils';
+import {
+	asGuildPageSegment,
+	getGuildChannelSegment,
+	getGuildPathSegment,
+} from '@app/features/navigation/utils/GuildRouteSegments';
 import * as RouterUtils from '@app/features/navigation/utils/RouterUtils';
 import Permission from '@app/features/permissions/state/Permission';
 import {useLocation} from '@app/features/platform/components/router/RouterReact';
@@ -126,27 +131,14 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 	// this entry occupies the slot the Members entry did, under the same gate, including !isMobile —
 	// mobile reaches the cast page from the guild menu instead.
 	const canViewCast = !isMobile && ((Permission.getGuildPermissions(guild.id) ?? 0n) & MEMBERS_PAGE_PERMISSIONS) !== 0n;
-	const guildPrefix = `/channels/${guild.id}/`;
-	let selectedChannelInGuildId: string | null = null;
-	let isMembersSelected = false;
-	let isCastSelected = false;
-	if (location.pathname.startsWith(guildPrefix)) {
-		const tail = location.pathname.slice(guildPrefix.length);
-		const slash = tail.indexOf('/');
-		const segment = slash === -1 ? tail : tail.slice(0, slash);
-		if (segment === 'cast') {
-			isCastSelected = true;
-		} else if (segment === 'members') {
-			// No longer linked from this sidebar, but the route still exists and stays reachable from
-			// the guild menu — so it must still suppress channel selection rather than read as a id.
-			isMembersSelected = true;
-		} else if (segment.length > 0) {
-			selectedChannelInGuildId = segment;
-		}
-	}
-	// Both the members and cast routes replace the channel view, so neither should leave a channel
-	// looking selected in the sidebar.
-	const isOnNonChannelRoute = isMembersSelected || isCastSelected;
+	// Shared with GuildLayout so the sidebar's idea of "a guild page is open" cannot drift from the
+	// layout's — they disagreeing is exactly what left these routes rendering nothing on mobile.
+	const guildPageSegment = asGuildPageSegment(getGuildPathSegment(location.pathname, guild.id));
+	const selectedChannelInGuildId = getGuildChannelSegment(location.pathname, guild.id);
+	const isCastSelected = guildPageSegment === 'cast';
+	// Members is no longer linked from this sidebar, but the route still exists and stays reachable
+	// from the guild menu, so it must still suppress channel selection rather than read as an id.
+	const isOnNonChannelRoute = guildPageSegment != null;
 	const handleCastClick = useCallback(() => {
 		RouterUtils.transitionTo(Routes.guildCast(guild.id));
 	}, [guild.id]);
