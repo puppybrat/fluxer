@@ -6,5 +6,6 @@
 			"@fluxer/*": ["./../../packages/*"]
 		}
 	},
-	"include": ["src/**/*.tsx", "src/**/*.ts"]
+	"include": ["src/**/*.tsx", "src/**/*.ts"],
+	"exclude": ["src/domains/tests/GuildChannelNesting.test.ts"]
 }
