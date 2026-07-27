@@ -13,6 +13,7 @@ import {
 	type CastOverviewGroup,
 } from '@app/features/cast/utils/CastOverviewTree';
 import Channels from '@app/features/channel/state/Channels';
+import {Button} from '@app/features/ui/button/Button';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
 import {msg} from '@lingui/core/macro';
@@ -167,14 +168,19 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 						<span className={styles.groupName} title={label}>
 							{label}
 						</span>
-						<button
+						{/* The same Button component the settings Cast tab uses for its own Add character
+						    control, rather than a bare link-styled <button>. Kept `small` and secondary
+						    because unlike that tab — one button in a header — there is one of these per
+						    scope, and a column of primary buttons would fight the rows for attention. */}
+						<Button
 							type="button"
-							className={styles.addButton}
+							variant="secondary"
+							small
 							onClick={() => void openAddCharacter(group.scopeId)}
 							data-flx="cast.cast-overview-content.button.add"
 						>
 							{i18n._(ADD_CHARACTER_DESCRIPTOR)}
-						</button>
+						</Button>
 					</div>
 					{/* An empty scope renders as just its header and Add button — that is how it gets its
 					    first override, so there is no "nothing here" copy to add. */}
