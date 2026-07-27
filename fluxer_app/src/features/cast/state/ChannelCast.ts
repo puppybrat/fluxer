@@ -38,6 +38,30 @@ export interface CastScopedRow {
 }
 
 /**
+ * Which roster characters a picker may offer, given the rows already on screen.
+ *
+ * `inheritedCountsAsPresent` is the whole difference between the two picker rules: a surface that
+ * LISTS inherited rows has already handled them and must not offer them again, while a surface that
+ * shows local rows only needs the picker as the one way to pull an inherited character local.
+ *
+ * Deliberately a module-level function rather than a private method: `makeAutoObservable` annotates
+ * prototype methods as actions, and an action untracks its observable reads — calling one from a
+ * computed getter would sever that getter's dependency on `rows` and stop the picker updating.
+ */
+function offerableCharacters(
+	allCharacters: ReadonlyArray<CastCharacter>,
+	rows: ReadonlyArray<CastScopedRow>,
+	inheritedCountsAsPresent: boolean,
+): Array<CastCharacter> {
+	const blockedIds = new Set(
+		rows
+			.filter((row) => inheritedCountsAsPresent || row.status !== 'inherited')
+			.map((row) => row.character.id),
+	);
+	return allCharacters.filter((character) => !blockedIds.has(character.id));
+}
+
+/**
  * The cast as seen from a single channel/category scope. Separate from the server-scoped `Cast`
  * singleton because its whole job is the per-scope inherited/local/excluded distinction that the
  * guild tab has no concept of. Only one settings modal is open at a time, so a singleton is safe.
@@ -221,10 +245,25 @@ class ChannelCast {
 	 * inherited) nor excluded. Every character already shown as a row is handled from its row instead:
 	 * a present one via Edit/Primary (which silently takes local control of an inherited one) or
 	 * Exclude/Remove, an excluded one via Un-exclude. Derived from `rows` so the two cannot disagree.
+	 *
+	 * This is the rule for the settings Cast tab, which lists inherited rows itself. A surface that
+	 * shows LOCAL rows only wants `locallyAddableCharacters` instead.
 	 */
 	get addableCharacters(): Array<CastCharacter> {
-		const shownIds = new Set(this.rows.map((row) => row.character.id));
-		return this.allCharacters.filter((character) => !shownIds.has(character.id));
+		return offerableCharacters(this.allCharacters, this.rows, true);
+	}
+
+	/**
+	 * The same picker, for a surface that renders only what this scope decides ITSELF — the Cast
+	 * Overview. There an inherited character has no row at all, so the picker is the only way to pull
+	 * it into local view, which is what must happen before it can be excluded or overridden here.
+	 *
+	 * Locally-present characters are still withheld, excluded ones included: an excluded character
+	 * does have a local row and does show on that surface, so offering it again would be a second,
+	 * worse way to un-exclude it.
+	 */
+	get locallyAddableCharacters(): Array<CastCharacter> {
+		return offerableCharacters(this.allCharacters, this.rows, false);
 	}
 
 	isPending(characterId: string): boolean {

@@ -145,6 +145,10 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 					<CastAddCharacterModal
 						guildId={guildId}
 						channelId={scopeId}
+						// This page shows each scope's LOCAL rows only, so an inherited character has no row
+						// here and the picker is the only way to pull it local — which is what has to happen
+						// before it can be excluded or overridden at this scope.
+						offerInheritedCharacters
 						data-flx="cast.cast-overview-content.add-character-modal"
 					/>
 				)),

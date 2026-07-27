@@ -35,9 +35,18 @@ const ADD_DESCRIPTOR = msg({
  * `channelId` the picker reads from and writes through the scoped `ChannelCast` store — offering the
  * full roster so a character already in the server cast can still be added locally — otherwise it is
  * the unchanged server-scope picker backed by `Cast`.
+ *
+ * `offerInheritedCharacters` picks which scoped exclusion rule applies, and defaults to the settings
+ * tab's: that tab lists inherited rows itself, so offering them here too would be a second way to do
+ * what the row already does. A surface showing LOCAL rows only opts in, because for it the picker is
+ * the one way an inherited character becomes local. It has no effect at server scope, where nothing
+ * is inherited.
  */
-export const CastAddCharacterModal: React.FC<{guildId: string; channelId?: string | null}> = observer(
-	({guildId, channelId}) => {
+export const CastAddCharacterModal: React.FC<{
+	guildId: string;
+	channelId?: string | null;
+	offerInheritedCharacters?: boolean;
+}> = observer(({guildId, channelId, offerInheritedCharacters = false}) => {
 		const {i18n} = useLingui();
 		const [query, setQuery] = useState('');
 		const scoped = channelId != null;
@@ -60,7 +69,10 @@ export const CastAddCharacterModal: React.FC<{guildId: string; channelId?: strin
 		const isPending = (characterId: string): boolean =>
 			scoped ? ChannelCast.isPending(characterId) : Cast.isPending(characterId);
 
-		const addable = scoped ? ChannelCast.addableCharacters : Cast.addableCharacters;
+		const scopedAddable = offerInheritedCharacters
+			? ChannelCast.locallyAddableCharacters
+			: ChannelCast.addableCharacters;
+		const addable = scoped ? scopedAddable : Cast.addableCharacters;
 		const filtered = useMemo(() => {
 			const needle = query.trim().toLowerCase();
 			if (needle === '') {

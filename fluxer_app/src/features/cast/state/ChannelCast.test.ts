@@ -11,7 +11,12 @@ vi.mock('@app/features/cast/commands/CastCommands', () => ({
 	updateOverride: vi.fn(),
 }));
 vi.mock('@app/features/cast/state/ComposerInCharacter', () => ({default: {refresh: vi.fn()}}));
-vi.mock('@app/features/cast/state/GuildCastDisplay', () => ({default: {refresh: vi.fn()}}));
+// Both refreshes, not just the first: runWrite fans out to refresh AND refreshGuildChannels, and a
+// mock missing either makes every write throw late and get swallowed, leaving the suite green for
+// the wrong reason (`load` has already updated the rows by the time it throws).
+vi.mock('@app/features/cast/state/GuildCastDisplay', () => ({
+	default: {refresh: vi.fn(), refreshGuildChannels: vi.fn()},
+}));
 
 import * as CastCommands from '@app/features/cast/commands/CastCommands';
 import ChannelCast from '@app/features/cast/state/ChannelCast';
@@ -143,6 +148,9 @@ describe('ChannelCast — scoped picker filter', () => {
 
 		await ChannelCast.exclude('inh');
 
+		// The write must actually have completed. Without this the suite still passes when runWrite
+		// throws late and swallows it, because `load` has already refreshed the rows by then.
+		expect(ChannelCast.writeError).toBeNull();
 		expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.status).toBe('excluded');
 		expect(ChannelCast.addableCharacters.map((c) => c.id)).not.toContain('inh');
 	});
@@ -160,6 +168,83 @@ describe('ChannelCast — scoped picker filter', () => {
 		expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.status).toBe('local');
 		await ChannelCast.loadAllCharacters('g');
 		expect(ChannelCast.addableCharacters.map((c) => c.id)).not.toContain('inh');
+	});
+
+	/**
+	 * The Cast Overview renders each scope's LOCAL rows only, so an inherited character has no row
+	 * there at all. Its picker therefore has to offer inherited characters — pulling one local is the
+	 * prerequisite for excluding or overriding it at that scope — while the settings tab's picker must
+	 * keep withholding them, because that tab lists them as rows already.
+	 */
+	describe('locallyAddableCharacters — the local-rows-only surface', () => {
+		/** The same fixture as the first test: one of each status, plus a fully-absent character. */
+		async function loadOneOfEachStatus() {
+			const backend = makeBackend([
+				{character_id: 'inh', channel_id: null, is_primary: false},
+				{character_id: 'exc', channel_id: null, is_primary: false},
+				{character_id: 'exc', channel_id: CH, is_primary: false},
+				{character_id: 'loc', channel_id: CH, is_primary: false},
+			]);
+			backend.overrides.push({
+				character_id: 'exc',
+				channel_id: CH,
+				excluded: true,
+				nickname: null,
+				pfp_url: null,
+				reference_image_url: null,
+			});
+			wireBackend(backend, ['inh', 'exc', 'loc', 'abs'].map(character));
+			await ChannelCast.load('g', CH);
+			await ChannelCast.loadAllCharacters('g');
+			return backend;
+		}
+
+		it('offers the inherited character as well as the absent one', async () => {
+			await loadOneOfEachStatus();
+			expect(ChannelCast.locallyAddableCharacters.map((c) => c.id).sort()).toEqual(['abs', 'inh']);
+		});
+
+		/**
+		 * An excluded character DOES have a local row and DOES show on that surface, so offering it
+		 * again would be a second, worse way to un-exclude it. Locally-present is likewise withheld.
+		 */
+		it('still withholds locally-present and excluded characters', async () => {
+			await loadOneOfEachStatus();
+			const offered = ChannelCast.locallyAddableCharacters.map((c) => c.id);
+			expect(offered).not.toContain('loc');
+			expect(offered).not.toContain('exc');
+		});
+
+		/** The regression that matters: the settings tab's rule must be untouched by all of this. */
+		it('leaves the settings-tab rule withholding the inherited character', async () => {
+			await loadOneOfEachStatus();
+			expect(ChannelCast.addableCharacters.map((c) => c.id).sort()).toEqual(['abs']);
+		});
+
+		it('stops offering an inherited character once it has been pulled local', async () => {
+			await loadOneOfEachStatus();
+			expect(ChannelCast.locallyAddableCharacters.map((c) => c.id)).toContain('inh');
+
+			await ChannelCast.addLocal('inh');
+
+			expect(ChannelCast.writeError).toBeNull();
+			expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.status).toBe('local');
+			expect(ChannelCast.locallyAddableCharacters.map((c) => c.id)).not.toContain('inh');
+			// And it was never on offer in the settings tab, before or after.
+			expect(ChannelCast.addableCharacters.map((c) => c.id)).not.toContain('inh');
+		});
+
+		/**
+		 * The two rules may only ever differ by inherited characters. Anything else diverging means one
+		 * of them has drifted into a different notion of "already handled here".
+		 */
+		it('differs from the settings-tab rule by exactly the inherited characters', async () => {
+			await loadOneOfEachStatus();
+			const inheritedIds = ChannelCast.rows.filter((r) => r.status === 'inherited').map((r) => r.character.id);
+			const settingsTab = new Set(ChannelCast.addableCharacters.map((c) => c.id));
+			const overview = ChannelCast.locallyAddableCharacters.map((c) => c.id);
+			expect(overview.filter((id) => !settingsTab.has(id)).sort()).toEqual([...inheritedIds].sort());
+		});
 	});
 
 	it('a server-scope (null) row is never treated as local, even if the scope is unset', async () => {
