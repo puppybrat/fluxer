@@ -3,8 +3,11 @@
 import {
 	castOverviewRowControls,
 	excludeWrite,
+	openRowModal,
+	overrideWrite,
 	primaryWrite,
 	removeWrite,
+	type RowModalOpener,
 } from '@app/features/cast/utils/CastOverviewRowModel';
 import type {CastOverviewEntry, CastOverviewEntryStatus} from '@app/features/cast/utils/CastOverviewTree';
 import {describe, expect, it} from 'vitest';
@@ -182,5 +185,121 @@ describe('what each control writes', () => {
 				});
 			}
 		});
+	});
+});
+
+describe('Edit targets this row, not whatever the scoped store last loaded', () => {
+	const update = {nickname: 'Ro', pfpUrl: 'https://example.test/a.png', referenceImageUrl: null};
+
+	it('carries this row scope and character', () => {
+		expect(overrideWrite(GUILD, CHANNEL, entry(), update)).toEqual({
+			kind: 'setOverride',
+			guildId: GUILD,
+			characterId: CHARACTER,
+			channelId: CHANNEL,
+			nickname: 'Ro',
+			pfpUrl: 'https://example.test/a.png',
+			referenceImageUrl: null,
+		});
+	});
+
+	/**
+	 * updateOverride distinguishes "not supplied" from "explicitly cleared", so a server-scope save
+	 * must send channel_id: null rather than omitting it — unlike setPrimary and removeCharacter,
+	 * which omit it. Getting this backwards would write the edit to the wrong scope.
+	 */
+	it('sends an explicit null channel server-wide, not an omitted one', () => {
+		const write = overrideWrite(GUILD, null, entry(), update);
+		expect(write).toMatchObject({kind: 'setOverride', channelId: null});
+	});
+
+	it('clears fields as null rather than dropping them', () => {
+		expect(overrideWrite(GUILD, CHANNEL, entry(), {nickname: null, pfpUrl: null, referenceImageUrl: null})).toMatchObject(
+			{nickname: null, pfpUrl: null, referenceImageUrl: null},
+		);
+	});
+
+	it('never borrows the character from anywhere but the row', () => {
+		const other = entry({characterId: 'someone-else'});
+		expect(overrideWrite(GUILD, CHANNEL, other, update)).toMatchObject({characterId: 'someone-else'});
+	});
+});
+
+/**
+ * The flash-then-vanish regression.
+ *
+ * A mobile bottom sheet holds a history entry and calls history.back() as it closes. A modal pushed
+ * in that same tick installs its own popstate listener, sees the pending pop land with a state that
+ * is not its own, and closes itself — so the modal appears and disappears. runAfterBottomSheetClose
+ * exists to defer the action until that history has settled.
+ *
+ * These tests fail against the previous implementation, which called close() and then pushed
+ * directly, because the push never passed through the sequencer at all.
+ */
+describe('opening a row modal is sequenced behind the sheet close', () => {
+	/** Stands in for the real helper: holds the action back until the sheet history settles. */
+    function deferredOpener() {
+		const calls: Array<string> = [];
+		let pendingAction: (() => void) | null = null;
+		const opener: RowModalOpener = {
+			runAfterBottomSheetClose: (close, action) => {
+				calls.push('close');
+				close();
+				pendingAction = action;
+			},
+			push: () => {
+				calls.push('push');
+			},
+		};
+		return {opener, calls, settle: () => pendingAction?.()};
+	}
+
+	it('does not push while the sheet history is still settling', () => {
+		const {opener, calls} = deferredOpener();
+		openRowModal(opener, () => undefined, () => null);
+		// The naive version pushed here, into the sheet's pending history.back().
+		expect(calls).toEqual(['close']);
+	});
+
+	it('pushes once the sheet history has settled', () => {
+		const {opener, calls, settle} = deferredOpener();
+		openRowModal(opener, () => undefined, () => null);
+		settle();
+		expect(calls).toEqual(['close', 'push']);
+	});
+
+	it('closes the menu before opening, never after', () => {
+		const {opener, calls, settle} = deferredOpener();
+		openRowModal(opener, () => undefined, () => null);
+		settle();
+		expect(calls.indexOf('close')).toBeLessThan(calls.indexOf('push'));
+	});
+
+	it('passes the caller render straight through', () => {
+		const render = () => 'the-modal';
+		let pushed: (() => unknown) | null = null;
+		const opener: RowModalOpener = {
+			runAfterBottomSheetClose: (_close, action) => action(),
+			push: (r) => {
+				pushed = r;
+			},
+		};
+		openRowModal(opener, () => undefined, render);
+		expect(pushed).toBe(render);
+	});
+
+	it('runs the caller close exactly once', () => {
+		let closes = 0;
+		const opener: RowModalOpener = {
+			runAfterBottomSheetClose: (close, action) => {
+				close();
+				action();
+			},
+			push: () => undefined,
+		};
+		openRowModal(opener, () => {
+			closes += 1;
+		}, () => null);
+		expect(closes).toBe(1);
 	});
 });

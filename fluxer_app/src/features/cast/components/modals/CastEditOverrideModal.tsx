@@ -84,7 +84,20 @@ export const CastEditOverrideModal: React.FC<{
 	currentNickname: string | null;
 	currentPfpUrl: string | null;
 	currentReferenceImageUrl: string | null;
-}> = observer(({guildId, channelId, character, currentNickname, currentPfpUrl, currentReferenceImageUrl}) => {
+	/**
+	 * How the save is performed, for callers that cannot rely on the scoped store.
+	 *
+	 * Without it the scoped path writes through `ChannelCast`, which binds itself to ONE scope at a
+	 * time — fine for the settings tab, which IS that scope, but a surface showing many scopes at
+	 * once would land the write on whichever was loaded last. Such a caller supplies its own writer
+	 * carrying an explicit scope.
+	 */
+	onSave?: (update: {
+		nickname: string | null;
+		pfpUrl: string | null;
+		referenceImageUrl: string | null;
+	}) => Promise<boolean>;
+}> = observer(({guildId, channelId, character, currentNickname, currentPfpUrl, currentReferenceImageUrl, onSave}) => {
 	const {i18n} = useLingui();
 	const form = useForm<OverrideFormValues>({
 		defaultValues: {
@@ -124,8 +137,9 @@ export const CastEditOverrideModal: React.FC<{
 				pfpUrl: pfpUrl === '' ? null : pfpUrl,
 				referenceImageUrl: referenceImageUrl === '' ? null : referenceImageUrl,
 			};
-			const ok =
-				channelId != null
+			const ok = onSave
+				? await onSave(update)
+				: channelId != null
 					? await ChannelCast.updateOverride(character.id, update)
 					: await Cast.updateOverride(guildId, character.id, update);
 			if (!ok) {
@@ -138,7 +152,7 @@ export const CastEditOverrideModal: React.FC<{
 				children: <Trans>Updated character display</Trans>,
 			});
 		},
-		[channelId, character.id, form, guildId, i18n],
+		[channelId, character.id, form, guildId, i18n, onSave],
 	);
 
 	const {handleSubmit, isSubmitting} = useFormSubmit({form, onSubmit, defaultErrorField: 'nickname'});

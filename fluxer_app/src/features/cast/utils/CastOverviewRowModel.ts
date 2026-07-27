@@ -54,7 +54,16 @@ export function castOverviewRowControls(
 export type CastRowWrite =
 	| {kind: 'setPrimary'; guildId: string; characterId: string; isPrimary: boolean; channelId: string | undefined}
 	| {kind: 'setExcluded'; guildId: string; characterId: string; excluded: boolean; channelId: string | null}
-	| {kind: 'remove'; guildId: string; characterId: string; channelId: string | undefined};
+	| {kind: 'remove'; guildId: string; characterId: string; channelId: string | undefined}
+	| {
+			kind: 'setOverride';
+			guildId: string;
+			characterId: string;
+			channelId: string | null;
+			nickname: string | null;
+			pfpUrl: string | null;
+			referenceImageUrl: string | null;
+	  };
 
 /**
  * `undefined`, never `null`, for the server scope: setPrimary and removeCharacter omit `channel_id`
@@ -100,6 +109,52 @@ export function removeWrite(guildId: string, scopeId: string | null, entry: Cast
 	return {kind: 'remove', guildId, characterId: entry.characterId, channelId: scopeArg(scopeId)};
 }
 
+/**
+ * The edit modal's save, aimed at THIS row's scope and character.
+ *
+ * Explicit because the modal's own scoped path writes through ChannelCast, which holds one scope at
+ * a time — on a page showing many scopes at once that store's "current scope" is not this row's, so
+ * the save would land somewhere else entirely.
+ */
+export function overrideWrite(
+	guildId: string,
+	scopeId: string | null,
+	entry: CastOverviewEntry,
+	update: {nickname: string | null; pfpUrl: string | null; referenceImageUrl: string | null},
+): CastRowWrite {
+	return {
+		kind: 'setOverride',
+		guildId,
+		characterId: entry.characterId,
+		channelId: scopeId,
+		nickname: update.nickname,
+		pfpUrl: update.pfpUrl,
+		referenceImageUrl: update.referenceImageUrl,
+	};
+}
+
+/**
+ * How a row opens a modal from its menu. Never `push` directly.
+ *
+ * A mobile bottom sheet owns a history entry and calls history.back() as it closes. A modal pushed
+ * in the same tick installs its own popstate listener, then sees that pending pop land carrying a
+ * state that is not its own id, and closes itself — the modal appears and vanishes. The two back
+ * handlers keep separate module-level cleanup guards, so neither suppresses the other; the only fix
+ * is to let the sheet's history settle first, which is exactly what runAfterBottomSheetClose does.
+ *
+ * Injected rather than imported so the sequencing is testable without a modal stack.
+ */
+export interface RowModalOpener {
+	runAfterBottomSheetClose: (close: () => void, action: () => void) => void;
+	push: (render: () => unknown) => void;
+}
+
+export function openRowModal(opener: RowModalOpener, close: () => void, render: () => unknown): void {
+	opener.runAfterBottomSheetClose(close, () => {
+		opener.push(render);
+	});
+}
+
 export function runCastRowWrite(write: CastRowWrite): Promise<unknown> {
 	switch (write.kind) {
 		case 'setPrimary':
@@ -111,5 +166,12 @@ export function runCastRowWrite(write: CastRowWrite): Promise<unknown> {
 			});
 		case 'remove':
 			return CastCommands.removeCharacter(write.guildId, write.characterId, write.channelId);
+		case 'setOverride':
+			return CastCommands.updateOverride(write.guildId, write.characterId, {
+				channelId: write.channelId,
+				nickname: write.nickname,
+				pfpUrl: write.pfpUrl,
+				referenceImageUrl: write.referenceImageUrl,
+			});
 	}
 }
