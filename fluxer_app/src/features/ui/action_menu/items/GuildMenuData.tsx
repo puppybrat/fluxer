@@ -74,6 +74,14 @@ import {getMutedText} from '@app/lib/overlay/OverlayContextMenu';
 import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {ContentWarningLevel} from '@fluxer/constants/src/GuildConstants';
 import {msg} from '@lingui/core/macro';
+import {UsersThreeIcon} from '@phosphor-icons/react';
+
+const CAST_PAGE_DESCRIPTOR = msg({
+	message: 'Cast',
+	context: 'guild-menu-entry',
+	comment: 'Guild menu entry opening the full-page community cast overview.',
+});
+
 import {useLingui} from '@lingui/react/macro';
 import {useMemo} from 'react';
 
@@ -348,6 +356,17 @@ export function useGuildMenuData(guild: Guild, options: UseGuildMenuDataOptions)
 				icon: <InviteIcon size={20} data-flx="ui.action-menu.items.guild-menu-data.groups.invite-icon" />,
 				label: i18n._(INVITE_MEMBERS_DESCRIPTOR),
 				onClick: handlers.handleInviteMembers,
+			});
+		}
+		if (canAccessGuildSettings) {
+			// Mobile's only route to the cast page: the sidebar entry is desktop-only, and this menu is
+			// the same one that already carries Members there. Desktop gets it too, at no extra cost,
+			// because GuildContextMenu and GuildHeaderBottomSheet share this data.
+			quickActions.push({
+				icon: <UsersThreeIcon size={20} data-flx="ui.action-menu.items.guild-menu-data.groups.cast-icon" />,
+				label: i18n._(CAST_PAGE_DESCRIPTOR),
+				onClick: () =>
+					ModalCommands.runAfterBottomSheetClose(onClose, () => RouterUtils.transitionTo(Routes.guildCast(guild.id))),
 			});
 		}
 		if (canAccessGuildSettings) {

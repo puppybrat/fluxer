@@ -191,7 +191,8 @@ export interface ChannelItemProps {
 	onChannelDrop?: (item: DragItem, result: DropResult) => void;
 	onDragStateChange?: (item: DragItem | null) => void;
 	isSelectedByPath?: boolean;
-	isOnMembersRoute?: boolean;
+	/** True on any route that replaces the channel view (members, cast) — suppresses selection. */
+	isOnNonChannelRoute?: boolean;
 }
 
 export const ChannelItem = observer(
@@ -205,7 +206,7 @@ export const ChannelItem = observer(
 		onChannelDrop,
 		onDragStateChange,
 		isSelectedByPath = false,
-		isOnMembersRoute = false,
+		isOnNonChannelRoute = false,
 	}: ChannelItemProps) => {
 		const {i18n} = useLingui();
 		const elementRef = useRef<HTMLDivElement | null>(null);
@@ -251,7 +252,7 @@ export const ChannelItem = observer(
 		const isVoiceSelected =
 			channelIsVoice && connectedVoiceGuildId === guild.id && connectedVoiceChannelId === channel.id;
 		const channelIsE2EEEncrypted = isVoiceSelected && computeChannelE2EEStatus(guild.id, channel.id) === 'encrypted';
-		const isSelected = isVoiceSelected || (isSelectedByPath && !isOnMembersRoute);
+		const isSelected = isVoiceSelected || (isSelectedByPath && !isOnNonChannelRoute);
 		const mentionCount = ReadStates.getMentionCount(channel.id);
 		const unreadBadgesLevel = UserGuildSettings.resolvedUnreadBadgesLevel({
 			id: channel.id,

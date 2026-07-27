@@ -1,0 +1,54 @@
+/*
+ * Styles for GuildCastPage — the full-page Cast Overview reached from the guild sidebar.
+ * Header rules mirror GuildMembersPage.module.css so the two utility pages present identically;
+ * the body rules give the shell-free CastOverviewContent the padding and scrolling it does not
+ * carry itself.
+ */
+
+.headerLeftContent {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+	color: var(--text-primary);
+}
+
+.headerIcon {
+	flex-shrink: 0;
+	color: var(--text-tertiary);
+}
+
+.headerLabel {
+	font-weight: 600;
+	font-size: 1rem;
+	line-height: 1.5rem;
+	white-space: nowrap;
+}
+
+/*
+ * The scaffold's chatArea slot is overflow: hidden, so this page owns its own scrolling — the same
+ * arrangement MembersTableView uses for the members table.
+ */
+.pageContainer {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	width: 100%;
+	background-color: var(--background-primary);
+}
+
+.scroller {
+	flex: 1;
+	min-height: 0;
+	padding: var(--spacing-4);
+}
+
+/*
+ * Cap the reading width so the tree does not stretch across a wide desktop viewport, while still
+ * filling a narrow one.
+ */
+.content {
+	width: 100%;
+	max-width: 45rem;
+}

@@ -27,7 +27,6 @@ import {useRovingFocusList} from '@app/features/app/hooks/useRovingFocusList';
 import Channels from '@app/features/channel/state/Channels';
 import * as GuildCommands from '@app/features/guild/commands/GuildCommands';
 import type {Guild} from '@app/features/guild/models/Guild';
-import {MEMBERS_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {isKeyboardActivationKey} from '@app/features/input/utils/KeyboardUtils';
 import * as RouterUtils from '@app/features/navigation/utils/RouterUtils';
 import Permission from '@app/features/permissions/state/Permission';
@@ -51,7 +50,7 @@ import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {MAX_CHANNELS_PER_CATEGORY} from '@fluxer/constants/src/LimitConstants';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
-import {UsersIcon} from '@phosphor-icons/react';
+import {UsersThreeIcon} from '@phosphor-icons/react';
 import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
 import type {MotionValue} from 'motion';
@@ -72,9 +71,15 @@ const CHANNELS_DESCRIPTOR = msg({
 	message: '{guildName} channels',
 	comment: 'Short label in the app layout channel list content. Preserve {guildName}; it is inserted by code.',
 });
-const MEMBERS_SELECTED_DESCRIPTOR = msg({
-	message: 'Members, selected',
-	comment: 'Short label in the app layout channel list content.',
+const CAST_DESCRIPTOR = msg({
+	message: 'Cast',
+	context: 'channel-list-entry',
+	comment: 'Sidebar entry above the channel list opening the community cast overview page.',
+});
+const CAST_SELECTED_DESCRIPTOR = msg({
+	message: 'Cast (selected)',
+	context: 'channel-list-entry',
+	comment: 'Accessible label for the sidebar Cast entry when its page is the current view.',
 });
 const NEW_MESSAGES_DESCRIPTOR = msg({
 	message: 'New messages',
@@ -117,31 +122,41 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 	const hideMutedChannels = userGuildSettings?.hide_muted_channels ?? false;
 	const showFadedUnreadOnMutedChannels = Accessibility.showFadedUnreadOnMutedChannels;
 	const isMobile = MobileLayout.enabled;
-	const canViewMembers =
-		!isMobile && ((Permission.getGuildPermissions(guild.id) ?? 0n) & MEMBERS_PAGE_PERMISSIONS) !== 0n;
+	// Deliberately reuses MEMBERS_PAGE_PERMISSIONS rather than inventing a cast-specific permission:
+	// this entry occupies the slot the Members entry did, under the same gate, including !isMobile —
+	// mobile reaches the cast page from the guild menu instead.
+	const canViewCast = !isMobile && ((Permission.getGuildPermissions(guild.id) ?? 0n) & MEMBERS_PAGE_PERMISSIONS) !== 0n;
 	const guildPrefix = `/channels/${guild.id}/`;
 	let selectedChannelInGuildId: string | null = null;
 	let isMembersSelected = false;
+	let isCastSelected = false;
 	if (location.pathname.startsWith(guildPrefix)) {
 		const tail = location.pathname.slice(guildPrefix.length);
 		const slash = tail.indexOf('/');
 		const segment = slash === -1 ? tail : tail.slice(0, slash);
-		if (segment === 'members') {
+		if (segment === 'cast') {
+			isCastSelected = true;
+		} else if (segment === 'members') {
+			// No longer linked from this sidebar, but the route still exists and stays reachable from
+			// the guild menu — so it must still suppress channel selection rather than read as a id.
 			isMembersSelected = true;
 		} else if (segment.length > 0) {
 			selectedChannelInGuildId = segment;
 		}
 	}
-	const handleMembersClick = useCallback(() => {
-		RouterUtils.transitionTo(Routes.guildMembers(guild.id));
+	// Both the members and cast routes replace the channel view, so neither should leave a channel
+	// looking selected in the sidebar.
+	const isOnNonChannelRoute = isMembersSelected || isCastSelected;
+	const handleCastClick = useCallback(() => {
+		RouterUtils.transitionTo(Routes.guildCast(guild.id));
 	}, [guild.id]);
-	const handleMembersKeyDown = useCallback(
+	const handleCastKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
 			if (!isKeyboardActivationKey(event.key)) return;
 			event.preventDefault();
-			handleMembersClick();
+			handleCastClick();
 		},
-		[handleMembersClick],
+		[handleCastClick],
 	);
 	const collapsedCategories = useMemo(() => {
 		const overrides = userGuildSettings?.channel_overrides;
@@ -310,43 +325,43 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 							data-flx="app.channel-list-content.null-space-drop-indicator"
 						/>
 					</div>
-					{canViewMembers && (
+					{canViewCast && (
 						<>
-							<div className={styles.membersSection} data-flx="app.channel-list-content.members-section">
+							<div className={styles.membersSection} data-flx="app.channel-list-content.cast-section">
 								<GenericChannelItem
 									containerClassName={channelItemStyles.container}
 									className={clsx(
 										channelItemStyles.channelItem,
 										channelItemStyles.channelItemRegular,
-										isMembersSelected && channelItemStyles.channelItemSelected,
-										!isMembersSelected && channelItemStyles.channelItemHoverable,
+										isCastSelected && channelItemStyles.channelItemSelected,
+										!isCastSelected && channelItemStyles.channelItemHoverable,
 									)}
-									isSelected={isMembersSelected}
-									aria-label={isMembersSelected ? i18n._(MEMBERS_SELECTED_DESCRIPTOR) : i18n._(MEMBERS_DESCRIPTOR)}
-									aria-current={isMembersSelected ? 'page' : undefined}
-									onClick={handleMembersClick}
-									onKeyDown={handleMembersKeyDown}
-									data-flx="app.channel-list-content.generic-channel-item.members-click"
+									isSelected={isCastSelected}
+									aria-label={isCastSelected ? i18n._(CAST_SELECTED_DESCRIPTOR) : i18n._(CAST_DESCRIPTOR)}
+									aria-current={isCastSelected ? 'page' : undefined}
+									onClick={handleCastClick}
+									onKeyDown={handleCastKeyDown}
+									data-flx="app.channel-list-content.generic-channel-item.cast-click"
 								>
 									<ChannelItemContent
 										icon={
-											<UsersIcon
+											<UsersThreeIcon
 												size={20}
 												className={clsx(
 													channelItemStyles.channelItemIcon,
-													isMembersSelected
+													isCastSelected
 														? channelItemStyles.channelItemIconSelected
 														: channelItemStyles.channelItemIconUnselected,
 												)}
-												data-flx="app.channel-list-content.users-icon"
+												data-flx="app.channel-list-content.cast-icon"
 											/>
 										}
-										name={i18n._(MEMBERS_DESCRIPTOR)}
+										name={i18n._(CAST_DESCRIPTOR)}
 										data-flx="app.channel-list-content.channel-item-content"
 									/>
 								</GenericChannelItem>
 							</div>
-							<div className={styles.membersSeparator} data-flx="app.channel-list-content.members-separator" />
+							<div className={styles.membersSeparator} data-flx="app.channel-list-content.cast-separator" />
 						</>
 					)}
 					<div className={styles.channelGroupsContainer} data-flx="app.channel-list-content.channel-groups-container">
@@ -486,7 +501,7 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 											onChannelDrop={handleChannelDrop}
 											onDragStateChange={setActiveDragItem}
 											isSelectedByPath={selectedChannelInGuildId === group.category.id}
-											isOnMembersRoute={isMembersSelected}
+											isOnNonChannelRoute={isOnNonChannelRoute}
 											data-flx="app.channel-list-content.channel-item"
 										/>
 									)}
@@ -508,7 +523,7 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 												onChannelDrop={handleChannelDrop}
 												onDragStateChange={setActiveDragItem}
 												isSelectedByPath={selectedChannelInGuildId === ch.id}
-												isOnMembersRoute={isMembersSelected}
+												isOnNonChannelRoute={isOnNonChannelRoute}
 												data-flx="app.channel-list-content.channel-item--2"
 											/>
 										))}
@@ -524,7 +539,7 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 													onChannelDrop={handleChannelDrop}
 													onDragStateChange={setActiveDragItem}
 													isSelectedByPath={selectedChannelInGuildId === ch.id}
-													isOnMembersRoute={isMembersSelected}
+													isOnNonChannelRoute={isOnNonChannelRoute}
 													data-flx="app.channel-list-content.channel-item--3"
 												/>
 											);
