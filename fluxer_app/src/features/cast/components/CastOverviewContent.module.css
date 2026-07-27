@@ -1,33 +1,40 @@
 /*
  * Shell-free styles for the Cast Overview tree, shared by the desktop side panel and the mobile
- * channel-details sheet. Deliberately contains NO width, background, scrolling or frame rules —
- * each host supplies its own shell, so this can drop into either without fighting the container.
+ * channel-details sheet. Deliberately contains NO width, background, scrolling or frame rules on the
+ * OUTER container — each host supplies its own shell, so this drops into either without fighting it.
+ *
+ * Each scope's row list is given the Members table's surface treatment
+ * (GuildMembersPage.module.css .tableSurface: --background-secondary-alt) so a section reads as a
+ * table rather than as loose text, and the rows' own bottom borders separate them.
+ *
+ * Every colour is a token that is actually defined in the generated colour system.
  */
 
 .groups {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: var(--spacing-3);
 }
 
 .group {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: var(--spacing-1);
 }
 
 /* Channel groups nested under a category are indented to show they belong to it. */
 .nested {
 	margin-left: var(--spacing-3);
 	padding-left: var(--spacing-2);
-	border-left: 1px solid var(--background-modifier-accent, rgba(255, 255, 255, 0.08));
+	border-left: 0.0625rem solid var(--background-modifier-accent);
 }
 
 .groupHeader {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing-2);
+	min-height: 1.75rem;
 }
 
 .groupName {
@@ -42,35 +49,41 @@
 /* Sits opposite the scope name and opens that scope's own character picker. */
 .addButton {
 	flex-shrink: 0;
-	font-size: 11px;
+	font-size: 0.75rem;
 	background: none;
 	border: none;
 	padding: 0;
 	cursor: pointer;
-	color: var(--text-link, #00a8fc);
+	color: var(--text-link);
 }
 
 .addButton:hover {
 	text-decoration: underline;
 }
 
+/*
+ * No gap: the rows carry their own bottom border, exactly as the Members table body does, so any
+ * spacing here would break the continuous rule between them. overflow:hidden keeps the first and
+ * last rows clipped to the rounded corners.
+ */
 .entryList {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
-}
-
-.muted {
-	font-size: 11px;
-	opacity: 0.45;
-	font-style: italic;
+	background-color: var(--background-secondary-alt);
+	border-radius: 0.375rem;
+	overflow: hidden;
 }
 
 .error {
-	padding: 8px 10px;
-	border-radius: 4px;
-	font-size: 13px;
-	background: rgba(240, 71, 71, 0.15);
-	color: #f04747;
+	padding: 0.5rem 0.625rem;
+	border-radius: 0.25rem;
+	font-size: 0.8125rem;
+	background-color: var(--background-secondary-alt);
+	color: var(--status-danger);
 	word-break: break-word;
+}
+
+.muted {
+	font-size: 0.75rem;
+	color: var(--text-primary-muted);
 }

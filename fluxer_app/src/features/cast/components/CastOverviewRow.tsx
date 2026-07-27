@@ -19,9 +19,12 @@ import {Checkbox} from '@app/features/ui/checkbox/Checkbox';
 import * as ContextMenuCommands from '@app/features/ui/commands/ContextMenuCommands';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import * as ToastCommands from '@app/features/ui/commands/ToastCommands';
+import {useContextMenuTrigger} from '@app/features/ui/hooks/useContextMenuTrigger';
 import {MenuBottomSheet, type MenuGroupType} from '@app/features/ui/menu_bottom_sheet/MenuBottomSheet';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {openExternalUrl} from '@app/features/ui/utils/NativeUtils';
+import {BaseAvatar} from '@app/features/ui/components/BaseAvatar';
+import {clsx} from 'clsx';
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {DotsThreeVerticalIcon, EyeSlashIcon, XIcon} from '@phosphor-icons/react';
@@ -84,7 +87,10 @@ export const CastOverviewRow: React.FC<{
 	const {i18n} = useLingui();
 	const [pending, setPending] = useState(false);
 	const [sheetOpen, setSheetOpen] = useState(false);
+	const {isOpen: isContextMenuOpen, withTracking} = useContextMenuTrigger();
 	const isMobile = MobileLayout.enabled;
+	// Lights the trigger and the row while this row's own menu is showing, either presentation.
+	const menuActive = isContextMenuOpen || sheetOpen;
 	// Every visibility rule lives in the model, so this component is a transcription of it rather than
 	// a second place the rules could drift.
 	const {isExcluded, isPrimary, canExclude, canRemove, profileUrl} = castOverviewRowControls(scopeKind, entry);
@@ -225,38 +231,44 @@ export const CastOverviewRow: React.FC<{
 				setSheetOpen(true);
 				return;
 			}
-			ContextMenuCommands.openFromEvent(event, ({onClose}) => (
-				<DataMenuRenderer
-					groups={buildMenuGroups(onClose)}
-					data-flx="cast.cast-overview-row.data-menu-renderer"
-				/>
-			));
+			// withTracking is what keeps the trigger lit while its menu is open and clears it on any
+			// dismissal, not only on selecting an item — the same hook the bans list uses.
+			ContextMenuCommands.openFromEvent(
+				event,
+				({onClose}) => (
+					<DataMenuRenderer groups={buildMenuGroups(onClose)} data-flx="cast.cast-overview-row.data-menu-renderer" />
+				),
+				withTracking(),
+			);
 		},
-		[isMobile, buildMenuGroups],
+		[isMobile, buildMenuGroups, withTracking],
 	);
 
 	return (
 		<div
-			className={`${styles.row} ${isExcluded ? styles.rowExcluded : ''}`}
+			className={clsx(styles.row, isExcluded && styles.rowExcluded)}
+			data-menu-active={menuActive ? '' : undefined}
 			data-flx="cast.cast-overview-row.row"
 		>
-			{entry.pfpUrl != null ? (
-				<img className={styles.avatar} src={entry.pfpUrl} alt="" aria-hidden="true" data-flx="cast.cast-overview-row.avatar" />
-			) : (
-				<span className={styles.avatarFallback} aria-hidden="true" data-flx="cast.cast-overview-row.avatar-fallback">
-					{entry.name.slice(0, 1).toUpperCase()}
-				</span>
-			)}
-
 			<div className={styles.identity} data-flx="cast.cast-overview-row.identity">
-				<span className={styles.name} title={entry.name} data-flx="cast.cast-overview-row.name">
-					{entry.name}
-				</span>
-				{entry.nickname != null && entry.nickname !== '' && (
-					<span className={styles.nickname} title={entry.nickname} data-flx="cast.cast-overview-row.nickname">
-						{entry.nickname}
+				{/* The same avatar component and size the Members table uses, rather than a bare <img>:
+				    it already handles the skeleton, sizing and fallback tag. */}
+				<BaseAvatar
+					size={32}
+					avatarUrl={entry.pfpUrl ?? ''}
+					userTag={entry.name}
+					data-flx="cast.cast-overview-row.base-avatar"
+				/>
+				<div className={styles.nameInfo} data-flx="cast.cast-overview-row.name-info">
+					<span className={styles.name} title={entry.name} data-flx="cast.cast-overview-row.name">
+						{entry.name}
 					</span>
-				)}
+					{entry.nickname != null && entry.nickname !== '' && (
+						<span className={styles.nickname} title={entry.nickname} data-flx="cast.cast-overview-row.nickname">
+							{entry.nickname}
+						</span>
+					)}
+				</div>
 				{isExcluded && (
 					<span className={styles.excludedBadge} data-flx="cast.cast-overview-row.excluded-badge">
 						<EyeSlashIcon size={12} data-flx="cast.cast-overview-row.excluded-icon" />
@@ -293,27 +305,30 @@ export const CastOverviewRow: React.FC<{
 				{canRemove && (
 					<button
 						type="button"
-						className={styles.iconButton}
+						className={clsx(styles.actionsButton, styles.actionsButtonDanger)}
 						onClick={handleRemove}
 						disabled={pending}
 						aria-label={i18n._(REMOVE_DESCRIPTOR)}
 						title={i18n._(REMOVE_DESCRIPTOR)}
 						data-flx="cast.cast-overview-row.button.remove"
 					>
-						<XIcon size={16} data-flx="cast.cast-overview-row.remove-icon" />
+						<XIcon weight="bold" size={18} data-flx="cast.cast-overview-row.remove-icon" />
 					</button>
 				)}
 
+				{/* Same trigger the Members table uses: .actionsButton, data-menu-active, and a bold
+				    18px DotsThreeVertical — see guild_members_page/MemberTableRow.tsx. */}
 				<button
 					type="button"
-					className={styles.iconButton}
+					className={styles.actionsButton}
+					data-menu-active={menuActive ? '' : undefined}
 					onClick={handleMenuClick}
 					disabled={pending}
 					aria-label={i18n._(MORE_ACTIONS_DESCRIPTOR)}
-					title={i18n._(MORE_ACTIONS_DESCRIPTOR)}
+					aria-haspopup="menu"
 					data-flx="cast.cast-overview-row.button.menu"
 				>
-					<DotsThreeVerticalIcon size={16} data-flx="cast.cast-overview-row.menu-icon" />
+					<DotsThreeVerticalIcon weight="bold" size={18} data-flx="cast.cast-overview-row.menu-icon" />
 				</button>
 			</div>
 
