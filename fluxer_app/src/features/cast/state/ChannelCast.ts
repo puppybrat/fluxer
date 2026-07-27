@@ -8,8 +8,7 @@ import type {
 	CastPrimary,
 } from '@app/features/cast/commands/CastCommands';
 import * as CastCommands from '@app/features/cast/commands/CastCommands';
-import ComposerInCharacter from '@app/features/cast/state/ComposerInCharacter';
-import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
+import {refreshCastDisplayCaches} from '@app/features/cast/state/CastDisplayRefresh';
 import type {CastResolvedCharacterResponseType} from '@fluxer/schema/src/domains/cast/CastSchemas';
 import {makeAutoObservable, runInAction} from 'mobx';
 
@@ -245,14 +244,11 @@ class ChannelCast {
 		try {
 			await action();
 			await this.load(guildId, channelId);
-			// Mirror the guild tab: message rendering and the composer's optimistic in-character
-			// resolution both cache a guild's cast independently, so refresh them after any write.
-			void GuildCastDisplay.refresh(guildId);
-			// Refresh every tracked channel in the guild, not just the edited scope: this tab also edits
-			// CATEGORY scopes, and a category is never itself tracked, so refreshing only the edited
-			// scope would leave the channels under it showing a character just excluded from them.
-			void GuildCastDisplay.refreshGuildChannels(guildId);
-			void ComposerInCharacter.refresh(guildId);
+			// Every display cache that renders cast identity, refreshed in one place so this path and
+			// Cast's cannot drift. Notably this refreshes every tracked channel, not just the edited
+			// scope — a category is never itself tracked, so refreshing only it would leave the channels
+			// beneath it still showing a character just excluded from them.
+			refreshCastDisplayCaches(guildId);
 			runInAction(() => {
 				this.pendingCharacterIds.delete(characterId);
 			});
