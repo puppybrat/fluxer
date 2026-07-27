@@ -1,0 +1,127 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/*
+ * One row, one layout, both platforms. The identity block flexes and the action cluster does not, so
+ * on a narrow viewport the actions stay whole and the name truncates rather than the row needing a
+ * separate mobile arrangement. `row-gap` matters only once the cluster wraps below the identity.
+ */
+.row {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	row-gap: 4px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	min-width: 0;
+}
+
+.row:hover {
+	background: var(--background-modifier-hover);
+}
+
+/* Excluded rows stay legible: dimmed enough to read as inactive, not so much as to be unreadable. */
+.rowExcluded {
+	opacity: 0.62;
+}
+
+.avatar,
+.avatarFallback {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	flex: 0 0 auto;
+	object-fit: cover;
+}
+
+.avatarFallback {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--background-secondary-alt);
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+/* Takes the slack so the action cluster keeps its intrinsic width at every viewport. */
+.identity {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.name {
+	color: var(--text-normal);
+	font-size: 14px;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* The scope's own nickname. Allowed to truncate before the real name does. */
+.nickname {
+	color: var(--text-muted);
+	font-size: 12px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
+.excludedBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	flex: 0 0 auto;
+	padding: 1px 6px;
+	border-radius: 10px;
+	background: var(--background-secondary-alt);
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 0 0 auto;
+	margin-left: auto;
+}
+
+.toggle {
+	color: var(--text-muted);
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+.iconButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* 28px keeps the two icon buttons comfortably tappable without making the row taller than the
+	   checkboxes beside them. */
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.iconButton:hover:not(:disabled) {
+	background: var(--background-modifier-selected);
+	color: var(--text-normal);
+}
+
+.iconButton:disabled {
+	opacity: 0.5;
+	cursor: default;
+}

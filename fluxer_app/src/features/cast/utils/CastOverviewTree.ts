@@ -19,9 +19,31 @@ export interface CastOverviewEntry {
 	characterId: string;
 	/** The character's real name, or its id when the roster does not carry one. */
 	name: string;
+	/**
+	 * The roster row itself. Carried so a row can hand the whole character to surfaces that take one
+	 * (the edit modal), and so the REAL name — nullable, unlike `name` — stays reachable for the
+	 * profile link, which must not be built from an id fallback.
+	 */
+	character: CastCharacter;
 	status: CastOverviewEntryStatus;
-	/** The nickname set at THIS scope, or null. Never an inherited one. */
+	/**
+	 * The nickname set at THIS scope, or null. Never an inherited one.
+	 *
+	 * Kept for excluded rows too: excluding only flips the `excluded` flag and leaves the display
+	 * fields untouched, so hiding the nickname here would misreport what un-excluding restores.
+	 */
 	nickname: string | null;
+	/** Whether this character is flagged primary at THIS exact scope. */
+	isPrimary: boolean;
+	/** The avatar for this row: this scope's override when it sets one, else the roster's. */
+	pfpUrl: string | null;
+	/**
+	 * The override row at THIS exact scope, or null when none exists.
+	 *
+	 * This — never a resolved or inherited value — is what an edit modal must pre-fill from: saving
+	 * an inherited value unchanged would silently promote it into a real local override here.
+	 */
+	localOverride: {nickname: string | null; pfpUrl: string | null; referenceImageUrl: string | null} | null;
 }
 
 export type CastOverviewScopeKind = 'server' | 'category' | 'channel';
@@ -105,35 +127,69 @@ function buildEntriesForScope(
 	scopeId: string | null,
 	{characters, primaries, overrides}: Omit<BuildArgs, 'channelsById'>,
 ): Array<CastOverviewEntry> {
-	const nameById = new Map(characters.map((character) => [character.id, character.name]));
+	const characterById = new Map(characters.map((character) => [character.id, character]));
 	const localOverrides = new Map(
 		overrides.filter((override) => (override.channel_id ?? null) === scopeId).map((o) => [o.character_id, o]),
 	);
-	const localPrimaryIds = new Set(
-		primaries.filter((primary) => (primary.channel_id ?? null) === scopeId).map((primary) => primary.character_id),
+	// The membership rows at this scope, keyed so the primary flag survives alongside the id. A row's
+	// presence is what makes a character local here; `is_primary` is a property of that same row.
+	const localMembership = new Map(
+		primaries.filter((primary) => (primary.channel_id ?? null) === scopeId).map((primary) => [primary.character_id, primary]),
 	);
+
+	/** A character present only in the rows, not the roster, still deserves a row over being dropped. */
+	const fallbackCharacter = (id: string): CastCharacter => ({
+		id,
+		name: null,
+		alias: null,
+		ship: null,
+		owner: null,
+		nickname: null,
+		pfp_url: null,
+		reference_image_url: null,
+	});
 
 	const entries: Array<CastOverviewEntry> = [];
 	const seen = new Set<string>();
-	const push = (characterId: string, status: CastOverviewEntryStatus, nickname: string | null) => {
+	const push = (characterId: string, status: CastOverviewEntryStatus) => {
 		if (seen.has(characterId)) {
 			return;
 		}
 		seen.add(characterId);
-		entries.push({characterId, name: nameById.get(characterId) ?? characterId, status, nickname});
+		const character = characterById.get(characterId) ?? fallbackCharacter(characterId);
+		const override = localOverrides.get(characterId);
+		entries.push({
+			characterId,
+			name: character.name ?? characterId,
+			character,
+			status,
+			nickname: override?.nickname ?? null,
+			isPrimary: localMembership.get(characterId)?.is_primary ?? false,
+			// This scope's own avatar wins; otherwise the roster's server-scope projection, which is
+			// what the character looks like before this scope says anything about it.
+			pfpUrl: override?.pfp_url ?? character.pfp_url,
+			localOverride:
+				override == null
+					? null
+					: {
+							nickname: override.nickname,
+							pfpUrl: override.pfp_url,
+							referenceImageUrl: override.reference_image_url,
+						},
+		});
 	};
 
 	for (const [characterId, override] of localOverrides) {
 		if (override.excluded) {
-			push(characterId, 'excluded', null);
+			push(characterId, 'excluded');
 		} else if (hasDisplayOverride(override)) {
-			push(characterId, 'edited', override.nickname);
+			push(characterId, 'edited');
 		}
 	}
 	// Anything with a local membership row but no override of its own is a plain local add. Excluded
 	// characters also carry a membership row, so the loop above must run first to claim them.
-	for (const characterId of localPrimaryIds) {
-		push(characterId, 'added', null);
+	for (const characterId of localMembership.keys()) {
+		push(characterId, 'added');
 	}
 	return entries.sort(compareByName);
 }

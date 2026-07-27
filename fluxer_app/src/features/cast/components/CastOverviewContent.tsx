@@ -2,21 +2,29 @@
 
 import * as CastCommands from '@app/features/cast/commands/CastCommands';
 import styles from '@app/features/cast/components/CastOverviewContent.module.css';
+import {CastOverviewRow} from '@app/features/cast/components/CastOverviewRow';
+import {CastAddCharacterModal} from '@app/features/cast/components/modals/CastAddCharacterModal';
+import Cast from '@app/features/cast/state/Cast';
+import {castWriteSignal} from '@app/features/cast/state/CastDisplayRefresh';
+import ChannelCast from '@app/features/cast/state/ChannelCast';
 import {
 	buildCastOverviewTree,
 	type CastOverviewChannelInfo,
-	type CastOverviewEntry,
 	type CastOverviewGroup,
 } from '@app/features/cast/utils/CastOverviewTree';
-import {ChannelSettingsModal} from '@app/features/channel/components/modals/ChannelSettingsModal';
 import Channels from '@app/features/channel/state/Channels';
-import {GuildSettingsModal} from '@app/features/guild/components/modals/GuildSettingsModal';
-import GuildSettingsModalState from '@app/features/guild/state/GuildSettingsModal';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
+import {msg} from '@lingui/core/macro';
+import {useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
 import {useEffect, useMemo, useState} from 'react';
+
+const ADD_CHARACTER_DESCRIPTOR = msg({
+	message: 'Add character',
+	comment: 'Button label opening the cast character picker for one scope. Keep it concise.',
+});
 
 interface CastData {
 	characters: ReadonlyArray<CastCommands.CastCharacter>;
@@ -39,17 +47,27 @@ export function useCastOverviewTree(guildId: string | null | undefined): {
 } {
 	const [cast, setCast] = useState<CastData | null>(null);
 	const [error, setError] = useState<unknown>(null);
+	/**
+	 * This hook owns its copy of the cast rather than reading a store, so a write issued from a row —
+	 * or from the edit/add modals, which go through the stores — would otherwise leave the tree stale.
+	 * Every successful write bumps this counter, which re-runs the fetch below.
+	 */
+	const writeVersion = castWriteSignal.version;
+
+	// Blanking is tied to the GUILD changing, never to a refetch: a write-triggered reload must not
+	// drop the tree back to "Loading…" and collapse the section the user is working in.
+	useEffect(() => {
+		setCast(null);
+	}, [guildId]);
 
 	useEffect(() => {
 		if (!guildId) {
-			setCast(null);
 			setError(null);
 			return;
 		}
 		// `cancelled` rather than a token: the state is local, so a guild change re-runs the effect and
 		// a late response from the previous guild must not land.
 		let cancelled = false;
-		setCast(null);
 		setError(null);
 		CastCommands.getGuildCast(guildId)
 			.then((data) => {
@@ -63,7 +81,7 @@ export function useCastOverviewTree(guildId: string | null | undefined): {
 		return () => {
 			cancelled = true;
 		};
-	}, [guildId]);
+	}, [guildId, writeVersion]);
 
 	// Channels come from the store, not the cast payload: the cast rows carry only ids, while names,
 	// parents, category-ness and sidebar position live client-side. Reading them here keeps the tree
@@ -95,57 +113,46 @@ export function useCastOverviewTree(guildId: string | null | undefined): {
 }
 
 /**
- * The Cast Overview tree itself — groups, entries and per-scope links into the real settings Cast
- * tab. Shell-free on purpose: the desktop side panel and the mobile channel-details sheet each wrap
- * this in their own container and scroller, so this renders no width, background or frame of its own.
+ * The Cast Overview tree itself — every scope's own cast rows, editable in place.
  *
- * Read-only. Every group links out to the settings tab for its exact scope rather than editing here.
+ * Shell-free on purpose: the desktop side panel and the mobile channel-details sheet each wrap this
+ * in their own container and scroller, so this renders no width, background or frame of its own. The
+ * rows are shared verbatim between the two, so there is nothing platform-specific here either.
+ *
+ * Each group shows only what its scope decides LOCALLY. An inherited character has no row until it
+ * is added here explicitly, which is what the per-scope Add picker is for.
  */
 export const CastOverviewContent: React.FC<{guildId: string | null | undefined}> = observer(
 	function CastOverviewContent({guildId}) {
+		const {i18n} = useLingui();
 		const {tree, error} = useCastOverviewTree(guildId);
 
-		const openGuildCastTab = () => {
+		/**
+		 * The picker reads and writes through whichever store matches the scope, and both are loaded
+		 * per-scope rather than per-guild. Loading before the modal opens is what lets it be reused
+		 * here unchanged: without it the scoped store is still pointed at the last scope some settings
+		 * tab opened, and the add would land there instead.
+		 */
+		const openAddCharacter = async (scopeId: string | null) => {
 			if (!guildId) return;
-			// Matches RoleManagement's pattern: retarget an already-open settings modal rather than
-			// stacking a second one on top of it.
-			if (GuildSettingsModalState.navigateToTab(guildId, 'cast')) {
-				return;
+			if (scopeId == null) {
+				await Cast.load(guildId);
+			} else {
+				await ChannelCast.load(guildId, scopeId);
 			}
 			ModalCommands.push(
 				modal(() => (
-					<GuildSettingsModal
+					<CastAddCharacterModal
 						guildId={guildId}
-						initialTab="cast"
-						data-flx="cast.cast-overview-content.guild-settings-modal"
+						channelId={scopeId}
+						data-flx="cast.cast-overview-content.add-character-modal"
 					/>
 				)),
 			);
 		};
-
-		const openChannelCastTab = (channelId: string) => {
-			ModalCommands.push(
-				modal(() => (
-					<ChannelSettingsModal
-						channelId={channelId}
-						initialTab="cast"
-						data-flx="cast.cast-overview-content.channel-settings-modal"
-					/>
-				)),
-			);
-		};
-
-		const renderEntry = (entry: CastOverviewEntry) => (
-			<div key={entry.characterId} className={styles.entry} data-flx="cast.cast-overview-content.entry">
-				<span className={badgeClassName(entry.status)}>{BADGE_LABEL[entry.status]}</span>
-				<span className={styles.entryName}>{entry.name}</span>
-				{entry.nickname != null && <span className={styles.entryNickname}>{entry.nickname}</span>}
-			</div>
-		);
 
 		const renderGroup = (group: CastOverviewGroup, nested: boolean) => {
 			const label = group.kind === 'server' ? 'Server-wide' : group.name;
-			const onOpen = group.scopeId == null ? openGuildCastTab : () => openChannelCastTab(group.scopeId as string);
 			return (
 				<div
 					key={group.scopeId ?? 'server'}
@@ -156,12 +163,28 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 						<span className={styles.groupName} title={label}>
 							{label}
 						</span>
-						<button type="button" className={styles.openLink} onClick={onOpen}>
-							Open
+						<button
+							type="button"
+							className={styles.addButton}
+							onClick={() => void openAddCharacter(group.scopeId)}
+							data-flx="cast.cast-overview-content.button.add"
+						>
+							{i18n._(ADD_CHARACTER_DESCRIPTOR)}
 						</button>
 					</div>
 					{group.entries.length > 0 ? (
-						<div className={styles.entryList}>{group.entries.map(renderEntry)}</div>
+						<div className={styles.entryList}>
+							{group.entries.map((entry) => (
+								<CastOverviewRow
+									key={entry.characterId}
+									guildId={guildId as string}
+									scopeId={group.scopeId}
+									scopeKind={group.kind}
+									entry={entry}
+									data-flx="cast.cast-overview-content.cast-overview-row"
+								/>
+							))}
+						</div>
 					) : (
 						// A structural-only category has no delta of its own; it is listed purely so its
 						// overridden channels nest under the right name.
@@ -188,14 +211,3 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 	},
 );
 
-const BADGE_LABEL: Record<CastOverviewEntry['status'], string> = {
-	added: 'Add',
-	edited: 'Edit',
-	excluded: 'Excl',
-};
-
-function badgeClassName(status: CastOverviewEntry['status']): string {
-	const variant =
-		status === 'added' ? styles.badgeAdded : status === 'edited' ? styles.badgeEdited : styles.badgeExcluded;
-	return `${styles.badge} ${variant}`;
-}

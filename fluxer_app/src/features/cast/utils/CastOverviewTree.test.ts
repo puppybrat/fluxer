@@ -18,21 +18,21 @@ const character = (id: string, name: string | null) => ({
 	reference_image_url: null,
 });
 
-const primary = (character_id: string, channel_id: string | null) => ({
+const primary = (character_id: string, channel_id: string | null, is_primary = false) => ({
 	character_id,
 	channel_id,
-	is_primary: false,
+	is_primary,
 });
 
 const override = (
 	character_id: string,
 	channel_id: string | null,
-	fields: {nickname?: string | null; excluded?: boolean} = {},
+	fields: {nickname?: string | null; excluded?: boolean; pfp_url?: string | null} = {},
 ) => ({
 	character_id,
 	channel_id,
 	nickname: fields.nickname ?? null,
-	pfp_url: null,
+	pfp_url: fields.pfp_url ?? null,
 	reference_image_url: null,
 	excluded: fields.excluded ?? false,
 });
@@ -183,10 +183,27 @@ describe('Cast Overview tree', () => {
 			characters: [character('x', 'Xavier')],
 			// exclude() writes BOTH a membership row and an excluded override — must read as excluded.
 			primaries: [primary('x', 'ch')],
-			overrides: [override('x', 'ch', {excluded: true, nickname: 'ignored'})],
+			overrides: [override('x', 'ch', {excluded: true, nickname: 'Xav'})],
 			channelsById: channels(chan('ch', 'c', null)),
 		});
-		expect(tree[1]!.entries).toEqual([{characterId: 'x', name: 'Xavier', status: 'excluded', nickname: null}]);
+		expect(tree[1]!.entries).toMatchObject([{characterId: 'x', name: 'Xavier', status: 'excluded'}]);
+	});
+
+	/**
+	 * Excluding only flips the `excluded` flag; the display fields it was carrying are left alone and
+	 * come back untouched when it is un-excluded. The row therefore has to keep reporting them, or the
+	 * UI would imply the nickname was lost.
+	 */
+	it('keeps an excluded row display fields, since excluding does not clear them', () => {
+		const tree = buildCastOverviewTree({
+			characters: [character('x', 'Xavier')],
+			primaries: [primary('x', 'ch')],
+			overrides: [override('x', 'ch', {excluded: true, nickname: 'Xav'})],
+			channelsById: channels(chan('ch', 'c', null)),
+		});
+		const entry = tree[1]!.entries[0]!;
+		expect(entry.nickname).toBe('Xav');
+		expect(entry.localOverride).toEqual({nickname: 'Xav', pfpUrl: null, referenceImageUrl: null});
 	});
 
 	it('omits a scope whose rows produce no local delta', () => {
@@ -230,5 +247,75 @@ describe('Cast Overview tree', () => {
 			channelsById: channels(),
 		});
 		expect(tree[0]!.entries[0]!.name).toBe('c1');
+	});
+
+	/** The row's Primary checkbox reads this; it is per-scope, not a property of the character. */
+	describe('per-row fields the editing row renders from', () => {
+		it('reports the primary flag from the membership row at this exact scope', () => {
+			const tree = buildCastOverviewTree({
+				characters: [character('c1', 'Rowan')],
+				// Primary server-wide, but NOT primary in the channel that also lists it.
+				primaries: [primary('c1', null, true), primary('c1', 'ch', false)],
+				overrides: [],
+				channelsById: channels(chan('ch', 'general', null)),
+			});
+			expect(tree[0]!.entries[0]!.isPrimary).toBe(true);
+			expect(tree[1]!.entries[0]!.isPrimary).toBe(false);
+		});
+
+		it('prefers this scope avatar over the roster one', () => {
+			const withRosterPfp = {...character('c1', 'Rowan'), pfp_url: 'https://example.test/roster.png'};
+			const tree = buildCastOverviewTree({
+				characters: [withRosterPfp],
+				primaries: [primary('c1', 'ch')],
+				overrides: [override('c1', 'ch', {pfp_url: 'https://example.test/scoped.png'})],
+				channelsById: channels(chan('ch', 'general', null)),
+			});
+			expect(tree[1]!.entries[0]!.pfpUrl).toBe('https://example.test/scoped.png');
+		});
+
+		it('falls back to the roster avatar when this scope overrides no avatar', () => {
+			const withRosterPfp = {...character('c1', 'Rowan'), pfp_url: 'https://example.test/roster.png'};
+			const tree = buildCastOverviewTree({
+				characters: [withRosterPfp],
+				primaries: [primary('c1', 'ch')],
+				overrides: [override('c1', 'ch', {nickname: 'Ro'})],
+				channelsById: channels(chan('ch', 'general', null)),
+			});
+			expect(tree[1]!.entries[0]!.pfpUrl).toBe('https://example.test/roster.png');
+		});
+
+		/**
+		 * The edit modal pre-fills from this and nothing else. A plain local add has no override row,
+		 * so it must open BLANK — pre-filling from the roster would promote an inherited value into a
+		 * real local override the moment the user pressed Save without changing anything.
+		 */
+		it('exposes no local override for a plain local add', () => {
+			const withRosterNickname = {...character('c1', 'Rowan'), nickname: 'Inherited'};
+			const tree = buildCastOverviewTree({
+				characters: [withRosterNickname],
+				primaries: [primary('c1', 'ch')],
+				overrides: [],
+				channelsById: channels(chan('ch', 'general', null)),
+			});
+			const entry = tree[1]!.entries[0]!;
+			expect(entry.status).toBe('added');
+			expect(entry.localOverride).toBeNull();
+			expect(entry.nickname).toBeNull();
+		});
+
+		it('carries the character so the row can reach its real, nullable name', () => {
+			const tree = buildCastOverviewTree({
+				characters: [character('c1', null)],
+				primaries: [primary('c1', null)],
+				overrides: [],
+				channelsById: channels(),
+			});
+			const entry = tree[0]!.entries[0]!;
+			// `name` falls back to the id for display; `character.name` stays null so the profile link
+			// can decline to build a slug out of an id.
+			expect(entry.name).toBe('c1');
+			expect(entry.character.name).toBeNull();
+		});
 	});
 });
