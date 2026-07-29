@@ -10,10 +10,18 @@
  * Every colour is a token that is actually defined in the generated colour system.
  */
 
+/*
+ * --spacing-5 matches SettingsSection.module.css .sectionContent, the app's convention for the gap
+ * between stacked content blocks inside one settings section — which is exactly what these per-scope
+ * groups are. At the previous --spacing-3 each group's Add button sat almost flush against the
+ * preceding group's row table, so adjacent channels read as one run instead of separate sections.
+ * Not the channel sidebar's spacing: that list is deliberately gap:0 (ChannelListContent.module.css),
+ * with category separation coming from header padding, which suits a dense nav and not this page.
+ */
 .groups {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-3);
+	gap: var(--spacing-5);
 }
 
 .group {
@@ -35,6 +43,16 @@
 	justify-content: space-between;
 	gap: var(--spacing-2);
 	min-height: 1.75rem;
+}
+
+/*
+ * Same 1rem square as UserProfileModal.module.css .buttonIcon, which sizes the UserPlusIcon in that
+ * modal's "Add friend" button. Repeated here rather than imported: a CSS module is private to its
+ * feature, so cross-importing one would couple this page to the profile modal's internals.
+ */
+.buttonIcon {
+	height: 1rem;
+	width: 1rem;
 }
 
 .groupName {

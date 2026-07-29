@@ -18,6 +18,7 @@ import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
+import {UserPlusIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
 import {useEffect, useMemo, useState} from 'react';
@@ -168,14 +169,22 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 						<span className={styles.groupName} title={label}>
 							{label}
 						</span>
-						{/* The same Button component the settings Cast tab uses for its own Add character
-						    control, rather than a bare link-styled <button>. Kept `small` and secondary
-						    because unlike that tab — one button in a header — there is one of these per
-						    scope, and a column of primary buttons would fight the rows for attention. */}
+						{/* Styled as the app's existing "Add friend" affordance, verbatim: the profile action
+						    button in UserProfileModal.tsx (renderActionButtons) is
+						    `<Button variant="secondary" small leftIcon={<UserPlusIcon className={buttonIcon}/>}>`,
+						    with .buttonIcon = 1rem square in UserProfileModal.module.css. The variant and size
+						    here already matched it, so only the icon was missing. UserPlusIcon (the person
+						    silhouette with the "+" badge) rather than a bare PlusIcon, because this adds a
+						    character to a cast exactly as that adds a person to a friends list. Secondary
+						    rather than primary because there is one of these per scope, and a column of
+						    primary buttons would fight the rows for attention. */}
 						<Button
 							type="button"
 							variant="secondary"
 							small
+							leftIcon={
+								<UserPlusIcon className={styles.buttonIcon} data-flx="cast.cast-overview-content.user-plus-icon" />
+							}
 							onClick={() => void openAddCharacter(group.scopeId)}
 							data-flx="cast.cast-overview-content.button.add"
 						>
