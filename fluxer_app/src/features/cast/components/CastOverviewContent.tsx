@@ -13,9 +13,9 @@ import {
 	type CastOverviewGroup,
 } from '@app/features/cast/utils/CastOverviewTree';
 import Channels from '@app/features/channel/state/Channels';
-import {Button} from '@app/features/ui/button/Button';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
+import FocusRing from '@app/features/ui/focus_ring/FocusRing';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
 import {UserCirclePlusIcon} from '@phosphor-icons/react';
@@ -170,31 +170,31 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 						<span className={styles.groupName} title={label}>
 							{label}
 						</span>
-						{/* Icon-only, and styled exactly as the app's Add friend affordance.
-						    Icon: UserCirclePlusIcon weight="fill" — the component AddFriendView.tsx renders
-						    under .heroIcon (AddFriendView.module.css). Only the glyph is reused; .heroIcon's
-						    own 4rem sizing is a hero treatment, so the icon is sized for a button here.
-						    Colour: variant="primary" (--brand-primary), which is what the Add friend submit
-						    button in AddFriendForm.tsx resolves to — it passes no variant, and Button
-						    defaults to primary. The previous "secondary" was the dark/unstyled look.
-						    Square + aria-label rather than a text label, matching the icon-only Add friend
-						    button in UserProfileModal.tsx (square, icon, aria-label). */}
-						<Button
-							type="button"
-							variant="primary"
-							small
-							square
-							icon={
+						{/* A plain icon button, not the shared <Button>: the established icon-button in this
+						    app is a bare <button> carrying its own class, exactly as the kebab beside every
+						    row is (CastOverviewRow.tsx .actionsButton, itself copied from the Members table).
+						    Going through <Button> meant inheriting variant backgrounds and its
+						    `.iconWrapper svg { width: 1rem }` rule, which can only be overridden from here by
+						    out-specifying a shared module — editing that rule directly would resize the icon
+						    in every button in the app.
+						    Icon stays UserCirclePlusIcon weight="fill", the component AddFriendView.tsx
+						    renders under .heroIcon (AddFriendView.module.css). FocusRing is kept so the
+						    control still shows a keyboard focus ring, as it did via <Button>. */}
+						<FocusRing offset={-2} data-flx="cast.cast-overview-content.focus-ring">
+							<button
+								type="button"
+								className={styles.addButton}
+								aria-label={i18n._(ADD_CHARACTER_DESCRIPTOR)}
+								onClick={() => void openAddCharacter(group.scopeId)}
+								data-flx="cast.cast-overview-content.button.add"
+							>
 								<UserCirclePlusIcon
 									weight="fill"
 									className={styles.buttonIcon}
 									data-flx="cast.cast-overview-content.user-circle-plus-icon"
 								/>
-							}
-							aria-label={i18n._(ADD_CHARACTER_DESCRIPTOR)}
-							onClick={() => void openAddCharacter(group.scopeId)}
-							data-flx="cast.cast-overview-content.button.add"
-						/>
+							</button>
+						</FocusRing>
 					</div>
 					{/* An empty scope renders as just its header and Add button — that is how it gets its
 					    first override, so there is no "nothing here" copy to add. */}

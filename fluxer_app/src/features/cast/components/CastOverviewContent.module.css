@@ -46,15 +46,58 @@
 }
 
 /*
- * Same 1rem square as UserProfileModal.module.css .buttonIcon, which sizes the icon in that modal's
- * icon-only "Add friend" button. Deliberately NOT AddFriendView's .heroIcon sizing: that is 4rem,
- * a hero treatment for a full-page slate, and only its glyph is being reused here. Repeated rather
- * than imported: a CSS module is private to its feature, so cross-importing one would couple this
- * page to the profile modal's internals.
+ * The per-scope Add button. Modelled on .actionsButton in CastOverviewRow.module.css — the kebab
+ * beside every row, itself copied from GuildMembersPage.module.css .actionsButton — so the two
+ * controls on this page read as the same kind of icon button.
+ *
+ * Differs from that kebab in one way only: the idle background is transparent rather than
+ * --background-secondary, because this sits on the bare group header rather than inside the row
+ * table's surface. The hover/press background is the kebab's own hover value,
+ * --background-secondary-alt, not a new grey, and the same is used for :active so pressing reads
+ * as a state rather than a flicker.
+ */
+.addButton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	flex-shrink: 0;
+	border: none;
+	border-radius: 50%;
+	background-color: transparent;
+	color: var(--text-tertiary);
+	cursor: pointer;
+	transition:
+		background-color 200ms ease,
+		color 200ms ease;
+}
+
+/*
+ * Hover is gated on the window being focused, matching how every other hover background in this app
+ * is written (see .actionsButton's neighbours and Button.module.css) — an unfocused window must not
+ * paint hover states.
+ */
+:global(:where(html.window-focused, html.unfocused-fully-interactive):not(.window-focus-activation-guard))
+	.addButton:hover:not(:disabled) {
+	background-color: var(--background-secondary-alt);
+	color: var(--text-primary);
+}
+
+.addButton:active:not(:disabled) {
+	background-color: var(--background-secondary-alt);
+	color: var(--text-primary);
+}
+
+/*
+ * 1.5rem, set on the icon itself. The shared Button's `.iconWrapper svg` rule is what constrained
+ * this to 1rem before; it no longer applies now that this is a plain <button>, so no override or
+ * specificity fight is needed — and Button.module.css stays untouched, which matters because that
+ * rule sizes the icon in every button in the app.
  */
 .buttonIcon {
-	height: 1rem;
-	width: 1rem;
+	height: 1.5rem;
+	width: 1.5rem;
 }
 
 .groupName {
