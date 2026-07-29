@@ -18,14 +18,15 @@ import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
-import {UserPlusIcon} from '@phosphor-icons/react';
+import {UserCirclePlusIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
 import {useEffect, useMemo, useState} from 'react';
 
 const ADD_CHARACTER_DESCRIPTOR = msg({
 	message: 'Add character',
-	comment: 'Button label opening the cast character picker for one scope. Keep it concise.',
+	comment:
+		'Accessible name for the icon-only button that opens the cast character picker for one scope. Keep it concise.',
 });
 
 interface CastData {
@@ -169,27 +170,31 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 						<span className={styles.groupName} title={label}>
 							{label}
 						</span>
-						{/* Styled as the app's existing "Add friend" affordance, verbatim: the profile action
-						    button in UserProfileModal.tsx (renderActionButtons) is
-						    `<Button variant="secondary" small leftIcon={<UserPlusIcon className={buttonIcon}/>}>`,
-						    with .buttonIcon = 1rem square in UserProfileModal.module.css. The variant and size
-						    here already matched it, so only the icon was missing. UserPlusIcon (the person
-						    silhouette with the "+" badge) rather than a bare PlusIcon, because this adds a
-						    character to a cast exactly as that adds a person to a friends list. Secondary
-						    rather than primary because there is one of these per scope, and a column of
-						    primary buttons would fight the rows for attention. */}
+						{/* Icon-only, and styled exactly as the app's Add friend affordance.
+						    Icon: UserCirclePlusIcon weight="fill" — the component AddFriendView.tsx renders
+						    under .heroIcon (AddFriendView.module.css). Only the glyph is reused; .heroIcon's
+						    own 4rem sizing is a hero treatment, so the icon is sized for a button here.
+						    Colour: variant="primary" (--brand-primary), which is what the Add friend submit
+						    button in AddFriendForm.tsx resolves to — it passes no variant, and Button
+						    defaults to primary. The previous "secondary" was the dark/unstyled look.
+						    Square + aria-label rather than a text label, matching the icon-only Add friend
+						    button in UserProfileModal.tsx (square, icon, aria-label). */}
 						<Button
 							type="button"
-							variant="secondary"
+							variant="primary"
 							small
-							leftIcon={
-								<UserPlusIcon className={styles.buttonIcon} data-flx="cast.cast-overview-content.user-plus-icon" />
+							square
+							icon={
+								<UserCirclePlusIcon
+									weight="fill"
+									className={styles.buttonIcon}
+									data-flx="cast.cast-overview-content.user-circle-plus-icon"
+								/>
 							}
+							aria-label={i18n._(ADD_CHARACTER_DESCRIPTOR)}
 							onClick={() => void openAddCharacter(group.scopeId)}
 							data-flx="cast.cast-overview-content.button.add"
-						>
-							{i18n._(ADD_CHARACTER_DESCRIPTOR)}
-						</Button>
+						/>
 					</div>
 					{/* An empty scope renders as just its header and Add button — that is how it gets its
 					    first override, so there is no "nothing here" copy to add. */}
@@ -225,4 +230,3 @@ export const CastOverviewContent: React.FC<{guildId: string | null | undefined}>
 		);
 	},
 );
-

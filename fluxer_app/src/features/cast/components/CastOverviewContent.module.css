@@ -46,9 +46,11 @@
 }
 
 /*
- * Same 1rem square as UserProfileModal.module.css .buttonIcon, which sizes the UserPlusIcon in that
- * modal's "Add friend" button. Repeated here rather than imported: a CSS module is private to its
- * feature, so cross-importing one would couple this page to the profile modal's internals.
+ * Same 1rem square as UserProfileModal.module.css .buttonIcon, which sizes the icon in that modal's
+ * icon-only "Add friend" button. Deliberately NOT AddFriendView's .heroIcon sizing: that is 4rem,
+ * a hero treatment for a full-page slate, and only its glyph is being reused here. Repeated rather
+ * than imported: a CSS module is private to its feature, so cross-importing one would couple this
+ * page to the profile modal's internals.
  */
 .buttonIcon {
 	height: 1rem;
