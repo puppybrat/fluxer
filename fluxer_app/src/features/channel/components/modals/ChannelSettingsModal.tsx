@@ -15,7 +15,6 @@ import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import * as UnsavedChangesCommands from '@app/features/ui/commands/UnsavedChangesCommands';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
 import UnsavedChanges from '@app/features/ui/state/UnsavedChanges';
-import {isMobileExperienceEnabled} from '@app/features/ui/utils/MobileExperience';
 import {
 	CATEGORY_SETTINGS_LABEL_DESCRIPTOR,
 	CHANNEL_SETTINGS_LABEL_DESCRIPTOR,
@@ -28,100 +27,93 @@ import {observer} from 'mobx-react-lite';
 import type React from 'react';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 
-export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = observer(
-	({channelId, initialTab: initialTabProp, initialMobileTab}) => {
-		const {i18n} = useLingui();
-		const channel = Channels.getChannel(channelId);
-		const guildId = channel?.guildId;
-		const [selectedTab, setSelectedTab] = useState<ChannelSettingsTabType>(initialTabProp ?? 'overview');
-		const availableTabs = useMemo(() => {
-			return getAvailableTabs(i18n, channelId);
-		}, [i18n.locale, channelId]);
-		const isMobileExp = isMobileExperienceEnabled();
-		const initialTab = useMemo(() => {
-			if (!isMobileExp || !initialMobileTab) return;
-			const targetTab = availableTabs.find((tab) => tab.type === initialMobileTab);
-			if (!targetTab) return;
-			return {tab: initialMobileTab, title: targetTab.label};
-		}, [initialMobileTab, availableTabs, isMobileExp]);
-		const mobileNav = useMobileNavigation<ChannelSettingsTabType>(initialTab);
-		const {enabled: isMobile} = MobileLayout;
-		const unsavedChangesState = UnsavedChanges;
-		useEffect(() => {
-			if (guildId) {
-				GatewayConnection.syncGuildIfNeeded(guildId, 'channel-settings-modal');
-			}
-		}, [guildId]);
-		useEffect(() => {
-			if (!channel) {
-				ModalCommands.pop();
-			}
-		}, [channel]);
-		const groupedSettingsTabs = useMemo(() => {
-			return getGroupedSettingsTabs(availableTabs);
-		}, [availableTabs]);
-		const currentTab = useMemo(() => {
-			if (!isMobile) {
-				return availableTabs.find((tab) => tab.type === selectedTab);
-			}
-			if (mobileNav.isRootView) return;
-			return availableTabs.find((tab) => tab.type === mobileNav.currentView?.tab);
-		}, [isMobile, selectedTab, mobileNav.isRootView, mobileNav.currentView, availableTabs]);
-		const handleMobileBack = useCallback(() => {
-			if (mobileNav.isRootView) {
-				ModalCommands.pop();
-			} else {
-				mobileNav.navigateBack();
-			}
-		}, [mobileNav]);
-		const handleTabSelect = useCallback(
-			(tabType: string, title: string) => {
-				mobileNav.navigateTo(tabType as ChannelSettingsTabType, title);
-			},
-			[mobileNav],
-		);
-		const currentMobileTab = mobileNav.currentView?.tab;
-		const handleClose = useCallback(() => {
-			const checkTabId = isMobile ? currentMobileTab : selectedTab;
-			if (checkTabId && unsavedChangesState.unsavedChanges[checkTabId]) {
-				UnsavedChangesCommands.triggerFlashEffect(checkTabId);
-				return;
-			}
-			ModalCommands.pop();
-		}, [currentMobileTab, isMobile, selectedTab, unsavedChangesState.unsavedChanges]);
-		if (!channel) {
-			return null;
+export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = observer(({channelId}) => {
+	const {i18n} = useLingui();
+	const channel = Channels.getChannel(channelId);
+	const guildId = channel?.guildId;
+	const [selectedTab, setSelectedTab] = useState<ChannelSettingsTabType>('overview');
+	const availableTabs = useMemo(() => {
+		return getAvailableTabs(i18n, channelId);
+	}, [i18n.locale, channelId]);
+	// No initial tab: every call site opens this modal on Overview. The initialTab/initialMobileTab
+	// props existed only for the Cast Overview page's links into the since-removed Cast tab.
+	const mobileNav = useMobileNavigation<ChannelSettingsTabType>();
+	const {enabled: isMobile} = MobileLayout;
+	const unsavedChangesState = UnsavedChanges;
+	useEffect(() => {
+		if (guildId) {
+			GatewayConnection.syncGuildIfNeeded(guildId, 'channel-settings-modal');
 		}
-		const isCategory = channel.type === ChannelTypes.GUILD_CATEGORY;
-		return (
-			<Modal.Root size="fullscreen" onClose={handleClose} data-flx="channel.channel-settings-modal.modal-root">
-				<Modal.ScreenReaderLabel
-					text={i18n._(isCategory ? CATEGORY_SETTINGS_LABEL_DESCRIPTOR : CHANNEL_SETTINGS_LABEL_DESCRIPTOR)}
-					data-flx="channel.channel-settings-modal.modal-screen-reader-label"
-				/>
-				<SettingsModalContainer fullscreen={true} data-flx="channel.channel-settings-modal.settings-modal-container">
-					{isMobile ? (
-						<MobileChannelSettingsView
-							channel={channel}
-							groupedSettingsTabs={groupedSettingsTabs}
-							currentTab={currentTab}
-							mobileNav={mobileNav}
-							onBack={handleMobileBack}
-							onTabSelect={handleTabSelect}
-							data-flx="channel.channel-settings-modal.mobile-channel-settings-view"
-						/>
-					) : (
-						<DesktopChannelSettingsView
-							channel={channel}
-							groupedSettingsTabs={groupedSettingsTabs}
-							currentTab={currentTab}
-							selectedTab={selectedTab}
-							onTabSelect={setSelectedTab}
-							data-flx="channel.channel-settings-modal.desktop-channel-settings-view"
-						/>
-					)}
-				</SettingsModalContainer>
-			</Modal.Root>
-		);
-	},
-);
+	}, [guildId]);
+	useEffect(() => {
+		if (!channel) {
+			ModalCommands.pop();
+		}
+	}, [channel]);
+	const groupedSettingsTabs = useMemo(() => {
+		return getGroupedSettingsTabs(availableTabs);
+	}, [availableTabs]);
+	const currentTab = useMemo(() => {
+		if (!isMobile) {
+			return availableTabs.find((tab) => tab.type === selectedTab);
+		}
+		if (mobileNav.isRootView) return;
+		return availableTabs.find((tab) => tab.type === mobileNav.currentView?.tab);
+	}, [isMobile, selectedTab, mobileNav.isRootView, mobileNav.currentView, availableTabs]);
+	const handleMobileBack = useCallback(() => {
+		if (mobileNav.isRootView) {
+			ModalCommands.pop();
+		} else {
+			mobileNav.navigateBack();
+		}
+	}, [mobileNav]);
+	const handleTabSelect = useCallback(
+		(tabType: string, title: string) => {
+			mobileNav.navigateTo(tabType as ChannelSettingsTabType, title);
+		},
+		[mobileNav],
+	);
+	const currentMobileTab = mobileNav.currentView?.tab;
+	const handleClose = useCallback(() => {
+		const checkTabId = isMobile ? currentMobileTab : selectedTab;
+		if (checkTabId && unsavedChangesState.unsavedChanges[checkTabId]) {
+			UnsavedChangesCommands.triggerFlashEffect(checkTabId);
+			return;
+		}
+		ModalCommands.pop();
+	}, [currentMobileTab, isMobile, selectedTab, unsavedChangesState.unsavedChanges]);
+	if (!channel) {
+		return null;
+	}
+	const isCategory = channel.type === ChannelTypes.GUILD_CATEGORY;
+	return (
+		<Modal.Root size="fullscreen" onClose={handleClose} data-flx="channel.channel-settings-modal.modal-root">
+			<Modal.ScreenReaderLabel
+				text={i18n._(isCategory ? CATEGORY_SETTINGS_LABEL_DESCRIPTOR : CHANNEL_SETTINGS_LABEL_DESCRIPTOR)}
+				data-flx="channel.channel-settings-modal.modal-screen-reader-label"
+			/>
+			<SettingsModalContainer fullscreen={true} data-flx="channel.channel-settings-modal.settings-modal-container">
+				{isMobile ? (
+					<MobileChannelSettingsView
+						channel={channel}
+						groupedSettingsTabs={groupedSettingsTabs}
+						currentTab={currentTab}
+						mobileNav={mobileNav}
+						onBack={handleMobileBack}
+						onTabSelect={handleTabSelect}
+						data-flx="channel.channel-settings-modal.mobile-channel-settings-view"
+					/>
+				) : (
+					<DesktopChannelSettingsView
+						channel={channel}
+						groupedSettingsTabs={groupedSettingsTabs}
+						currentTab={currentTab}
+						selectedTab={selectedTab}
+						onTabSelect={setSelectedTab}
+						data-flx="channel.channel-settings-modal.desktop-channel-settings-view"
+					/>
+				)}
+			</SettingsModalContainer>
+		</Modal.Root>
+	);
+});

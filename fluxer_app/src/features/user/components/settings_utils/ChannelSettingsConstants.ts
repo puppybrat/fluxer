@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import ChannelCastTab from '@app/features/channel/components/modals/channel_tabs/ChannelCastTab';
 import ChannelInvitesTab from '@app/features/channel/components/modals/channel_tabs/ChannelInvitesTab';
 import ChannelOverviewTab from '@app/features/channel/components/modals/channel_tabs/ChannelOverviewTab';
 import ChannelPermissionsTab from '@app/features/channel/components/modals/channel_tabs/ChannelPermissionsTab';
@@ -8,7 +7,7 @@ import ChannelWebhooksTab from '@app/features/channel/components/modals/channel_
 import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import type {I18n, MessageDescriptor} from '@lingui/core';
 import {msg} from '@lingui/core/macro';
-import {GearIcon, type Icon, ShieldIcon, TicketIcon, UsersThreeIcon, WebhooksLogoIcon} from '@phosphor-icons/react';
+import {GearIcon, type Icon, ShieldIcon, TicketIcon, WebhooksLogoIcon} from '@phosphor-icons/react';
 import type React from 'react';
 
 const OVERVIEW_DESCRIPTOR = msg({
@@ -31,13 +30,8 @@ const WEBHOOKS_DESCRIPTOR = msg({
 	context: 'channel-settings-tab',
 	comment: 'Channel settings tab for configuring channel webhooks.',
 });
-const CAST_DESCRIPTOR = msg({
-	message: 'Cast',
-	context: 'channel-settings-tab',
-	comment: 'Channel and category settings tab for per-scope cast character overrides.',
-});
 
-export type ChannelSettingsTabType = 'overview' | 'permissions' | 'invites' | 'webhooks' | 'cast';
+export type ChannelSettingsTabType = 'overview' | 'permissions' | 'invites' | 'webhooks';
 type ChannelSettingsTabCategories = 'channel_settings';
 
 export interface ChannelSettingsTab {
@@ -94,16 +88,6 @@ const CHANNEL_SETTINGS_TABS_DESCRIPTORS: Array<ChannelSettingsTabDescriptor> = [
 		icon: WebhooksLogoIcon,
 		component: ChannelWebhooksTab,
 		permission: Permissions.MANAGE_WEBHOOKS,
-	},
-	{
-		type: 'cast',
-		category: 'channel_settings',
-		label: CAST_DESCRIPTOR,
-		icon: UsersThreeIcon,
-		component: ChannelCastTab,
-		// Cast is community-wide data, so it is gated on MANAGE_GUILD (matching the guild Cast tab),
-		// not the per-channel permissions the other tabs use.
-		permission: Permissions.MANAGE_GUILD,
 	},
 ];
 export const CHANNEL_SETTINGS_LABEL_DESCRIPTOR = msg({

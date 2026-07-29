@@ -2,19 +2,13 @@
 
 import Channels from '@app/features/channel/state/Channels';
 import Permission from '@app/features/permissions/state/Permission';
-import type {
-	ChannelSettingsTab,
-	ChannelSettingsTabType,
-} from '@app/features/user/components/settings_utils/ChannelSettingsConstants';
+import type {ChannelSettingsTab} from '@app/features/user/components/settings_utils/ChannelSettingsConstants';
 import {getChannelSettingsTabs} from '@app/features/user/components/settings_utils/ChannelSettingsConstants';
 import {ChannelTypes, Permissions} from '@fluxer/constants/src/ChannelConstants';
 import type {I18n} from '@lingui/core';
 
 export interface ChannelSettingsModalProps {
 	channelId: string;
-	/** Desktop: the tab to open on, instead of 'overview'. Mirrors GuildSettingsModal's initialTab. */
-	initialTab?: ChannelSettingsTabType;
-	initialMobileTab?: ChannelSettingsTabType;
 }
 
 export function getAvailableTabs(i18n: I18n, channelId: string): Array<ChannelSettingsTab> {
@@ -22,15 +16,13 @@ export function getAvailableTabs(i18n: I18n, channelId: string): Array<ChannelSe
 	if (!channel) return getChannelSettingsTabs(i18n);
 	let filteredTabs = getChannelSettingsTabs(i18n);
 	if (channel.type === ChannelTypes.GUILD_CATEGORY) {
-		// Categories keep only overview + permissions, plus Cast: a category is a cast scope in its own
-		// right (its overrides are inherited by every channel inside it).
-		filteredTabs = filteredTabs.filter(
-			(tab) => tab.type === 'overview' || tab.type === 'permissions' || tab.type === 'cast',
-		);
+		// Categories keep only overview + permissions. A category is still a cast scope, but that is
+		// now edited on the Cast Overview page, which lists every scope in one tree.
+		filteredTabs = filteredTabs.filter((tab) => tab.type === 'overview' || tab.type === 'permissions');
 	}
 	if (channel.type === ChannelTypes.GUILD_LINK) {
-		// A link channel carries no messages, so neither webhooks nor a cast scope apply to it.
-		filteredTabs = filteredTabs.filter((tab) => tab.type !== 'webhooks' && tab.type !== 'cast');
+		// A link channel carries no messages, so webhooks do not apply to it.
+		filteredTabs = filteredTabs.filter((tab) => tab.type !== 'webhooks');
 	}
 	const permissionContext = {channelId: channel.id, guildId: channel.guildId};
 	const canUpdateRtcRegion =

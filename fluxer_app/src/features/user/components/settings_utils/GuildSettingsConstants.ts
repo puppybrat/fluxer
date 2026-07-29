@@ -2,7 +2,6 @@
 
 import GuildAuditLogTab from '@app/features/guild/components/modals/guild_tabs/GuildAuditLogTab';
 import GuildBansTab from '@app/features/guild/components/modals/guild_tabs/GuildBansTab';
-import GuildCastTab from '@app/features/guild/components/modals/guild_tabs/GuildCastTab';
 import GuildDiscoveryTab from '@app/features/guild/components/modals/guild_tabs/GuildDiscoveryTab';
 import GuildEmojiTab from '@app/features/guild/components/modals/guild_tabs/GuildEmojiTab';
 import GuildInvitesTab from '@app/features/guild/components/modals/guild_tabs/GuildInvitesTab';
@@ -30,16 +29,9 @@ import {
 	StickerIcon,
 	TicketIcon,
 	UserIcon,
-	UsersThreeIcon,
 	WebhooksLogoIcon,
 } from '@phosphor-icons/react';
 import type React from 'react';
-
-const CAST_DESCRIPTOR = msg({
-	message: 'Cast',
-	context: 'community-settings-tab',
-	comment: 'Community settings tab listing the characters available in the community.',
-});
 
 const EMOJI_DESCRIPTOR = msg({
 	message: 'Emoji',
@@ -108,7 +100,6 @@ export type GuildSettingsTabType =
 	| 'emoji'
 	| 'stickers'
 	| 'moderation'
-	| 'cast'
 	| 'audit_log'
 	| 'webhooks'
 	| 'vanity_url'
@@ -172,14 +163,6 @@ const GUILD_SETTINGS_TABS_DESCRIPTORS: Array<GuildSettingsTabDescriptor> = [
 		label: MODERATION_DESCRIPTOR,
 		icon: HammerIcon,
 		component: GuildModerationTab,
-		permission: Permissions.MANAGE_GUILD,
-	},
-	{
-		type: 'cast',
-		category: 'guild_settings',
-		label: CAST_DESCRIPTOR,
-		icon: UsersThreeIcon,
-		component: GuildCastTab,
 		permission: Permissions.MANAGE_GUILD,
 	},
 	{
