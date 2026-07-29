@@ -301,11 +301,38 @@ class ChannelCast {
 		}
 	}
 
-	/** Add a character locally at this scope (gives it a local presence row). */
+	/**
+	 * Add a character locally at this scope (gives it a local presence row).
+	 *
+	 * The resolved primacy is captured BEFORE the add and restored after, because `add_to_cast`
+	 * creates the membership row at is_primary=0 — and since character_primaries is both the
+	 * membership table and the primacy flag, that row would shadow a broader scope's is_primary=1
+	 * for the rest of the walk. Taking local control must change who decides, not what resolves.
+	 *
+	 * Deliberately does NOT touch the deliberate-demotion path: setPrimary(false) here still pins
+	 * a character as non-primary at this scope while it stays primary server-wide, which is a real
+	 * feature (see CastResolution.test.ts, 'resolves a top-level channel ... skipping the category
+	 * hop'). Only the DEFAULT that a bare add lands on is corrected.
+	 *
+	 * LIMITATION — not atomic: the personal site exposes membership and primacy as two writes, so a
+	 * failed follow-up leaves the character added but demoted. runWrite surfaces that as a write
+	 * error and the reload shows the true state, so it is visible rather than silent, and re-adding
+	 * is idempotent. The correct long-term model is a tri-state is_primary (NULL = no local opinion,
+	 * distinguishing "explicitly not primary here" from "inherit"), which would make the default
+	 * non-shadowing at the data layer and remove the second write entirely. That is a schema and
+	 * wire-contract change on the personal site; not worth it for a single client, but it is the
+	 * shape to reach for if this deployment ever grows a second real one.
+	 */
 	async addLocal(characterId: string): Promise<boolean> {
-		return this.runWrite(characterId, () =>
-			CastCommands.addCharacter(this.guildId as string, characterId, this.channelId),
+		const wasPrimaryHere = this.resolvedCast.some(
+			(resolved) => resolved.character_id === characterId && resolved.is_primary,
 		);
+		return this.runWrite(characterId, async () => {
+			await CastCommands.addCharacter(this.guildId as string, characterId, this.channelId);
+			if (wasPrimaryHere) {
+				await CastCommands.setPrimary(this.guildId as string, characterId, true, this.channelId);
+			}
+		});
 	}
 
 	/** Remove a character's local rows at this scope; the backend cascade also drops its override. */

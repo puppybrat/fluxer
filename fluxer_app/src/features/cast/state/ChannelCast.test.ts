@@ -32,6 +32,11 @@ function character(id: string) {
  * backend does (verified against the live API): a scoped add creates a scoped primaries row, a
  * scoped excluded override needs that membership, and getGuildCast projects resolved_cast for the
  * queried scope (excluded characters drop out of resolved_cast).
+ *
+ * `is_primary` in the projection follows the real most-specific-first walk (scoped row wins,
+ * otherwise the server row) rather than being hardcoded false. That is what makes the shadowing
+ * hazard visible here at all: a scoped add lands at is_primary=0 and would otherwise silently mask
+ * a server-scope is_primary=1.
  */
 function makeBackend(seedPrimaries: Array<{character_id: string; channel_id: string | null; is_primary: boolean}>) {
 	const primaries = [...seedPrimaries];
@@ -46,11 +51,24 @@ function makeBackend(seedPrimaries: Array<{character_id: string; channel_id: str
 	return {
 		primaries,
 		overrides,
+		primacyFor(id: string, scope: string) {
+			const scoped = primaries.find((p) => p.character_id === id && p.channel_id === scope);
+			if (scoped) {
+				return scoped.is_primary;
+			}
+			return primaries.find((p) => p.character_id === id && p.channel_id === null)?.is_primary ?? false;
+		},
 		project(scope: string) {
 			const ids = new Set(primaries.map((p) => p.character_id));
 			const resolved = [...ids]
 				.filter((id) => !overrides.some((o) => o.character_id === id && o.channel_id === scope && o.excluded))
-				.map((id) => ({character_id: id, is_primary: false, nickname: null, pfp_url: null, reference_image_url: null}));
+				.map((id) => ({
+					character_id: id,
+					is_primary: this.primacyFor(id, scope),
+					nickname: null,
+					pfp_url: null,
+					reference_image_url: null,
+				}));
 			return {
 				characters: [...ids].map(character),
 				categories: [],
@@ -82,6 +100,16 @@ function wireBackend(backend: ReturnType<typeof makeBackend>, roster: Array<Retu
 		}
 		return {} as never;
 	});
+	// Mirrors the endpoint: primacy is a flag on an EXISTING membership row at that scope, never a
+	// row-creating write (the real one answers 409 when the membership is absent).
+	vi.mocked(CastCommands.setPrimary).mockImplementation(async (_g, id, isPrimary, ch) => {
+		const row = backend.primaries.find((p) => p.character_id === id && p.channel_id === (ch ?? null));
+		if (!row) {
+			throw new Error(`setPrimary without membership at scope ${String(ch)}`);
+		}
+		row.is_primary = isPrimary;
+		return {} as never;
+	});
 	vi.mocked(CastCommands.updateOverride).mockImplementation(async (_g, id, u) => {
 		const ch = u.channelId ?? null;
 		let row = backend.overrides.find((o) => o.character_id === id && o.channel_id === ch);
@@ -104,6 +132,10 @@ function wireBackend(backend: ReturnType<typeof makeBackend>, roster: Array<Retu
 describe('ChannelCast — scoped picker filter', () => {
 	beforeEach(() => {
 		ChannelCast.reset();
+		// Call history only — implementations are (re)installed by wireBackend inside each test. Without
+		// this the suite has no clearMocks, so a "was never called" assertion would read a prior test's
+		// calls and pass or fail for the wrong reason.
+		vi.clearAllMocks();
 	});
 
 	it('the picker offers only fully-absent characters (not present or excluded)', async () => {
@@ -244,6 +276,51 @@ describe('ChannelCast — scoped picker filter', () => {
 			const settingsTab = new Set(ChannelCast.addableCharacters.map((c) => c.id));
 			const overview = ChannelCast.locallyAddableCharacters.map((c) => c.id);
 			expect(overview.filter((id) => !settingsTab.has(id)).sort()).toEqual([...inheritedIds].sort());
+		});
+	});
+
+	/**
+	 * Regression for the real #parent-test bug: character_primaries is both the membership table and
+	 * the primacy flag, so the row a scoped add creates (is_primary=0) shadowed the server-scope
+	 * is_primary=1 for the rest of the walk. Pulling a character into local view on the Cast Overview
+	 * therefore silently demoted it. Taking local control must change who decides, not what resolves.
+	 */
+	describe('addLocal preserves resolved primacy', () => {
+		it('an inherited-primary character stays primary once pulled local', async () => {
+			const backend = makeBackend([{character_id: 'inh', channel_id: null, is_primary: true}]);
+			wireBackend(backend, ['inh'].map(character));
+
+			await ChannelCast.load('g', CH);
+			// Primary here purely by inheritance — no row at this scope at all.
+			expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.status).toBe('inherited');
+			expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.isPrimary).toBe(true);
+
+			await ChannelCast.addLocal('inh');
+
+			expect(ChannelCast.writeError).toBeNull();
+			// Now decided locally, but resolving to exactly what it did before.
+			expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.status).toBe('local');
+			expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.isPrimary).toBe(true);
+			// The follow-up write is what carries the primacy across; without it the new scoped row
+			// sits at is_primary=0 and shadows the server row.
+			expect(CastCommands.setPrimary).toHaveBeenCalledWith('g', 'inh', true, CH);
+			expect(backend.primaries.find((p) => p.character_id === 'inh' && p.channel_id === CH)?.is_primary).toBe(true);
+		});
+
+		it('a non-primary inherited character is pulled local with no setPrimary call', async () => {
+			const backend = makeBackend([{character_id: 'inh', channel_id: null, is_primary: false}]);
+			wireBackend(backend, ['inh'].map(character));
+
+			await ChannelCast.load('g', CH);
+			expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.isPrimary).toBe(false);
+
+			await ChannelCast.addLocal('inh');
+
+			expect(ChannelCast.writeError).toBeNull();
+			expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.status).toBe('local');
+			expect(ChannelCast.rows.find((r) => r.character.id === 'inh')?.isPrimary).toBe(false);
+			// No spurious second write: the add already lands on the correct value.
+			expect(CastCommands.setPrimary).not.toHaveBeenCalled();
 		});
 	});
 
