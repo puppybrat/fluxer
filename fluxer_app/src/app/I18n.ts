@@ -8,42 +8,15 @@ import {loadLazyModule} from '@app/features/platform/utils/LazyModuleLoader';
 import {type I18n, i18n, type Messages} from '@lingui/core';
 import {createAtom, runInAction} from 'mobx';
 
-const supportedLocales = [
-	'ar',
-	'bg',
-	'cs',
-	'da',
-	'de',
-	'el',
-	'en-GB',
-	'en-US',
-	'es-ES',
-	'es-419',
-	'fi',
-	'fr',
-	'he',
-	'hi',
-	'hr',
-	'hu',
-	'id',
-	'it',
-	'ja',
-	'ko',
-	'lt',
-	'nl',
-	'no',
-	'pl',
-	'pt-BR',
-	'ro',
-	'ru',
-	'sv-SE',
-	'th',
-	'tr',
-	'uk',
-	'vi',
-	'zh-CN',
-	'zh-TW',
-] as const;
+/*
+ * This fork is deliberately English-only: en-US is the sole catalog shipped, and lingui.config.js
+ * extracts and compiles only that locale. Any other locale tag normalizes to en-US.
+ *
+ * Adding a locale back means adding it here, to `loaders` below, and to `locales` in
+ * lingui.config.js -- a loader entry without a compiled catalog is a build-time resolution failure,
+ * not a runtime fallback.
+ */
+export const supportedLocales = ['en-US'] as const;
 
 type LocaleCode = (typeof supportedLocales)[number];
 
@@ -59,40 +32,7 @@ type LocaleLoader = () => Promise<{
 }>;
 
 const loaders: Record<LocaleCode, LocaleLoader> = {
-	ar: () => import('@app/features/i18n/locales/ar/messages.mjs'),
-	bg: () => import('@app/features/i18n/locales/bg/messages.mjs'),
-	cs: () => import('@app/features/i18n/locales/cs/messages.mjs'),
-	da: () => import('@app/features/i18n/locales/da/messages.mjs'),
-	de: () => import('@app/features/i18n/locales/de/messages.mjs'),
-	el: () => import('@app/features/i18n/locales/el/messages.mjs'),
-	'en-GB': () => import('@app/features/i18n/locales/en-GB/messages.mjs'),
 	'en-US': () => Promise.resolve({messages: messagesEnUS}),
-	'es-ES': () => import('@app/features/i18n/locales/es-ES/messages.mjs'),
-	'es-419': () => import('@app/features/i18n/locales/es-419/messages.mjs'),
-	fi: () => import('@app/features/i18n/locales/fi/messages.mjs'),
-	fr: () => import('@app/features/i18n/locales/fr/messages.mjs'),
-	he: () => import('@app/features/i18n/locales/he/messages.mjs'),
-	hi: () => import('@app/features/i18n/locales/hi/messages.mjs'),
-	hr: () => import('@app/features/i18n/locales/hr/messages.mjs'),
-	hu: () => import('@app/features/i18n/locales/hu/messages.mjs'),
-	id: () => import('@app/features/i18n/locales/id/messages.mjs'),
-	it: () => import('@app/features/i18n/locales/it/messages.mjs'),
-	ja: () => import('@app/features/i18n/locales/ja/messages.mjs'),
-	ko: () => import('@app/features/i18n/locales/ko/messages.mjs'),
-	lt: () => import('@app/features/i18n/locales/lt/messages.mjs'),
-	nl: () => import('@app/features/i18n/locales/nl/messages.mjs'),
-	no: () => import('@app/features/i18n/locales/no/messages.mjs'),
-	pl: () => import('@app/features/i18n/locales/pl/messages.mjs'),
-	'pt-BR': () => import('@app/features/i18n/locales/pt-BR/messages.mjs'),
-	ro: () => import('@app/features/i18n/locales/ro/messages.mjs'),
-	ru: () => import('@app/features/i18n/locales/ru/messages.mjs'),
-	'sv-SE': () => import('@app/features/i18n/locales/sv-SE/messages.mjs'),
-	th: () => import('@app/features/i18n/locales/th/messages.mjs'),
-	tr: () => import('@app/features/i18n/locales/tr/messages.mjs'),
-	uk: () => import('@app/features/i18n/locales/uk/messages.mjs'),
-	vi: () => import('@app/features/i18n/locales/vi/messages.mjs'),
-	'zh-CN': () => import('@app/features/i18n/locales/zh-CN/messages.mjs'),
-	'zh-TW': () => import('@app/features/i18n/locales/zh-TW/messages.mjs'),
 };
 
 function formatLocaleValue(value: string): string {

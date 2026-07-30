@@ -1,42 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 module.exports = {
-	locales: [
-		'ar',
-		'bg',
-		'cs',
-		'da',
-		'de',
-		'el',
-		'en-GB',
-		'en-US',
-		'es-ES',
-		'es-419',
-		'fi',
-		'fr',
-		'he',
-		'hi',
-		'hr',
-		'hu',
-		'id',
-		'it',
-		'ja',
-		'ko',
-		'lt',
-		'nl',
-		'no',
-		'pl',
-		'pt-BR',
-		'ro',
-		'ru',
-		'sv-SE',
-		'th',
-		'tr',
-		'uk',
-		'vi',
-		'zh-CN',
-		'zh-TW',
-	],
+	// This fork is deliberately English-only, so en-US is the only catalog extract/compile process.
+	// Keep this list in sync with `supportedLocales` in src/app/I18n.ts.
+	locales: ['en-US'],
 	sourceLocale: 'en-US',
 	catalogs: [
 		{

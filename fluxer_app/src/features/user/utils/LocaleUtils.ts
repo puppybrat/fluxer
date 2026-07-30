@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import i18n, {loadLocaleCatalog, normalizeLocale} from '@app/app/I18n';
+import i18n, {loadLocaleCatalog, normalizeLocale, supportedLocales} from '@app/app/I18n';
 import {getCachedCollator} from '@app/features/i18n/utils/IntlCache';
 import {Logger} from '@app/features/platform/utils/AppLogger';
 import * as UserSettingsCommands from '@app/features/user/commands/UserSettingsCommands';
@@ -308,8 +308,13 @@ export function getSortedDiscoveryLanguages(): Array<DiscoveryLanguageInfo> {
 	})).sort((a, b) => collator.compare(a.label, b.label) || a.code.localeCompare(b.code));
 }
 
+/*
+ * Only locales with a shipped catalog are offerable in the language picker. SUPPORTED_LOCALES stays
+ * the full table on purpose -- it doubles as the label source for the discovery language list, which
+ * tags community content and is unrelated to which UI translations this fork ships.
+ */
 export function getSortedLocales(): Array<TranslatedLocaleInfo> {
-	return [...SUPPORTED_LOCALES]
+	return SUPPORTED_LOCALES.filter((locale) => (supportedLocales as ReadonlyArray<string>).includes(locale.code))
 		.map((locale) => ({
 			...locale,
 			name: i18n._(locale.name),
