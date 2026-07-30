@@ -144,10 +144,16 @@ const FROM_CHARACTER_DESCRIPTOR = msg({
 	message: 'From character',
 	comment: 'Section header in the mobile channel search character picker. Filters by attributed cast character.',
 });
-const CHARACTERS_COUNT_DESCRIPTOR = msg({
-	message: '{length} characters',
+/*
+ * Placeholder-free on purpose: the count is joined in code rather than interpolated by ICU. A
+ * descriptor carrying {length} renders as raw source text if its id is ever missing from the
+ * compiled catalog, so keeping the noun standalone means a missing entry degrades to "3 characters"
+ * instead of leaking "{length} characters".
+ */
+const CHARACTERS_COUNT_NOUN_DESCRIPTOR = msg({
+	message: 'characters',
 	comment:
-		'Summary chip text in the mobile channel search sheet when more than one character is selected. length is the count.',
+		'Plural noun for the summary chip in the mobile channel search sheet, joined after the count as "3 characters".',
 });
 const HAS_DESCRIPTOR = msg({
 	message: 'Has',
@@ -424,7 +430,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 			if (fromCharacterIds.length === 1) {
 				return GuildCastDisplay.getIdentity(channel.guildId, fromCharacterIds[0])?.name ?? '';
 			}
-			return i18n._(CHARACTERS_COUNT_DESCRIPTOR, {length: fromCharacterIds.length});
+			return `${fromCharacterIds.length} ${i18n._(CHARACTERS_COUNT_NOUN_DESCRIPTOR)}`;
 		};
 		const getInChannelLabel = (): string => {
 			if (inChannelIds.length === 0) return '';

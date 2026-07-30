@@ -29,6 +29,16 @@ const ADD_DESCRIPTOR = msg({
 	message: 'Add',
 	comment: 'Button label to add one character to the cast. Keep it concise.',
 });
+/*
+ * Placeholder-free on purpose: the character name is composed in JSX rather than interpolated by
+ * ICU. A descriptor carrying {label} renders as raw source text if its id is ever missing from the
+ * compiled catalog, so keeping the sentence standalone means a missing entry still degrades to
+ * "Ada was added to the cast" instead of leaking "Added {label} to the cast".
+ */
+const ADDED_TO_CAST_DESCRIPTOR = msg({
+	message: 'was added to the cast',
+	comment: 'Success toast after adding a character, shown after the character name.',
+});
 
 /**
  * Serves both the guild (server-scope) tab and the channel/category (scoped) tabs. With a
@@ -93,10 +103,14 @@ export const CastAddCharacterModal: React.FC<{
 				}
 				ToastCommands.createToast({
 					type: 'success',
-					children: <Trans>Added {label} to the cast</Trans>,
+					children: (
+						<>
+							{label} {i18n._(ADDED_TO_CAST_DESCRIPTOR)}
+						</>
+					),
 				});
 			},
-			[scoped, guildId],
+			[scoped, guildId, i18n],
 		);
 
 		return (
