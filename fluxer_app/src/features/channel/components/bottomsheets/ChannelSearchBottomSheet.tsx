@@ -120,18 +120,20 @@ const STICKER_DESCRIPTOR = msg({
 	message: 'sticker',
 	comment: 'Label for the has:sticker filter option in the mobile channel search sheet.',
 });
-const TYPES_DESCRIPTOR = msg({
-	message: '{length} types',
-	comment:
-		'Summary chip text in the mobile channel search sheet when multiple content types are selected. length is the count.',
+// Placeholder-free for the reason given on USERS_COUNT_NOUN_DESCRIPTOR above.
+const TYPES_COUNT_NOUN_DESCRIPTOR = msg({
+	message: 'types',
+	comment: 'Plural noun for the summary chip in the mobile channel search sheet, joined after the count as "3 types".',
 });
 const SEARCH_DESCRIPTOR = msg({
 	message: 'Search',
 	comment: 'Title of the mobile channel search bottom sheet.',
 });
-const SEARCH_RESULTS_COUNT_DESCRIPTOR = msg({
-	message: '{resultCount} results',
-	comment: 'Subtitle in the mobile channel search bottom sheet showing the total number of search results.',
+// Placeholder-free for the reason given on USERS_COUNT_NOUN_DESCRIPTOR above.
+const SEARCH_RESULTS_COUNT_NOUN_DESCRIPTOR = msg({
+	message: 'results',
+	comment:
+		'Plural noun for the mobile channel search bottom sheet subtitle, joined after the total count as "12 results".',
 });
 const SEARCH_MESSAGES_DESCRIPTOR = msg({
 	message: 'Search messages',
@@ -464,7 +466,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 		const getHasFilterLabel = (): string => {
 			if (hasFilters.length === 0) return '';
 			if (hasFilters.length === 1) return getHasFilterDisplayLabel(hasFilters[0]);
-			return i18n._(TYPES_DESCRIPTOR, {length: hasFilters.length});
+			return `${hasFilters.length} ${i18n._(TYPES_COUNT_NOUN_DESCRIPTOR)}`;
 		};
 		const activeScopeOption = scopeOptions.find((opt) => opt.value === scope) ?? scopeOptions[0];
 		const SearchResultItem: React.FC<{message: Message; messageChannel: Channel}> = observer(
@@ -782,7 +784,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 		};
 		const headerSubtitle =
 			machineState.status === 'success' && machineState.total > 0
-				? i18n._(SEARCH_RESULTS_COUNT_DESCRIPTOR, {resultCount: machineState.total})
+				? `${machineState.total} ${i18n._(SEARCH_RESULTS_COUNT_NOUN_DESCRIPTOR)}`
 				: null;
 		return (
 			<>
