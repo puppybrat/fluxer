@@ -151,3 +151,11 @@
 	background-color: var(--background-secondary-alt);
 	color: var(--text-primary);
 }
+
+/*
+ * Second paragraph of the remove-confirmation body. The modal's .description is a plain block with
+ * no paragraph margins, so the gap has to come from here or the two lines run together.
+ */
+.confirmSecondaryLine {
+	margin-top: 0.75rem;
+}

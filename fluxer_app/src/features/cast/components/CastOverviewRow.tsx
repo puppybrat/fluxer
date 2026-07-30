@@ -56,6 +56,14 @@ const REMOVE_CHARACTER_DESCRIPTOR = msg({
 	message: 'Remove character',
 	comment: 'Title of the confirmation modal for removing a character row. Keep it concise.',
 });
+const REMOVE_CHARACTER_METADATA_DESCRIPTOR = msg({
+	message: 'Removing the character also removes metadata.',
+	comment: 'First line of the confirmation modal body for removing a cast character row.',
+});
+const REMOVE_CHARACTER_INHERITED_DESCRIPTOR = msg({
+	message: "If the character was inherited, it'll revert back to the parent settings.",
+	comment: 'Second line of the confirmation modal body for removing a cast character row.',
+});
 const MORE_ACTIONS_DESCRIPTOR = msg({
 	message: 'More actions',
 	comment: 'Accessible label for the three-dot menu button on a cast character row. Keep it concise.',
@@ -180,15 +188,21 @@ export const CastOverviewRow: React.FC<{
 
 	const handleRemove = useCallback(
 		(close: () => void) => {
-			const label = entry.name;
 			openModal(close, () => (
 				<ConfirmModal
 					title={i18n._(REMOVE_CHARACTER_DESCRIPTOR)}
 					description={
-						<Trans>
-							Remove <strong>{label}</strong> from this scope? Its nickname, avatar and reference image set here go too.
-							If a parent category or the community still lists it, it goes back to inheriting from there.
-						</Trans>
+						<>
+							<p data-flx="cast.cast-overview-row.confirm-modal.remove.metadata">
+								{i18n._(REMOVE_CHARACTER_METADATA_DESCRIPTOR)}
+							</p>
+							<p
+								className={styles.confirmSecondaryLine}
+								data-flx="cast.cast-overview-row.confirm-modal.remove.inherited"
+							>
+								{i18n._(REMOVE_CHARACTER_INHERITED_DESCRIPTOR)}
+							</p>
+						</>
 					}
 					primaryText={i18n._(REMOVE_DESCRIPTOR)}
 					primaryVariant="danger"
