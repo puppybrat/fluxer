@@ -843,11 +843,6 @@ msgstr "{length} apps"
 msgid "{length} attachments"
 msgstr "{length} attachments"
 
-#. Summary chip text in the mobile channel search sheet when more than one channel is selected. length is the count.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:186
-msgid "{length} channels"
-msgstr "{length} channels"
-
 #. Screen-reader fragment listing multiple embeds on a message. length is the count.
 #: src/features/channel/components/ChannelMessage.tsx:69
 msgid "{length} embeds"
@@ -859,14 +854,9 @@ msgid "{length} stickers"
 msgstr "{length} stickers"
 
 #. Summary chip text in the mobile channel search sheet when multiple content types are selected. length is the count.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:118
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:123
 msgid "{length} types"
 msgstr "{length} types"
-
-#. Summary chip text in the mobile channel search sheet when more than one user is selected. length is the count.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:85
-msgid "{length} users"
-msgstr "{length} users"
 
 #. Spectator count badge on a screen-share tile. {length} is the integer number of viewers. Consider pluralization on review.
 #: src/features/voice/components/voice_participant_tile/shared.ts:70
@@ -1248,7 +1238,7 @@ msgid "{resolvedName}'s group"
 msgstr "{resolvedName}'s group"
 
 #. Subtitle in the mobile channel search bottom sheet showing the total number of search results.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:127
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:132
 msgid "{resultCount} results"
 msgstr "{resultCount} results"
 
@@ -4280,7 +4270,7 @@ msgid "Audio sources: {summaryLabel}"
 msgstr "Audio sources: {summaryLabel}"
 
 #. Label for the has:sound filter option in the mobile channel search sheet.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:98
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:103
 msgid "audio upload"
 msgstr "audio upload"
 
@@ -6639,6 +6629,11 @@ msgstr "Channel:"
 msgid "Channel: {0}."
 msgstr "Channel: {0}."
 
+#. Plural noun for the summary chip in the mobile channel search sheet, joined after the count as "3 channels".
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:187
+msgid "channels"
+msgstr "channels"
+
 #. Section header in the message search popout listing matching channels for the in: filter. Title Case.
 #: src/features/channel/components/message_search_bar/ChannelsSection.tsx:13
 msgid "Channels"
@@ -6650,7 +6645,7 @@ msgid "Channels I moderate"
 msgstr "Channels I moderate"
 
 #. Filter category label in the mobile channel search sheet for the from-character cast filter.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:139
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:144
 msgid "Character"
 msgstr "Character"
 
@@ -13721,7 +13716,7 @@ msgid "Entrance sounds unavailable"
 msgstr "Entrance sounds unavailable"
 
 #. Heading shown above the error message in the channel search results error state.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:590
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:591
 #: src/features/channel/components/channel_search_results/ChannelSearchResultsShared.tsx:70
 #: src/features/user/components/modals/tabs/component_gallery_tab/OverlaysTab.tsx:131
 msgid "Error"
@@ -14704,7 +14699,7 @@ msgid "File size too large"
 msgstr "File size too large"
 
 #. Label for the has:file filter option in the mobile channel search sheet.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:102
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:107
 msgid "file upload"
 msgstr "file upload"
 
@@ -15445,7 +15440,7 @@ msgid "Friends sections"
 msgstr "Friends sections"
 
 #. Filter category label in the mobile channel search sheet for the from: user filter.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:135
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:140
 msgid "From"
 msgstr "From"
 
@@ -15481,7 +15476,7 @@ msgid "From another community"
 msgstr "From another community"
 
 #. Section header in the mobile channel search character picker. Filters by attributed cast character.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:143
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:148
 msgid "From character"
 msgstr "From character"
 
@@ -17198,7 +17193,7 @@ msgid "Image search provider"
 msgstr "Image search provider"
 
 #. Label for the has:image filter option in the mobile channel search sheet.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:90
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:95
 msgid "image upload"
 msgstr "image upload"
 
@@ -17544,7 +17539,7 @@ msgid "Indexing"
 msgstr "Indexing"
 
 #. Heading of the indexing placeholder shown while the channel index is being built for the first time.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:565
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:566
 #: src/features/channel/components/channel_search_results/ChannelSearchResultsShared.tsx:61
 msgid "Indexing channel"
 msgstr "Indexing channel"
@@ -18986,7 +18981,7 @@ msgstr "likes"
 
 #. Label for the has:link filter option in the mobile channel search sheet.
 #. has:link chip label. Always lowercase; matches the typed query value 1:1.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:110
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:115
 #: src/features/search/utils/SearchUtils.ts:25
 msgid "link"
 msgstr "link"
@@ -19055,7 +19050,7 @@ msgid "Link preview"
 msgstr "Link preview"
 
 #. Label for the has:embed filter option in the mobile channel search sheet.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:106
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:111
 msgid "link preview or embed"
 msgstr "link preview or embed"
 
@@ -22604,7 +22599,7 @@ msgstr "nothing"
 msgid "Nothing"
 msgstr "Nothing"
 
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:632
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:633
 msgid "Nothing matches"
 msgstr "Nothing matches"
 
@@ -23735,7 +23730,7 @@ msgstr "Packet loss"
 msgid "Packs"
 msgstr "Packs"
 
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:758
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:759
 msgid "Page {currentPage} of {totalPages}"
 msgstr "Page {currentPage} of {totalPages}"
 
@@ -24799,7 +24794,7 @@ msgstr "Preview, popout, and stream thumbnail behavior"
 msgid "Previews"
 msgstr "Previews"
 
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:752
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:753
 msgid "Previous"
 msgstr "Previous"
 
@@ -27927,8 +27922,8 @@ msgstr "Scrub preview"
 #. Title of the mobile channel search bottom sheet.
 #. Tooltip on the channel header search button that opens the message search input.
 #: src/features/channel/components/bottomsheets/channel_details_bottom_sheet/ChannelDetailsBottomSheetShared.ts:137
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:123
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:899
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:128
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:900
 #: src/features/channel/components/channel_header/shared.ts:47
 #: src/features/channel/components/shared/PickerSearchInput.tsx:20
 #: src/features/search/components/modals/SearchProviderPickerModal.tsx:43
@@ -28066,8 +28061,8 @@ msgstr "Search languages…"
 #. Keyboard shortcut action label shown in the shortcuts list and keybind editor. Keep short, sentence case.
 #. Placeholder shown inside the message search input. Sentence case.
 #. Placeholder text in the mobile channel search input.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:131
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:521
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:136
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:522
 #: src/features/channel/components/message_search_bar/MessageSearchBar.tsx:49
 #: src/features/input/state/input_keybind/shared.ts:237
 msgid "Search messages"
@@ -31113,7 +31108,7 @@ msgstr "Step 4"
 #. Label for the has:sticker filter option in the mobile channel search sheet.
 #. Screen-reader fragment listing one sticker on a message. Lowercase because it appears inside a longer sentence.
 #. has:sticker chip label. Always lowercase; matches the typed query value 1:1.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:114
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:119
 #: src/features/channel/components/ChannelMessage.tsx:55
 #: src/features/search/utils/SearchUtils.ts:73
 msgid "sticker"
@@ -34104,7 +34099,7 @@ msgstr "Try asking for a new invite."
 msgid "Try deleting that message again."
 msgstr "Try deleting that message again."
 
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:638
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:639
 msgid "Try different filters or search terms."
 msgstr "Try different filters or search terms."
 
@@ -35773,7 +35768,7 @@ msgstr "Use external emoji"
 msgid "Use external stickers"
 msgstr "Use external stickers"
 
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:527
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:528
 msgid "Use filters or enter keywords to find messages"
 msgstr "Use filters or enter keywords to find messages"
 
@@ -36141,6 +36136,11 @@ msgstr "Username updated"
 #: src/features/user/components/modals/FluxerTagChangeModal.tsx:211
 msgid "Usernames can only contain letters (a-z, A-Z), numbers (0-9), and underscores. Usernames are case-insensitive."
 msgstr "Usernames can only contain letters (a-z, A-Z), numbers (0-9), and underscores. Usernames are case-insensitive."
+
+#. Plural noun for the summary chip in the mobile channel search sheet, joined after the count as "3 users".
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:91
+msgid "users"
+msgstr "users"
 
 #. Section header in the message search popout listing matching users for from: / mentions: filters. Title Case.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
@@ -36638,7 +36638,7 @@ msgid "Video thumbnail"
 msgstr "Video thumbnail"
 
 #. Label for the has:video filter option in the mobile channel search sheet.
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:94
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:99
 msgid "video upload"
 msgstr "video upload"
 
@@ -37517,7 +37517,7 @@ msgstr "We're having trouble connecting to the space-time continuum. Check your 
 msgid "We're indexing this channel for the first time. This may take a moment. Results will appear here when ready."
 msgstr "We're indexing this channel for the first time. This may take a moment. Results will appear here when ready."
 
-#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:571
+#: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:572
 msgid "We're indexing this channel for the first time. This might take a little while..."
 msgstr "We're indexing this channel for the first time. This might take a little while..."
 

@@ -82,10 +82,15 @@ const MESSAGE_1_USER_DESCRIPTOR = msg({
 	message: '1 user',
 	comment: 'Summary chip text in the mobile channel search sheet when exactly one user is selected as a filter.',
 });
-const USERS_DESCRIPTOR = msg({
-	message: '{length} users',
-	comment:
-		'Summary chip text in the mobile channel search sheet when more than one user is selected. length is the count.',
+/*
+ * The three summary-chip count labels below are placeholder-free on purpose: the count is joined in
+ * code rather than interpolated by ICU. A descriptor carrying {length} renders as raw source text if
+ * its id is ever missing from the compiled catalog, so keeping the noun standalone means a missing
+ * entry degrades to "3 users" instead of leaking "{length} users".
+ */
+const USERS_COUNT_NOUN_DESCRIPTOR = msg({
+	message: 'users',
+	comment: 'Plural noun for the summary chip in the mobile channel search sheet, joined after the count as "3 users".',
 });
 const IMAGE_UPLOAD_DESCRIPTOR = msg({
 	message: 'image upload',
@@ -144,12 +149,7 @@ const FROM_CHARACTER_DESCRIPTOR = msg({
 	message: 'From character',
 	comment: 'Section header in the mobile channel search character picker. Filters by attributed cast character.',
 });
-/*
- * Placeholder-free on purpose: the count is joined in code rather than interpolated by ICU. A
- * descriptor carrying {length} renders as raw source text if its id is ever missing from the
- * compiled catalog, so keeping the noun standalone means a missing entry degrades to "3 characters"
- * instead of leaking "{length} characters".
- */
+// Placeholder-free for the reason given on USERS_COUNT_NOUN_DESCRIPTOR above.
 const CHARACTERS_COUNT_NOUN_DESCRIPTOR = msg({
 	message: 'characters',
 	comment:
@@ -183,10 +183,11 @@ const MESSAGE_1_CHANNEL_DESCRIPTOR = msg({
 	message: '1 channel',
 	comment: 'Summary chip text in the mobile channel search sheet when exactly one channel is selected as a filter.',
 });
-const CHANNELS_DESCRIPTOR = msg({
-	message: '{length} channels',
+// Placeholder-free for the reason given on USERS_COUNT_NOUN_DESCRIPTOR above.
+const CHANNELS_COUNT_NOUN_DESCRIPTOR = msg({
+	message: 'channels',
 	comment:
-		'Summary chip text in the mobile channel search sheet when more than one channel is selected. length is the count.',
+		'Plural noun for the summary chip in the mobile channel search sheet, joined after the count as "3 channels".',
 });
 
 interface ChannelSearchBottomSheetProps {
@@ -423,7 +424,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 				const user = Users.getUser(fromUserIds[0]);
 				return user ? NicknameUtils.getDisplayName(user) : i18n._(MESSAGE_1_USER_DESCRIPTOR);
 			}
-			return i18n._(USERS_DESCRIPTOR, {length: fromUserIds.length});
+			return `${fromUserIds.length} ${i18n._(USERS_COUNT_NOUN_DESCRIPTOR)}`;
 		};
 		const getFromCharacterLabel = (): string => {
 			if (fromCharacterIds.length === 0) return '';
@@ -438,7 +439,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 				const inChannel = Channels.getChannel(inChannelIds[0]);
 				return inChannel?.name ? `#${inChannel.name}` : i18n._(MESSAGE_1_CHANNEL_DESCRIPTOR);
 			}
-			return i18n._(CHANNELS_DESCRIPTOR, {length: inChannelIds.length});
+			return `${inChannelIds.length} ${i18n._(CHANNELS_COUNT_NOUN_DESCRIPTOR)}`;
 		};
 		const getHasFilterDisplayLabel = (filter: HasFilterType): string => {
 			switch (filter) {
