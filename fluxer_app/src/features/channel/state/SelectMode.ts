@@ -12,8 +12,10 @@
 
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import MemberList from '@app/features/member/state/MemberList';
 import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {http} from '@app/features/platform/transport/RestTransport';
+import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {makeAutoObservable, runInAction} from 'mobx';
 
 interface RelocateResponse {
@@ -100,6 +102,13 @@ class SelectMode {
     // LOCAL-ONLY: mobile panel visibility — decoupled from isActive — exclude from upstream sync.
     openPanel(): void {
         this.isPanelOpen = true;
+        // LOCAL-ONLY: desktop side-panel mutual exclusivity. On desktop this panel and the
+        // Members panel share the single ChannelViewScaffold sidePanel slot (Members wins the
+        // ternary), so opening this one has to close Members or the panel never appears.
+        // Mobile renders through a separate fixed overlay and is deliberately untouched.
+        if (!MobileLayout.enabled && MemberList.isMembersOpen) {
+            MemberList.toggleMembers();
+        }
     }
 
     closePanel(): void {

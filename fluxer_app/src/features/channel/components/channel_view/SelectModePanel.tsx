@@ -94,8 +94,15 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
     const headPreview = getMessagePreview(SelectMode.channelId, SelectMode.headId);
     const canReset = SelectMode.anchorId != null || SelectMode.headId != null;
 
+    // LOCAL-ONLY: mirrors ChannelMembers' frameSides exactly. In a guild on desktop the Members
+    // panel drops the frame's own left border and lets ChannelViewScaffold's .memberListDivider
+    // (right: var(--member-list-width, 16.5rem), 0.0625rem, z-index 5) draw that line instead;
+    // GuildChannelView now renders that divider for this panel too. The mobile overlay has no
+    // scaffold divider, so it keeps the frame border. Exclude from upstream sync.
+    const frameSides = guild && !MobileLayout.enabled ? {left: false} : undefined;
+
     return (
-        <OutlineFrame hideTopBorder>
+        <OutlineFrame hideTopBorder sides={frameSides}>
             {/*
              * LOCAL-ONLY: structure mirrors MemberListContainer.tsx — an <aside> for
              * layout/background (overflow: hidden, no padding) wrapping the same

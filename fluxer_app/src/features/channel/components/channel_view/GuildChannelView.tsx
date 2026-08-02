@@ -327,6 +327,9 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 	// instead of covering the viewport. The portal call is threaded through the existing `sidePanel`
 	// prop below (which is otherwise always null on mobile) so the return shape here never changes.
 	useMobileSelectModeHistoryDismiss(channelId, isMobileLayout);
+	// LOCAL-ONLY: desktop SelectMode panel occupies the same sidePanel slot as the Members panel,
+	// so it also gets the scaffold's .memberListDivider — exclude from upstream sync.
+	const shouldRenderSelectModePanel = SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout;
 	const showMobileSelectModeOverlay = isMobileLayout && SelectMode.isPanelOpen && SelectMode.channelId === channelId;
 	const mobileSelectModeOverlay =
 		showMobileSelectModeOverlay && channel && typeof document !== 'undefined'
@@ -556,13 +559,13 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 							guild={guild}
 							data-flx="channel.channel-view.guild-channel-view.channel-members--2"
 						/>
-					) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
+					) : shouldRenderSelectModePanel ? (
 						<SelectModePanel guild={guild} channel={channel} />
 					) : (
 						mobileSelectModeOverlay
 					)
 				}
-				showMemberListDivider={shouldRenderMemberList && !isSearchActive}
+				showMemberListDivider={(shouldRenderMemberList || shouldRenderSelectModePanel) && !isSearchActive}
 				chatAreaInert={isVoiceTextCallExpanded}
 				data-flx="channel.channel-view.guild-channel-view.channel-grid-voice-call"
 			/>
@@ -616,13 +619,13 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 						guild={guild}
 						data-flx="channel.channel-view.guild-channel-view.channel-members"
 					/>
-				) : SelectMode.isActive && SelectMode.channelId === channelId && !isMobileLayout ? (
+				) : shouldRenderSelectModePanel ? (
 					<SelectModePanel guild={guild} channel={channel} />
 				) : (
 					mobileSelectModeOverlay
 				)
 			}
-			showMemberListDivider={shouldRenderMemberList && !isSearchActive}
+			showMemberListDivider={(shouldRenderMemberList || shouldRenderSelectModePanel) && !isSearchActive}
 			data-flx="channel.channel-view.guild-channel-view.channel-view-scaffold"
 		/>
 	);

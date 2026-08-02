@@ -283,12 +283,19 @@ export const ChannelHeader = observer(
 		}, [channel]);
 		const handleToggleMembers = useCallback(() => {
 			if (!canFitMemberList) return;
+			// LOCAL-ONLY: desktop side-panel mutual exclusivity — opening Members closes the
+			// SelectMode panel, which shares the same sidePanel slot. deactivate() (not
+			// closePanel()) is required: the desktop panel renders off isActive, and this is the
+			// same teardown the desktop SelectMode button performs. Exclude from upstream sync.
+			if (!isMobile && !isMembersToggleOpen && SelectMode.isActive) {
+				SelectMode.deactivate();
+			}
 			if (memberListUsesChannelOverride) {
 				MemberList.toggleDefaultHiddenChannelMembers(memberListChannelId);
 				return;
 			}
 			LayoutCommands.toggleMembers(!isMembersOpen);
-		}, [isMembersOpen, canFitMemberList, memberListChannelId, memberListUsesChannelOverride]);
+		}, [isMembersOpen, canFitMemberList, memberListChannelId, memberListUsesChannelOverride, isMobile, isMembersToggleOpen]);
 		// LOCAL-ONLY: SelectMode toggle handler (desktop) — exclude from upstream sync.
 		const handleToggleSelectMode = useCallback(() => {
 			if (!channel) return;
@@ -324,6 +331,11 @@ export const ChannelHeader = observer(
 			if (!showMembersToggle) return;
 			return ComponentDispatch.subscribe('CHANNEL_MEMBER_LIST_TOGGLE', () => {
 				if (canFitMemberList) {
+					// LOCAL-ONLY: same desktop mutual exclusivity as handleToggleMembers — this is the
+					// keybind path into the same toggle. Exclude from upstream sync.
+					if (!isMobile && !isMembersToggleOpen && SelectMode.isActive) {
+						SelectMode.deactivate();
+					}
 					if (memberListUsesChannelOverride) {
 						MemberList.toggleDefaultHiddenChannelMembers(memberListChannelId);
 						return;
@@ -331,7 +343,15 @@ export const ChannelHeader = observer(
 					LayoutCommands.toggleMembers(!isMembersOpen);
 				}
 			});
-		}, [showMembersToggle, canFitMemberList, isMembersOpen, memberListChannelId, memberListUsesChannelOverride]);
+		}, [
+			showMembersToggle,
+			canFitMemberList,
+			isMembersOpen,
+			memberListChannelId,
+			memberListUsesChannelOverride,
+			isMobile,
+			isMembersToggleOpen,
+		]);
 		useEffect(() => {
 			if (!channel?.topic) {
 				setIsTopicOverflowing(false);
