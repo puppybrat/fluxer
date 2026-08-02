@@ -11,6 +11,10 @@ interface RecordedMeilisearchRequest {
 	body: unknown;
 }
 
+// Meilisearch settings sub-resources whose value is an object; these accept PATCH
+// only. Everything else under /settings/ is array-valued and accepts PUT.
+const OBJECT_VALUED_SETTINGS = ['pagination', 'faceting', 'typo-tolerance'];
+
 class FakeMeilisearchClient implements MeilisearchClient {
 	readonly requests: Array<RecordedMeilisearchRequest> = [];
 	readonly waitedTaskUids: Array<number> = [];
@@ -29,7 +33,16 @@ class FakeMeilisearchClient implements MeilisearchClient {
 			this.indexExists = true;
 			return this.nextTask() as TResponse;
 		}
-		if (method === 'PUT' && path.includes('/settings/')) {
+		// Mirror real Meilisearch's verb split so a wrong method fails here rather
+		// than at container startup: object-valued settings answer PUT with
+		// `405 Method Not Allowed / allow: GET, PATCH, DELETE`, array-valued ones
+		// only accept PUT. Getting this wrong once took production down.
+		if (path.includes('/settings/')) {
+			const objectValuedSetting = OBJECT_VALUED_SETTINGS.some((name) => path.endsWith(`/settings/${name}`));
+			const expected = objectValuedSetting ? 'PATCH' : 'PUT';
+			if (method !== expected) {
+				throw new Error(`405 Method Not Allowed: ${method} ${path} (Meilisearch requires ${expected} here)`);
+			}
 			return this.nextTask() as TResponse;
 		}
 		if (method === 'POST' && path.endsWith('/documents')) {
@@ -75,8 +88,11 @@ describe('MeilisearchMessageAdapter', () => {
 			'PUT /indexes/messages/settings/searchable-attributes',
 			'PUT /indexes/messages/settings/filterable-attributes',
 			'PUT /indexes/messages/settings/sortable-attributes',
+			'PUT /indexes/messages/settings/ranking-rules',
+			// PATCH, not PUT: Meilisearch answers PUT on object-valued settings with 405.
+			'PATCH /indexes/messages/settings/pagination',
 		]);
-		expect(client.waitedTaskUids).toEqual([1, 2, 3, 4]);
+		expect(client.waitedTaskUids).toEqual([1, 2, 3, 4, 5, 6]);
 	});
 
 	it('builds Meilisearch search requests from message filters', async () => {
@@ -127,6 +143,6 @@ describe('MeilisearchMessageAdapter', () => {
 
 		expect(client.waitedTaskUids).toEqual([]);
 		await adapter.refreshIndex();
-		expect(client.waitedTaskUids).toEqual([4]);
+		expect(client.waitedTaskUids).toEqual([6]);
 	});
 });

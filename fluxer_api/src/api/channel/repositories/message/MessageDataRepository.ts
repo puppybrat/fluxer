@@ -517,6 +517,14 @@ export class MessageDataRepository {
 		);
 	}
 
+	private async resolveLoweredCreatedBucket(channelId: ChannelID, messageBucket: number): Promise<number> {
+		const channelBucket = BucketUtils.makeBucket(channelId);
+		const state = await this.getChannelState(channelId);
+		const existing = state?.created_bucket ?? null;
+		const candidate = Math.min(channelBucket, messageBucket);
+		return existing === null ? candidate : Math.min(existing, candidate);
+	}
+
 	private async advanceChannelStateLastMessageIfNewer(
 		channelId: ChannelID,
 		newLastMessageId: MessageID,
@@ -718,7 +726,11 @@ export class MessageDataRepository {
 				updated_at: new Date(),
 			}),
 		);
-		const createdBucket = BucketUtils.makeBucket(data.channel_id);
+		// `created_bucket` is the floor of every bucket scan, so it must only ever
+		// move down. Writing `makeBucket(channel_id)` unconditionally would re-raise
+		// it on each insert and hide any message that predates channel creation —
+		// which is exactly what backfilled/imported history looks like.
+		const createdBucket = await this.resolveLoweredCreatedBucket(data.channel_id, data.bucket);
 		batch.addPrepared(
 			ChannelState.patchByPk(
 				{channel_id: data.channel_id},

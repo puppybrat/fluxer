@@ -57,11 +57,13 @@ export class MeilisearchIndexAdapter<
 			await this.waitForTask(task.taskUid);
 		}
 		const rankingRules = this.indexDefinition.rankingRules;
+		const pagination = this.indexDefinition.pagination;
 		await Promise.all([
 			this.applySetting('searchable-attributes', this.indexDefinition.searchableAttributes),
 			this.applySetting('filterable-attributes', this.indexDefinition.filterableAttributes),
 			this.applySetting('sortable-attributes', this.indexDefinition.sortableAttributes),
 			...(rankingRules ? [this.applySetting('ranking-rules', rankingRules)] : []),
+			...(pagination ? [this.patchSetting('pagination', pagination)] : []),
 		]);
 		this.initialized = true;
 	}
@@ -179,9 +181,25 @@ export class MeilisearchIndexAdapter<
 		}
 	}
 
+	// Each setting is its own sub-resource, so these writes are independent — adding
+	// one never clobbers the others.
+	//
+	// Meilisearch splits these by verb, and getting it wrong is fatal at startup:
+	// array-valued settings (searchable/filterable/sortable-attributes,
+	// ranking-rules) accept PUT, while object-valued ones (pagination, faceting,
+	// typo-tolerance) only accept PATCH and answer PUT with
+	// `405 Method Not Allowed / allow: GET, PATCH, DELETE`.
 	private async applySetting(setting: string, value: Array<string>): Promise<void> {
+		await this.writeSetting('PUT', setting, value);
+	}
+
+	private async patchSetting(setting: string, value: object): Promise<void> {
+		await this.writeSetting('PATCH', setting, value);
+	}
+
+	private async writeSetting(method: 'PUT' | 'PATCH', setting: string, value: unknown): Promise<void> {
 		const task = await this.client.request<MeilisearchTask>(
-			'PUT',
+			method,
 			`/indexes/${encodeURIComponent(this.indexDefinition.uid)}/settings/${setting}`,
 			value,
 		);

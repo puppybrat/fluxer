@@ -251,11 +251,16 @@ export class MessageRelocationRepository {
 					bucket,
 				}),
 			);
+			// Relocated messages keep their original ids, so a move can pull history
+			// older than the destination channel itself into it. `created_bucket` is a
+			// scan floor, so it must only ever move down — see the matching guard in
+			// MessageDataRepository.resolveLoweredCreatedBucket.
+			const destCreatedBucket = await this.resolveLoweredCreatedBucket(destChannelId, bucket);
 			destBucketBatch.addPrepared(
 				ChannelState.patchByPk(
 					{channel_id: destChannelId},
 					{
-						created_bucket: Db.set(BucketUtils.makeBucket(destChannelId)),
+						created_bucket: Db.set(destCreatedBucket),
 						has_messages: Db.set(true),
 						updated_at: Db.set(new Date()),
 					},
@@ -418,6 +423,14 @@ export class MessageRelocationRepository {
 				},
 			),
 		);
+	}
+
+	private async resolveLoweredCreatedBucket(channelId: ChannelID, messageBucket: number): Promise<number> {
+		const channelBucket = BucketUtils.makeBucket(channelId);
+		const state = await fetchOne<ChannelStateRow>(FETCH_CHANNEL_STATE.bind({channel_id: channelId}));
+		const existing = state?.created_bucket ?? null;
+		const candidate = Math.min(channelBucket, messageBucket);
+		return existing === null ? candidate : Math.min(existing, candidate);
 	}
 
 	private async advanceChannelStateLastMessageIfNewer(
