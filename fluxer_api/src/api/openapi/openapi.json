@@ -29311,8 +29311,7 @@
 						],
 						"description": "Array of field objects (max 25)"
 					}
-				},
-				"required": ["description"]
+				}
 			},
 			"RichEmbedAuthorRequest": {
 				"anyOf": [
