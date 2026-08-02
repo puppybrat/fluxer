@@ -51,10 +51,21 @@ import {meiliTermFilter} from './MeilisearchFilterUtils';
 const DEFAULT_HITS_PER_PAGE = 25;
 const DEFAULT_MEMBER_LIMIT = 25;
 
-function toMessageSearchOptions(options?: {hitsPerPage?: number; page?: number}): {
+function toMessageSearchOptions(options?: {hitsPerPage?: number; page?: number; cursor?: Array<string>}): {
 	limit?: number;
 	offset?: number;
 } {
+	// Meilisearch has no search_after/keyset equivalent — it paginates by
+	// offset/limit or page/hitsPerPage only. `cursor` is an Elasticsearch-only
+	// contract, and callers set `page: undefined` when passing one, so quietly
+	// dropping it here computed `offset: 0` and returned page 1 forever. Fail
+	// loudly rather than looping: a caller that wants deep pagination on this
+	// backend must use page/hits_per_page.
+	if (options?.cursor?.length) {
+		throw new Error(
+			'[meilisearch] cursor (search_after) pagination is not supported by this backend; use page/hits_per_page',
+		);
+	}
 	return {
 		limit: options?.hitsPerPage,
 		offset: options?.page ? (options.page - 1) * (options.hitsPerPage ?? DEFAULT_HITS_PER_PAGE) : 0,

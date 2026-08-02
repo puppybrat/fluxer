@@ -75,8 +75,10 @@ describe('MeilisearchMessageAdapter', () => {
 			'PUT /indexes/messages/settings/searchable-attributes',
 			'PUT /indexes/messages/settings/filterable-attributes',
 			'PUT /indexes/messages/settings/sortable-attributes',
+			'PUT /indexes/messages/settings/ranking-rules',
+			'PUT /indexes/messages/settings/pagination',
 		]);
-		expect(client.waitedTaskUids).toEqual([1, 2, 3, 4]);
+		expect(client.waitedTaskUids).toEqual([1, 2, 3, 4, 5, 6]);
 	});
 
 	it('builds Meilisearch search requests from message filters', async () => {
@@ -127,6 +129,6 @@ describe('MeilisearchMessageAdapter', () => {
 
 		expect(client.waitedTaskUids).toEqual([]);
 		await adapter.refreshIndex();
-		expect(client.waitedTaskUids).toEqual([4]);
+		expect(client.waitedTaskUids).toEqual([6]);
 	});
 });

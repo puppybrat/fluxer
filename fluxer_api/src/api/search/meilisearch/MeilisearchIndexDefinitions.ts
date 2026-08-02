@@ -12,6 +12,13 @@ export interface MeilisearchIndexDefinition {
 	// sort must outrank relevancy: the default puts `sort` fifth, so it only
 	// breaks ties inside relevancy buckets rather than ordering the whole result.
 	rankingRules?: Array<string>;
+	// Omit to keep Meilisearch's default of 1000. That default caps `offset +
+	// limit` AND clamps `estimatedTotalHits`, so on a large index every broad
+	// query reports exactly 1000 matches regardless of the real number. Ranking
+	// cost is linear in this depth (~25ms per 1000 hits measured against a
+	// 1.1M-document index), and is only paid for the depth a query actually
+	// requests — page 1 stays cheap no matter how high this is set.
+	pagination?: {maxTotalHits: number};
 }
 
 export const MEILISEARCH_INDEX_DEFINITIONS: Record<FluxerSearchIndexName, MeilisearchIndexDefinition> = {
@@ -52,6 +59,7 @@ export const MEILISEARCH_INDEX_DEFINITIONS: Record<FluxerSearchIndexName, Meilis
 		// every bucket boundary. Sort-by-relevancy sends no sort, so this is inert
 		// there.
 		rankingRules: ['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness'],
+		pagination: {maxTotalHits: 10_000},
 	},
 	guilds: {
 		uid: 'guilds',

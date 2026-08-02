@@ -57,11 +57,13 @@ export class MeilisearchIndexAdapter<
 			await this.waitForTask(task.taskUid);
 		}
 		const rankingRules = this.indexDefinition.rankingRules;
+		const pagination = this.indexDefinition.pagination;
 		await Promise.all([
 			this.applySetting('searchable-attributes', this.indexDefinition.searchableAttributes),
 			this.applySetting('filterable-attributes', this.indexDefinition.filterableAttributes),
 			this.applySetting('sortable-attributes', this.indexDefinition.sortableAttributes),
 			...(rankingRules ? [this.applySetting('ranking-rules', rankingRules)] : []),
+			...(pagination ? [this.applySetting('pagination', pagination)] : []),
 		]);
 		this.initialized = true;
 	}
@@ -179,7 +181,10 @@ export class MeilisearchIndexAdapter<
 		}
 	}
 
-	private async applySetting(setting: string, value: Array<string>): Promise<void> {
+	// Each setting is its own sub-resource, so these PUTs are independent — adding
+	// one never clobbers the others. `value` is `unknown` because not every setting
+	// is a string array: `pagination` is an object.
+	private async applySetting(setting: string, value: unknown): Promise<void> {
 		const task = await this.client.request<MeilisearchTask>(
 			'PUT',
 			`/indexes/${encodeURIComponent(this.indexDefinition.uid)}/settings/${setting}`,
