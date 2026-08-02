@@ -115,12 +115,6 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                     contentClassName={styles.scrollerContent}
                     data-flx="channel.channel-view.select-mode-panel.scroller"
                 >
-                    <div className={styles.header} data-flx="channel.channel-view.select-mode-panel.header">
-                        <span className={styles.title} data-flx="channel.channel-view.select-mode-panel.title">
-                            Relocate Messages
-                        </span>
-                    </div>
-
                     {/*
                      * LOCAL-ONLY: enable/disable selection toggle — mobile only; on desktop
                      * SelectMode.isActive is driven by the header button — exclude from upstream sync.
