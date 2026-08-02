@@ -17,8 +17,10 @@ import {MaxGuildChannelsError} from '@fluxer/errors/src/domains/guild/MaxGuildCh
 import type {ChannelCreateRequest} from '@fluxer/schema/src/domains/channel/ChannelRequestSchemas';
 import type {ChannelResponse} from '@fluxer/schema/src/domains/channel/ChannelSchemas';
 import {
+	type ChannelOrderingChannel,
 	computeChannelMoveBlockIds,
 	computeGuildChannelReorderPlan,
+	findParentCycleViolation,
 	type GuildChannelReorderErrorCode,
 	sortChannelsForOrdering,
 } from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
@@ -70,7 +72,6 @@ export class ChannelOperationsService {
 		const parentId = params.data.parent_id ? createChannelID(params.data.parent_id) : null;
 		const parentChannel = this.validateParentCategory({
 			parentId,
-			channelType: params.data.type,
 			channels,
 		});
 		if (parentId) {
@@ -279,6 +280,7 @@ export class ChannelOperationsService {
 					});
 				}
 			}
+			this.validateBatchParentCycles({channels: allChannels, updates});
 			for (const update of updates) {
 				await this.applySinglePositionUpdate({
 					guildId,
@@ -321,9 +323,7 @@ export class ChannelOperationsService {
 				throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.PARENT_MUST_BE_CATEGORY);
 			}
 		}
-		if (target.type === ChannelTypes.GUILD_CATEGORY && desiredParent) {
-			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CATEGORIES_CANNOT_HAVE_PARENTS);
-		}
+		this.throwIfParentCycle({channels: allChannels, channelId: target.id, desiredParentId: desiredParent});
 		let precedingSibling = update.precedingSiblingId ?? null;
 		if (update.precedingSiblingId === undefined) {
 			const orderedChannels = sortChannelsForOrdering(allChannels);
@@ -356,6 +356,57 @@ export class ChannelOperationsService {
 		});
 		if (update.lockPermissions && desiredParent && desiredParent !== (target.parentId ?? null)) {
 			await this.syncPermissionsWithParent({guildId, channelId: target.id, parentId: desiredParent});
+		}
+	}
+
+	private throwIfParentCycle(params: {
+		channels: ReadonlyArray<ChannelOrderingChannel<ChannelID>>;
+		channelId: ChannelID;
+		desiredParentId: ChannelID | null | undefined;
+	}): void {
+		const violation = findParentCycleViolation({
+			channels: params.channels,
+			channelId: params.channelId,
+			desiredParentId: params.desiredParentId,
+		});
+		if (violation === 'PARENT_SELF_REFERENCE') {
+			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CHANNEL_PARENT_SELF_REFERENCE);
+		}
+		if (violation === 'PARENT_CYCLE') {
+			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CHANNEL_PARENT_CYCLE);
+		}
+	}
+
+	/**
+	 * Cycle-checks the batch against the state it would produce, not the state it starts from. Each update is
+	 * folded into a projected parent map and re-validated, so two individually-safe reparents that would close a
+	 * loop together (A under B, B under A) are rejected before any write happens.
+	 */
+	private validateBatchParentCycles(params: {
+		channels: ReadonlyArray<Channel>;
+		updates: ReadonlyArray<{channelId: ChannelID; parentId: ChannelID | null | undefined}>;
+	}): void {
+		const projected = params.channels.map((channel) => ({
+			id: channel.id,
+			parentId: channel.parentId ?? null,
+			type: channel.type,
+			position: channel.position,
+		}));
+		const projectedById = new Map(projected.map((channel) => [channel.id, channel]));
+		for (const update of params.updates) {
+			if (update.parentId === undefined) {
+				continue;
+			}
+			const projectedChannel = projectedById.get(update.channelId);
+			if (!projectedChannel) {
+				continue;
+			}
+			projectedChannel.parentId = update.parentId;
+			this.throwIfParentCycle({
+				channels: projected,
+				channelId: update.channelId,
+				desiredParentId: update.parentId,
+			});
 		}
 	}
 
@@ -438,8 +489,10 @@ export class ChannelOperationsService {
 				throw InputValidationError.fromCode('channel_id', ValidationErrorCodes.INVALID_CHANNEL_ID, {
 					channelId: operation.channelId.toString(),
 				});
-			case 'CATEGORIES_CANNOT_HAVE_PARENTS':
-				throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CATEGORIES_CANNOT_HAVE_PARENT_CHANNEL);
+			case 'PARENT_SELF_REFERENCE':
+				throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CHANNEL_PARENT_SELF_REFERENCE);
+			case 'PARENT_CYCLE':
+				throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CHANNEL_PARENT_CYCLE);
 			case 'PARENT_NOT_FOUND':
 			case 'PARENT_NOT_CATEGORY':
 				throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.INVALID_PARENT_CHANNEL);
@@ -467,17 +520,12 @@ export class ChannelOperationsService {
 		}
 	}
 
-	private validateParentCategory(params: {
-		parentId: ChannelID | null;
-		channelType: number;
-		channels: Array<Channel>;
-	}): Channel | null {
+	private validateParentCategory(params: {parentId: ChannelID | null; channels: Array<Channel>}): Channel | null {
 		if (params.parentId === null) {
 			return null;
 		}
-		if (params.channelType === ChannelTypes.GUILD_CATEGORY) {
-			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CATEGORIES_CANNOT_HAVE_PARENTS);
-		}
+		// Categories may nest inside other categories at any depth. A newly created channel has no id yet and no
+		// children, so it can't participate in a cycle — only updates need the descendant walk.
 		const parentChannel = params.channels.find((channel) => channel.id === params.parentId);
 		if (!parentChannel) {
 			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.INVALID_PARENT_CHANNEL);

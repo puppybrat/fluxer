@@ -16,7 +16,8 @@ export type GuildChannelReorderErrorCode =
 	| 'PRECEDING_PARENT_MISMATCH'
 	| 'PARENT_NOT_FOUND'
 	| 'PARENT_NOT_CATEGORY'
-	| 'CATEGORIES_CANNOT_HAVE_PARENTS'
+	| 'PARENT_SELF_REFERENCE'
+	| 'PARENT_CYCLE'
 	| 'PARENT_NOT_IN_GUILD_LIST'
 	| 'PRECEDING_NOT_IN_GUILD_LIST';
 
@@ -68,21 +69,28 @@ export function sortChannelsForOrdering<Id extends string | bigint, Channel exte
 	}
 	const orderedChannels: Array<Channel> = [];
 	const seen = new Set<Id>();
-	const sortedRoots = [...rootChannels].sort(compareChannelOrdering);
-	for (const root of sortedRoots) {
-		orderedChannels.push(root);
-		seen.add(root.id);
-		if (root.type !== ChannelTypes.GUILD_CATEGORY) {
-			continue;
+	// Depth-first: a channel is immediately followed by its entire subtree, at any depth. `seen` doubles as
+	// cycle protection so a corrupt parent chain in storage degrades to the `remaining` fallback below rather
+	// than looping forever.
+	const visit = (channel: Channel): void => {
+		if (seen.has(channel.id)) {
+			return;
 		}
-		const children = childrenByParent.get(root.id);
+		orderedChannels.push(channel);
+		seen.add(channel.id);
+		if (channel.type !== ChannelTypes.GUILD_CATEGORY) {
+			return;
+		}
+		const children = childrenByParent.get(channel.id);
 		if (!children) {
-			continue;
+			return;
 		}
 		for (const child of [...children].sort(compareChannelOrdering)) {
-			orderedChannels.push(child);
-			seen.add(child.id);
+			visit(child);
 		}
+	};
+	for (const root of [...rootChannels].sort(compareChannelOrdering)) {
+		visit(root);
 	}
 	const remaining = channels.filter((channel) => !seen.has(channel.id)).sort(compareChannelOrdering);
 	orderedChannels.push(...remaining);
@@ -101,13 +109,70 @@ export function computeChannelMoveBlockIds<Id extends string | bigint, Channel e
 	const blockIds = new Set<Id>();
 	blockIds.add(targetId);
 	if (target?.type === ChannelTypes.GUILD_CATEGORY) {
-		for (const channel of channels) {
-			if (channel.parentId === targetId) {
-				blockIds.add(channel.id);
-			}
+		for (const descendantId of collectDescendantIds({channels, ancestorId: targetId})) {
+			blockIds.add(descendantId);
 		}
 	}
 	return blockIds;
+}
+
+/**
+ * Every channel beneath `ancestorId` at any depth. Iterative, and guarded by the visited set so a pre-existing
+ * cycle in the data terminates instead of hanging.
+ */
+export function collectDescendantIds<Id extends string | bigint, Channel extends ChannelOrderingChannel<Id>>({
+	channels,
+	ancestorId,
+}: {
+	channels: ReadonlyArray<Channel>;
+	ancestorId: Id;
+}): Set<Id> {
+	const childrenByParent = new Map<Id, Array<Channel>>();
+	for (const channel of channels) {
+		const parentId = channel.parentId ?? null;
+		if (parentId === null) continue;
+		const existing = childrenByParent.get(parentId);
+		if (existing) {
+			existing.push(channel);
+		} else {
+			childrenByParent.set(parentId, [channel]);
+		}
+	}
+	const descendants = new Set<Id>();
+	const queue: Array<Id> = [ancestorId];
+	while (queue.length > 0) {
+		const currentId = queue.pop()!;
+		for (const child of childrenByParent.get(currentId) ?? []) {
+			if (descendants.has(child.id) || child.id === ancestorId) continue;
+			descendants.add(child.id);
+			queue.push(child.id);
+		}
+	}
+	return descendants;
+}
+
+/**
+ * Whether re-parenting `channelId` under `desiredParentId` would create a loop — i.e. the requested parent is
+ * the channel itself, or sits somewhere in its own subtree. `channels` must describe the *projected* state when
+ * validating a batch, so operations that are individually safe can't combine into a cycle.
+ */
+export function findParentCycleViolation<Id extends string | bigint, Channel extends ChannelOrderingChannel<Id>>({
+	channels,
+	channelId,
+	desiredParentId,
+}: {
+	channels: ReadonlyArray<Channel>;
+	channelId: Id;
+	desiredParentId: Id | null | undefined;
+}): 'PARENT_SELF_REFERENCE' | 'PARENT_CYCLE' | null {
+	if (desiredParentId == null) {
+		return null;
+	}
+	if (desiredParentId === channelId) {
+		return 'PARENT_SELF_REFERENCE';
+	}
+	const descendants = collectDescendantIds({channels, ancestorId: channelId});
+	return descendants.has(desiredParentId) ? 'PARENT_CYCLE' : null;
 }
 
 function findCategorySpanInOrderedList<Id extends string | bigint, Channel extends ChannelOrderingChannel<Id>>(
@@ -119,8 +184,11 @@ function findCategorySpanInOrderedList<Id extends string | bigint, Channel exten
 } {
 	const start = orderedChannels.findIndex((ch) => ch.id === categoryId);
 	if (start === -1) return {start: -1, end: -1};
+	// sortChannelsForOrdering lays each subtree out contiguously depth-first, so the span runs until the first
+	// channel that isn't a descendant at any depth.
+	const descendants = collectDescendantIds({channels: orderedChannels, ancestorId: categoryId});
 	let end = start + 1;
-	while (end < orderedChannels.length && orderedChannels[end].parentId === categoryId) {
+	while (end < orderedChannels.length && descendants.has(orderedChannels[end].id)) {
 		end++;
 	}
 	return {start, end};
@@ -192,15 +260,7 @@ export function computeGuildChannelReorderPlan<Id extends string | bigint, Chann
 		return {ok: false, code: 'TARGET_CHANNEL_NOT_FOUND'};
 	}
 	const requestedParentId = operation.parentId;
-	const desiredParentId =
-		targetChannel.type === ChannelTypes.GUILD_CATEGORY
-			? null
-			: requestedParentId !== undefined
-				? requestedParentId
-				: (targetChannel.parentId ?? null);
-	if (targetChannel.type === ChannelTypes.GUILD_CATEGORY && operation.parentId) {
-		return {ok: false, code: 'CATEGORIES_CANNOT_HAVE_PARENTS'};
-	}
+	const desiredParentId = requestedParentId !== undefined ? requestedParentId : (targetChannel.parentId ?? null);
 	if (desiredParentId) {
 		const parentChannel = channelById.get(desiredParentId);
 		if (!parentChannel) {
@@ -208,6 +268,14 @@ export function computeGuildChannelReorderPlan<Id extends string | bigint, Chann
 		}
 		if (parentChannel.type !== ChannelTypes.GUILD_CATEGORY) {
 			return {ok: false, code: 'PARENT_NOT_CATEGORY'};
+		}
+		const cycleViolation = findParentCycleViolation({
+			channels: orderedChannels,
+			channelId: targetChannel.id,
+			desiredParentId,
+		});
+		if (cycleViolation) {
+			return {ok: false, code: cycleViolation};
 		}
 	}
 	const precedingId = operation.precedingSiblingId ?? null;

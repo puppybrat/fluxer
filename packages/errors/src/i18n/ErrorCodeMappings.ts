@@ -539,6 +539,8 @@ export const ErrorCodeToI18nKey = {
 	[ValidationErrorCodes.INVALID_CHANNEL]: 'channels_and_guilds.invalid_channel',
 	[ValidationErrorCodes.INVALID_CHANNEL_ID]: 'channels_and_guilds.invalid_channel_id',
 	[ValidationErrorCodes.INVALID_PARENT_CHANNEL]: 'channels_and_guilds.invalid_parent_channel',
+	[ValidationErrorCodes.CHANNEL_PARENT_CYCLE]: 'channels_and_guilds.channel_parent_cycle',
+	[ValidationErrorCodes.CHANNEL_PARENT_SELF_REFERENCE]: 'channels_and_guilds.channel_parent_self_reference',
 	[ValidationErrorCodes.PARENT_CHANNEL_NOT_IN_GUILD]: 'channels_and_guilds.parent_channel_not_in_guild',
 	[ValidationErrorCodes.PARENT_MUST_BE_CATEGORY]: 'channels_and_guilds.parent_must_be_category',
 	[ValidationErrorCodes.PRECEDING_CHANNEL_MUST_SHARE_PARENT]: 'channels_and_guilds.preceding_channel_must_share_parent',

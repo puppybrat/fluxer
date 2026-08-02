@@ -21,8 +21,15 @@ export class ChannelHelpers {
 		parentId: ChannelID | null | undefined,
 		existingChannels: Array<Channel>,
 	): number {
+		// A root-level category goes to the end of the guild. A nested one sits just after its parent; the next
+		// full reorder renumbers everything anyway, and sortChannelsForOrdering is what actually defines display
+		// order, so an approximate position here is enough to keep the new category inside its parent's subtree.
 		if (channelType === ChannelTypes.GUILD_CATEGORY) {
-			return existingChannels.reduce((max, c) => Math.max(max, c.position || 0), 0) + 1;
+			if (parentId == null) {
+				return existingChannels.reduce((max, c) => Math.max(max, c.position || 0), 0) + 1;
+			}
+			const parentCategory = existingChannels.find((c) => c.id === parentId);
+			return parentCategory ? parentCategory.position + 1 : existingChannels.length + 1;
 		}
 		if (parentId == null || parentId === undefined) {
 			return existingChannels.reduce((max, c) => Math.max(max, c.position || 0), 0) + 1;

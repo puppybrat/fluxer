@@ -17,6 +17,7 @@ import {CannotExecuteOnDmError} from '@fluxer/errors/src/domains/core/CannotExec
 import {InputValidationError} from '@fluxer/errors/src/domains/core/InputValidationError';
 import {MissingPermissionsError} from '@fluxer/errors/src/domains/core/MissingPermissionsError';
 import {resolveLimit} from '@fluxer/limits/src/LimitResolver';
+import {collectDescendantIds, findParentCycleViolation} from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
 import {ChannelNameType} from '@fluxer/schema/src/primitives/ChannelValidators';
 import type {IRateLimitService} from '@pkgs/rate_limit/src/IRateLimitService';
 import type {ChannelID, GuildID, RoleID, UserID} from '../../../BrandedTypes';
@@ -372,7 +373,10 @@ export class ChannelOperationsService {
 			const guildId = createGuildID(BigInt(guild.id));
 			if (channel.type === ChannelTypes.GUILD_CATEGORY) {
 				const guildChannels = await this.channelRepository.channelData.listGuildChannels(guildId);
-				const childChannels = guildChannels.filter((ch: Channel) => ch.parentId === channelId);
+				// Categories can nest, so promote the whole subtree to the root — not just direct children, which
+				// would leave grandchildren pointing at a category that no longer exists.
+				const descendantIds = collectDescendantIds({channels: guildChannels, ancestorId: channelId});
+				const childChannels = guildChannels.filter((ch: Channel) => descendantIds.has(ch.id));
 				for (const childChannel of childChannels) {
 					const updatedChild = await this.channelRepository.channelData.upsert({
 						...childChannel.toRow(),
@@ -557,9 +561,6 @@ export class ChannelOperationsService {
 		if (params.parentId === null) {
 			return;
 		}
-		if (params.channel.type === ChannelTypes.GUILD_CATEGORY) {
-			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CATEGORIES_CANNOT_HAVE_PARENTS);
-		}
 		const guildChannels = await this.channelRepository.channelData.listGuildChannels(params.guildId);
 		const parentChannel = guildChannels.find((channel) => channel.id === params.parentId);
 		if (!parentChannel) {
@@ -567,6 +568,18 @@ export class ChannelOperationsService {
 		}
 		if (parentChannel.type !== ChannelTypes.GUILD_CATEGORY) {
 			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.PARENT_MUST_BE_CATEGORY);
+		}
+		// Categories may nest, so a reparent must not target the channel itself or anything inside its subtree.
+		const cycleViolation = findParentCycleViolation({
+			channels: guildChannels,
+			channelId: params.channel.id,
+			desiredParentId: params.parentId,
+		});
+		if (cycleViolation === 'PARENT_SELF_REFERENCE') {
+			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CHANNEL_PARENT_SELF_REFERENCE);
+		}
+		if (cycleViolation === 'PARENT_CYCLE') {
+			throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.CHANNEL_PARENT_CYCLE);
 		}
 		if (params.validateCapacity) {
 			await this.ensureCategoryHasCapacity({guildId: params.guildId, categoryId: params.parentId});

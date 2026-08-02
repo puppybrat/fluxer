@@ -263,6 +263,9 @@ export const ERROR_I18N_MESSAGES = {
 	'channels_and_guilds.message_history_cutoff_in_future': "Message history cutoff can't be in the future.",
 	'channels_and_guilds.new_account_guild_join_rate_limited':
 		'New accounts are limited to joining 10 communities in the first 24 hours. Please try again later.',
+	'channels_and_guilds.channel_parent_cycle':
+		"A category can't be moved inside one of its own descendants — that would create a loop.",
+	'channels_and_guilds.channel_parent_self_reference': "A channel can't be its own parent.",
 	'channels_and_guilds.parent_channel_not_in_guild': "Parent channel isn't present in the community.",
 	'channels_and_guilds.parent_must_be_category': 'Parent must be a category.',
 	'channels_and_guilds.preceding_channel_must_share_parent':

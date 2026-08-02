@@ -136,16 +136,61 @@ describe('Guild Channel Positions', () => {
 			{id: channel3.id, position: 1},
 		]);
 	});
-	test('should reject category as parent of category', async () => {
+	test('should allow a category to be nested under another category', async () => {
 		const account = await createTestAccount(harness);
 		const guild = await createGuild(harness, account.token, 'Test Guild');
 		const category1 = await createChannel(harness, account.token, guild.id, 'Category 1', ChannelTypes.GUILD_CATEGORY);
 		const category2 = await createChannel(harness, account.token, guild.id, 'Category 2', ChannelTypes.GUILD_CATEGORY);
+		await updateChannelPositions(harness, account.token, guild.id, [{id: category2.id, parent_id: category1.id}]);
+		const updated = await getChannel(harness, account.token, category2.id);
+		expect(updated.parent_id).toBe(category1.id);
+	});
+	test('should reject a category being parented to itself', async () => {
+		const account = await createTestAccount(harness);
+		const guild = await createGuild(harness, account.token, 'Test Guild');
+		const category = await createChannel(harness, account.token, guild.id, 'Category', ChannelTypes.GUILD_CATEGORY);
 		await createBuilder(harness, account.token)
 			.patch(`/guilds/${guild.id}/channels`)
-			.body([{id: category2.id, parent_id: category1.id}])
+			.body([{id: category.id, parent_id: category.id}])
 			.expect(HTTP_STATUS.BAD_REQUEST)
 			.execute();
+	});
+	test('should reject a category being moved under its own descendant', async () => {
+		const account = await createTestAccount(harness);
+		const guild = await createGuild(harness, account.token, 'Test Guild');
+		const top = await createChannel(harness, account.token, guild.id, 'Top', ChannelTypes.GUILD_CATEGORY);
+		const middle = await createChannel(harness, account.token, guild.id, 'Middle', ChannelTypes.GUILD_CATEGORY);
+		const bottom = await createChannel(harness, account.token, guild.id, 'Bottom', ChannelTypes.GUILD_CATEGORY);
+		await updateChannelPositions(harness, account.token, guild.id, [{id: middle.id, parent_id: top.id}]);
+		await updateChannelPositions(harness, account.token, guild.id, [{id: bottom.id, parent_id: middle.id}]);
+		// `bottom` is two levels below `top`, so this is only caught by a full descendant walk.
+		await createBuilder(harness, account.token)
+			.patch(`/guilds/${guild.id}/channels`)
+			.body([{id: top.id, parent_id: bottom.id}])
+			.expect(HTTP_STATUS.BAD_REQUEST)
+			.execute();
+		const unchanged = await getChannel(harness, account.token, top.id);
+		expect(unchanged.parent_id).toBeNull();
+	});
+	test('should reject a batch whose operations together would form a cycle', async () => {
+		const account = await createTestAccount(harness);
+		const guild = await createGuild(harness, account.token, 'Test Guild');
+		const categoryA = await createChannel(harness, account.token, guild.id, 'A', ChannelTypes.GUILD_CATEGORY);
+		const categoryB = await createChannel(harness, account.token, guild.id, 'B', ChannelTypes.GUILD_CATEGORY);
+		// Neither operation creates a cycle alone; together they close A -> B -> A.
+		await createBuilder(harness, account.token)
+			.patch(`/guilds/${guild.id}/channels`)
+			.body([
+				{id: categoryB.id, parent_id: categoryA.id},
+				{id: categoryA.id, parent_id: categoryB.id},
+			])
+			.expect(HTTP_STATUS.BAD_REQUEST)
+			.execute();
+		// Rejected as a whole: the first operation must not have been applied.
+		const afterA = await getChannel(harness, account.token, categoryA.id);
+		const afterB = await getChannel(harness, account.token, categoryB.id);
+		expect(afterA.parent_id).toBeNull();
+		expect(afterB.parent_id).toBeNull();
 	});
 	test('should move a voice channel into a text category with provided position', async () => {
 		const account = await createTestAccount(harness);

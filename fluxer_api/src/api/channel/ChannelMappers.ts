@@ -117,7 +117,8 @@ function serializeGuildVoiceChannel(channel: Channel, ctx: ContentWarningCtx): C
 function serializeGuildCategoryChannel(channel: Channel, ctx: ContentWarningCtx): ChannelResponse {
 	return {
 		...serializeBaseChannelFields(channel),
-		...serializeGuildChannelFields(channel),
+		// Categories can themselves be nested, so they expose parent_id like any other positionable channel.
+		...serializePositionableGuildChannelFields(channel),
 		...serializeContentWarningFields(channel, ctx),
 	};
 }
