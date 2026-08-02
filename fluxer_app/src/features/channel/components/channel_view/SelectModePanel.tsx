@@ -121,7 +121,17 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                      */}
                     {MobileLayout.enabled && (
                         <Switch
-                            label="Message selection"
+                            // LOCAL-ONLY: Switch renders `label` inside its own <span>, so the shared
+                            // section-header style is carried by this span — same approach as the two
+                            // Combobox headers below. Exclude from upstream sync.
+                            label={
+                                <span
+                                    className={styles.fieldLabel}
+                                    data-flx="channel.channel-view.select-mode-panel.enable-selection-label"
+                                >
+                                    Message selection
+                                </span>
+                            }
                             description="Tap messages to set start and end points"
                             value={SelectMode.isActive}
                             onChange={() => SelectMode.toggleSelectionMode()}
