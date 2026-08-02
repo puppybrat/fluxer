@@ -26,6 +26,7 @@ const IMAGE_SOURCES: &[&str] = &[
     "https://*.youtube.com",
     "https://*.fluxer.media",
     "https://fluxer.media",
+    "https://obyr.us",
 ];
 
 const MEDIA_SOURCES: &[&str] = &[
