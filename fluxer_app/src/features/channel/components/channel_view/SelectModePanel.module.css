@@ -42,14 +42,18 @@
  * .groupHeader / .virtualGroupRow / .skeletonItem, which all use the same 0.5rem. Vertical
  * 0.25rem matches MemberListItem.module.css .button (padding-top/bottom: 0.25rem).
  *
+ * NOTE padding-top is deliberately 0, matching .virtualGroupRow's own `padding-top: 0`. The
+ * Members panel's top gap is NOT container padding — it comes from the header row's 1.875rem
+ * bottom-aligned box (see .fieldLabel below). Adding padding here as well double-counted it.
+ *
  * Totals, identical to the Members panel:
  *   sides  0.5rem (--spacing-2, scroller) + 0.5rem (here) = 1rem
- *   top    0.25rem (scroller)             + 0.25rem (here) = 0.5rem
+ *   top    0.25rem (scroller)             + 0 (here)      = 0.25rem, then .fieldLabel adds 11px
  *   bottom 1rem (--spacing-4, scroller)   + 0.25rem (here) = 1.25rem
  */
 .scrollerContent {
     gap: 12px;
-    padding-top: 0.25rem;
+    padding-top: 0;
     padding-bottom: 0.25rem;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
@@ -61,12 +65,36 @@
     gap: 6px;
 }
 
-/* Matches ChannelMembers.module.css's .virtualGroupRow section-header typography
- * (the "Online — 1" / "Offline — 1" style): font-size, weight, and muted color. */
+/*
+ * The "Online — 1" / "Offline — 1" section-header style, reproduced property-for-property from
+ * ChannelMembers.module.css's .virtualGroupRow (lines 51-66) — the class the Members panel puts
+ * on its group-header row. CSS Modules are per-file scoped, so that class cannot be imported
+ * here; these are its exact declared values, copied verbatim.
+ *
+ * The ONLY omissions are padding-left/padding-right: 0.5rem. In the Members panel that 0.5rem is
+ * the per-row inset on top of .memberListScroller's --spacing-2; here .scrollerContent already
+ * supplies exactly that 0.5rem for every child, so repeating it would inset the labels to 1.5rem
+ * while the inputs and buttons stayed at 1rem. Net horizontal inset is 1rem either way — same as
+ * Members.
+ *
+ * The 1.875rem bottom-aligned box is what produces the Members panel's top gap: 30px tall,
+ * border-box, minus 3px padding-bottom, minus the 16px line box = 11px of space above the text.
+ * Combined with .scrollerPadding's 0.25rem that is 15px from the panel's top edge, matching
+ * .memberListScroller + the first .virtualGroupRow exactly.
+ */
 .fieldLabel {
+    display: flex;
+    height: 1.875rem;
+    min-height: 1.875rem;
+    align-items: flex-end;
+    gap: 0.375rem;
+    padding-top: 0;
+    padding-bottom: 0.1875rem;
+    box-sizing: border-box;
+    color: var(--text-primary-muted);
     font-size: 0.8125rem;
     font-weight: 600;
-    color: var(--text-primary-muted);
+    line-height: 1rem;
 }
 
 .idValue {

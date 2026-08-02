@@ -210,7 +210,17 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
 
                     <Combobox
                         id="select-mode-dest-server"
-                        label="Destination server"
+                        // LOCAL-ONLY: Combobox renders `label` inside its own <label> element, so the
+                        // .virtualGroupRow-matching style is carried by this span (every property of
+                        // FormCombobox's .label is overridden by it) — exclude from upstream sync.
+                        label={
+                            <span
+                                className={styles.fieldLabel}
+                                data-flx="channel.channel-view.select-mode-panel.dest-server-label"
+                            >
+                                Destination server
+                            </span>
+                        }
                         value={destGuildId ?? ''}
                         options={destGuildOptions}
                         onChange={handleDestGuildChange}
@@ -219,7 +229,15 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
 
                     <Combobox
                         id="select-mode-dest"
-                        label="Destination channel"
+                        // LOCAL-ONLY: see the dest-server Combobox above — exclude from upstream sync.
+                        label={
+                            <span
+                                className={styles.fieldLabel}
+                                data-flx="channel.channel-view.select-mode-panel.dest-channel-label"
+                            >
+                                Destination channel
+                            </span>
+                        }
                         value={SelectMode.destChannelId ?? ''}
                         options={destChannelOptions}
                         onChange={(value) => SelectMode.setDestChannelId(value || null)}
