@@ -527,9 +527,6 @@ export const ErrorCodeToI18nKey = {
 	[ValidationErrorCodes.CHANNEL_MUST_BE_VOICE]: 'channels_and_guilds.channel_must_be_voice',
 	[ValidationErrorCodes.CHANNEL_NAME_EMPTY_AFTER_NORMALIZATION]:
 		'names_and_normalization.channel_name_empty_after_normalization',
-	[ValidationErrorCodes.CATEGORIES_CANNOT_HAVE_PARENT_CHANNEL]:
-		'channels_and_guilds.categories_cannot_have_parent_channel',
-	[ValidationErrorCodes.CATEGORIES_CANNOT_HAVE_PARENTS]: 'channels_and_guilds.categories_cannot_have_parents',
 	[ValidationErrorCodes.AFK_CHANNEL_MUST_BE_IN_GUILD]: 'channels_and_guilds.afk_channel_must_be_in_guild',
 	[ValidationErrorCodes.AFK_CHANNEL_MUST_BE_VOICE]: 'channels_and_guilds.afk_channel_must_be_voice',
 	[ValidationErrorCodes.ALL_CHANNELS_MUST_BELONG_TO_GUILD]: 'channels_and_guilds.all_channels_must_belong_to_guild',
