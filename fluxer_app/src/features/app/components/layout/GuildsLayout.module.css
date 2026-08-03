@@ -19,7 +19,7 @@
 }
 
 .guildsLayoutReserveSpace {
-	--layout-user-area-overlay-height: calc(var(--layout-user-area-height) + var(--layout-voice-connection-height, 0));
+	--layout-user-area-overlay-height: calc(var(--layout-user-area-height) + var(--layout-voice-connection-height, 0px));
 }
 
 .guildsLayoutReserveMobileBottomNav {
