@@ -31,7 +31,8 @@ export function useSplashQuotes(): ReadonlyArray<SplashQuote> {
 		const quotes: Array<SplashQuote> = [
 			{text: "I'm a non-obnoxious loading quote.", source: 'Milo'},
 			{text: "I'm sparing you from all those other quotes.", source: 'Milo'},
-			{text: '*zap*', source: 'Harlow'},
+			{text: '*pew*', source: 'Harlow'},
+			{text: '*explodes you with her mind*', source: 'Harlow'},
 		];
 		return quotes;
 	}, [i18n.locale, i18n]);
