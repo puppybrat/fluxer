@@ -65,6 +65,7 @@ import {usePendingVoiceConnection} from '@app/features/voice/hooks/usePendingVoi
 import {computeChannelE2EEStatus} from '@app/features/voice/state/ChannelE2EEStatus';
 import CompactVoiceCallHeight, {getGuildVoiceCallExpansionKey} from '@app/features/voice/state/CompactVoiceCallHeight';
 import {ChannelTypes, Permissions} from '@fluxer/constants/src/ChannelConstants';
+import {collectDescendantIds} from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
 import {CaretDownIcon, ChatTeardropIcon, GearIcon, PlusIcon, UserPlusIcon} from '@phosphor-icons/react';
@@ -306,8 +307,20 @@ export const ChannelItem = observer(
 			() => ({
 				type: dragItemData.type,
 				item: () => {
-					onDragStateChange?.(dragItemData);
-					return dragItemData;
+					// Resolved at drag start rather than memoised with the item: the subtree only matters once a
+					// drag is underway, and reading it here keeps it correct after a channel moves without
+					// recomputing on every unrelated channel-list change.
+					const item: DragItem = channelIsCategory
+						? {
+								...dragItemData,
+								descendantIds: collectDescendantIds({
+									channels: Channels.getGuildChannels(guild.id),
+									ancestorId: channel.id,
+								}),
+							}
+						: dragItemData;
+					onDragStateChange?.(item);
+					return item;
 				},
 				canDrag: dndEnabled && canManageChannels,
 				collect: (monitor) => ({isDragging: monitor.isDragging()}),
@@ -316,7 +329,7 @@ export const ChannelItem = observer(
 					setDropIndicator(null);
 				},
 			}),
-			[dragItemData, canManageChannels, dndEnabled, onDragStateChange],
+			[dragItemData, canManageChannels, dndEnabled, onDragStateChange, channelIsCategory, channel.id, guild.id],
 		);
 		const [{isOver}, dropRef] = useDrop(
 			() => ({
