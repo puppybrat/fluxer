@@ -4,12 +4,11 @@ import previewStyles from '@app/features/app/components/shared/MessagePreview.mo
 import {SavedMessageMissingCard} from '@app/features/app/components/shared/SavedMessageMissingCard';
 import {Message} from '@app/features/channel/components/ChannelMessage';
 import Channels from '@app/features/channel/state/Channels';
-import {JUMP_DESCRIPTOR, REMOVE_BOOKMARK_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
+import {JUMP_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import * as InboxCommands from '@app/features/inbox/commands/InboxCommands';
 import {ensureMembersForMessages} from '@app/features/messaging/commands/MessageCommands';
 import * as SavedMessageCommands from '@app/features/messaging/commands/SavedMessageCommands';
 import {InboxMessageHeader} from '@app/features/messaging/components/popouts/InboxMessageHeader';
-import headerStyles from '@app/features/messaging/components/popouts/InboxMessageHeader.module.css';
 import styles from '@app/features/messaging/components/popouts/SavedMessagesContent.module.css';
 import {useMessageListKeyboardNavigation} from '@app/features/messaging/hooks/useMessageListKeyboardNavigation';
 import {useMessageSelectionCopyForMessages} from '@app/features/messaging/hooks/useMessageSelectionCopy';
@@ -18,11 +17,10 @@ import {goToMessage} from '@app/features/messaging/utils/MessageNavigator';
 import {Scroller, type ScrollerHandle} from '@app/features/ui/components/Scroller';
 import {Spinner} from '@app/features/ui/components/Spinner';
 import FocusRing from '@app/features/ui/focus_ring/FocusRing';
-import {Tooltip} from '@app/features/ui/tooltip/Tooltip';
 import {MessagePreviewContext} from '@fluxer/constants/src/ChannelConstants';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
-import {FlagCheckeredIcon, SparkleIcon, XIcon} from '@phosphor-icons/react';
+import {FlagCheckeredIcon, SparkleIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import {useCallback, useEffect, useRef} from 'react';
 
@@ -125,29 +123,6 @@ export const SavedMessagesContent = observer(() => {
 						<InboxMessageHeader
 							channel={channel}
 							onClick={() => handleJumpToMessage(message.channelId, message.id)}
-							rightActions={
-								<Tooltip
-									text={i18n._(REMOVE_BOOKMARK_DESCRIPTOR)}
-									position="top"
-									data-flx="messaging.saved-messages-content.tooltip"
-								>
-									<FocusRing offset={-2} data-flx="messaging.saved-messages-content.focus-ring">
-										<button
-											type="button"
-											className={headerStyles.headerIconButton}
-											onClick={() => SavedMessageCommands.remove(i18n, message.id)}
-											aria-label={i18n._(REMOVE_BOOKMARK_DESCRIPTOR)}
-											data-flx="messaging.saved-messages-content.button.remove"
-										>
-											<XIcon
-												weight="bold"
-												className={headerStyles.headerIcon}
-												data-flx="messaging.saved-messages-content.x-icon"
-											/>
-										</button>
-									</FocusRing>
-								</Tooltip>
-							}
 							data-flx="messaging.saved-messages-content.inbox-message-header.jump-to-message"
 						/>
 						<div
