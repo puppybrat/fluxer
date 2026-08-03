@@ -10,7 +10,7 @@ type RichEmbedContentFields = Pick<
 
 export function hasRichEmbedContent(embed: RichEmbedContentFields): boolean {
 	return Boolean(
-		embed.title != null ||
+		embed.title ||
 			embed.description ||
 			embed.author ||
 			embed.footer ||
