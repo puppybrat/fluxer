@@ -37,7 +37,7 @@ import type {
 } from '@app/features/user/components/settings_utils/SettingsSectionRegistry';
 import {SettingsItemStatusBadges} from '@app/features/user/components/settings_utils/SettingsStatusBadge';
 import Users from '@app/features/user/state/Users';
-import {Plural, Trans} from '@lingui/react/macro';
+import {Trans} from '@lingui/react/macro';
 import {CaretRightIcon} from '@phosphor-icons/react';
 import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
@@ -140,13 +140,14 @@ const SettingsSection: React.FC<SettingsSectionProps> = observer(
 						<h2 className={styles.sectionTitle} data-flx="app.all-settings-renderer.settings-section.section-title">
 							{tab.label}
 						</h2>
+						{/*
+						 * Placeholder-free on purpose: the count is joined in code rather than interpolated by ICU.
+						 * A <Plural> compiles to a "{matchCount, plural, ...}" descriptor that renders as raw source
+						 * text if its id is ever missing from the compiled catalog, so keeping the nouns standalone
+						 * means a missing entry degrades to "3 matches" instead of leaking the ICU template.
+						 */}
 						<span className={styles.matchCount} data-flx="app.all-settings-renderer.settings-section.match-count">
-							<Plural
-								value={matchCount}
-								one="# match"
-								other="# matches"
-								data-flx="app.all-settings-renderer.settings-section.plural"
-							/>
+							{matchCount} {matchCount === 1 ? <Trans>match</Trans> : <Trans>matches</Trans>}
 						</span>
 						<CaretRightIcon
 							size={16}
@@ -265,9 +266,8 @@ export const AllSettingsRenderer: React.FC<AllSettingsRendererProps> = observer(
 				data-flx="app.all-settings-renderer.search-results-container"
 			>
 				<div className={styles.resultsHeader} data-flx="app.all-settings-renderer.results-header">
-					<Trans>
-						Found {resultCount} results in {categoryCount} categories
-					</Trans>
+					{/* Placeholder-free for the reason given on the match-count chip above. */}
+					<Trans>Found</Trans> {resultCount} <Trans>results in</Trans> {categoryCount} <Trans>categories</Trans>
 				</div>
 				{searchResults.map((result) => (
 					<SettingsSection

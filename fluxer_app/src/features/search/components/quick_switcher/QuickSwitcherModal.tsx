@@ -29,7 +29,7 @@ import LayerManager from '@app/features/ui/state/LayerManager';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {Tooltip} from '@app/features/ui/tooltip/Tooltip';
 import {QuickSwitcherResultTypes} from '@fluxer/constants/src/QuickSwitcherConstants';
-import {msg, ph} from '@lingui/core/macro';
+import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
@@ -40,22 +40,27 @@ const NO_AUTOCOMPLETE_SUGGESTION_DESCRIPTOR = msg({
 	message: 'No autocomplete suggestion',
 	comment: 'Screen-reader announcement in the desktop quick switcher when no autocomplete suggestion is active.',
 });
-const AUTOCOMPLETE_SUGGESTION_FOR_OF_DESCRIPTOR = msg({
-	message: 'Autocomplete suggestion for {trimmedQuery}: {label}, {selectedOptionPosition} of {resultCount}',
-	comment: 'Screen-reader announcement for the highlighted quick switcher autocomplete suggestion including position.',
-});
-const AUTOCOMPLETE_SUGGESTION_FOR_DESCRIPTOR = msg({
-	message: 'Autocomplete suggestion for {trimmedQuery}: {label}',
-	comment: 'Screen-reader announcement for the highlighted quick switcher autocomplete suggestion.',
-});
-const AUTOCOMPLETE_SUGGESTION_OF_DESCRIPTOR = msg({
-	message: 'Autocomplete suggestion: {label}, {selectedOptionPosition} of {resultCount}',
+/*
+ * The autocomplete announcement fragments below are placeholder-free on purpose: the query, label,
+ * position and count are joined in code rather than interpolated by ICU. A descriptor carrying
+ * {label} renders as raw source text if its id is ever missing from the compiled catalog, so
+ * keeping each fragment static means a missing entry degrades to "Autocomplete suggestion: General"
+ * instead of leaking "Autocomplete suggestion: {label}".
+ */
+const AUTOCOMPLETE_SUGGESTION_FOR_PREFIX_DESCRIPTOR = msg({
+	message: 'Autocomplete suggestion for',
 	comment:
-		'Screen-reader announcement for the highlighted autocomplete suggestion including position, without query echo.',
+		'Screen-reader announcement prefix in the desktop quick switcher, followed in code by the query and the suggestion label as "Autocomplete suggestion for ge: General".',
 });
-const AUTOCOMPLETE_SUGGESTION_DESCRIPTOR = msg({
-	message: 'Autocomplete suggestion: {label}',
-	comment: 'Screen-reader announcement for the highlighted autocomplete suggestion, without query echo.',
+const AUTOCOMPLETE_SUGGESTION_PREFIX_DESCRIPTOR = msg({
+	message: 'Autocomplete suggestion',
+	comment:
+		'Screen-reader announcement prefix in the desktop quick switcher, followed in code by the suggestion label as "Autocomplete suggestion: General".',
+});
+const POSITION_OF_DESCRIPTOR = msg({
+	message: 'of',
+	comment:
+		'Joins the selected position to the total result count in the desktop quick switcher screen-reader announcement, as "3 of 10".',
 });
 const SEARCHING_PEOPLE_DESCRIPTOR = msg({
 	message: 'Searching people...',
@@ -70,9 +75,11 @@ const MESSAGE_1_RESULT_AVAILABLE_DESCRIPTOR = msg({
 	message: '1 result available',
 	comment: 'Screen-reader live region announcement when exactly one quick switcher result is available.',
 });
-const RESULTS_AVAILABLE_DESCRIPTOR = msg({
-	message: '{resultCount} results available',
-	comment: 'Screen-reader live region announcement listing the quick switcher result count.',
+// Placeholder-free for the reason given on the autocomplete announcement fragments above.
+const RESULTS_AVAILABLE_SUFFIX_DESCRIPTOR = msg({
+	message: 'results available',
+	comment:
+		'Screen-reader live region suffix in the desktop quick switcher, joined after the result count as "5 results available".',
 });
 const QUICK_SWITCHER_DESCRIPTOR = msg({
 	message: 'Quick switcher',
@@ -421,14 +428,13 @@ const QuickSwitcherModalComponent: React.FC = observer(() => {
 		}
 		const label = getQuickSwitcherResultAccessibilityMetadata(result as QuickSwitcherExecutableResult, i18n).label;
 		const trimmedQuery = query.trim();
-		if (trimmedQuery.length > 0) {
-			return selectedOptionPosition > 0
-				? i18n._(AUTOCOMPLETE_SUGGESTION_FOR_OF_DESCRIPTOR, {trimmedQuery, label, selectedOptionPosition, resultCount})
-				: i18n._(AUTOCOMPLETE_SUGGESTION_FOR_DESCRIPTOR, {trimmedQuery, label});
-		}
+		const announcement =
+			trimmedQuery.length > 0
+				? `${i18n._(AUTOCOMPLETE_SUGGESTION_FOR_PREFIX_DESCRIPTOR)} ${trimmedQuery}: ${label}`
+				: `${i18n._(AUTOCOMPLETE_SUGGESTION_PREFIX_DESCRIPTOR)}: ${label}`;
 		return selectedOptionPosition > 0
-			? i18n._(AUTOCOMPLETE_SUGGESTION_OF_DESCRIPTOR, {label, selectedOptionPosition, resultCount})
-			: i18n._(AUTOCOMPLETE_SUGGESTION_DESCRIPTOR, {label});
+			? `${announcement}, ${selectedOptionPosition} ${i18n._(POSITION_OF_DESCRIPTOR)} ${resultCount}`
+			: announcement;
 	}, [i18n.locale, keyboardFocusIndex, query, resultCount, results, selectedOptionPosition]);
 	const resultStatus = QuickSwitcher.isLoadingMemberResults
 		? i18n._(SEARCHING_PEOPLE_DESCRIPTOR)
@@ -436,7 +442,7 @@ const QuickSwitcherModalComponent: React.FC = observer(() => {
 			? i18n._(NO_MATCHES_FOUND_DESCRIPTOR)
 			: resultCount === 1
 				? i18n._(MESSAGE_1_RESULT_AVAILABLE_DESCRIPTOR)
-				: i18n._(RESULTS_AVAILABLE_DESCRIPTOR, {resultCount});
+				: `${resultCount} ${i18n._(RESULTS_AVAILABLE_SUFFIX_DESCRIPTOR)}`;
 	if (!isOpen) {
 		return null;
 	}
@@ -607,42 +613,47 @@ const QuickSwitcherModalComponent: React.FC = observer(() => {
 					className={quickStyles.footer}
 					data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.div--9"
 				>
-					<Trans>
-						Start searches with{' '}
-						<PrefixHintToken
-							hint={PREFIX_HINTS[0]}
-							tooltipDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.tooltip"
-							codeDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.span"
-							data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.prefix-hint-token"
-						>
-							{ph({peoplePrefix: '@'})}
-						</PrefixHintToken>{' '}
-						<PrefixHintToken
-							hint={PREFIX_HINTS[1]}
-							tooltipDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.tooltip--2"
-							codeDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.span--2"
-							data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.prefix-hint-token--2"
-						>
-							{ph({textChannelPrefix: '#'})}
-						</PrefixHintToken>{' '}
-						<PrefixHintToken
-							hint={PREFIX_HINTS[2]}
-							tooltipDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.tooltip--3"
-							codeDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.span--3"
-							data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.prefix-hint-token--3"
-						>
-							{ph({voiceChannelPrefix: '!'})}
-						</PrefixHintToken>{' '}
-						<PrefixHintToken
-							hint={PREFIX_HINTS[3]}
-							tooltipDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.tooltip--4"
-							codeDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.span--4"
-							data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.prefix-hint-token--4"
-						>
-							{ph({communityPrefix: '*'})}
-						</PrefixHintToken>{' '}
-						to narrow down results.
-					</Trans>
+					{/*
+					 * Split into placeholder-free fragments on purpose: the prefix tokens are composed as JSX
+					 * siblings rather than as <0>...</0> component interpolation. A descriptor carrying component
+					 * placeholders renders as raw source text if its id is ever missing from the compiled catalog,
+					 * so keeping each fragment static means a missing entry degrades to readable English instead of
+					 * leaking "Start searches with <0>{peoplePrefix}</0> ... to narrow down results.".
+					 */}
+					<Trans>Start searches with</Trans>{' '}
+					<PrefixHintToken
+						hint={PREFIX_HINTS[0]}
+						tooltipDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.tooltip"
+						codeDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.span"
+						data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.prefix-hint-token"
+					>
+						@
+					</PrefixHintToken>{' '}
+					<PrefixHintToken
+						hint={PREFIX_HINTS[1]}
+						tooltipDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.tooltip--2"
+						codeDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.span--2"
+						data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.prefix-hint-token--2"
+					>
+						#
+					</PrefixHintToken>{' '}
+					<PrefixHintToken
+						hint={PREFIX_HINTS[2]}
+						tooltipDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.tooltip--3"
+						codeDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.span--3"
+						data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.prefix-hint-token--3"
+					>
+						!
+					</PrefixHintToken>{' '}
+					<PrefixHintToken
+						hint={PREFIX_HINTS[3]}
+						tooltipDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.tooltip--4"
+						codeDataFlx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.span--4"
+						data-flx="search.quick-switcher.quick-switcher-modal.quick-switcher-modal-component.prefix-hint-token--4"
+					>
+						*
+					</PrefixHintToken>{' '}
+					<Trans>to narrow down results.</Trans>
 				</div>
 			</div>
 		</Modal.Root>

@@ -52,31 +52,37 @@ const MESSAGE_1_RESULT_AVAILABLE_DESCRIPTOR = msg({
 	message: '1 result available',
 	comment: 'Screen-reader live region announcement when exactly one quick switcher result is available.',
 });
-const RESULTS_AVAILABLE_DESCRIPTOR = msg({
-	message: '{resultCount} results available',
-	comment: 'Screen-reader live region announcement listing the quick switcher result count.',
+/*
+ * The count and autocomplete fragments below are placeholder-free on purpose: the count, query,
+ * label and position are joined in code rather than interpolated by ICU. A descriptor carrying
+ * {resultCount} renders as raw source text if its id is ever missing from the compiled catalog, so
+ * keeping each fragment static means a missing entry degrades to "5 results available" instead of
+ * leaking "{resultCount} results available".
+ */
+const RESULTS_AVAILABLE_SUFFIX_DESCRIPTOR = msg({
+	message: 'results available',
+	comment:
+		'Screen-reader live region suffix in the quick switcher, joined after the result count as "5 results available".',
 });
 const NO_AUTOCOMPLETE_SUGGESTION_DESCRIPTOR = msg({
 	message: 'No autocomplete suggestion',
 	comment: 'Screen-reader announcement in the quick switcher when no autocomplete suggestion is active.',
 });
-const AUTOCOMPLETE_SUGGESTION_FOR_OF_DESCRIPTOR = msg({
-	message: 'Autocomplete suggestion for {trimmedQuery}: {label}, {selectedOptionPosition} of {resultCount}',
+// Placeholder-free for the reason given on RESULTS_AVAILABLE_SUFFIX_DESCRIPTOR above.
+const AUTOCOMPLETE_SUGGESTION_FOR_PREFIX_DESCRIPTOR = msg({
+	message: 'Autocomplete suggestion for',
 	comment:
-		'Screen-reader announcement for the highlighted quick switcher autocomplete suggestion including its position.',
+		'Screen-reader announcement prefix in the quick switcher, followed in code by the query and the suggestion label as "Autocomplete suggestion for ge: General".',
 });
-const AUTOCOMPLETE_SUGGESTION_FOR_DESCRIPTOR = msg({
-	message: 'Autocomplete suggestion for {trimmedQuery}: {label}',
-	comment: 'Screen-reader announcement for the highlighted quick switcher autocomplete suggestion.',
-});
-const AUTOCOMPLETE_SUGGESTION_OF_DESCRIPTOR = msg({
-	message: 'Autocomplete suggestion: {label}, {selectedOptionPosition} of {resultCount}',
+const AUTOCOMPLETE_SUGGESTION_PREFIX_DESCRIPTOR = msg({
+	message: 'Autocomplete suggestion',
 	comment:
-		'Screen-reader announcement for the highlighted autocomplete suggestion including position, without query echo.',
+		'Screen-reader announcement prefix in the quick switcher, followed in code by the suggestion label as "Autocomplete suggestion: General".',
 });
-const AUTOCOMPLETE_SUGGESTION_DESCRIPTOR = msg({
-	message: 'Autocomplete suggestion: {label}',
-	comment: 'Screen-reader announcement for the highlighted autocomplete suggestion, without query echo.',
+const POSITION_OF_DESCRIPTOR = msg({
+	message: 'of',
+	comment:
+		'Joins the selected position to the total result count in the quick switcher screen-reader announcement, as "3 of 10".',
 });
 const CLEAR_SEARCH_INPUT_DESCRIPTOR = msg({
 	message: 'Clear search input',
@@ -385,7 +391,7 @@ export const QuickSwitcherBottomSheet: React.FC<QuickSwitcherBottomSheetProps> =
 			? i18n._(NO_MATCHES_FOUND_DESCRIPTOR)
 			: resultCount === 1
 				? i18n._(MESSAGE_1_RESULT_AVAILABLE_DESCRIPTOR)
-				: i18n._(RESULTS_AVAILABLE_DESCRIPTOR, {resultCount});
+				: `${resultCount} ${i18n._(RESULTS_AVAILABLE_SUFFIX_DESCRIPTOR)}`;
 	const activeSuggestionStatus = useMemo(() => {
 		if (!isSearchTab) {
 			return '';
@@ -396,14 +402,13 @@ export const QuickSwitcherBottomSheet: React.FC<QuickSwitcherBottomSheetProps> =
 		}
 		const label = getQuickSwitcherResultAccessibilityMetadata(result as QuickSwitcherExecutableResult, i18n).label;
 		const trimmedQuery = query.trim();
-		if (trimmedQuery.length > 0) {
-			return selectedOptionPosition > 0
-				? i18n._(AUTOCOMPLETE_SUGGESTION_FOR_OF_DESCRIPTOR, {trimmedQuery, label, selectedOptionPosition, resultCount})
-				: i18n._(AUTOCOMPLETE_SUGGESTION_FOR_DESCRIPTOR, {trimmedQuery, label});
-		}
+		const announcement =
+			trimmedQuery.length > 0
+				? `${i18n._(AUTOCOMPLETE_SUGGESTION_FOR_PREFIX_DESCRIPTOR)} ${trimmedQuery}: ${label}`
+				: `${i18n._(AUTOCOMPLETE_SUGGESTION_PREFIX_DESCRIPTOR)}: ${label}`;
 		return selectedOptionPosition > 0
-			? i18n._(AUTOCOMPLETE_SUGGESTION_OF_DESCRIPTOR, {label, selectedOptionPosition, resultCount})
-			: i18n._(AUTOCOMPLETE_SUGGESTION_DESCRIPTOR, {label});
+			? `${announcement}, ${selectedOptionPosition} ${i18n._(POSITION_OF_DESCRIPTOR)} ${resultCount}`
+			: announcement;
 	}, [i18n.locale, isSearchTab, keyboardFocusIndex, query, resultCount, results, selectedOptionPosition]);
 	const handleTabChange = useCallback((tab: 'search' | 'friends') => {
 		setActiveTab(tab);
