@@ -404,12 +404,6 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 	// Returns true if the click was consumed by select mode, so the caller can skip other row click behavior.
 	const handleSelectModeClick = useCallback(
 		(event: React.MouseEvent<HTMLDivElement>): boolean => {
-			// A preview render (e.g. the SelectModePanel's own start/end cards) must never assign the
-			// selection it is displaying — without this the card would set anchor/head to itself on
-			// click. readonlyPreview does not cover this; it only affects hover and the action bar.
-			if (previewContext) {
-				return false;
-			}
 			if (!SelectMode.isActive || SelectMode.channelId !== channel.id) {
 				return false;
 			}
@@ -432,7 +426,7 @@ export const Message: React.FC<MessageProps> = observer((props) => {
 			}
 			return true;
 		},
-		[channel.id, message.id, previewContext],
+		[channel.id, message.id],
 	);
 	// LOCAL-ONLY: SelectMode click-to-select handling — exclude from upstream sync.
 	const handleRowClick = useCallback(

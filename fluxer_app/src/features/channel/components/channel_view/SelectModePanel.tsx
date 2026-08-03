@@ -13,8 +13,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {OutlineFrame} from '@app/features/app/components/layout/OutlineFrame';
-import previewStyles from '@app/features/app/components/shared/MessagePreview.module.css';
-import {Message as MessageComponent} from '@app/features/channel/components/ChannelMessage';
 import styles from '@app/features/channel/components/channel_view/SelectModePanel.module.css';
 import {formatRecentOrFallback} from '@app/features/channel/components/guild_members_page/GuildMembersPageFormatting';
 import type {Channel} from '@app/features/channel/models/Channel';
@@ -23,33 +21,32 @@ import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 import type {Guild} from '@app/features/guild/models/Guild';
 import Guilds from '@app/features/guild/state/Guilds';
-import type {Message} from '@app/features/messaging/models/MessagingMessage';
 import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {Button} from '@app/features/ui/button/Button';
 import {Combobox, type ComboboxOption} from '@app/features/ui/components/form/FormCombobox';
 import {Switch} from '@app/features/ui/components/form/FormSwitch';
 import {Scroller} from '@app/features/ui/components/Scroller';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
-import {ChannelTypes, MessagePreviewContext} from '@fluxer/constants/src/ChannelConstants';
+import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
 import {useEffect, useState} from 'react';
 
 const DMS_DEST_VALUE = 'dms';
+const PREVIEW_MAX_LENGTH = 80;
 
-/*
- * LOCAL-ONLY: resolves the full Message model backing an anchor/head selection so the sections
- * below can render it as a real message row. checkBuffers is true because a selected message that
- * has scrolled out of the visible window lives in the before/after buffers — without it the row
- * silently vanishes while the id is still set. Returns null when the id resolves to nothing at all
- * (evicted past both buffers); callers fall back to the same placeholder as the unset case.
- * Exclude from upstream sync.
- */
-function resolveSelectedMessage(channelId: string | null, messageId: string | null): Message | null {
+// LOCAL-ONLY: message preview helper for the anchor/head sections below — exclude from upstream sync.
+function getMessagePreview(channelId: string | null, messageId: string | null): string | null {
     if (channelId == null || messageId == null) {
         return null;
     }
-    return MessagingMessages.getMessages(channelId).get(messageId, true) ?? null;
+    const message = MessagingMessages.getMessages(channelId).get(messageId);
+    if (!message || !message.content) {
+        return null;
+    }
+    return message.content.length > PREVIEW_MAX_LENGTH
+        ? `${message.content.slice(0, PREVIEW_MAX_LENGTH)}...`
+        : message.content;
 }
 
 interface SelectModePanelProps {
@@ -93,8 +90,8 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
     }));
 
     // LOCAL-ONLY: message previews for the anchor/head sections — exclude from upstream sync.
-    const anchorMessage = resolveSelectedMessage(SelectMode.channelId, SelectMode.anchorId);
-    const headMessage = resolveSelectedMessage(SelectMode.channelId, SelectMode.headId);
+    const anchorPreview = getMessagePreview(SelectMode.channelId, SelectMode.anchorId);
+    const headPreview = getMessagePreview(SelectMode.channelId, SelectMode.headId);
     const canReset = SelectMode.anchorId != null || SelectMode.headId != null;
 
     // LOCAL-ONLY: mirrors ChannelMembers' frameSides exactly. In a guild on desktop the Members
@@ -149,26 +146,23 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         >
                             Start message
                         </span>
-                        {/*
-                         * LOCAL-ONLY: renders the selection as a real message row — avatar, name,
-                         * timestamp and content — reusing the same card pattern the pins panel uses.
-                         * previewOverrides is deliberately NOT passed: it would win over the cast
-                         * identity in UserMessage, and the preview should show the message exactly
-                         * as it appears in the channel. Exclude from upstream sync.
-                         */}
-                        {anchorMessage != null ? (
-                            <div
-                                className={previewStyles.previewCard}
-                                data-flx="channel.channel-view.select-mode-panel.anchor-preview-card"
-                            >
-                                <MessageComponent
-                                    message={anchorMessage}
-                                    channel={channel}
-                                    previewContext={MessagePreviewContext.LIST_POPOUT}
-                                    readonlyPreview
-                                    data-flx="channel.channel-view.select-mode-panel.anchor-message"
-                                />
-                            </div>
+                        {SelectMode.anchorId != null ? (
+                            <>
+                                <span
+                                    className={styles.idValue}
+                                    data-flx="channel.channel-view.select-mode-panel.anchor-value"
+                                >
+                                    {SelectMode.anchorId}
+                                </span>
+                                {anchorPreview != null && (
+                                    <span
+                                        className={styles.preview}
+                                        data-flx="channel.channel-view.select-mode-panel.anchor-preview"
+                                    >
+                                        {anchorPreview}
+                                    </span>
+                                )}
+                            </>
                         ) : (
                             <span
                                 className={styles.placeholder}
@@ -186,20 +180,23 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         >
                             End message
                         </span>
-                        {/* LOCAL-ONLY: see the anchor preview card above — exclude from upstream sync. */}
-                        {headMessage != null ? (
-                            <div
-                                className={previewStyles.previewCard}
-                                data-flx="channel.channel-view.select-mode-panel.head-preview-card"
-                            >
-                                <MessageComponent
-                                    message={headMessage}
-                                    channel={channel}
-                                    previewContext={MessagePreviewContext.LIST_POPOUT}
-                                    readonlyPreview
-                                    data-flx="channel.channel-view.select-mode-panel.head-message"
-                                />
-                            </div>
+                        {SelectMode.headId != null ? (
+                            <>
+                                <span
+                                    className={styles.idValue}
+                                    data-flx="channel.channel-view.select-mode-panel.head-value"
+                                >
+                                    {SelectMode.headId}
+                                </span>
+                                {headPreview != null && (
+                                    <span
+                                        className={styles.preview}
+                                        data-flx="channel.channel-view.select-mode-panel.head-preview"
+                                    >
+                                        {headPreview}
+                                    </span>
+                                )}
+                            </>
                         ) : (
                             <span
                                 className={styles.placeholder}

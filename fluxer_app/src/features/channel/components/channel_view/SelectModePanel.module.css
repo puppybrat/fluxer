@@ -97,10 +97,27 @@
     line-height: 1rem;
 }
 
+.idValue {
+    font-size: 11px;
+    font-family: monospace;
+    word-break: break-all;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    min-height: 22px;
+}
+
 .placeholder {
     font-size: 11px;
     opacity: 0.4;
     font-style: italic;
+    padding: 2px 0;
+}
+
+.preview {
+    font-size: 11px;
+    opacity: 0.6;
+    word-break: break-word;
     padding: 2px 0;
 }
 
