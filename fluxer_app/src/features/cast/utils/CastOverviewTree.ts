@@ -55,7 +55,10 @@ export interface CastOverviewGroup {
 	name: string;
 	/** This scope's own local rows. Empty is normal and rendered as label + Add. */
 	entries: Array<CastOverviewEntry>;
-	/** Channel groups nested under a category. Always empty for channel and server groups. */
+	/**
+	 * What sits under this scope: its channel groups first, then the categories nested inside it, each
+	 * carrying its own children to any depth. Always empty for channel and server groups.
+	 */
 	children: Array<CastOverviewGroup>;
 }
 
@@ -84,11 +87,11 @@ function compareByName(a: {name: string}, b: {name: string}): number {
 /**
  * Groups are ordered the way the real channel sidebar orders itself, not alphabetically.
  *
- * The sidebar's order comes from ChannelOrganization.organizeChannels, which sorts everything with
- * compareChannelOrdering (position, then id as a tiebreak) and then emits the ROOT bucket — the
- * parentless channels — before any category, each category following in position order with its own
- * children beneath it. Parentless channels therefore always sit ABOVE every category; the sidebar
- * never interleaves the two, so neither does this tree.
+ * The sidebar's order comes from ChannelOrganization.organizeChannels, which emits the ROOT bucket —
+ * the parentless channels — before any category, each category following in position order with its
+ * own channels and then its own nested categories beneath it. Parentless channels therefore always
+ * sit ABOVE every category, and within a category its channels sit above its subcategories; the
+ * sidebar never interleaves the two, so neither does this tree.
  *
  * compareChannelOrdering is imported rather than reimplemented so the two orderings cannot drift.
  */
@@ -190,22 +193,25 @@ function buildEntriesForScope(
 }
 
 /**
- * Builds the two-level Cast Overview tree from ONE unscoped cast read.
+ * Builds the Cast Overview tree from ONE unscoped cast read.
  *
  * Shape mirrors the real channel sidebar (ChannelOrganization.organizeChannels): the server group
- * first, then parentless channel groups in sidebar order, then category groups in sidebar order with
- * each category's own overridden channels nested beneath it, also in sidebar order.
+ * first, then parentless channel groups in sidebar order, then root category groups in sidebar order,
+ * each carrying its own overridden channels and then the categories nested inside it — to any depth,
+ * since categories may nest.
  *
  * Parentless channels sit ABOVE the categories rather than interleaved among them because that is
  * what the sidebar does — organizeChannels emits the root bucket before any category, so position
- * only orders within each partition and can never lift a channel between two categories.
+ * only orders within each partition and can never lift a channel between two categories. The same
+ * split repeats inside every category: its channels first, then its subcategories.
  *
  * EVERY category and channel gets a group, whether or not it has any local cast data. An empty one
  * renders as just its label and an Add button, which is how a scope gets its first override — build
  * the tree only from scopes that already have rows and there is no way in.
  *
- * Only categories can have children (the channel model forbids nesting a category under a category),
- * so the tree is at most two levels deep by construction.
+ * Nothing is ever dropped. A parentId that resolves to no known category — stale, unsynced, or not a
+ * category at all — is treated as absent and the group surfaces at root; a parent cycle is broken the
+ * same way, leaving its members reachable at root rather than nested into each other forever.
  */
 export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup> {
 	const {primaries, overrides, channelsById} = args;
@@ -283,25 +289,75 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 		}
 	}
 
+	// Channel groups are attached to their category before any category nesting is resolved, so the
+	// nesting pass below only has to move whole categories around.
+	const channelChildrenByCategory = new Map<string, Array<SortableGroup>>();
 	for (const [parentId, children] of pendingChildren) {
-		const existing = categoryGroups.get(parentId);
-		if (existing) {
-			existing.group.children = children.sort(compareSortable).map((child) => child.group);
+		if (!categoryGroups.has(parentId)) {
+			// A parent the store does not know about: still emitted so its children stay grouped under
+			// something rather than floating at the top level.
+			const info = channelsById.get(parentId);
+			categoryGroups.set(parentId, {
+				ordering: orderingFor(parentId, info),
+				group: {
+					kind: 'category',
+					scopeId: parentId,
+					name: displayName(parentId, info, true),
+					entries: buildEntriesForScope(parentId, args),
+					children: [],
+				},
+			});
+		}
+		channelChildrenByCategory.set(parentId, children);
+	}
+
+	/**
+	 * The category this category renders inside, or null for root.
+	 *
+	 * Walking to the top proves the chain terminates. A cycle returns null so every member stays
+	 * reachable at root — nesting them into each other would build a subtree no root can reach, which
+	 * is the silent drop this builder promises never to do.
+	 */
+	const resolveCategoryParentId = (categoryId: string): string | null => {
+		const directParentId = channelsById.get(categoryId)?.parentId ?? null;
+		if (directParentId == null || !categoryGroups.has(directParentId)) {
+			return null;
+		}
+		const seen = new Set<string>([categoryId]);
+		let ancestorId: string | null = directParentId;
+		while (ancestorId != null) {
+			if (seen.has(ancestorId)) {
+				return null;
+			}
+			seen.add(ancestorId);
+			const nextId: string | null = channelsById.get(ancestorId)?.parentId ?? null;
+			ancestorId = nextId != null && categoryGroups.has(nextId) ? nextId : null;
+		}
+		return directParentId;
+	};
+
+	const rootCategoryGroups: Array<SortableGroup> = [];
+	const categoryChildrenByCategory = new Map<string, Array<SortableGroup>>();
+	for (const [categoryId, sortable] of categoryGroups) {
+		const parentId = resolveCategoryParentId(categoryId);
+		if (parentId == null) {
+			rootCategoryGroups.push(sortable);
 			continue;
 		}
-		// A parent the store does not know about: still emitted so its children stay grouped under
-		// something rather than floating at the top level.
-		const info = channelsById.get(parentId);
-		categoryGroups.set(parentId, {
-			ordering: orderingFor(parentId, info),
-			group: {
-				kind: 'category',
-				scopeId: parentId,
-				name: displayName(parentId, info, true),
-				entries: buildEntriesForScope(parentId, args),
-				children: children.sort(compareSortable).map((child) => child.group),
-			},
-		});
+		const siblings = categoryChildrenByCategory.get(parentId);
+		if (siblings) {
+			siblings.push(sortable);
+		} else {
+			categoryChildrenByCategory.set(parentId, [sortable]);
+		}
+	}
+
+	// Channels above subcategories at every depth, mirroring the sidebar's root ordering. Assignment is
+	// by reference, so a grandchild attached here is already in place when its parent is assigned.
+	for (const [categoryId, sortable] of categoryGroups) {
+		const channelChildren = (channelChildrenByCategory.get(categoryId) ?? []).sort(compareSortable);
+		const categoryChildren = (categoryChildrenByCategory.get(categoryId) ?? []).sort(compareSortable);
+		sortable.group.children = [...channelChildren, ...categoryChildren].map((child) => child.group);
 	}
 
 	const serverGroup: CastOverviewGroup = {
@@ -312,10 +368,10 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 		children: [],
 	};
 
-	// Root bucket before categories, exactly as organizeChannels emits them.
-	const topLevel = [
-		...topLevelChannelGroups.sort(compareSortable),
-		...[...categoryGroups.values()].sort(compareSortable),
-	].map((entry) => entry.group);
+	// Root bucket before categories, exactly as organizeChannels emits them. Only ROOT categories are
+	// listed here; a nested one reaches the renderer through its parent's `children`.
+	const topLevel = [...topLevelChannelGroups.sort(compareSortable), ...rootCategoryGroups.sort(compareSortable)].map(
+		(entry) => entry.group,
+	);
 	return [serverGroup, ...topLevel];
 }
