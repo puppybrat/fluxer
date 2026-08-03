@@ -36,8 +36,6 @@ import {
 	MENTION_COUNT_ARIA_DESCRIPTOR,
 } from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {isKeyboardActivationKey, stopPropagationOnEnterSpace} from '@app/features/input/utils/KeyboardUtils';
-import {InviteModal} from '@app/features/invite/components/modals/InviteModal';
-import * as InviteUtils from '@app/features/invite/utils/InviteUtils';
 import * as GuildMemberCommands from '@app/features/member/commands/GuildMemberCommands';
 import * as NavigationCommands from '@app/features/navigation/commands/NavigationCommands';
 import Permission from '@app/features/permissions/state/Permission';
@@ -68,7 +66,7 @@ import {ChannelTypes, Permissions} from '@fluxer/constants/src/ChannelConstants'
 import {collectDescendantIds} from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
-import {CaretDownIcon, ChatTeardropIcon, GearIcon, PlusIcon, UserPlusIcon} from '@phosphor-icons/react';
+import {CaretDownIcon, ChatTeardropIcon, GearIcon, PlusIcon} from '@phosphor-icons/react';
 import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
@@ -116,10 +114,6 @@ const CONNECTED_DESCRIPTOR = msg({
 const EDIT_CATEGORY_DESCRIPTOR = msg({
 	message: 'Edit category',
 	comment: 'Tooltip and accessible label for the category settings button in the channel list.',
-});
-const INVITE_MEMBERS_DESCRIPTOR = msg({
-	message: 'Invite members',
-	comment: 'Tooltip and accessible label for the invite button shown beside a channel in the channel list.',
 });
 const OPEN_CHAT_DESCRIPTOR = msg({
 	message: 'Open chat',
@@ -232,7 +226,6 @@ export const ChannelItem = observer(
 		const canManageChannels = Permission.can(Permissions.MANAGE_CHANNELS, channel);
 		const canUpdateRtcRegion = channelIsVoice && Permission.can(Permissions.UPDATE_RTC_REGION, channel);
 		const canEditChannel = canManageChannels || canUpdateRtcRegion;
-		const canInvite = InviteUtils.canInviteToChannel(channel.id, channel.guildId);
 		const mobileLayout = MobileLayout;
 		const isMuted = UserGuildSettings.isGuildOrChannelMuted(guild.id, channel.id);
 		const isChannelDirectlyMuted = UserGuildSettings.isChannelMuted(guild.id, channel.id);
@@ -525,7 +518,7 @@ export const ChannelItem = observer(
 			allowHoverAffordances &&
 			!isDraggingAnything &&
 			!channelIsCategory &&
-			(canInvite || canEditChannel || showChatAffordance);
+			(canEditChannel || showChatAffordance);
 		const shouldShowVoiceUserCount = hasVoiceUserLimit && !(hasVoiceHoverAffordances && hoverAffordancesActive);
 		const showMentionBadge = !isSelected && hasMentions && !hoverAffordancesActive;
 		const channelItemClassName = clsx(
@@ -580,14 +573,6 @@ export const ChannelItem = observer(
 				}
 			}
 		}, [isMobileLayout, channelIsCategory]);
-		const handleInviteClick = useCallback(() => {
-			armActionModalReturn();
-			ModalCommands.push(
-				modal(() => (
-					<InviteModal channelId={channel.id} data-flx="app.channel-item.handle-invite-click.invite-modal" />
-				)),
-			);
-		}, [channel.id, armActionModalReturn]);
 		const handleOpenChatClick = useCallback(() => {
 			collapseVoiceCallView();
 			navigateToChannel();
@@ -708,18 +693,6 @@ export const ChannelItem = observer(
 									onClick={handleOpenChatClick}
 									tabIndex={actionButtonTabIndex}
 									data-flx="app.channel-item.channel-item-icon.open-chat-click"
-								/>
-							</div>
-						)}
-						{allowHoverAffordances && canInvite && !channelIsCategory && (
-							<div className={styles.hoverAffordance} data-flx="app.channel-item.hover-affordance">
-								<ChannelItemIcon
-									icon={UserPlusIcon}
-									label={i18n._(INVITE_MEMBERS_DESCRIPTOR)}
-									selected={shouldShowSelectedState}
-									onClick={handleInviteClick}
-									tabIndex={actionButtonTabIndex}
-									data-flx="app.channel-item.channel-item-icon.invite-click"
 								/>
 							</div>
 						)}
