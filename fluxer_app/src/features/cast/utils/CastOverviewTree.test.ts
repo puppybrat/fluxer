@@ -44,6 +44,14 @@ const cat = (id: string, name: string, position = 0): CastOverviewChannelInfo =>
 	isCategory: true,
 	position,
 });
+/** A category nested inside another category. Categories may nest to any depth. */
+const subcat = (id: string, name: string, parentId: string | null, position = 0): CastOverviewChannelInfo => ({
+	id,
+	name,
+	parentId,
+	isCategory: true,
+	position,
+});
 const chan = (id: string, name: string, parentId: string | null, position = 0): CastOverviewChannelInfo => ({
 	id,
 	name,
@@ -56,13 +64,23 @@ function channels(...infos: Array<CastOverviewChannelInfo>): ReadonlyMap<string,
 	return new Map(infos.map((info) => [info.id, info]));
 }
 
-/** Compact shape for assertions: kind, name and entries, with any nested children. */
-const shape = (g: CastOverviewGroup) => ({
+/**
+ * Compact shape for assertions: kind, name and entries, recursing to whatever depth the tree has.
+ *
+ * Deliberately recursive rather than one level deep — categories nest arbitrarily, so a helper that
+ * stopped at depth one would assert the old two-level shape and quietly pass on a tree that had
+ * flattened a grandchild back to the root.
+ */
+const shape = (g: CastOverviewGroup): {kind: string; name: string; entries: Array<string>; children: Array<unknown>} => ({
 	kind: g.kind,
 	name: g.name,
 	entries: g.entries.map((e) => `${e.name}:${e.status}`),
-	children: g.children.map((c) => ({name: c.name, entries: c.entries.map((e) => `${e.name}:${e.status}`)})),
+	children: g.children.map(shape),
 });
+
+/** Every group name in the tree, depth-first, so nothing can hide at depth. */
+const allNames = (groups: ReadonlyArray<CastOverviewGroup>): Array<string> =>
+	groups.flatMap((group) => [group.name, ...allNames(group.children)]);
 
 describe('Cast Overview tree', () => {
 	it('always puts the server group first, even when it is empty', () => {
@@ -95,7 +113,7 @@ describe('Cast Overview tree', () => {
 				kind: 'category',
 				name: 'Text Channels',
 				entries: [], // no delta of its own, but still listed and still addable
-				children: [{name: '#testing', entries: ['Sable:edited']}],
+				children: [{kind: 'channel', name: '#testing', entries: ['Sable:edited'], children: []}],
 			},
 		]);
 	});
@@ -231,6 +249,155 @@ describe('Cast Overview tree', () => {
 		expect(tree[1]!.kind).toBe('channel');
 	});
 
+	/**
+	 * Categories nest, so the tree has no depth limit. These cover the builder honouring a category's
+	 * own parentId — which it used to ignore, flattening every category to the root.
+	 */
+	describe('nested categories', () => {
+		it('nests a category under its parent category', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(
+					cat('parent', 'Parent'),
+					subcat('child', 'Child', 'parent'),
+					chan('c', 'inner', 'child'),
+				),
+			});
+			expect(tree.map(shape)).toEqual([
+				{kind: 'server', name: '', entries: [], children: []},
+				{
+					kind: 'category',
+					name: 'Parent',
+					entries: [],
+					children: [
+						{
+							kind: 'category',
+							name: 'Child',
+							entries: [],
+							children: [{kind: 'channel', name: '#inner', entries: [], children: []}],
+						},
+					],
+				},
+			]);
+			// The nested category must not ALSO appear as a root sibling.
+			expect(tree.map((g) => g.name)).toEqual(['', 'Parent']);
+		});
+
+		it('nests to arbitrary depth', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(
+					cat('l1', 'L1'),
+					subcat('l2', 'L2', 'l1'),
+					subcat('l3', 'L3', 'l2'),
+					subcat('l4', 'L4', 'l3'),
+					chan('deep', 'deep', 'l4'),
+				),
+			});
+			expect(allNames(tree)).toEqual(['', 'L1', 'L2', 'L3', 'L4', '#deep']);
+			const l4 = tree[1]!.children[0]!.children[0]!.children[0]!;
+			expect(l4.name).toBe('L4');
+			expect(l4.children.map((c) => c.name)).toEqual(['#deep']);
+		});
+
+		it('puts a category own channels above its subcategories', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(
+					cat('parent', 'Parent'),
+					// position puts the subcategory FIRST, but channels still render above it.
+					subcat('sub', 'Sub', 'parent', 0),
+					chan('own', 'own', 'parent', 9),
+				),
+			});
+			expect(tree[1]!.children.map((c) => c.name)).toEqual(['#own', 'Sub']);
+		});
+
+		it('orders sibling subcategories by position', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(
+					cat('parent', 'Parent'),
+					subcat('late', 'Late', 'parent', 9),
+					subcat('early', 'Early', 'parent', 1),
+				),
+			});
+			expect(tree[1]!.children.map((c) => c.name)).toEqual(['Early', 'Late']);
+		});
+
+		it('treats a category unresolvable parent as no parent', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(subcat('stray', 'Stray', 'missing-cat'), chan('kid', 'kid', 'stray')),
+			});
+			// Surfaces at root rather than vanishing, and keeps its own child.
+			expect(tree.map((g) => g.name)).toEqual(['', 'Stray']);
+			expect(tree[1]!.children.map((c) => c.name)).toEqual(['#kid']);
+		});
+
+		it('treats a non-category parent as no parent', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(chan('text', 'text', null), subcat('stray', 'Stray', 'text')),
+			});
+			expect(tree.map((g) => g.name)).toEqual(['', '#text', 'Stray']);
+		});
+
+		it('breaks a parent cycle by pinning its members to root', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(subcat('x', 'X', 'y'), subcat('y', 'Y', 'x')),
+			});
+			// Both stay reachable; neither is nested into the other and neither is dropped.
+			expect(allNames(tree).sort()).toEqual(['', 'X', 'Y']);
+			expect(tree[1]!.children).toEqual([]);
+			expect(tree[2]!.children).toEqual([]);
+		});
+
+		it('pins a self-parented category to root', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(subcat('self', 'Self', 'self')),
+			});
+			expect(tree.map((g) => g.name)).toEqual(['', 'Self']);
+		});
+
+		it('emits every category exactly once across the whole tree', () => {
+			const tree = buildCastOverviewTree({
+				characters: [],
+				primaries: [],
+				overrides: [],
+				channelsById: channels(
+					cat('a', 'A'),
+					subcat('a1', 'A1', 'a'),
+					subcat('a2', 'A2', 'a'),
+					subcat('a1x', 'A1X', 'a1'),
+					cat('b', 'B'),
+					chan('loose', 'loose', null),
+				),
+			});
+			const names = allNames(tree);
+			expect(names.slice().sort()).toEqual(['', '#loose', 'A', 'A1', 'A1X', 'A2', 'B']);
+			expect(new Set(names).size).toBe(names.length);
+		});
+	});
+
 	it('treats an unknown parent as no parent rather than hiding the group', () => {
 		const tree = buildCastOverviewTree({
 			characters: [character('c1', 'Rowan')],
@@ -282,11 +449,16 @@ describe('Cast Overview tree', () => {
 					name: 'Text Channels',
 					entries: [],
 					children: [
-						{name: '#general', entries: []},
-						{name: '#testing', entries: []},
+						{kind: 'channel', name: '#general', entries: [], children: []},
+						{kind: 'channel', name: '#testing', entries: [], children: []},
 					],
 				},
-				{kind: 'category', name: 'Voice Channels', entries: [], children: [{name: '#General', entries: []}]},
+				{
+					kind: 'category',
+					name: 'Voice Channels',
+					entries: [],
+					children: [{kind: 'channel', name: '#General', entries: [], children: []}],
+				},
 			]);
 		});
 

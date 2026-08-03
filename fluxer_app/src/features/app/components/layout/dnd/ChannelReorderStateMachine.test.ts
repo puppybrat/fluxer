@@ -8,6 +8,7 @@ import {
 	type ChannelReorderTarget,
 	canChannelDropOnTarget,
 	createChannelReorderSnapshot,
+	getChannelDropBlockedReason,
 	getChannelReorderStateValue,
 	resolveChannelReorderHover,
 	selectChannelReorderIntent,
@@ -232,16 +233,67 @@ describe('ChannelReorderStateMachine', () => {
 		});
 	});
 
-	it('maps category-to-category bottom drops to after instead of inside', () => {
+	it('maps category-to-category bottom drops to inside, nesting the category', () => {
 		const source = categoryItem('category-source');
 		const categoryTarget = target('category-target', ChannelTypes.GUILD_CATEGORY, null);
 		expect(selectChannelReorderIntent(source, categoryTarget, point(71), rect)).toMatchObject({
 			indicator: {position: 'bottom', isValid: true},
 			result: {
 				targetId: 'category-target',
-				position: 'after',
-				targetParentId: null,
+				position: 'inside',
+				targetParentId: 'category-target',
 			},
+		});
+	});
+
+	it('maps category-to-category top drops to a sibling at the target depth', () => {
+		const source = categoryItem('category-source');
+		const nestedTarget = target('category-target', ChannelTypes.GUILD_CATEGORY, 'category-parent');
+		expect(selectChannelReorderIntent(source, nestedTarget, point(41), rect)).toMatchObject({
+			indicator: {position: 'top', isValid: true},
+			result: {
+				targetId: 'category-target',
+				position: 'before',
+				targetParentId: 'category-parent',
+			},
+		});
+	});
+
+	it('nests a category into a category that is itself nested', () => {
+		const source = categoryItem('category-source');
+		const nestedTarget = target('category-target', ChannelTypes.GUILD_CATEGORY, 'category-parent');
+		expect(selectChannelReorderIntent(source, nestedTarget, point(71), rect)).toMatchObject({
+			result: {
+				targetId: 'category-target',
+				position: 'inside',
+				targetParentId: 'category-target',
+			},
+		});
+	});
+
+	it('blocks dropping a category anywhere inside its own subtree', () => {
+		const source: DragItem = {
+			...categoryItem('category-source'),
+			descendantIds: new Set(['child-category', 'grandchild-category']),
+		};
+		// The grandchild proves the guard walks the whole subtree rather than just direct children.
+		for (const descendantId of ['child-category', 'grandchild-category']) {
+			const descendantTarget = target(descendantId, ChannelTypes.GUILD_CATEGORY, 'category-source');
+			expect(getChannelDropBlockedReason(source, descendantTarget)).toBe('category-into-own-descendant');
+			expect(canChannelDropOnTarget(source, descendantTarget)).toBe(false);
+			expect(selectChannelReorderIntent(source, descendantTarget, point(71), rect)).toBeNull();
+		}
+	});
+
+	it('still allows a category carrying a subtree onto an unrelated category', () => {
+		const source: DragItem = {
+			...categoryItem('category-source'),
+			descendantIds: new Set(['child-category']),
+		};
+		const unrelated = target('category-other', ChannelTypes.GUILD_CATEGORY, null);
+		expect(canChannelDropOnTarget(source, unrelated)).toBe(true);
+		expect(selectChannelReorderIntent(source, unrelated, point(71), rect)).toMatchObject({
+			result: {position: 'inside', targetParentId: 'category-other'},
 		});
 	});
 

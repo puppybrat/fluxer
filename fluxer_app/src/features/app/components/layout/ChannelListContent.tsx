@@ -20,10 +20,11 @@ import {
 	shouldShowChannelWhenHidingMutedChannels,
 } from '@app/features/app/components/layout/utils/ChannelListVisibility';
 import {createChannelMoveOperation} from '@app/features/app/components/layout/utils/ChannelMoveOperation';
-import {organizeChannels} from '@app/features/app/components/layout/utils/ChannelOrganization';
+import {type ChannelGroup, organizeChannels} from '@app/features/app/components/layout/utils/ChannelOrganization';
 import {getChannelUnreadState} from '@app/features/app/components/layout/utils/ChannelUnreadState';
 import {VoiceParticipantsList} from '@app/features/app/components/layout/VoiceParticipantsList';
 import {useRovingFocusList} from '@app/features/app/hooks/useRovingFocusList';
+import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
 import * as GuildCommands from '@app/features/guild/commands/GuildCommands';
 import type {Guild} from '@app/features/guild/models/Guild';
@@ -290,6 +291,224 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 		});
 		return unreadState.hasVisibleUnread;
 	};
+	/** A channel row plus whether the category it actually lives in counts as muted. */
+	type SurfacedChannel = {channel: Channel; categoryMuted: boolean};
+	/**
+	 * Every channel anywhere beneath a collapsed category.
+	 *
+	 * `categoryMuted` is carried per channel rather than taken from the collapsed category, because a
+	 * channel three levels down belongs to its own category's mute state — and a mute anywhere up the
+	 * chain still silences everything under it, which is why it propagates downward here.
+	 */
+	const collectSubtreeChannels = (group: ChannelGroup): {text: Array<SurfacedChannel>; voice: Array<SurfacedChannel>} => {
+		const text: Array<SurfacedChannel> = [];
+		const voice: Array<SurfacedChannel> = [];
+		const walk = (current: ChannelGroup, ancestorMuted: boolean): void => {
+			const categoryMuted =
+				ancestorMuted ||
+				(current.category ? UserGuildSettings.isChannelMuted(guild.id, current.category.id) : false);
+			for (const ch of current.textChannels) text.push({channel: ch, categoryMuted});
+			for (const ch of current.voiceChannels) voice.push({channel: ch, categoryMuted});
+			for (const child of current.children) walk(child, categoryMuted);
+		};
+		walk(group, false);
+		return {text, voice};
+	};
+	const keepWhenHidingMuted = (channel: Channel, isVoice: boolean): boolean => {
+		const isMuted = UserGuildSettings.isChannelMuted(guild.id, channel.id);
+		return shouldShowChannelWhenHidingMutedChannels({
+			isMuted,
+			isSelected: channel.id === selectedChannelInGuildId,
+			isConnected: isVoice && channel.id === connectedChannelId,
+			hasVisibleUnread: isMuted && hasVisibleUnreadInChannel(channel.id),
+		});
+	};
+	/**
+	 * Renders one category and everything under it, recursing for nested categories.
+	 *
+	 * Collapsing hides the entire subtree — no descendant category header, no descendant channel row —
+	 * except for the rows the sidebar has always refused to hide: the selected channel, unread ones,
+	 * and the voice channel you are connected to. Those surface from ANY depth, so collapsing a
+	 * top-level category cannot silently swallow a mention buried three levels down.
+	 *
+	 * A descendant's own collapsed flag is never written here, only read, so a child that was collapsed
+	 * before its parent was collapsed comes back collapsed when the parent expands.
+	 */
+	const renderGroup = (group: ChannelGroup, nested: boolean): React.ReactNode => {
+		const category = group.category;
+		const isNullSpace = !category;
+		const isCollapsed = category ? (collapsedCategories?.has(category.id) ?? false) : false;
+		const isCategoryMuted = category ? UserGuildSettings.isChannelMuted(guild.id, category.id) : false;
+		// Collapsed: the candidate pool is the whole subtree. Expanded: only this category's own
+		// channels, because its nested categories render themselves.
+		const pool = isCollapsed
+			? collectSubtreeChannels(group)
+			: {
+					text: group.textChannels.map((channel) => ({channel, categoryMuted: isCategoryMuted})),
+					voice: group.voiceChannels.map((channel) => ({channel, categoryMuted: isCategoryMuted})),
+				};
+		const filteredTextChannels = hideMutedChannels
+			? pool.text.filter((entry) => keepWhenHidingMuted(entry.channel, false))
+			: pool.text;
+		const filteredVoiceChannels = hideMutedChannels
+			? pool.voice.filter((entry) => keepWhenHidingMuted(entry.channel, true))
+			: pool.voice;
+		let visibleTextChannels: ReadonlyArray<SurfacedChannel> = filteredTextChannels;
+		let visibleVoiceChannels: ReadonlyArray<SurfacedChannel> = filteredVoiceChannels;
+		let connectedChannelInGroup = false;
+		if (isCollapsed) {
+			visibleTextChannels = filteredTextChannels.filter((entry) =>
+				shouldShowChannelInCollapsedCategory({
+					isCategoryMuted: entry.categoryMuted,
+					isSelected: entry.channel.id === selectedChannelInGuildId,
+					hasVisibleUnread: hasVisibleUnreadInChannel(entry.channel.id),
+				}),
+			);
+			const voiceSet = new Set<string>();
+			if (selectedChannelInGuildId) voiceSet.add(selectedChannelInGuildId);
+			if (connectedChannelId) {
+				for (const entry of filteredVoiceChannels) {
+					if (entry.channel.id === connectedChannelId) {
+						connectedChannelInGroup = true;
+						voiceSet.add(connectedChannelId);
+						break;
+					}
+				}
+			}
+			for (const entry of filteredVoiceChannels) {
+				if (
+					shouldShowChannelInCollapsedCategory({
+						isCategoryMuted: entry.categoryMuted,
+						isSelected: entry.channel.id === selectedChannelInGuildId,
+						hasVisibleUnread: hasVisibleUnreadInChannel(entry.channel.id),
+					})
+				) {
+					voiceSet.add(entry.channel.id);
+				}
+			}
+			if (voiceSet.size === 0) {
+				visibleVoiceChannels = EMPTY_ARRAY;
+			} else {
+				const next: Array<SurfacedChannel> = [];
+				let connectedRow: SurfacedChannel | null = null;
+				for (const entry of filteredVoiceChannels) {
+					if (!voiceSet.has(entry.channel.id)) continue;
+					if (entry.channel.id === connectedChannelId) {
+						connectedRow = entry;
+					} else {
+						next.push(entry);
+					}
+				}
+				visibleVoiceChannels = connectedRow ? [connectedRow, ...next] : next;
+			}
+		}
+		const childNodes = isCollapsed ? EMPTY_ARRAY : group.children.map((child) => renderGroup(child, true));
+		const hasVisibleChildren = childNodes.some((node) => node != null);
+		if (isNullSpace && filteredTextChannels.length === 0 && filteredVoiceChannels.length === 0) {
+			return null;
+		}
+		// A category whose own channels are all hidden still renders when a nested category under it
+		// has something to show — dropping it would orphan that descendant.
+		if (
+			hideMutedChannels &&
+			category &&
+			filteredTextChannels.length === 0 &&
+			filteredVoiceChannels.length === 0 &&
+			!hasVisibleChildren
+		) {
+			return null;
+		}
+		const showTextChannels = !isCollapsed || visibleTextChannels.length > 0;
+		const showVoiceChannels = !isCollapsed || visibleVoiceChannels.length > 0;
+		return (
+			<div
+				key={category?.id || 'null-space'}
+				className={clsx(styles.channelGroup, nested && styles.nestedChannelGroup)}
+				data-flx="app.channel-list-content.channel-group"
+			>
+				{category && (
+					<ChannelItem
+						guild={guild}
+						channel={category}
+						isCollapsed={isCollapsed}
+						onToggle={() => toggleCategory(category.id)}
+						isDraggingAnything={isDraggingAnything}
+						activeDragItem={activeDragItem}
+						onChannelDrop={handleChannelDrop}
+						onDragStateChange={setActiveDragItem}
+						isSelectedByPath={selectedChannelInGuildId === category.id}
+						isOnNonChannelRoute={isOnNonChannelRoute}
+						data-flx="app.channel-list-content.channel-item"
+					/>
+				)}
+				{isCollapsed && category && !connectedChannelInGroup && (
+					<CollapsedCategoryVoiceParticipants
+						guild={guild}
+						voiceChannels={filteredVoiceChannels.map((entry) => entry.channel)}
+						data-flx="app.channel-list-content.collapsed-category-voice-participants"
+					/>
+				)}
+				{showTextChannels &&
+					visibleTextChannels.map((entry) => (
+						<ChannelItem
+							key={entry.channel.id}
+							guild={guild}
+							channel={entry.channel}
+							isDraggingAnything={isDraggingAnything}
+							activeDragItem={activeDragItem}
+							onChannelDrop={handleChannelDrop}
+							onDragStateChange={setActiveDragItem}
+							isSelectedByPath={selectedChannelInGuildId === entry.channel.id}
+							isOnNonChannelRoute={isOnNonChannelRoute}
+							data-flx="app.channel-list-content.channel-item--2"
+						/>
+					))}
+				{showVoiceChannels &&
+					visibleVoiceChannels.map((entry) => {
+						const ch = entry.channel;
+						const channelRow = (
+							<ChannelItem
+								key={ch.id}
+								guild={guild}
+								channel={ch}
+								isDraggingAnything={isDraggingAnything}
+								activeDragItem={activeDragItem}
+								onChannelDrop={handleChannelDrop}
+								onDragStateChange={setActiveDragItem}
+								isSelectedByPath={selectedChannelInGuildId === ch.id}
+								isOnNonChannelRoute={isOnNonChannelRoute}
+								data-flx="app.channel-list-content.channel-item--3"
+							/>
+						);
+						if (isCollapsed && connectedChannelId && ch.id === connectedChannelId) {
+							return (
+								<React.Fragment key={ch.id}>
+									{channelRow}
+									<CollapsedChannelAvatarStack
+										guild={guild}
+										channel={ch}
+										data-flx="app.channel-list-content.collapsed-channel-avatar-stack"
+									/>
+								</React.Fragment>
+							);
+						}
+						return (
+							<React.Fragment key={ch.id}>
+								{channelRow}
+								{!isCollapsed && (
+									<VoiceParticipantsList
+										guild={guild}
+										channel={ch}
+										data-flx="app.channel-list-content.voice-participants-list"
+									/>
+								)}
+							</React.Fragment>
+						);
+					})}
+				{childNodes}
+			</div>
+		);
+	};
 	return (
 		<div
 			className={styles.channelListScrollerWrapper}
@@ -360,212 +579,7 @@ export const ChannelListContent = observer(({guild, scrollY}: {guild: Guild; scr
 						</>
 					)}
 					<div className={styles.channelGroupsContainer} data-flx="app.channel-list-content.channel-groups-container">
-						{channelGroups.map((group) => {
-							const isCollapsed = group.category ? (collapsedCategories?.has(group.category.id) ?? false) : false;
-							const isNullSpace = !group.category;
-							const isCategoryMuted = group.category
-								? UserGuildSettings.isChannelMuted(guild.id, group.category.id)
-								: false;
-							type ChannelRow = (typeof group.textChannels)[number];
-							let filteredTextChannels: Array<ChannelRow>;
-							let filteredVoiceChannels: Array<ChannelRow>;
-							if (hideMutedChannels) {
-								filteredTextChannels = [];
-								for (const ch of group.textChannels) {
-									const isMuted = UserGuildSettings.isChannelMuted(guild.id, ch.id);
-									if (
-										shouldShowChannelWhenHidingMutedChannels({
-											isMuted,
-											isSelected: ch.id === selectedChannelInGuildId,
-											isConnected: false,
-											hasVisibleUnread: isMuted && hasVisibleUnreadInChannel(ch.id),
-										})
-									) {
-										filteredTextChannels.push(ch);
-									}
-								}
-								filteredVoiceChannels = [];
-								for (const ch of group.voiceChannels) {
-									const isMuted = UserGuildSettings.isChannelMuted(guild.id, ch.id);
-									if (
-										shouldShowChannelWhenHidingMutedChannels({
-											isMuted,
-											isSelected: ch.id === selectedChannelInGuildId,
-											isConnected: ch.id === connectedChannelId,
-											hasVisibleUnread: isMuted && hasVisibleUnreadInChannel(ch.id),
-										})
-									) {
-										filteredVoiceChannels.push(ch);
-									}
-								}
-							} else {
-								filteredTextChannels = group.textChannels;
-								filteredVoiceChannels = group.voiceChannels;
-							}
-							let visibleTextChannels: ReadonlyArray<ChannelRow> = filteredTextChannels;
-							let visibleVoiceChannels: ReadonlyArray<ChannelRow> = filteredVoiceChannels;
-							let connectedChannelInGroup = false;
-							if (isCollapsed) {
-								const showTextSelected = selectedChannelInGuildId;
-								const showSet = new Set<string>();
-								for (const ch of filteredTextChannels) {
-									if (
-										shouldShowChannelInCollapsedCategory({
-											isCategoryMuted,
-											isSelected: ch.id === showTextSelected,
-											hasVisibleUnread: hasVisibleUnreadInChannel(ch.id),
-										})
-									) {
-										showSet.add(ch.id);
-									}
-								}
-								if (showSet.size === 0) {
-									visibleTextChannels = EMPTY_ARRAY;
-								} else if (showSet.size === filteredTextChannels.length) {
-									visibleTextChannels = filteredTextChannels;
-								} else {
-									const next: Array<ChannelRow> = [];
-									for (const ch of filteredTextChannels) if (showSet.has(ch.id)) next.push(ch);
-									visibleTextChannels = next;
-								}
-								const voiceSet = new Set<string>();
-								if (selectedChannelInGuildId) voiceSet.add(selectedChannelInGuildId);
-								if (connectedChannelId) {
-									for (const ch of filteredVoiceChannels) {
-										if (ch.id === connectedChannelId) {
-											connectedChannelInGroup = true;
-											voiceSet.add(connectedChannelId);
-											break;
-										}
-									}
-								}
-								for (const ch of filteredVoiceChannels) {
-									if (
-										shouldShowChannelInCollapsedCategory({
-											isCategoryMuted,
-											isSelected: ch.id === selectedChannelInGuildId,
-											hasVisibleUnread: hasVisibleUnreadInChannel(ch.id),
-										})
-									) {
-										voiceSet.add(ch.id);
-									}
-								}
-								if (voiceSet.size === 0) {
-									visibleVoiceChannels = EMPTY_ARRAY;
-								} else {
-									const next: Array<ChannelRow> = [];
-									let connectedRow: ChannelRow | null = null;
-									for (const ch of filteredVoiceChannels) {
-										if (!voiceSet.has(ch.id)) continue;
-										if (ch.id === connectedChannelId) {
-											connectedRow = ch;
-										} else {
-											next.push(ch);
-										}
-									}
-									visibleVoiceChannels = connectedRow ? [connectedRow, ...next] : next;
-								}
-							}
-							if (isNullSpace && filteredTextChannels.length === 0 && filteredVoiceChannels.length === 0) {
-								return null;
-							}
-							if (
-								hideMutedChannels &&
-								group.category &&
-								filteredTextChannels.length === 0 &&
-								filteredVoiceChannels.length === 0
-							) {
-								return null;
-							}
-							const showTextChannels = !isCollapsed || visibleTextChannels.length > 0;
-							const showVoiceChannels = !isCollapsed || visibleVoiceChannels.length > 0;
-							return (
-								<div
-									key={group.category?.id || 'null-space'}
-									className={styles.channelGroup}
-									data-flx="app.channel-list-content.channel-group"
-								>
-									{group.category && (
-										<ChannelItem
-											guild={guild}
-											channel={group.category}
-											isCollapsed={isCollapsed}
-											onToggle={() => toggleCategory(group.category!.id)}
-											isDraggingAnything={isDraggingAnything}
-											activeDragItem={activeDragItem}
-											onChannelDrop={handleChannelDrop}
-											onDragStateChange={setActiveDragItem}
-											isSelectedByPath={selectedChannelInGuildId === group.category.id}
-											isOnNonChannelRoute={isOnNonChannelRoute}
-											data-flx="app.channel-list-content.channel-item"
-										/>
-									)}
-									{isCollapsed && group.category && !connectedChannelInGroup && (
-										<CollapsedCategoryVoiceParticipants
-											guild={guild}
-											voiceChannels={filteredVoiceChannels}
-											data-flx="app.channel-list-content.collapsed-category-voice-participants"
-										/>
-									)}
-									{showTextChannels &&
-										visibleTextChannels.map((ch) => (
-											<ChannelItem
-												key={ch.id}
-												guild={guild}
-												channel={ch}
-												isDraggingAnything={isDraggingAnything}
-												activeDragItem={activeDragItem}
-												onChannelDrop={handleChannelDrop}
-												onDragStateChange={setActiveDragItem}
-												isSelectedByPath={selectedChannelInGuildId === ch.id}
-												isOnNonChannelRoute={isOnNonChannelRoute}
-												data-flx="app.channel-list-content.channel-item--2"
-											/>
-										))}
-									{showVoiceChannels &&
-										visibleVoiceChannels.map((ch) => {
-											const channelRow = (
-												<ChannelItem
-													key={ch.id}
-													guild={guild}
-													channel={ch}
-													isDraggingAnything={isDraggingAnything}
-													activeDragItem={activeDragItem}
-													onChannelDrop={handleChannelDrop}
-													onDragStateChange={setActiveDragItem}
-													isSelectedByPath={selectedChannelInGuildId === ch.id}
-													isOnNonChannelRoute={isOnNonChannelRoute}
-													data-flx="app.channel-list-content.channel-item--3"
-												/>
-											);
-											if (isCollapsed && connectedChannelId && ch.id === connectedChannelId) {
-												return (
-													<React.Fragment key={ch.id}>
-														{channelRow}
-														<CollapsedChannelAvatarStack
-															guild={guild}
-															channel={ch}
-															data-flx="app.channel-list-content.collapsed-channel-avatar-stack"
-														/>
-													</React.Fragment>
-												);
-											}
-											return (
-												<React.Fragment key={ch.id}>
-													{channelRow}
-													{!isCollapsed && (
-														<VoiceParticipantsList
-															guild={guild}
-															channel={ch}
-															data-flx="app.channel-list-content.voice-participants-list"
-														/>
-													)}
-												</React.Fragment>
-											);
-										})}
-								</div>
-							);
-						})}
+						{channelGroups.map((group) => renderGroup(group, false))}
 					</div>
 					{showTrailingDropZone && (
 						<div className={styles.bottomDropZone} data-flx="app.channel-list-content.bottom-drop-zone">

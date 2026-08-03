@@ -10,9 +10,9 @@ import {
 
 const CHANNEL = '9000000000000000001';
 const CATEGORY = '9000000000000000002';
-// A second, nearer ancestor for the deeper-nesting simulations. Real data cannot produce this today
-// (categories cannot nest), but the resolver must walk it anyway: SUBCATEGORY is the channel's
-// immediate parent and CATEGORY is SUBCATEGORY's parent, so the chain is [SUBCATEGORY, CATEGORY].
+// A second, nearer ancestor for the deeper-nesting cases. Categories nest, so real data can produce
+// this: SUBCATEGORY is the channel's immediate parent and CATEGORY is SUBCATEGORY's parent, so the
+// chain is [SUBCATEGORY, CATEGORY].
 const SUBCATEGORY = '9000000000000000003';
 
 function primary(character_id: string, channel_id: string | null, is_primary: boolean): ScopedPrimaryRow {

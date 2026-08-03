@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {buildCastOverviewTree, type CastOverviewChannelInfo} from '@app/features/cast/utils/CastOverviewTree';
+import {
+	buildCastOverviewTree,
+	type CastOverviewChannelInfo,
+	type CastOverviewGroup,
+} from '@app/features/cast/utils/CastOverviewTree';
 import {describe, expect, it} from 'vitest';
 
 /**
@@ -52,6 +56,14 @@ const primaries = [
 	})),
 ];
 
+/**
+ * Depth-first walks rather than one-level flattens. This guild happens to be flat, but categories
+ * nest arbitrarily, so a helper that stopped at depth one would silently stop counting a grandchild
+ * the day one appears — and would have read as passing while the tree lost it.
+ */
+const flattenGroups = (groups: ReadonlyArray<CastOverviewGroup>): Array<CastOverviewGroup> =>
+	groups.flatMap((group) => [group, ...flattenGroups(group.children)]);
+
 describe('Cast Overview tree against the real dev-stack guild', () => {
 	const tree = buildCastOverviewTree({
 		characters,
@@ -63,7 +75,7 @@ describe('Cast Overview tree against the real dev-stack guild', () => {
 
 	/** The bug this fixes: before, only the server group had rows so only it appeared. */
 	it('produces a group for every channel and category, not just the ones with data', () => {
-		const labels = tree.flatMap((group) => [group.name, ...group.children.map((child) => child.name)]);
+		const labels = flattenGroups(tree).map((group) => group.name);
 		expect(labels).toEqual([
 			'', // server-wide
 			// The orphan has no channel record and so no position, which sorts as 0 — ahead of
@@ -80,7 +92,7 @@ describe('Cast Overview tree against the real dev-stack guild', () => {
 	});
 
 	it('covers all 7 real channels plus the server scope and the orphan', () => {
-		const groupCount = tree.length + tree.reduce((total, group) => total + group.children.length, 0);
+		const groupCount = flattenGroups(tree).length;
 		expect(groupCount).toBe(GUILD_CHANNELS.length + 2);
 	});
 
@@ -92,9 +104,7 @@ describe('Cast Overview tree against the real dev-stack guild', () => {
 	});
 
 	it('leaves every live channel empty, since this guild has no per-channel rows', () => {
-		const live = tree
-			.flatMap((group) => [group, ...group.children])
-			.filter((group) => group.scopeId != null && group.scopeId !== DELETED_SCOPE);
+		const live = flattenGroups(tree).filter((group) => group.scopeId != null && group.scopeId !== DELETED_SCOPE);
 		expect(live).toHaveLength(GUILD_CHANNELS.length);
 		expect(live.every((group) => group.entries.length === 0)).toBe(true);
 	});
@@ -104,7 +114,7 @@ describe('Cast Overview tree against the real dev-stack guild', () => {
 	 * case is well short of anything needing a collapse mechanism — "fully visible" stays viable.
 	 */
 	it('stays a modest number of sections for a real guild', () => {
-		const groupCount = tree.length + tree.reduce((total, group) => total + group.children.length, 0);
+		const groupCount = flattenGroups(tree).length;
 		expect(groupCount).toBeLessThanOrEqual(16);
 	});
 });

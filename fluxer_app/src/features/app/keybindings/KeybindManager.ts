@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {organizeChannels} from '@app/features/app/components/layout/utils/ChannelOrganization';
+import {type ChannelGroup, organizeChannels} from '@app/features/app/components/layout/utils/ChannelOrganization';
 import {
 	keyboardEventCanRecoverStaleMacMetaPress,
 	keyboardEventMatchesCombo,
@@ -264,15 +264,22 @@ class KeybindManager {
 	}
 
 	private flattenGuildChannelsByDisplayOrder(channels: ReadonlyArray<Channel>): Array<Channel> {
-		const groups = organizeChannels(channels);
 		const flat: Array<Channel> = [];
-		for (const group of groups) {
+		// Depth-first so cycling visits channels in the order the sidebar draws them: a category's own
+		// channels, then everything inside the categories nested beneath it.
+		const walk = (group: ChannelGroup): void => {
 			for (const ch of group.textChannels) {
 				if (this.isNavigableChannel(ch)) flat.push(ch);
 			}
 			for (const ch of group.voiceChannels) {
 				if (this.isNavigableChannel(ch)) flat.push(ch);
 			}
+			for (const child of group.children) {
+				walk(child);
+			}
+		};
+		for (const group of organizeChannels(channels)) {
+			walk(group);
 		}
 		return flat;
 	}

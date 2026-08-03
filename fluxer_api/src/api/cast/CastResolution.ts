@@ -9,8 +9,8 @@
  * server-wide, a value equal to the channel id is the channel scope, and a value equal to any of the
  * channel's ancestor category ids is that ancestor's scope. Scopes are considered most-specific
  * first: channel -> nearest ancestor -> ... -> outermost ancestor -> server. The ancestor chain is
- * whatever the caller supplies, so this generalizes to any nesting depth (today's data has at most
- * one ancestor, since categories cannot yet nest, but the walk does not assume that).
+ * whatever the caller supplies, so this generalizes to any nesting depth — categories may nest, so
+ * a chain can be arbitrarily deep.
  */
 
 /** A raw-but-normalised character_primaries row. `is_primary` is already a boolean. */
@@ -159,9 +159,9 @@ export function resolveEffectiveCast(params: {
  * parent links outward from a channel's immediate parent until there is none. `lookupParentId`
  * returns the parent id of a category id, or null once the top is reached.
  *
- * Deliberately imposes no depth limit: today categories cannot nest, so the walk stops after one
- * step (or zero, for a top-level channel), but it will transparently produce a deeper chain the day
- * nesting lands. A seen-set guards against a malformed parent cycle looping forever. Kept free of any
+ * Deliberately imposes no depth limit: categories may nest, so the walk keeps stepping outward for
+ * as long as there are parents and produces a chain as deep as the tree. A seen-set guards against a
+ * malformed parent cycle looping forever. Kept free of any
  * repository dependency — the lookup is injected — so it stays as testable as the resolver itself.
  */
 export async function buildAncestorChain(

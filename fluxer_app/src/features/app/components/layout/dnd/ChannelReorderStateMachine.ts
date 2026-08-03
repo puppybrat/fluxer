@@ -37,6 +37,7 @@ export type ChannelReorderBlockedReason =
 	| 'same-source-and-target'
 	| 'incompatible-channel-kind'
 	| 'category-into-child-channel'
+	| 'category-into-own-descendant'
 	| 'empty-target-rect'
 	| 'unsupported-drag-item';
 
@@ -115,6 +116,13 @@ export function getChannelDropBlockedReason(
 		return isVoiceType(target.channelType) ? null : 'incompatible-channel-kind';
 	}
 	if (!isReorderDragItem(item)) return 'unsupported-drag-item';
+	// A category cannot land anywhere inside its own subtree: dropping it ON a descendant would make it
+	// its own ancestor, and dropping it BESIDE one would re-parent it to a category it still contains.
+	// The server rejects both, but blocking here means the drag reads as invalid instead of failing
+	// after the drop.
+	if (item.type === DND_TYPES.CATEGORY && item.descendantIds?.has(target.id)) {
+		return 'category-into-own-descendant';
+	}
 	const targetIsCategory = isCategoryType(target.channelType);
 	const targetIsVoice = isVoiceType(target.channelType);
 	const targetIsText = isTextType(target.channelType);
@@ -125,6 +133,9 @@ export function getChannelDropBlockedReason(
 			return 'incompatible-channel-kind';
 		}
 	}
+	// A category dropped beside a channel becomes that channel's sibling, so a channel that already sits
+	// inside a category would drag the category in with it. Nesting is expressed by dropping onto the
+	// CATEGORY row itself, never onto a row that merely lives inside one.
 	if (item.type === DND_TYPES.CATEGORY && target.parentId !== null && !targetIsCategory) {
 		return 'category-into-child-channel';
 	}
@@ -169,8 +180,13 @@ export function resolveChannelReorderHover(
 	const zone = getVerticalZone(clientOffset, targetRect);
 	const indicator = createIndicator(clientOffset, targetRect, true);
 	const targetIsCategory = isCategoryType(target.channelType);
+	// Hovering a CATEGORY row splits it in two: the top half drops above it as a sibling, the bottom
+	// half drops into it. Categories use the identical split rather than a three-zone geometry of their
+	// own, so nesting one reads exactly like nesting a channel. Placing a category directly after
+	// another is still reachable — it is the top half of whatever follows, and the trailing drop zone
+	// for the last one — which is the same gesture channels have always used.
 	const result: DropResult =
-		targetIsCategory && item.type !== DND_TYPES.CATEGORY
+		targetIsCategory
 			? {
 					targetId: target.id,
 					position: zone === 'before' ? 'before' : 'inside',

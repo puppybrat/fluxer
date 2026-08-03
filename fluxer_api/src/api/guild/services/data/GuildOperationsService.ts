@@ -1063,8 +1063,20 @@ export class GuildOperationsService {
 			const {channel, channelId, fluxerType} = mappedChannel;
 			const parentKey = channel.parent_id != null ? this.getTemplateEntityKey(channel.parent_id) : null;
 			const parentType = parentKey != null ? channelTypeMap.get(parentKey) : null;
-			const parentId =
-				parentKey != null && parentType === ChannelTypes.GUILD_CATEGORY ? (channelIdMap.get(parentKey) ?? null) : null;
+			// Reject a malformed parent rather than silently flattening it to the root, matching the validation on
+			// the channel create/update/reorder paths. Nested categories are allowed, so the only requirement is
+			// that the parent resolves to a category in this template.
+			let parentId: ChannelID | null = null;
+			if (parentKey != null) {
+				if (parentType !== ChannelTypes.GUILD_CATEGORY) {
+					throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.PARENT_MUST_BE_CATEGORY);
+				}
+				const resolvedParentId = channelIdMap.get(parentKey) ?? null;
+				if (resolvedParentId === null) {
+					throw InputValidationError.fromCode('parent_id', ValidationErrorCodes.INVALID_PARENT_CHANNEL);
+				}
+				parentId = resolvedParentId;
+			}
 			const isVoice = fluxerType === ChannelTypes.GUILD_VOICE;
 			let permissionOverwrites: Map<RoleID | UserID, PermissionOverwrite> | null = null;
 			if (channel.permission_overwrites && channel.permission_overwrites.length > 0) {

@@ -39,6 +39,30 @@
 	gap: 0;
 }
 
+/*
+ * One step of category nesting. Compounds naturally because a nested group is rendered INSIDE its
+ * parent's group element, so depth needs no arithmetic in the renderer.
+ *
+ * Values match the Cast overview's own nesting indent (CastOverviewContent.module.css .nested), which
+ * is the only nesting indent this app already had — the channel sidebar never defined one, because
+ * until categories could nest there was nothing to indent.
+ */
+.nestedChannelGroup {
+	/*
+	 * Overrides the .channelGroup `width: 100%` this element also carries. 100% resolves against the
+	 * PARENT's content width and takes no account of this element's own margin, so the box started one
+	 * indent in and still ran the full width — overflowing the sidebar by exactly `--spacing-3` per
+	 * level and pushing the row's right-hand controls (collapse caret, gear, +) out of view, worse the
+	 * deeper it nested. `auto` lets the flex column stretch it to what is actually left after the
+	 * margin. Padding and border need no such care: everything here is `border-box`, so only the margin
+	 * ever escaped the box.
+	 */
+	width: auto;
+	margin-left: var(--spacing-3);
+	padding-left: var(--spacing-2);
+	border-left: 0.0625rem solid var(--background-modifier-accent);
+}
+
 .bottomDropZone {
 	position: relative;
 	height: 0.625rem;

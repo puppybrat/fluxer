@@ -7,7 +7,10 @@ import {
 } from '@app/features/app/components/layout/utils/ChannelMoveOperation';
 import type {Channel} from '@app/features/channel/models/Channel';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
-import {computeGuildChannelReorderPlan} from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
+import {
+	collectDescendantIds,
+	computeGuildChannelReorderPlan,
+} from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
 import {describe, expect, it} from 'vitest';
 import {
 	type ChannelReorderRect,
@@ -54,19 +57,40 @@ function channelsFixture(): Array<Channel> {
 	];
 }
 
+/** Three levels of category, so a move has to carry grandchildren rather than just direct children. */
+function nestedChannelsFixture(): Array<Channel> {
+	return [
+		channel('root-text', ChannelTypes.GUILD_TEXT, 10),
+		channel('cat-outer', ChannelTypes.GUILD_CATEGORY, 20),
+		channel('outer-text', ChannelTypes.GUILD_TEXT, 30, 'cat-outer'),
+		channel('cat-inner', ChannelTypes.GUILD_CATEGORY, 40, 'cat-outer'),
+		channel('inner-text', ChannelTypes.GUILD_TEXT, 50, 'cat-inner'),
+		channel('cat-deep', ChannelTypes.GUILD_CATEGORY, 60, 'cat-inner'),
+		channel('deep-text', ChannelTypes.GUILD_TEXT, 70, 'cat-deep'),
+		channel('cat-other', ChannelTypes.GUILD_CATEGORY, 80),
+		channel('other-text', ChannelTypes.GUILD_TEXT, 90, 'cat-other'),
+	];
+}
+
 function requireChannel(channels: ReadonlyArray<Channel>, id: string): Channel {
 	const found = channels.find((candidate) => candidate.id === id);
 	if (!found) throw new Error(`Missing test channel ${id}`);
 	return found;
 }
 
-function dragItemFrom(channel: Channel): DragItem {
+/**
+ * Mirrors what ChannelItem puts on the wire at drag start, subtree included — without it the
+ * exhaustive sweep below would never exercise the own-descendant guard and would read as passing.
+ */
+function dragItemFrom(channel: Channel, channels: ReadonlyArray<Channel>): DragItem {
+	const isCategory = channel.type === ChannelTypes.GUILD_CATEGORY;
 	return {
-		type: channel.type === ChannelTypes.GUILD_CATEGORY ? DND_TYPES.CATEGORY : DND_TYPES.CHANNEL,
+		type: isCategory ? DND_TYPES.CATEGORY : DND_TYPES.CHANNEL,
 		id: channel.id,
 		channelType: channel.type,
 		parentId: channel.parentId,
 		guildId: 'guild-1',
+		...(isCategory ? {descendantIds: collectDescendantIds({channels, ancestorId: channel.id})} : {}),
 	};
 }
 
@@ -87,7 +111,7 @@ function requireMachineDropResult(
 ): DropResult {
 	const source = requireChannel(channels, sourceId);
 	const target = requireChannel(channels, targetId);
-	const intent = selectChannelReorderIntent(dragItemFrom(source), targetFrom(target), point(y), rect);
+	const intent = selectChannelReorderIntent(dragItemFrom(source, channels), targetFrom(target), point(y), rect);
 	if (!intent) throw new Error(`Expected test drop intent from ${sourceId} to ${targetId} at y=${y}`);
 	return intent.result;
 }
@@ -99,7 +123,7 @@ function createOperation(
 ): ChannelMoveOperation | null {
 	return createChannelMoveOperation({
 		channels,
-		dragItem: dragItemFrom(requireChannel(channels, sourceId)),
+		dragItem: dragItemFrom(requireChannel(channels, sourceId), channels),
 		dropResult,
 	});
 }
@@ -226,13 +250,13 @@ describe('channel reorder decision integration', () => {
 	it('blocks text and link channel drops onto voice rows before they can produce move operations', () => {
 		const channels = channelsFixture();
 		const textIntent = selectChannelReorderIntent(
-			dragItemFrom(requireChannel(channels, 'a-text-1')),
+			dragItemFrom(requireChannel(channels, 'a-text-1'), channels),
 			targetFrom(requireChannel(channels, 'a-voice-1')),
 			point(rect.top + 1),
 			rect,
 		);
 		const linkIntent = selectChannelReorderIntent(
-			dragItemFrom(requireChannel(channels, 'b-link-1')),
+			dragItemFrom(requireChannel(channels, 'b-link-1'), channels),
 			targetFrom(requireChannel(channels, 'b-voice-1')),
 			point(rect.bottom - 1),
 			rect,
@@ -266,21 +290,48 @@ describe('channel reorder decision integration', () => {
 		]);
 	});
 
-	it('moves an entire category block after another category block from the bottom half', () => {
+	it('nests an entire category block inside another category from the bottom half', () => {
 		const channels = channelsFixture();
 		const dropResult = requireMachineDropResult(channels, 'category-a', 'category-b', rect.bottom - 1);
 		expect(dropResult).toEqual({
 			targetId: 'category-b',
-			position: 'after',
-			targetParentId: null,
+			position: 'inside',
+			targetParentId: 'category-b',
 		});
 		const operation = createOperation(channels, 'category-a', dropResult);
-		expect(operation).toEqual({
+		expect(operation).toMatchObject({
 			channelId: 'category-a',
-			newParentId: null,
-			precedingSiblingId: 'category-b',
-			position: 2,
+			newParentId: 'category-b',
+			precedingSiblingId: 'b-voice-1',
 		});
+		expect(finalParent(channels, operation!, 'category-a')).toBe('category-b');
+		// category-a's own children travel with it and stay parented to it, one level deeper than before.
+		expect(finalParent(channels, operation!, 'a-text-1')).toBe('category-a');
+		expect(finalIds(channels, operation!)).toEqual([
+			'root-text',
+			'category-b',
+			'b-text-1',
+			'b-link-1',
+			'b-voice-1',
+			'category-a',
+			'a-text-1',
+			'a-text-2',
+			'a-voice-1',
+			'a-voice-2',
+			'root-voice',
+		]);
+	});
+
+	it('keeps a category at the target depth when dropped on a top half', () => {
+		const channels = channelsFixture();
+		const dropResult = requireMachineDropResult(channels, 'category-b', 'category-a', rect.top + 1);
+		expect(dropResult).toEqual({
+			targetId: 'category-a',
+			position: 'before',
+			targetParentId: null,
+		});
+		const operation = createOperation(channels, 'category-b', dropResult);
+		expect(operation).toMatchObject({channelId: 'category-b', newParentId: null, precedingSiblingId: 'root-text'});
 		expect(finalIds(channels, operation!)).toEqual([
 			'root-text',
 			'category-b',
@@ -299,7 +350,7 @@ describe('channel reorder decision integration', () => {
 	it('blocks category drops onto child channels before they can produce move operations', () => {
 		const channels = channelsFixture();
 		const intent = selectChannelReorderIntent(
-			dragItemFrom(requireChannel(channels, 'category-b')),
+			dragItemFrom(requireChannel(channels, 'category-b'), channels),
 			targetFrom(requireChannel(channels, 'a-text-1')),
 			point(rect.top + 1),
 			rect,
@@ -374,13 +425,72 @@ describe('channel reorder decision integration', () => {
 				requireMachineDropResult(channels, 'a-text-2', 'a-text-1', rect.bottom - 1),
 			),
 		).toBeNull();
+		// A category dropped on the TOP half of the one it already precedes is the no-op case now; the
+		// bottom half means "nest inside", which is a real move.
 		expect(
 			createOperation(
 				channels,
-				'category-b',
-				requireMachineDropResult(channels, 'category-b', 'category-a', rect.bottom - 1),
+				'category-a',
+				requireMachineDropResult(channels, 'category-a', 'category-b', rect.top + 1),
 			),
 		).toBeNull();
+	});
+
+	it('carries a whole nested subtree when the outer category moves', () => {
+		const channels = nestedChannelsFixture();
+		const dropResult = requireMachineDropResult(channels, 'cat-outer', 'cat-other', rect.bottom - 1);
+		expect(dropResult).toEqual({
+			targetId: 'cat-other',
+			position: 'inside',
+			targetParentId: 'cat-other',
+		});
+		const operation = createOperation(channels, 'cat-outer', dropResult);
+		expect(operation).toMatchObject({channelId: 'cat-outer', newParentId: 'cat-other'});
+		// Depth 2 and 3 keep their own parents and travel with the block. A direct-children-only move
+		// would strand cat-deep and deep-text where cat-outer used to be.
+		expect(finalParent(channels, operation!, 'cat-outer')).toBe('cat-other');
+		expect(finalParent(channels, operation!, 'cat-inner')).toBe('cat-outer');
+		expect(finalParent(channels, operation!, 'cat-deep')).toBe('cat-inner');
+		expect(finalParent(channels, operation!, 'deep-text')).toBe('cat-deep');
+		expect(finalIds(channels, operation!)).toEqual([
+			'root-text',
+			'cat-other',
+			'other-text',
+			'cat-outer',
+			'outer-text',
+			'cat-inner',
+			'inner-text',
+			'cat-deep',
+			'deep-text',
+		]);
+	});
+
+	it('refuses to drop a category into its own descendant at any depth', () => {
+		const channels = nestedChannelsFixture();
+		const outer = requireChannel(channels, 'cat-outer');
+		for (const descendantId of ['cat-inner', 'cat-deep']) {
+			const descendant = requireChannel(channels, descendantId);
+			for (const y of [rect.top + 1, rect.bottom - 1]) {
+				expect(
+					selectChannelReorderIntent(dragItemFrom(outer, channels), targetFrom(descendant), point(y), rect),
+					`cat-outer -> ${descendantId} @ ${y}`,
+				).toBeNull();
+			}
+		}
+	});
+
+	it('nests a category one level deeper as a sibling of an existing nested category', () => {
+		const channels = nestedChannelsFixture();
+		const dropResult = requireMachineDropResult(channels, 'cat-other', 'cat-deep', rect.top + 1);
+		expect(dropResult).toEqual({
+			targetId: 'cat-deep',
+			position: 'before',
+			targetParentId: 'cat-inner',
+		});
+		const operation = createOperation(channels, 'cat-other', dropResult);
+		expect(operation).toMatchObject({channelId: 'cat-other', newParentId: 'cat-inner'});
+		expect(finalParent(channels, operation!, 'cat-other')).toBe('cat-inner');
+		expect(finalParent(channels, operation!, 'other-text')).toBe('cat-other');
 	});
 
 	it('every machine-produced reorder result is accepted by the move-operation planner or resolves to a no-op', () => {
@@ -389,7 +499,7 @@ describe('channel reorder decision integration', () => {
 		for (const source of sources) {
 			for (const target of channels) {
 				for (const y of [rect.top + 1, rect.bottom - 1]) {
-					const intent = selectChannelReorderIntent(dragItemFrom(source), targetFrom(target), point(y), rect);
+					const intent = selectChannelReorderIntent(dragItemFrom(source, channels), targetFrom(target), point(y), rect);
 					if (!intent) continue;
 					const operation = createOperation(channels, source.id, intent.result);
 					if (!operation) continue;

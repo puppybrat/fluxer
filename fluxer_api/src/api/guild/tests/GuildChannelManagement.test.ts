@@ -215,6 +215,59 @@ describe('Guild Channel Management', () => {
 			const updatedChannel = await getChannel(harness, account.token, textChannel.id);
 			expect(updatedChannel.parent_id).toBe(category.id);
 		});
+		test('should create a category directly inside another category', async () => {
+			const account = await createTestAccount(harness);
+			const guild = await createGuild(harness, account.token, 'Test Guild');
+			const parent = await createChannel(harness, account.token, guild.id, 'Parent', ChannelTypes.GUILD_CATEGORY);
+			const nested = await createBuilder<ChannelResponse>(harness, account.token)
+				.post(`/guilds/${guild.id}/channels`)
+				.body({name: 'Nested', type: ChannelTypes.GUILD_CATEGORY, parent_id: parent.id})
+				.execute();
+			expect(nested.parent_id).toBe(parent.id);
+		});
+		test('should reject creating a category under a non-category parent', async () => {
+			const account = await createTestAccount(harness);
+			const guild = await createGuild(harness, account.token, 'Test Guild');
+			const textChannel = await createChannel(harness, account.token, guild.id, 'text-channel');
+			await createBuilder(harness, account.token)
+				.post(`/guilds/${guild.id}/channels`)
+				.body({name: 'Nested', type: ChannelTypes.GUILD_CATEGORY, parent_id: textChannel.id})
+				.expect(HTTP_STATUS.BAD_REQUEST)
+				.execute();
+		});
+		test('should reparent every descendant to null when a nested category tree is deleted', async () => {
+			const account = await createTestAccount(harness);
+			const guild = await createGuild(harness, account.token, 'Test Guild');
+			const top = await createChannel(harness, account.token, guild.id, 'Top', ChannelTypes.GUILD_CATEGORY);
+			const middle = await createChannel(harness, account.token, guild.id, 'Middle', ChannelTypes.GUILD_CATEGORY);
+			const deepText = await createChannel(harness, account.token, guild.id, 'deep-text');
+			const topText = await createChannel(harness, account.token, guild.id, 'top-text');
+			await createBuilder(harness, account.token)
+				.patch(`/guilds/${guild.id}/channels`)
+				.body([{id: middle.id, parent_id: top.id}])
+				.expect(HTTP_STATUS.NO_CONTENT)
+				.execute();
+			await createBuilder(harness, account.token)
+				.patch(`/guilds/${guild.id}/channels`)
+				.body([
+					{id: deepText.id, parent_id: middle.id},
+					{id: topText.id, parent_id: top.id},
+				])
+				.expect(HTTP_STATUS.NO_CONTENT)
+				.execute();
+			await createBuilder(harness, account.token)
+				.delete(`/channels/${top.id}`)
+				.expect(HTTP_STATUS.NO_CONTENT)
+				.execute();
+			const remaining = await getGuildChannels(harness, account.token, guild.id);
+			// Nothing may still point at the deleted category, at any depth.
+			expect(remaining.some((channel) => channel.id === top.id)).toBe(false);
+			expect(remaining.every((channel) => channel.parent_id !== top.id)).toBe(true);
+			expect(remaining.find((channel) => channel.id === middle.id)?.parent_id).toBeNull();
+			expect(remaining.find((channel) => channel.id === topText.id)?.parent_id).toBeNull();
+			// The grandchild is the case a single-level filter would miss.
+			expect(remaining.find((channel) => channel.id === deepText.id)?.parent_id).toBeNull();
+		});
 		test('should move channel out of category via direct PATCH', async () => {
 			const account = await createTestAccount(harness);
 			const guild = await createGuild(harness, account.token, 'Test Guild');

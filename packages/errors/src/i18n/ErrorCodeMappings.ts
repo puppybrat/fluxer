@@ -527,9 +527,6 @@ export const ErrorCodeToI18nKey = {
 	[ValidationErrorCodes.CHANNEL_MUST_BE_VOICE]: 'channels_and_guilds.channel_must_be_voice',
 	[ValidationErrorCodes.CHANNEL_NAME_EMPTY_AFTER_NORMALIZATION]:
 		'names_and_normalization.channel_name_empty_after_normalization',
-	[ValidationErrorCodes.CATEGORIES_CANNOT_HAVE_PARENT_CHANNEL]:
-		'channels_and_guilds.categories_cannot_have_parent_channel',
-	[ValidationErrorCodes.CATEGORIES_CANNOT_HAVE_PARENTS]: 'channels_and_guilds.categories_cannot_have_parents',
 	[ValidationErrorCodes.AFK_CHANNEL_MUST_BE_IN_GUILD]: 'channels_and_guilds.afk_channel_must_be_in_guild',
 	[ValidationErrorCodes.AFK_CHANNEL_MUST_BE_VOICE]: 'channels_and_guilds.afk_channel_must_be_voice',
 	[ValidationErrorCodes.ALL_CHANNELS_MUST_BELONG_TO_GUILD]: 'channels_and_guilds.all_channels_must_belong_to_guild',
@@ -539,6 +536,8 @@ export const ErrorCodeToI18nKey = {
 	[ValidationErrorCodes.INVALID_CHANNEL]: 'channels_and_guilds.invalid_channel',
 	[ValidationErrorCodes.INVALID_CHANNEL_ID]: 'channels_and_guilds.invalid_channel_id',
 	[ValidationErrorCodes.INVALID_PARENT_CHANNEL]: 'channels_and_guilds.invalid_parent_channel',
+	[ValidationErrorCodes.CHANNEL_PARENT_CYCLE]: 'channels_and_guilds.channel_parent_cycle',
+	[ValidationErrorCodes.CHANNEL_PARENT_SELF_REFERENCE]: 'channels_and_guilds.channel_parent_self_reference',
 	[ValidationErrorCodes.PARENT_CHANNEL_NOT_IN_GUILD]: 'channels_and_guilds.parent_channel_not_in_guild',
 	[ValidationErrorCodes.PARENT_MUST_BE_CATEGORY]: 'channels_and_guilds.parent_must_be_category',
 	[ValidationErrorCodes.PRECEDING_CHANNEL_MUST_SHARE_PARENT]: 'channels_and_guilds.preceding_channel_must_share_parent',

@@ -18,6 +18,14 @@ export interface DragItem {
 	guildId: string;
 	userId?: string;
 	currentChannelId?: string;
+	/**
+	 * Every channel beneath a dragged CATEGORY, at any depth. Absent for non-category drags.
+	 *
+	 * Snapshotted when the drag starts so the drop rules can reject nesting a category into its own
+	 * subtree without the reorder state machine having to reach into the Channels store — it stays a
+	 * pure function of (item, target), which is what makes it directly testable.
+	 */
+	descendantIds?: ReadonlySet<string>;
 }
 
 export interface DropResult {
