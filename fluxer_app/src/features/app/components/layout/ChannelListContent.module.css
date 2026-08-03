@@ -39,6 +39,20 @@
 	gap: 0;
 }
 
+/*
+ * One step of category nesting. Compounds naturally because a nested group is rendered INSIDE its
+ * parent's group element, so depth needs no arithmetic in the renderer.
+ *
+ * Values match the Cast overview's own nesting indent (CastOverviewContent.module.css .nested), which
+ * is the only nesting indent this app already had — the channel sidebar never defined one, because
+ * until categories could nest there was nothing to indent.
+ */
+.nestedChannelGroup {
+	margin-left: var(--spacing-3);
+	padding-left: var(--spacing-2);
+	border-left: 0.0625rem solid var(--background-modifier-accent);
+}
+
 .bottomDropZone {
 	position: relative;
 	height: 0.625rem;
