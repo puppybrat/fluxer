@@ -4,6 +4,7 @@ import type {DragItem, DropResult} from '@app/features/app/components/layout/typ
 import type {Channel} from '@app/features/channel/models/Channel';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {
+	collectDescendantIds,
 	computePositionFromPrecedingSiblingId,
 	sortChannelsForOrdering,
 } from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
@@ -11,17 +12,29 @@ import {
 const isTextChannel = (channel: Channel) =>
 	channel.type === ChannelTypes.GUILD_TEXT || channel.type === ChannelTypes.GUILD_LINK;
 const isCategoryChannel = (channel: Channel) => channel.type === ChannelTypes.GUILD_CATEGORY;
+/**
+ * A dragged category moves as one block: itself plus everything under it, at ANY depth.
+ *
+ * These three used to match on `parentId === categoryId`, which was exact while categories could not
+ * nest. Now a grandchild fails that test, so a depth-1 block would leave the subtree's deeper half
+ * behind at the old location while its category travelled — hence `collectDescendantIds`, the same
+ * traversal the server validates moves with.
+ */
 const gatherCategoryBlock = (channels: ReadonlyArray<Channel>, categoryId: string) => {
-	return channels.filter((ch) => ch.id === categoryId || ch.parentId === categoryId);
+	const descendants = collectDescendantIds({channels, ancestorId: categoryId});
+	return channels.filter((ch) => ch.id === categoryId || descendants.has(ch.id));
 };
 const filterOutCategoryBlock = (channels: ReadonlyArray<Channel>, categoryId: string) => {
-	return channels.filter((ch) => ch.id !== categoryId && ch.parentId !== categoryId);
+	const descendants = collectDescendantIds({channels, ancestorId: categoryId});
+	return channels.filter((ch) => ch.id !== categoryId && !descendants.has(ch.id));
 };
+/** Where a category's block ends. `channels` must be sorted, which lays each subtree out contiguously. */
 const findCategorySpan = (channels: ReadonlyArray<Channel>, categoryId: string) => {
 	const startIndex = channels.findIndex((ch) => ch.id === categoryId);
 	if (startIndex === -1) return {start: -1, end: -1};
+	const descendants = collectDescendantIds({channels, ancestorId: categoryId});
 	let endIndex = startIndex + 1;
-	while (endIndex < channels.length && channels[endIndex].parentId === categoryId) {
+	while (endIndex < channels.length && descendants.has(channels[endIndex].id)) {
 		endIndex++;
 	}
 	return {start: startIndex, end: endIndex};
@@ -66,21 +79,15 @@ export const createChannelMoveOperation = ({
 	const block = isCategory ? gatherCategoryBlock(orderedChannels, draggedChannel.id) : [draggedChannel];
 	if (block.length === 0) return null;
 	const targetId = dropResult.targetId;
-	const requestedParentId =
+	// The drop's own parent, for categories too. This used to be pinned to null for a dragged category
+	// on the grounds that categories only ever lived at root; now that they nest, honouring the drop is
+	// what lets 'inside' nest one and 'before'/'after' keep it beside the target at that same depth.
+	let newParentId: string | null =
 		targetId === 'null-space'
 			? null
 			: dropResult.targetParentId !== undefined
 				? dropResult.targetParentId
-				: isCategory
-					? null
-					: (draggedChannel.parentId ?? null);
-	let newParentId = isCategory ? null : requestedParentId;
-	if (!isCategory && newParentId === undefined) {
-		newParentId = draggedChannel.parentId ?? null;
-	}
-	if (isCategory) {
-		newParentId = null;
-	}
+				: (draggedChannel.parentId ?? null);
 	let insertIndex = 0;
 	if (targetId === 'null-space') {
 		insertIndex = 0;
@@ -148,12 +155,9 @@ export const createChannelMoveOperation = ({
 	for (let i = insertedIndex - 1; i >= 0; i--) {
 		const candidate = finalList[i];
 		const candidateParent = candidate.parentId ?? null;
-		if (isCategory) {
-			if (candidateParent === null) {
-				precedingSiblingId = candidate.id;
-				break;
-			}
-		} else if (candidateParent === (newParentId ?? null)) {
+		// One rule for everything now. A dragged category used to look for the nearest root-level row,
+		// which was the same thing as "my sibling" only while categories could not nest.
+		if (candidateParent === (newParentId ?? null)) {
 			precedingSiblingId = candidate.id;
 			break;
 		}
