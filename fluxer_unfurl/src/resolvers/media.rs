@@ -51,7 +51,12 @@ pub fn media_kind_from_response(
     ) {
         return detect_media_kind(final_url).or(Some(MediaKind::Video));
     }
+    // A value with no '/' is not a MIME type at all, so it carries no more
+    // authority than a missing header: some CDNs emit a bare format label
+    // instead (Backblaze B2 behind Cloudflare serves "JPEG" for toyhou.se
+    // images). Fall through to the URL extension, then to magic bytes.
     if normalized.is_empty()
+        || !normalized.contains('/')
         || normalized == "application/octet-stream"
         || normalized == "binary/octet-stream"
     {
