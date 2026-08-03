@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 
 .guildsLayoutContainer {
-	--layout-user-area-overlay-height: 0;
-	--layout-user-area-reserved-height: 0;
-	--layout-mobile-bottom-nav-reserved-height: 0;
+	--layout-user-area-overlay-height: 0px;
+	--layout-user-area-reserved-height: 0px;
+	--layout-mobile-bottom-nav-reserved-height: 0px;
 	position: relative;
 	display: grid;
 	grid-template-columns: var(--layout-guild-list-width) minmax(0, 1fr);
