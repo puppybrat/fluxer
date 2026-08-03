@@ -443,6 +443,49 @@ export const Attachment: FC<AttachmentProps> = observer(
 				),
 			);
 		}
+		// Video is resolved before the dimension gate below: migrated attachments can carry
+		// null width/height, and EmbedVideo already falls back to a 16:9 layout until the
+		// element reports its real dimensions on metadata load. Gating video on stored
+		// dimensions would demote those attachments to a download card.
+		if (isVideoType(att.content_type)) {
+			return renderWithFootnote(
+				wrapSpoiler(
+					<div
+						className={effectiveExpired ? styles.expiredContent : undefined}
+						data-flx="channel.embeds.attachments.attachment.expired-content--3"
+					>
+						{effectiveExpired && (
+							<div
+								className={styles.expiredOverlay}
+								data-flx="channel.embeds.attachments.attachment.expired-overlay--3"
+							>
+								{i18n._(THIS_ATTACHMENT_HAS_EXPIRED_DESCRIPTOR)}
+							</div>
+						)}
+						{isAnimated(att.flags) ? (
+							<GifvAttachment
+								attachment={enrichedAttachment}
+								message={message}
+								isPreview={isPreview}
+								snapshotIndex={snapshotIndex}
+								onDelete={onDelete}
+								data-flx="channel.embeds.attachments.attachment.gifv-attachment"
+							/>
+						) : (
+							<VideoAttachment
+								attachment={enrichedAttachment}
+								message={message}
+								isPreview={isPreview}
+								snapshotIndex={snapshotIndex}
+								onDelete={onDelete}
+								data-flx="channel.embeds.attachments.attachment.video-attachment"
+							/>
+						)}
+					</div>,
+					spoilerStyles.media,
+				),
+			);
+		}
 		if (!hasValidDimensions(att)) {
 			return renderWithFootnote(
 				wrapSpoiler(
@@ -484,45 +527,6 @@ export const Attachment: FC<AttachmentProps> = observer(
 							onDelete={onDelete}
 							data-flx="channel.embeds.attachments.attachment.attachment-media"
 						/>
-					</div>,
-					spoilerStyles.media,
-				),
-			);
-		}
-		if (isVideoType(att.content_type)) {
-			return renderWithFootnote(
-				wrapSpoiler(
-					<div
-						className={effectiveExpired ? styles.expiredContent : undefined}
-						data-flx="channel.embeds.attachments.attachment.expired-content--3"
-					>
-						{effectiveExpired && (
-							<div
-								className={styles.expiredOverlay}
-								data-flx="channel.embeds.attachments.attachment.expired-overlay--3"
-							>
-								{i18n._(THIS_ATTACHMENT_HAS_EXPIRED_DESCRIPTOR)}
-							</div>
-						)}
-						{isAnimated(att.flags) ? (
-							<GifvAttachment
-								attachment={enrichedAttachment}
-								message={message}
-								isPreview={isPreview}
-								snapshotIndex={snapshotIndex}
-								onDelete={onDelete}
-								data-flx="channel.embeds.attachments.attachment.gifv-attachment"
-							/>
-						) : (
-							<VideoAttachment
-								attachment={enrichedAttachment}
-								message={message}
-								isPreview={isPreview}
-								snapshotIndex={snapshotIndex}
-								onDelete={onDelete}
-								data-flx="channel.embeds.attachments.attachment.video-attachment"
-							/>
-						)}
 					</div>,
 					spoilerStyles.media,
 				),
