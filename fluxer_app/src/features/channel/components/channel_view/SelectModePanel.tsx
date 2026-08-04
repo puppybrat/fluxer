@@ -13,6 +13,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {OutlineFrame} from '@app/features/app/components/layout/OutlineFrame';
+// LOCAL-ONLY: the destination channel dropdown reuses the splash screen's quote attribution
+// style verbatim for the parent category suffix — see destChannelOptions / renderOption below.
+// Exclude from upstream sync.
+import splashStyles from '@app/features/app/components/layout/SplashScreen.module.css';
 import styles from '@app/features/channel/components/channel_view/SelectModePanel.module.css';
 import {formatRecentOrFallback} from '@app/features/channel/components/guild_members_page/GuildMembersPageFormatting';
 import type {Channel} from '@app/features/channel/models/Channel';
@@ -47,6 +51,31 @@ function getMessagePreview(channelId: string | null, messageId: string | null): 
     return message.content.length > PREVIEW_MAX_LENGTH
         ? `${message.content.slice(0, PREVIEW_MAX_LENGTH)}...`
         : message.content;
+}
+
+/*
+ * LOCAL-ONLY: destination channel options carry the channel's own label and its immediate parent
+ * category name as separate fields so the Combobox's renderOption can style the two parts
+ * differently. `label` stays a plain string: FormCombobox types ComboboxOption.label as string and
+ * uses it both for filtering (option.label.toLowerCase()) and for the text shown in the closed
+ * input, so it holds the full "#channel - Category" text. Exclude from upstream sync.
+ */
+interface DestChannelOption extends ComboboxOption {
+    channelLabel: string;
+    categoryName: string | null;
+}
+
+// LOCAL-ONLY: immediate parent category name of a guild channel, or null when it sits outside any
+// category (and always for DMs, which have no categories) — exclude from upstream sync.
+function getParentCategoryName(channel: Channel): string | null {
+    if (channel.parentId == null) {
+        return null;
+    }
+    const parent = Channels.getChannel(channel.parentId);
+    if (!parent || parent.type !== ChannelTypes.GUILD_CATEGORY) {
+        return null;
+    }
+    return parent.name ?? null;
 }
 
 interface SelectModePanelProps {
@@ -84,10 +113,16 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
         {value: DMS_DEST_VALUE, label: 'Direct Messages'},
         ...guilds.map((g) => ({value: g.id, label: g.name || ''})),
     ];
-    const destChannelOptions: Array<ComboboxOption> = destChannels.map((c) => ({
-        value: c.id,
-        label: destGuildId === DMS_DEST_VALUE ? ChannelUtils.getDMDisplayName(c) : `#${c.name}`,
-    }));
+    const destChannelOptions: Array<DestChannelOption> = destChannels.map((c) => {
+        const channelLabel = destGuildId === DMS_DEST_VALUE ? ChannelUtils.getDMDisplayName(c) : `#${c.name}`;
+        const categoryName = destGuildId === DMS_DEST_VALUE ? null : getParentCategoryName(c);
+        return {
+            value: c.id,
+            label: categoryName != null ? `${channelLabel} - ${categoryName}` : channelLabel,
+            channelLabel,
+            categoryName,
+        };
+    });
 
     // LOCAL-ONLY: message previews for the anchor/head sections — exclude from upstream sync.
     const anchorPreview = getMessagePreview(SelectMode.channelId, SelectMode.anchorId);
@@ -250,6 +285,26 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         }
                         value={SelectMode.destChannelId ?? ''}
                         options={destChannelOptions}
+                        // LOCAL-ONLY: channel name stays primary; the immediate parent category is
+                        // appended in the splash screen's quote attribution style (smaller, muted).
+                        // Channels with no parent category render the name alone. Exclude from
+                        // upstream sync.
+                        renderOption={(option) =>
+                            option.categoryName != null ? (
+                                <>
+                                    {option.channelLabel}
+                                    <span
+                                        className={splashStyles.quoteSource}
+                                        data-flx="channel.channel-view.select-mode-panel.dest-option-category"
+                                    >
+                                        {' - '}
+                                        {option.categoryName}
+                                    </span>
+                                </>
+                            ) : (
+                                option.channelLabel
+                            )
+                        }
                         onChange={(value) => SelectMode.setDestChannelId(value || null)}
                         placeholder="Pick a channel…"
                         data-flx="channel.channel-view.select-mode-panel.dest-select"
