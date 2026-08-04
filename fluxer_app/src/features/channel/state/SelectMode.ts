@@ -54,6 +54,12 @@ class SelectMode {
     channelId: string | null = null;
     anchorId: string | null = null;
     headId: string | null = null;
+    // LOCAL-ONLY: destination server for the move. Either a guild ID, the panel's DMs sentinel
+    // ('dms'), or null meaning "the user has not picked one yet", in which case the panel falls
+    // back to the channel's own context. Lives here rather than in panel component state so it
+    // survives the mobile close/reopen cycle (tap messages with the panel shut, reopen to submit);
+    // it is in-memory only and is gone on reload. Exclude from upstream sync.
+    destGuildId: string | null = null;
     destChannelId: string | null = null;
     submitting = false;
     lastError: string | null = null;
@@ -82,6 +88,15 @@ class SelectMode {
     }
 
     activate(channelId: string): void {
+        // LOCAL-ONLY: mobile reopens the panel through this same action (ChannelHeader's panel
+        // toggle), so re-activating the SAME source channel has to keep the destination the user
+        // already picked — otherwise every close/reopen round trip wipes it. Pointing selection at
+        // a DIFFERENT source channel is a new operation, so the destination resets there.
+        // Exclude from upstream sync.
+        if (this.channelId !== channelId) {
+            this.destGuildId = null;
+            this.destChannelId = null;
+        }
         this.channelId = channelId;
         this.openPanel();
         void this.fetchRecentLog();
@@ -93,6 +108,7 @@ class SelectMode {
         this.channelId = null;
         this.anchorId = null;
         this.headId = null;
+        this.destGuildId = null;
         this.destChannelId = null;
         this.submitting = false;
         this.lastError = null;
@@ -145,6 +161,18 @@ class SelectMode {
         this.headId = null;
         this.result = null;
         this.lastError = null;
+    }
+
+    // LOCAL-ONLY: changing the destination server invalidates any channel already picked under the
+    // previous one, so the channel is dropped on a real change only — re-setting the same value
+    // (e.g. the panel re-asserting its default on mount) leaves the selection intact.
+    // Exclude from upstream sync.
+    setDestGuildId(guildId: string | null): void {
+        if (this.destGuildId === guildId) {
+            return;
+        }
+        this.destGuildId = guildId;
+        this.destChannelId = null;
     }
 
     setDestChannelId(channelId: string | null): void {
