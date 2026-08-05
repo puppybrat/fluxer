@@ -34,7 +34,6 @@ import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
-import {useEffect, useState} from 'react';
 
 const DMS_DEST_VALUE = 'dms';
 const PREVIEW_MAX_LENGTH = 80;
@@ -85,13 +84,17 @@ interface SelectModePanelProps {
 
 export const SelectModePanel = observer(function SelectModePanel({guild, channel}: SelectModePanelProps) {
     const {i18n} = useLingui();
-    const [destGuildId, setDestGuildId] = useState<string | typeof DMS_DEST_VALUE | null>(
-        guild ? guild.id : DMS_DEST_VALUE,
-    );
-
-    useEffect(() => {
-        setDestGuildId(guild ? guild.id : DMS_DEST_VALUE);
-    }, [guild]);
+    /*
+     * LOCAL-ONLY: the destination server is read from SelectMode rather than held as component
+     * state so it survives the mobile cycle of closing the panel to tap messages and reopening it
+     * to submit — component state is lost on that unmount, the store is not. A null in the store
+     * means "the user has not picked a server yet", so we fall back to this channel's own context.
+     * SelectMode.activate() nulls it back out when selection moves to a different source channel,
+     * which restores that fallback; there is deliberately no effect syncing it to the `guild` prop,
+     * as that would overwrite the user's choice on every remount. Exclude from upstream sync.
+     */
+    const destGuildId: string | typeof DMS_DEST_VALUE | null =
+        SelectMode.destGuildId ?? (guild ? guild.id : DMS_DEST_VALUE);
 
     const guilds = Guilds.getGuilds();
     const destChannels =
@@ -103,9 +106,11 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
               ? Channels.dmChannels.filter((c) => c.id !== channel.id)
               : [];
 
+    // LOCAL-ONLY: setDestGuildId already drops the previously picked channel when the server
+    // actually changes, so no separate setDestChannelId(null) is needed here.
+    // Exclude from upstream sync.
     const handleDestGuildChange = (value: string) => {
-        setDestGuildId(value === DMS_DEST_VALUE ? DMS_DEST_VALUE : value || null);
-        SelectMode.setDestChannelId(null);
+        SelectMode.setDestGuildId(value === DMS_DEST_VALUE ? DMS_DEST_VALUE : value || null);
     };
 
     // LOCAL-ONLY: dropdown options for the styled Combobox selects below — exclude from upstream sync.
