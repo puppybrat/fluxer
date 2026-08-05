@@ -292,11 +292,17 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         options={destChannelOptions}
                         // LOCAL-ONLY: channel name stays primary; the immediate parent category is
                         // appended in the splash screen's quote attribution style (smaller, muted).
-                        // Channels with no parent category render the name alone. Exclude from
-                        // upstream sync.
+                        // Channels with no parent category render the name alone — that branch is
+                        // deliberately left unwrapped, as a bare channel name is never the thing
+                        // that overflows. The .destOptionRow wrapper caps the popup's width and
+                        // ellipsises the category; see the note on that class for why the cap has
+                        // to live here rather than on the popup. Exclude from upstream sync.
                         renderOption={(option) =>
                             option.categoryName != null ? (
-                                <>
+                                <span
+                                    className={styles.destOptionRow}
+                                    data-flx="channel.channel-view.select-mode-panel.dest-option-row"
+                                >
                                     {option.channelLabel}
                                     <span
                                         className={splashStyles.quoteSource}
@@ -305,7 +311,7 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                                         {' - '}
                                         {option.categoryName}
                                     </span>
-                                </>
+                                </span>
                             ) : (
                                 option.channelLabel
                             )

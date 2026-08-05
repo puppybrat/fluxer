@@ -170,3 +170,44 @@
 .logMeta {
     opacity: 0.6;
 }
+
+/*
+ * LOCAL-ONLY: caps the destination-channel dropdown's width and truncates the category suffix.
+ * Exclude from upstream sync.
+ *
+ * FormCombobox's popup is `width: max-content` with `max-width: var(--available-width)`, and
+ * --available-width is Base UI's *viewport* allowance — so a long category name grows the popup
+ * until it hits the screen edge, and no truncation inside the row ever gets a chance to act. The
+ * popup is also rendered through <BaseCombobox.Portal>, i.e. outside this panel's DOM subtree, so
+ * it cannot be reached by a descendant selector from here, and FormCombobox exposes no
+ * popupClassName. The one lever left from the usage site is the popup's own intrinsic sizing:
+ * because its width IS the widest item's max-content contribution, a max-width on the row content
+ * caps that contribution and therefore caps the popup.
+ *
+ * 11.375rem is derived so the popup lands at this panel's own 16.5rem width — anything wider would
+ * spill past the panel it belongs to. The chrome between this box and the popup edge, per
+ * FormCombobox.module.css:
+ *     .list padding            0.25rem x2   =  8px
+ *     .listScrollerContent     0.375rem     =  6px  (padding-inline-end, --scroller-track-size)
+ *     .item padding            0.625rem x2  = 20px
+ *     .itemIndicator           flex 0 0 1rem= 16px
+ *     .item gap                0.5rem       =  8px
+ *     .itemRendered .itemText  1.5rem       = 24px  (padding-inline-end)
+ *                                            ------
+ *                                              82px
+ * 264px (16.5rem) - 82px = 182px = 11.375rem. Recompute if that chrome changes upstream.
+ *
+ * display: block is what makes max-width/overflow/text-overflow apply at all — they are ignored on
+ * a non-replaced inline box, which is what the category <span> is. Keeping the cap on this wrapper
+ * rather than on the category span itself leaves the inline flow inside completely untouched, so
+ * the channel name and the " - " separator sit exactly where they did before; the ellipsis simply
+ * eats the tail of the line, which is the category. A <span> (not a <div>) because the Combobox
+ * nests this inside its own <span className={styles.itemText}>.
+ */
+.destOptionRow {
+    display: block;
+    max-width: 11.375rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
