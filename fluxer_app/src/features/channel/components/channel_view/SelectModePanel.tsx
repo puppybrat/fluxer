@@ -55,9 +55,14 @@ function getMessagePreview(channelId: string | null, messageId: string | null): 
 /*
  * LOCAL-ONLY: destination channel options carry the channel's own label and its immediate parent
  * category name as separate fields so the Combobox's renderOption can style the two parts
- * differently. `label` stays a plain string: FormCombobox types ComboboxOption.label as string and
- * uses it both for filtering (option.label.toLowerCase()) and for the text shown in the closed
- * input, so it holds the full "#channel - Category" text. Exclude from upstream sync.
+ * differently. `label` stays a plain string, as FormCombobox types ComboboxOption.label that way,
+ * and holds the channel name ALONE. It drives two things at once: the text shown in the closed
+ * input (FormCombobox.tsx selected[0].label / itemToStringLabel) and the search filter
+ * (option.label.toLowerCase().includes(...)). Folding the category into it put "#channel -
+ * Category" in the closed state, which is why it no longer does. The tradeoff is deliberate:
+ * category names are no longer typeable as search terms, as the category is a visual
+ * disambiguation aid for the open dropdown only. renderOption below is what still renders it.
+ * Exclude from upstream sync.
  */
 interface DestChannelOption extends ComboboxOption {
     channelLabel: string;
@@ -123,7 +128,7 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
         const categoryName = destGuildId === DMS_DEST_VALUE ? null : getParentCategoryName(c);
         return {
             value: c.id,
-            label: categoryName != null ? `${channelLabel} - ${categoryName}` : channelLabel,
+            label: channelLabel,
             channelLabel,
             categoryName,
         };
