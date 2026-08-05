@@ -167,45 +167,6 @@
     font-weight: 500;
 }
 
-/*
- * Destination-channel option row. The Combobox drops renderOption's output inside .itemText, which
- * is already a min-width: 0 flex child of the row with overflow: hidden — so all this wrapper has
- * to do is lay the two parts out side by side and decide which one gives way when they do not fit.
- *
- * align-items: baseline reproduces what inline flow gave us for free before the parts became flex
- * items: the smaller category text sits on the channel name's baseline rather than being stretched
- * or centred against it.
- */
-.destOptionRow {
-    display: flex;
-    min-width: 0;
-    max-width: 100%;
-    align-items: baseline;
-}
-
-/* The channel name is the primary label — it never shrinks and never truncates. */
-.destOptionChannel {
-    flex-shrink: 0;
-}
-
-/*
- * The parent category is the suffix that gives way, so it carries the ellipsis.
- *
- * The descendant selector (specificity 0,2,0) deliberately outranks splashStyles.quoteSource
- * (0,1,0) regardless of which module lands first in the bundle. It exists only for `margin`:
- * quoteSource sets margin-top for its splash-screen use, which was inert while this span was
- * inline text and would start pushing the suffix off the row's baseline now that it is a flex
- * item. Everything else here is absent from quoteSource, so nothing else is being overridden.
- */
-.destOptionRow .destOptionCategory {
-    min-width: 0;
-    flex-shrink: 1;
-    margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 .logMeta {
     opacity: 0.6;
 }
