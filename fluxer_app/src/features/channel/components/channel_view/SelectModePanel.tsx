@@ -33,6 +33,7 @@ import {Scroller} from '@app/features/ui/components/Scroller';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
 import {useLingui} from '@lingui/react/macro';
+import {clsx} from 'clsx';
 import {observer} from 'mobx-react-lite';
 
 const DMS_DEST_VALUE = 'dms';
@@ -292,20 +293,31 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         options={destChannelOptions}
                         // LOCAL-ONLY: channel name stays primary; the immediate parent category is
                         // appended in the splash screen's quote attribution style (smaller, muted).
-                        // Channels with no parent category render the name alone. Exclude from
-                        // upstream sync.
+                        // Channels with no parent category render the name alone. The two parts are
+                        // wrapped in a flex row so a long category truncates with an ellipsis
+                        // instead of widening the option row — spans rather than divs, since the
+                        // Combobox nests this inside its own <span className={styles.itemText}>.
+                        // Exclude from upstream sync.
                         renderOption={(option) =>
                             option.categoryName != null ? (
-                                <>
-                                    {option.channelLabel}
+                                <span
+                                    className={styles.destOptionRow}
+                                    data-flx="channel.channel-view.select-mode-panel.dest-option-row"
+                                >
                                     <span
-                                        className={splashStyles.quoteSource}
+                                        className={styles.destOptionChannel}
+                                        data-flx="channel.channel-view.select-mode-panel.dest-option-channel"
+                                    >
+                                        {option.channelLabel}
+                                    </span>
+                                    <span
+                                        className={clsx(splashStyles.quoteSource, styles.destOptionCategory)}
                                         data-flx="channel.channel-view.select-mode-panel.dest-option-category"
                                     >
                                         {' - '}
                                         {option.categoryName}
                                     </span>
-                                </>
+                                </span>
                             ) : (
                                 option.channelLabel
                             )
