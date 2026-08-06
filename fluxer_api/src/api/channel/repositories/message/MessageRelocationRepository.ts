@@ -15,6 +15,8 @@
 
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
+import {BadRequestError} from '@fluxer/errors/src/domains/core/BadRequestError';
 import * as BucketUtils from '@fluxer/snowflake/src/SnowflakeBuckets';
 import type {ChannelID, MessageID, UserID} from '../../../BrandedTypes';
 import {Config} from '../../../Config';
@@ -42,9 +44,58 @@ import {
 	type RelocateLogRow,
 } from '../../../Tables';
 
-const FETCH_MESSAGES_IN_BUCKET = Messages.select({
-	where: [Messages.where.eq('channel_id'), Messages.where.eq('bucket')],
-	limit: 10_000,
+/*
+ * LOCAL-ONLY: message discovery for relocation — exclude from upstream sync.
+ *
+ * WHAT CHANGED
+ * Discovery used to read each candidate bucket in full (`SELECT ... WHERE channel_id = ? AND
+ * bucket = ?` with `limit: 10_000`) and then filter the requested id range out of that result
+ * set in JS. It now pushes the range into the query itself via `message_id >= ? AND
+ * message_id <= ?`, so the database only ever returns rows that are actually in range.
+ *
+ * WHY
+ * The old bucket-wide read was silently truncated. `PostgresKvQueryExecutor.select()` sorts by
+ * primary key (message_id ascending) and applies the limit *after* sorting, so a bucket holding
+ * more than 10,000 messages returned only its 10,000 OLDEST rows. Anything past that point was
+ * invisible to the range filter, so the endpoint reported `{movedCount: 0}` with no error — the
+ * caller could not distinguish "range is empty" from "range was truncated away".
+ *
+ * This hit imported Discord-era history hardest, because those buckets are dense: in the channel
+ * that surfaced the bug, 33 of 218 buckets exceeded 10,000 rows, leaving ~117,000 messages (~10%
+ * of the channel) permanently unrelocatable regardless of the range selected. Real Cassandra also
+ * applies LIMIT after clustering order, so this was never a Postgres-shim-only artifact.
+ *
+ * Note that `channel_message_buckets` was never involved in discovery and still is not: the
+ * bucket list comes from `BucketUtils.makeBuckets(startMessageId, endMessageId)`, which is pure
+ * arithmetic on the two snowflakes. That table is only WRITTEN here (dest index upkeep, source
+ * empty-bucket cleanup) and read once in `reconcileSourceChannelState` AFTER a successful move.
+ * Discovery is therefore independent of that index's correctness, by construction.
+ *
+ * `bucket` stays in the WHERE clause because it is part of the partition key
+ * (partitionKey: ['channel_id', 'bucket']). Dropping it would force a full-table scan of every
+ * message in every channel in the KV executor, so the loop iterates the arithmetic bucket range
+ * and scopes each read to one partition.
+ *
+ * IF MERGING UPSTREAM CHANGES, VERIFY
+ *  - `Messages` still declares primaryKey ['channel_id','bucket','message_id'] with
+ *    partitionKey ['channel_id','bucket'] — the range predicate is only a valid CQL clustering
+ *    restriction while message_id remains the trailing clustering column.
+ *  - `PostgresKvQueryExecutor.select()` still applies `meta.limit` AFTER `sortRows`. If limiting
+ *    ever moves before sorting, MAX_RELOCATION_MESSAGES + 1 stops being a reliable overflow probe.
+ *  - The bucket formula in `SnowflakeBuckets.makeBucket` still matches the bucket component
+ *    written into message row keys; discovery misses whole partitions if those ever diverge.
+ */
+const MAX_RELOCATION_MESSAGES = 500;
+
+const FETCH_MESSAGES_IN_BUCKET_RANGE = Messages.select({
+	where: [
+		Messages.where.eq('channel_id'),
+		Messages.where.eq('bucket'),
+		Messages.where.gte('message_id', 'start_message_id'),
+		Messages.where.lte('message_id', 'end_message_id'),
+	],
+	// One more than the cap so an oversized range is detected rather than silently trimmed.
+	limit: MAX_RELOCATION_MESSAGES + 1,
 });
 
 const FETCH_REACTIONS_FOR_MESSAGE = MessageReactions.selectCql({
@@ -103,19 +154,59 @@ export class MessageRelocationRepository {
 		}
 
 		const buckets = BucketUtils.makeBuckets(startMessageId, endMessageId);
+
+		// Phase 1 — discovery. Every in-range row is collected before anything is mutated so the
+		// size of the operation is known up front: an oversized range has to abort cleanly rather
+		// than move a partial prefix of itself and then fail.
+		const rowsByBucket = new Map<number, Array<MessageRow>>();
+		let totalInRange = 0;
+		for (const bucket of buckets) {
+			const inRange = await fetchMany<MessageRow>(
+				FETCH_MESSAGES_IN_BUCKET_RANGE.bind({
+					channel_id: sourceChannelId,
+					bucket,
+					start_message_id: startMessageId,
+					end_message_id: endMessageId,
+				}),
+			);
+			if (inRange.length === 0) continue;
+
+			totalInRange += inRange.length;
+			if (totalInRange > MAX_RELOCATION_MESSAGES) {
+				// Counting stops at the first bucket that crosses the cap, so this is a lower
+				// bound on the true range size, not the exact total.
+				Logger.warn(
+					{
+						sourceChannelId,
+						destChannelId,
+						startMessageId,
+						endMessageId,
+						attemptedCountAtLeast: totalInRange,
+						maximum: MAX_RELOCATION_MESSAGES,
+					},
+					'Relocation: refusing a range above the per-request message cap; nothing was moved',
+				);
+				throw new BadRequestError({
+					code: APIErrorCodes.BAD_REQUEST,
+					message: `Range too large, maximum ${MAX_RELOCATION_MESSAGES} messages per relocation.`,
+				});
+			}
+			rowsByBucket.set(bucket, inRange);
+		}
+
+		// Nothing in range: return before touching bucket indexes, channel state or the audit log.
+		if (totalInRange === 0) {
+			return {movedCount: 0};
+		}
+
 		let movedCount = 0;
 		let maxMovedMessageId: MessageID | null = null;
 		let maxMovedBucket: number | null = null;
 
-		for (const bucket of buckets) {
-			const allRows = await fetchMany<MessageRow>(
-				FETCH_MESSAGES_IN_BUCKET.bind({channel_id: sourceChannelId, bucket}),
-			);
-			const inRange = allRows.filter(
-				(r) => r.message_id >= startMessageId && r.message_id <= endMessageId,
-			);
-			if (inRange.length === 0) continue;
-
+		// Phase 2 — mutation. Still strictly bucket-by-bucket, so the secondary index upkeep at the
+		// end of each iteration (dest bucket index, source empty-bucket cleanup) stays keyed by
+		// bucket exactly as it was before.
+		for (const [bucket, inRange] of rowsByBucket) {
 			for (const msgRow of inRange) {
 				const reactions = await fetchMany<MessageReactionRow>(FETCH_REACTIONS_FOR_MESSAGE, {
 					channel_id: sourceChannelId,
