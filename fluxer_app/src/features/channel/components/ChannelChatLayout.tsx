@@ -6,6 +6,7 @@ import styles from '@app/features/channel/components/ChannelChatLayout.module.cs
 import {SlowmodeIndicator} from '@app/features/channel/components/SlowmodeIndicator';
 import {TypingUsers} from '@app/features/channel/components/TypingUsers';
 import type {Channel} from '@app/features/channel/models/Channel';
+import ChannelThemes from '@app/features/channel/state/ChannelThemes';
 import Messages from '@app/features/messaging/state/MessagingMessages';
 import {useSlowmode} from '@app/features/slowmode/hooks/useSlowmode';
 import {msg} from '@lingui/core/macro';
@@ -70,6 +71,15 @@ export const ChannelChatLayout = observer(({channel, messages, textarea, hideBot
 		// (loaded above) for any character not present in this channel's resolved cast.
 		void GuildCastDisplay.ensureChannelLoaded(channel.guildId, channel.id);
 	}, [channel.guildId, channel.id]);
+	// Channel themes, loaded on the same mount for the same reason: ChannelLayout's
+	// useChannelThemeStyle reads the resolved CSS synchronously, so fetching here rather than lazily
+	// keeps a channel from rendering unstyled and then visibly restyling. Both loads are deduped, so
+	// repeat mounts cost nothing. Deliberately NOT gated on channel.guildId, unlike the cast effect
+	// above — a DM can carry a theme, and this instance's primary writing channel is one.
+	useEffect(() => {
+		void ChannelThemes.ensureLibraryLoaded();
+		void ChannelThemes.ensureChannelStateLoaded(channel.id);
+	}, [channel.id]);
 	const {showTypingUsers, showSlowmodeIndicator} = getChannelChatStatusVisibility({
 		hideBottomBar,
 		isSlowmodeEnabled,
