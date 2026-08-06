@@ -8,6 +8,7 @@ import {JetStreamConnectionManager} from '@pkgs/nats/src/JetStreamConnectionMana
 import {getDefaultPostgresClient, initPostgres, shutdownPostgres} from '@pkgs/postgres/src/Client';
 import type {APIConfig} from '../config/APIConfig';
 import {hasDatabaseQueryExecutor, setDatabaseQueryExecutor} from '../database/CassandraQueryExecution';
+import {ensureChannelThemeSchema} from '../database/ChannelThemeSchema';
 import {ensurePostgresKvSchema, PostgresKvQueryExecutor} from '../database/PostgresKvQueryExecutor';
 import {GuildDataRepository} from '../guild/repositories/GuildDataRepository';
 import type {ILogger} from '../ILogger';
@@ -121,6 +122,7 @@ export function createInitializer(config: APIConfig, logger: ILogger): () => Pro
 				await initPostgres(config.postgres);
 				const postgres = getDefaultPostgresClient();
 				await ensurePostgresKvSchema(postgres);
+				await ensureChannelThemeSchema(postgres);
 				setDatabaseQueryExecutor(new PostgresKvQueryExecutor(postgres));
 				logger.info('Postgres KV client initialized');
 			} else if (config.database.backend === 'postgres') {

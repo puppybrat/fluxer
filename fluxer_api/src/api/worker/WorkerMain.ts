@@ -8,6 +8,7 @@ import type {WorkerTaskHandler} from '@pkgs/worker/src/contracts/WorkerTask';
 import {ms} from 'itty-time';
 import {Config} from '../Config';
 import {setDatabaseQueryExecutor} from '../database/CassandraQueryExecution';
+import {ensureChannelThemeSchema} from '../database/ChannelThemeSchema';
 import {ensurePostgresKvSchema, PostgresKvQueryExecutor} from '../database/PostgresKvQueryExecutor';
 import type {ISnowflakeService} from '../infrastructure/ISnowflakeService';
 import {JobLedgerRepository} from '../jobs/JobLedgerRepository';
@@ -137,6 +138,7 @@ export async function startWorkerMain(): Promise<void> {
 			await initPostgres(Config.postgres);
 			const postgres = getDefaultPostgresClient();
 			await ensurePostgresKvSchema(postgres);
+			await ensureChannelThemeSchema(postgres);
 			setDatabaseQueryExecutor(new PostgresKvQueryExecutor(postgres));
 			postgresInitialized = true;
 			Logger.info('Postgres KV client initialised for worker backend');
