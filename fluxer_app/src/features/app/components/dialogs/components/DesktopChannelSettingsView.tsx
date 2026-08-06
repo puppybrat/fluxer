@@ -41,13 +41,20 @@ import {
 } from '@app/features/user/components/settings_utils/ChannelSettingsConstants';
 import {useUnsavedChangesFlash} from '@app/features/user/hooks/useUnsavedChangesFlash';
 import {ScrollSpyProvider, useScrollSpyContext} from '@app/features/user/state/ScrollSpyContext';
+import {
+	collapseSettingsTreeTab,
+	expandSettingsTreeTab,
+	type SettingsTreeApi,
+	syncSettingsTreeExpansionToActiveTab,
+	toggleSettingsTreeTab,
+} from '@app/features/user/utils/SettingsModalLayoutUtils';
 import {ChannelTypes, Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
 import {ArrowLeftIcon, ArrowRightIcon, TrashIcon} from '@phosphor-icons/react';
 import {AnimatePresence, motion} from 'framer-motion';
 import {observer} from 'mobx-react-lite';
-import React, {useCallback, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useLayoutEffect, useMemo, useRef, useState} from 'react';
 
 const BACK_TO_OVERRIDES_DESCRIPTOR = msg({
 	message: 'Back to overrides',
@@ -117,13 +124,22 @@ export const DesktopChannelSettingsView: React.FC<DesktopChannelSettingsViewProp
 		const contentRef = useRef<HTMLDivElement>(null);
 		const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null);
 		// Drives the sidebar chevron. Only the appearance tab is expandable, so one id is enough.
-		const [expandedTab, setExpandedTab] = useState<ChannelSettingsTabType | null>(null);
-		const treeApi = useMemo(
+		// Expansion follows the active tab, so selecting Appearance opens its sections in one click and
+		// leaving collapses them. Same shape DesktopSettingsView uses, down to the shared helpers --
+		// the manual toggle still works because sync only fires when the active tab actually changes.
+		const activeExpandableTab: ChannelSettingsTabType | null = selectedTab === 'appearance' ? selectedTab : null;
+		const [expandedTab, setExpandedTab] = useState<string | null>(() => activeExpandableTab);
+		// useLayoutEffect, not useEffect, matching DesktopSettingsView: it commits the expansion before
+		// paint, so selecting the tab never shows a frame with the sections still collapsed.
+		useLayoutEffect(() => {
+			setExpandedTab((prev) => syncSettingsTreeExpansionToActiveTab(prev, activeExpandableTab));
+		}, [activeExpandableTab]);
+		const treeApi = useMemo<SettingsTreeApi>(
 			() => ({
-				isExpanded: (id: string) => expandedTab === id,
-				expand: (id: string) => setExpandedTab(id as ChannelSettingsTabType),
-				collapse: () => setExpandedTab(null),
-				toggle: (id: string) => setExpandedTab((current) => (current === id ? null : (id as ChannelSettingsTabType))),
+				isExpanded: (tabId) => expandedTab === tabId,
+				expand: (tabId) => setExpandedTab((prev) => expandSettingsTreeTab(prev, tabId)),
+				collapse: (tabId) => setExpandedTab((prev) => collapseSettingsTreeTab(prev, tabId)),
+				toggle: (tabId) => setExpandedTab((prev) => toggleSettingsTreeTab(prev, tabId)),
 			}),
 			[expandedTab],
 		);
