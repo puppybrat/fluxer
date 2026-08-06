@@ -1106,8 +1106,8 @@
         },
         {
           "name": "--textarea-horizontal-padding",
-          "defaultLight": "1rem)",
-          "defaultDark": "1rem)",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
           "impact": "medium",
           "inputType": "numeric-with-unit"
         },
@@ -1974,7 +1974,7 @@
           "name": "--guild-icon-size",
           "defaultLight": "2.75rem",
           "defaultDark": "2.75rem",
-          "impact": "edge-case",
+          "impact": "high",
           "inputType": "numeric-with-unit"
         },
         {
@@ -2002,7 +2002,7 @@
           "name": "--layout-guild-list-width",
           "defaultLight": "4.5rem",
           "defaultDark": "4.5rem",
-          "impact": "edge-case",
+          "impact": "high",
           "inputType": "numeric-with-unit"
         },
         {
@@ -2016,49 +2016,49 @@
           "name": "--layout-header-popout-width",
           "defaultLight": "calc(16.875rem - (1rem * 2))",
           "defaultDark": "calc(16.875rem - (1rem * 2))",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
           "name": "--layout-mobile-bottom-nav-reserved-height",
           "defaultLight": "0px",
           "defaultDark": "0px",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
           "name": "--layout-sidebar-width",
           "defaultLight": "16.875rem",
           "defaultDark": "16.875rem",
-          "impact": "edge-case",
+          "impact": "high",
           "inputType": "numeric-with-unit"
         },
         {
           "name": "--layout-user-area-height",
           "defaultLight": "4.5rem",
           "defaultDark": "4.5rem",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
           "name": "--layout-user-area-reserved-height",
           "defaultLight": "0px",
           "defaultDark": "0px",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
           "name": "--mobile-bottom-nav-height",
           "defaultLight": "3.75rem",
           "defaultDark": "3.75rem",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
           "name": "--native-titlebar-height",
           "defaultLight": "2rem",
           "defaultDark": "2rem",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
@@ -2184,21 +2184,21 @@
           "name": "--user-area-content-height",
           "defaultLight": "2.25rem",
           "defaultDark": "2.25rem",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
           "name": "--user-area-padding-x",
           "defaultLight": "1rem",
           "defaultDark": "1rem",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
           "name": "--user-area-padding-y",
           "defaultLight": "calc((4.5rem - 2.25rem) / 2)",
           "defaultDark": "calc((4.5rem - 2.25rem) / 2)",
-          "impact": "edge-case",
+          "impact": "medium",
           "inputType": "numeric-with-unit"
         },
         {
@@ -2263,91 +2263,104 @@
           "defaultLight": "0",
           "defaultDark": "0",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-contextmenu",
           "defaultLight": "44000",
           "defaultDark": "44000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-elevated-1",
           "defaultLight": "10",
           "defaultDark": "10",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-elevated-2",
           "defaultLight": "20",
           "defaultDark": "20",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-elevated-3",
           "defaultLight": "30",
           "defaultDark": "30",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-modal",
           "defaultLight": "10000",
           "defaultDark": "10000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-modal-swap",
           "defaultLight": "25000",
           "defaultDark": "25000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-overlay",
           "defaultLight": "40000",
           "defaultDark": "40000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-popout",
           "defaultLight": "15000",
           "defaultDark": "15000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-popout-above-swap",
           "defaultLight": "30000",
           "defaultDark": "30000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-titlebar",
           "defaultLight": "100000",
           "defaultDark": "100000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-toast",
           "defaultLight": "50000",
           "defaultDark": "50000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--z-index-tooltip",
           "defaultLight": "45000",
           "defaultDark": "45000",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         }
       ]
     },
@@ -2401,7 +2414,8 @@
           "defaultLight": "1",
           "defaultDark": "1",
           "impact": "edge-case",
-          "inputType": "numeric-with-unit"
+          "inputType": "numeric-with-unit",
+          "excluded": true
         },
         {
           "name": "--system-message-icon-opacity",
@@ -2414,7 +2428,7 @@
           "name": "--user-area-divider-color",
           "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.2)",
           "defaultDark": "color-mix(in srgb, hsla(258, calc(10% * var(--saturation-factor)), 100%, 0.05) 70%, transparent)",
-          "impact": "edge-case",
+          "impact": "high",
           "inputType": "color-picker"
         },
         {
@@ -2443,5 +2457,6 @@
     "Portal-rendered surfaces escape the channel scope entirely. Modals, popouts, tooltips, toasts, bottom sheets, the media viewer, the expression picker and the mobile SelectMode overlay all render via createPortal into document.body (features/ui/popover/PopoverPopouts.tsx, features/ui/toast/Toasts.tsx, features/ui/sheet/Sheet.tsx, features/messaging/components/modals/MediaViewerModal.tsx, features/expressions/components/popouts/ExpressionPickerPopout.tsx, features/channel/components/channel_view/GuildChannelView.tsx L336). They are not descendants of the themed <main>, so no channel-scoped override reaches them - including every --z-index-* variable.",
     "Sixteen app-shell variables are present in the manifest but unreachable from a channel theme, because they are consumed only outside <main>: --layout-sidebar-width, --layout-guild-list-width, --guild-icon-size, --guild-icon-gap, --layout-user-area-height, --layout-user-area-reserved-height, --user-area-content-height, --user-area-padding-x, --user-area-padding-y, --user-area-divider-color, --native-titlebar-height, --mobile-bottom-nav-height, --layout-mobile-bottom-nav-reserved-height, --footer-row-height, --footer-row-padding-y, --layout-header-popout-width. Verified by tracing var() consumers into features/app/components/layout/ and features/guild/components/popouts/. They are marked edge-case here and should be hidden or disabled in the editor rather than offered as working controls.",
     "Eight variables are written as inline styles on document.documentElement by useThemeCssVariables (features/theme/hooks/useThemeCssVariables.ts L30-46): --saturation-factor, --user-select, --font-size, --chat-horizontal-padding, --message-group-spacing, --link-decoration, --markup-strikethrough-color, plus the non-custom dynamic-range-limit. A channel-scope declaration on a descendant still wins for that subtree, so these remain overridable - but they are bound to the user accessibility settings (font size, message gutter, group spacing, link underline, text selection). Overriding them in a channel theme silently overrides a per-user accessibility preference inside that channel."
-  ]
+  ],
+  "excludedNote": "Variables flagged `excluded` generate no editor control. --saturation-factor is inert at channel scope (colors bake it in at computed-value time on :root, so descendants inherit already-substituted values); --z-index-* carry no visual token and are deferred from the first control pass."
 }
