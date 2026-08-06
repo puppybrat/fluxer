@@ -82,6 +82,12 @@ export const Endpoints = {
 	CHANNEL_RTC_REGIONS: (channelId: string) => `/channels/${channelId}/rtc-regions`,
 	CHANNEL_SLOWMODE: (channelId: string) => `/channels/${channelId}/slowmode`,
 	CHANNEL_CALL: (channelId: string) => `/channels/${channelId}/call`,
+	// LOCAL-ONLY: channel themes — exclude from upstream sync.
+	CHANNEL_THEMES: '/themes',
+	CHANNEL_THEME: (themeId: string) => `/themes/${themeId}`,
+	CHANNEL_APPEARANCE: (channelId: string) => `/channels/${channelId}/appearance`,
+	CHANNEL_APPEARANCE_APPLY_THEME: (channelId: string) => `/channels/${channelId}/appearance/apply-theme`,
+	CHANNEL_APPEARANCE_SAVE_AND_APPLY: (channelId: string) => `/channels/${channelId}/appearance/save-and-apply`,
 	CHANNEL_CALL_RING: (channelId: string) => `/channels/${channelId}/call/ring`,
 	CHANNEL_CALL_STOP_RINGING: (channelId: string) => `/channels/${channelId}/call/stop-ringing`,
 	CHANNEL_VOICE_DEBUG_LOGGING_SESSION: (channelId: string) => `/channels/${channelId}/voice-debug-logging/session`,

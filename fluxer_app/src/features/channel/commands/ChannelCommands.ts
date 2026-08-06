@@ -234,3 +234,81 @@ export async function fetchRtcRegions(channelId: string): Promise<Array<ChannelR
 		throw error;
 	}
 }
+
+/*
+ * LOCAL-ONLY: channel theme commands. Thin wrappers over the local-only /themes and
+ * /channels/:id/appearance routes (fluxer_api ChannelThemeController). Exclude from upstream sync.
+ */
+
+/** A named theme in the shared library. `updated_at` is an ISO string, as the API serializes it. */
+export interface ChannelThemeResponse {
+	id: string;
+	name: string;
+	css: string;
+	updated_at: string;
+}
+
+/** A channel's active state, with the referenced theme already resolved by the server. */
+export interface ChannelAppearanceResponse {
+	channel_id: string;
+	theme_id: string | null;
+	theme_name: string | null;
+	css: string | null;
+	resolved_css: string | null;
+	updated_at: string | null;
+}
+
+/** The write routes return the raw state row, without the join. */
+export interface ChannelAppearanceStateResponse {
+	channel_id: string;
+	theme_id: string | null;
+	css: string | null;
+	updated_at: string;
+}
+
+export async function fetchChannelThemes(): Promise<Array<ChannelThemeResponse>> {
+	const response = await http.get<Array<ChannelThemeResponse>>(Endpoints.CHANNEL_THEMES);
+	return response.body ?? [];
+}
+
+export async function fetchChannelAppearance(channelId: string): Promise<ChannelAppearanceResponse> {
+	const response = await http.get<ChannelAppearanceResponse>(Endpoints.CHANNEL_APPEARANCE(channelId));
+	return response.body;
+}
+
+export async function createChannelTheme(name: string, css: string): Promise<ChannelThemeResponse> {
+	const response = await http.post<ChannelThemeResponse>(Endpoints.CHANNEL_THEMES, {body: {name, css}});
+	return response.body;
+}
+
+export async function updateChannelTheme(
+	themeId: string,
+	fields: {name?: string; css?: string},
+): Promise<ChannelThemeResponse> {
+	const response = await http.put<ChannelThemeResponse>(Endpoints.CHANNEL_THEME(themeId), {body: fields});
+	return response.body;
+}
+
+export async function applyChannelTheme(channelId: string, themeId: string): Promise<ChannelAppearanceStateResponse> {
+	const response = await http.post<ChannelAppearanceStateResponse>(
+		Endpoints.CHANNEL_APPEARANCE_APPLY_THEME(channelId),
+		{body: {theme_id: themeId}},
+	);
+	return response.body;
+}
+
+export async function saveAndApplyChannelCss(channelId: string, css: string): Promise<ChannelAppearanceStateResponse> {
+	const response = await http.post<ChannelAppearanceStateResponse>(
+		Endpoints.CHANNEL_APPEARANCE_SAVE_AND_APPLY(channelId),
+		{body: {css}},
+	);
+	return response.body;
+}
+
+export async function clearChannelAppearance(channelId: string): Promise<void> {
+	await http.delete(Endpoints.CHANNEL_APPEARANCE(channelId));
+}
+
+export async function deleteChannelTheme(themeId: string): Promise<void> {
+	await http.delete(Endpoints.CHANNEL_THEME(themeId));
+}
