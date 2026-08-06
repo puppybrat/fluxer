@@ -13,8 +13,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import MemberList from '@app/features/member/state/MemberList';
+import {ChannelMessages} from '@app/features/messaging/state/ChannelMessages';
 import MessagingMessages from '@app/features/messaging/state/MessagingMessages';
 import {http} from '@app/features/platform/transport/RestTransport';
+import Dimension from '@app/features/ui/state/Dimension';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {makeAutoObservable, runInAction} from 'mobx';
 
@@ -240,11 +242,41 @@ class SelectMode {
                     idsToRemove.push(message.id);
                 }
             });
-            // Arm the moved-id guard so a subsequent scroll-up that hits the network can't resurface
-            // these relocated messages via an API-fetched page (see MessagingMessages.markMovedIds).
-            MessagingMessages.markMovedIds(channelId, idsToRemove);
-            if (idsToRemove.length > 0) {
-                MessagingMessages.handleMessageDeleteBulk({ids: idsToRemove, channelId});
+            // Every local state mutation below is gated on the server having actually moved
+            // something. A relocation can legitimately report movedCount === 0 (empty range, or a
+            // range the API refused), and in that case the messages are all still in the source
+            // channel. Mutating local state anyway makes them vanish from the client while they
+            // remain on the server — ghost messages that only come back on a full refresh. The
+            // response is the only authority on what moved; the locally computed id range is not.
+            if (response.body.movedCount > 0) {
+                // Arm the moved-id guard so a subsequent scroll-up that hits the network can't resurface
+                // these relocated messages via an API-fetched page (see MessagingMessages.markMovedIds).
+                // Gated too: arming it after a no-op relocation would filter still-present messages
+                // out of every future fetched page for this channel, hiding them just as visibly as
+                // the delete-bulk would.
+                MessagingMessages.markMovedIds(channelId, idsToRemove);
+
+                // Drop the DESTINATION channel's cached message list so its next open refetches.
+                // The relocated rows land in the destination server-side with no gateway event, and
+                // MessagingMessages.handleChannelSelect returns early without fetching whenever that
+                // channel's ChannelMessages still has ready === true. `ready` is only reset on a jump
+                // or a cold start, so without this the destination keeps serving its pre-relocation
+                // window until a full page refresh. Clearing the instance means the next getOrCreate
+                // builds a fresh one (ready === false), which falls through to the normal fetch path
+                // and hydrates from the API with destination-scoped attachment URLs — which is why
+                // this is a cache drop and NOT a local reinsertion of the moved message objects.
+                //
+                // Only the destination is cleared. The source keeps its instance (and therefore its
+                // scroll position); its moved rows are removed surgically by the delete-bulk below.
+                // The stale author index for the destination is pruned automatically by
+                // MessagingMessages.pruneStaleIndexedChannels on the next commit, since it drops any
+                // indexed channel with no live ChannelMessages instance.
+                ChannelMessages.clear(destChannelId);
+                Dimension.clearChannelDimensions(destChannelId);
+
+                if (idsToRemove.length > 0) {
+                    MessagingMessages.handleMessageDeleteBulk({ids: idsToRemove, channelId});
+                }
             }
 
             runInAction(() => {
