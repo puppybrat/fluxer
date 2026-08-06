@@ -51,3 +51,11 @@
 	gap: var(--spacing-2);
 	align-items: center;
 }
+
+/* Token rows come from Theme Studio and lay themselves out; this only stacks them. */
+.controlGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-1);
+	min-width: 0;
+}

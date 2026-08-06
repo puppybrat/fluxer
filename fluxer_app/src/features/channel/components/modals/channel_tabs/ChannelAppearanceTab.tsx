@@ -2,8 +2,12 @@
  * LOCAL-ONLY: This file is a local-only addition and will never exist upstream. It is the channel
  * theme editor shell: a theme library picker, a raw CSS surface, and the four save/apply actions.
  *
- * Structured per-variable controls are deliberately absent for now — the textarea is the only edit
- * surface until they are generated from theme-editor/variable-manifest.json.
+ * Structured per-variable controls are generated from theme-editor/variable-manifest.json and sit
+ * below the CSS surface, grouped by the manifest's own categories and collapsed by default.
+ *
+ * The working CSS string is the only state: controls parse it to read and rewrite it to write, so
+ * the textarea is authoritative by construction rather than by a precedence rule, and the two stay
+ * in step in both directions.
  *
  * Do not confuse this with the user-settings Appearance tab (features/user/.../AppearanceTab.tsx),
  * which configures the global app theme and is unrelated to channels.
@@ -25,6 +29,9 @@ import {SettingsSection} from '@app/features/app/components/dialogs/shared/Setti
 import styles from '@app/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.module.css';
 import Channels from '@app/features/channel/state/Channels';
 import ChannelThemes from '@app/features/channel/state/ChannelThemes';
+import variableManifest from '@app/features/channel/theme-editor/variable-manifest.json';
+import Theme from '@app/features/theme/state/Theme';
+import {StudioTokenColor, StudioTokenFont, StudioTokenValue} from '@app/features/theme_studio/ui/StudioToken';
 import {Button} from '@app/features/ui/button/Button';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
@@ -32,11 +39,12 @@ import * as ToastCommands from '@app/features/ui/commands/ToastCommands';
 import * as UnsavedChangesCommands from '@app/features/ui/commands/UnsavedChangesCommands';
 import {Combobox, type ComboboxOption} from '@app/features/ui/components/form/FormCombobox';
 import {Input, Textarea} from '@app/features/ui/components/form/FormInput';
+import type {ThemeVariableKind} from '@app/features/user/components/modals/tabs/appearance_tab/theme/ThemeConstants';
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 
 export const CHANNEL_APPEARANCE_TAB_ID = 'appearance';
 
@@ -61,6 +69,123 @@ const DELETE_THEME_DESCRIPTOR = msg({
 	comment: 'Button label in the channel appearance tab that deletes the loaded named theme.',
 });
 const NO_THEME_VALUE = '';
+const ADVANCED_DESCRIPTOR = msg({
+	message: 'Advanced',
+	comment: 'Channel appearance section holding rarely-used theme variables. Keep it concise.',
+});
+
+interface ManifestVariable {
+	name: string;
+	defaultLight: string;
+	defaultDark: string;
+	impact: string;
+	inputType: string;
+	excluded?: boolean;
+}
+
+interface ManifestCategory {
+	name: string;
+	variables: Array<ManifestVariable>;
+}
+
+const MANIFEST_CATEGORIES = (variableManifest as {categories: Array<ManifestCategory>}).categories;
+const isRenderable = (variable: ManifestVariable): boolean => variable.excluded !== true;
+
+/** High and medium impact, grouped by the manifest's own categories. Empty groups are dropped. */
+const CONTROL_GROUPS = MANIFEST_CATEGORIES.map((category) => ({
+	name: category.name,
+	variables: category.variables.filter((variable) => isRenderable(variable) && variable.impact !== 'edge-case'),
+})).filter((group) => group.variables.length > 0);
+
+/** Everything else that is still renderable, collected behind one collapsed disclosure. */
+const ADVANCED_VARIABLES = MANIFEST_CATEGORIES.flatMap((category) =>
+	category.variables.filter((variable) => isRenderable(variable) && variable.impact === 'edge-case'),
+);
+
+/**
+ * The working CSS string is the single source of truth; the controls are a projection of it. That is
+ * what makes the textarea authoritative without a precedence rule anywhere — a control reads its
+ * value by parsing the CSS and writes by rewriting it, so whatever the textarea says is, by
+ * construction, what every control shows.
+ */
+function parseDeclarations(css: string): Map<string, string> {
+	const declarations = new Map<string, string>();
+	for (const match of css.matchAll(/(--[\w-]+)\s*:\s*([^;}]+)/g)) {
+		declarations.set(match[1] as string, (match[2] as string).trim());
+	}
+	return declarations;
+}
+
+/**
+ * Writes a variable into the CSS, or removes it when `value` is null (the reset affordance).
+ *
+ * The existing-declaration probe anchors on the colon, so `--background-secondary` cannot match
+ * inside `--background-secondary-lighter`. A new declaration goes inside the first `:root` block, or
+ * a `:root` block is created when the CSS has none.
+ */
+function upsertDeclaration(css: string, name: string, value: string | null): string {
+	const existing = new RegExp(`([ \\t]*)${name}\\s*:\\s*[^;}]+;?[ \\t]*\\n?`, 'g');
+	if (existing.test(css)) {
+		return value === null ? css.replace(existing, '') : css.replace(existing, `$1${name}: ${value};\n`);
+	}
+	if (value === null) {
+		return css;
+	}
+	const rootBlock = /:root\s*\{/.exec(css);
+	if (!rootBlock) {
+		const block = `:root {\n\t${name}: ${value};\n}`;
+		return css.trim().length === 0 ? block : `${css.trimEnd()}\n\n${block}`;
+	}
+	const insertAt = rootBlock.index + rootBlock[0].length;
+	return `${css.slice(0, insertAt)}\n\t${name}: ${value};${css.slice(insertAt)}`;
+}
+
+/**
+ * The manifest's input types map onto Theme Studio's token kinds, which is what drives the small
+ * type marker beside each field. `border-width` rides with dimensions because it is one.
+ */
+function kindForInputType(inputType: string): ThemeVariableKind {
+	switch (inputType) {
+		case 'numeric-with-unit':
+		case 'border-width':
+			return 'dimension';
+		case 'font-family':
+			return 'font';
+		case 'color-picker':
+			return 'color';
+		default:
+			return 'other';
+	}
+}
+
+interface VariableControlProps {
+	variable: ManifestVariable;
+	/** The value the CSS currently declares, or '' when it declares none. */
+	declaredValue: string;
+	defaultValue: string;
+	onChange: (name: string, value: string | null) => void;
+}
+
+/**
+ * One row per variable, dispatched to Theme Studio's existing token controls rather than new ones —
+ * they already carry a swatch, a default-valued placeholder, an overridden state and a reset button.
+ *
+ * `overridden` compares against the manifest default rather than the applied theme, so the indicator
+ * answers "is this off-default" rather than "did I just change it".
+ */
+const VariableControl: React.FC<VariableControlProps> = ({variable, declaredValue, defaultValue, onChange}) => {
+	const label = variable.name.replace(/^--/, '');
+	const overridden = declaredValue !== '' && declaredValue !== defaultValue;
+	const handleChange = (value: string | null) => onChange(variable.name, value);
+	const shared = {variableName: variable.name, label, currentValue: declaredValue, defaultValue, overridden};
+	if (variable.inputType === 'color-picker') {
+		return <StudioTokenColor {...shared} onChange={handleChange} />;
+	}
+	if (variable.inputType === 'font-family') {
+		return <StudioTokenFont {...shared} onChange={handleChange} />;
+	}
+	return <StudioTokenValue {...shared} kind={kindForInputType(variable.inputType)} onChange={handleChange} />;
+};
 
 /**
  * Prompts for a theme name. Kept local to this file: it exists only to name a theme, and the
@@ -136,6 +261,26 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 	const appliedCss = ChannelThemes.getThemeCss(channelId) ?? '';
 	const activeState = ChannelThemes.getChannelState(channelId);
 	const hasUnsavedChanges = workingCss !== appliedCss;
+
+	// Re-derived from the CSS on every edit, so a hand-typed change in the textarea moves the
+	// controls too — the two are one piece of state viewed twice, not two states kept in step.
+	const declarations = useMemo(() => parseDeclarations(workingCss), [workingCss]);
+	const isLightTheme = Theme.effectiveTheme === 'light';
+	const handleVariableChange = useCallback((name: string, value: string | null) => {
+		setWorkingCss((current) => upsertDeclaration(current, name, value));
+	}, []);
+	const renderControl = useCallback(
+		(variable: ManifestVariable) => (
+			<VariableControl
+				key={variable.name}
+				variable={variable}
+				declaredValue={declarations.get(variable.name) ?? ''}
+				defaultValue={isLightTheme ? variable.defaultLight : variable.defaultDark}
+				onChange={handleVariableChange}
+			/>
+		),
+		[declarations, isLightTheme, handleVariableChange],
+	);
 
 	// Seeds working state once the channel's active state and the library have both landed. Uses
 	// loadChannelState rather than the deduped ensure* so opening settings always reflects current
@@ -389,6 +534,36 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 					data-flx="channel.channel-appearance-tab.css-textarea"
 				/>
 			</SettingsSection>
+
+			{/* One collapsed group per manifest category. Collapsed by default: there are a few hundred
+			    controls in total, and an all-expanded tab would bury the CSS surface above it. */}
+			{CONTROL_GROUPS.map((group) => (
+				<SettingsSection
+					key={group.name}
+					id={`channel-theme-vars-${group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+					title={group.name}
+					defaultExpanded={false}
+					data-flx="channel.channel-appearance-tab.variable-group"
+				>
+					<div className={styles.controlGroup} data-flx="channel.channel-appearance-tab.control-group">
+						{group.variables.map(renderControl)}
+					</div>
+				</SettingsSection>
+			))}
+
+			{ADVANCED_VARIABLES.length > 0 && (
+				<SettingsSection
+					id="channel-theme-vars-advanced"
+					title={i18n._(ADVANCED_DESCRIPTOR)}
+					description={<Trans>Rarely-used variables. Editing these is unlikely to change how the channel looks.</Trans>}
+					defaultExpanded={false}
+					data-flx="channel.channel-appearance-tab.advanced-section"
+				>
+					<div className={styles.controlGroup} data-flx="channel.channel-appearance-tab.advanced-group">
+						{ADVANCED_VARIABLES.map(renderControl)}
+					</div>
+				</SettingsSection>
+			)}
 
 			<div className={styles.actionBar} data-flx="channel.channel-appearance-tab.action-bar">
 				<Button
