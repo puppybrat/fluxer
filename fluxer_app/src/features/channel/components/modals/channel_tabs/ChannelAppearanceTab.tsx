@@ -375,13 +375,16 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 					minRows={14}
 					maxRows={32}
 					spellCheck={false}
-					// Deliberately --background-secondary-lighter, not --background-primary. The channel's
-					// visible surfaces are painted by --background-secondary-lighter (the chat area, in
-					// ChannelChatLayout.module.css) and --background-tertiary (the <main> container). Inside
-					// a channel, --background-primary is only read by pickers and popouts, most of which
-					// portal outside the themed element — so a theme that sets it appears to do nothing,
-					// which reads as a broken feature rather than a mis-aimed variable.
-					placeholder=":root {&#10;  --background-secondary-lighter: #1a0a2a;&#10;  --background-tertiary: #14081f;&#10;}"
+					// These two variables between them paint every surface a theme is judged by, which is why
+					// the example sets both: --background-secondary carries the server rail and the channel
+					// sidebar (GuildsLayout.module.css, GuildNavbar.module.css), --background-secondary-lighter
+					// the channel header and the chat area (ChannelHeader.module.css,
+					// ChannelChatLayout.module.css). Setting only one retheme's half the window and reads as
+					// the feature being broken rather than the example being partial — which is exactly how
+					// it has been reported twice. --background-primary is deliberately absent: inside a
+					// channel it is read only by pickers and popouts, so it looks like it does nothing.
+					// The lighter value stays lighter, preserving the surface hierarchy the defaults have.
+					placeholder=":root {&#10;  --background-secondary: #1e1430;&#10;  --background-secondary-lighter: #271a3d;&#10;}"
 					className={styles.cssTextarea}
 					data-flx="channel.channel-appearance-tab.css-textarea"
 				/>
