@@ -770,7 +770,7 @@ msgid "{fps} FPS"
 msgstr "{fps} FPS"
 
 #. Short label in the app layout channel list content. Preserve {guildName}; it is inserted by code.
-#: src/features/app/components/layout/ChannelListContent.tsx:74
+#: src/features/app/components/layout/ChannelListContent.tsx:75
 msgid "{guildName} channels"
 msgstr "{guildName} channels"
 
@@ -861,10 +861,6 @@ msgstr "{length} watching"
 #: src/features/theme_studio/sections/QuickCssSection.tsx:268
 msgid "{lineCount, plural, one {# line} other {# lines}}"
 msgstr "{lineCount, plural, one {# line} other {# lines}}"
-
-#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:144
-msgid "{matchCount, plural, one {# match} other {# matches}}"
-msgstr "{matchCount, plural, one {# match} other {# matches}}"
 
 #. Plutonium gift checkout guidance for Portugal. Explains that MB WAY can be used for one-time EUR gift purchases.
 #: src/features/app/components/dialogs/components/plutonium/PricingContextPanel.tsx:83
@@ -1075,12 +1071,12 @@ msgid "{productName} Community Team"
 msgstr "{productName} Community Team"
 
 #. Modal body shown when a user-initiated update check fails. productName is the app name.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:104
+#: src/features/updater/commands/UpdaterModalCommands.tsx:108
 msgid "{productName} could not reach the update service. Check your connection and try again."
 msgstr "{productName} could not reach the update service. Check your connection and try again."
 
 #. Modal body shown when starting installation of a downloaded desktop update fails. productName is the app name.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:121
+#: src/features/updater/commands/UpdaterModalCommands.tsx:125
 msgid "{productName} could not restart into the downloaded update. Try again from the update button."
 msgstr "{productName} could not restart into the downloaded update. Try again from the update button."
 
@@ -1231,13 +1227,6 @@ msgstr "{renderedPresenceCount} online"
 #: src/features/channel/state/ChannelDisplayName.ts:12
 msgid "{resolvedName}'s group"
 msgstr "{resolvedName}'s group"
-
-#. Screen-reader live region announcement listing the quick switcher result count.
-#. Screen-reader live region announcement listing the quick switcher result count.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:55
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:73
-msgid "{resultCount} results available"
-msgstr "{resultCount} results available"
 
 #. Generic duration label for a whole number of seconds.
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:45
@@ -1610,7 +1599,7 @@ msgstr "1 month gift"
 #. Screen-reader live region announcement when exactly one quick switcher result is available.
 #. Screen-reader live region announcement when exactly one quick switcher result is available.
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:51
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:69
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:74
 msgid "1 result available"
 msgstr "1 result available"
 
@@ -1947,7 +1936,7 @@ msgid "a hostname, e.g. {exampleDomain}"
 msgstr "a hostname, e.g. {exampleDomain}"
 
 #. Linux desktop updater modal body shown before version details and package format selector. productName is the app name.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:126
+#: src/features/updater/commands/UpdaterModalCommands.tsx:130
 msgid "A Linux desktop update is available. Choose the package format for this system and {productName} will save it locally."
 msgstr "A Linux desktop update is available. Choose the package format for this system and {productName} will save it locally."
 
@@ -3758,6 +3747,12 @@ msgstr "App zoom level"
 msgid "Appearance"
 msgstr "Appearance"
 
+#. Channel settings tab for the per-channel theme editor.
+#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:31
+msgctxt "channel-settings-tab"
+msgid "Appearance"
+msgstr "Appearance"
+
 #. Slash-command description for /tableflip. Appends a kaomoji to the user's message.
 #: src/features/devtools/hooks/useCommands.ts:12
 msgid "Appends (╯°□°)╯︵ ┻━┻ to your message."
@@ -3993,8 +3988,8 @@ msgstr "ARIA"
 
 #. Screen-reader instructions describing keyboard navigation in the desktop quick switcher result list.
 #. Screen-reader instructions describing keyboard navigation in the quick switcher result list.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:97
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:89
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:103
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:96
 msgid "Arrow keys navigate. Enter opens, Escape closes."
 msgstr "Arrow keys navigate. Enter opens, Escape closes."
 
@@ -4424,33 +4419,19 @@ msgstr "Auto-set activity threshold"
 msgid "Autocomplete"
 msgstr "Autocomplete"
 
-#. Screen-reader announcement for the highlighted quick switcher autocomplete suggestion.
-#. Screen-reader announcement for the highlighted quick switcher autocomplete suggestion.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:68
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:47
-msgid "Autocomplete suggestion for {trimmedQuery}: {label}"
-msgstr "Autocomplete suggestion for {trimmedQuery}: {label}"
-
-#. Screen-reader announcement for the highlighted quick switcher autocomplete suggestion including its position.
-#. Screen-reader announcement for the highlighted quick switcher autocomplete suggestion including position.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:63
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:43
-msgid "Autocomplete suggestion for {trimmedQuery}: {label}, {selectedOptionPosition} of {resultCount}"
-msgstr "Autocomplete suggestion for {trimmedQuery}: {label}, {selectedOptionPosition} of {resultCount}"
-
-#. Screen-reader announcement for the highlighted autocomplete suggestion, without query echo.
-#. Screen-reader announcement for the highlighted autocomplete suggestion, without query echo.
+#. Screen-reader announcement prefix in the desktop quick switcher, followed in code by the suggestion label as "Autocomplete suggestion: General".
+#. Screen-reader announcement prefix in the quick switcher, followed in code by the suggestion label as "Autocomplete suggestion: General".
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:77
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:56
-msgid "Autocomplete suggestion: {label}"
-msgstr "Autocomplete suggestion: {label}"
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:55
+msgid "Autocomplete suggestion"
+msgstr "Autocomplete suggestion"
 
-#. Screen-reader announcement for the highlighted autocomplete suggestion including position, without query echo.
-#. Screen-reader announcement for the highlighted autocomplete suggestion including position, without query echo.
+#. Screen-reader announcement prefix in the desktop quick switcher, followed in code by the query and the suggestion label as "Autocomplete suggestion for ge: General".
+#. Screen-reader announcement prefix in the quick switcher, followed in code by the query and the suggestion label as "Autocomplete suggestion for ge: General".
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:72
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:51
-msgid "Autocomplete suggestion: {label}, {selectedOptionPosition} of {resultCount}"
-msgstr "Autocomplete suggestion: {label}, {selectedOptionPosition} of {resultCount}"
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:50
+msgid "Autocomplete suggestion for"
+msgstr "Autocomplete suggestion for"
 
 #. Channel overview settings tab label, control, or validation message (name, topic, slowmode, voice region, mature content gate).
 #. Developer tools debug menu label. Internal-only surface for developers; translators may keep this terse.
@@ -4662,7 +4643,7 @@ msgid "Autoscrolling"
 msgstr "Autoscrolling"
 
 #. Label for the available desktop version in the Linux update modal.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:136
+#: src/features/updater/commands/UpdaterModalCommands.tsx:140
 msgid "Available"
 msgstr "Available"
 
@@ -5290,7 +5271,7 @@ msgstr "Bookmark message"
 #. Description text in the saved messages page.
 #: src/features/channel/components/modals/BookmarksBottomSheet.tsx:165
 #: src/features/messaging/components/pages/SavedMessagesPage.tsx:25
-#: src/features/messaging/components/popouts/SavedMessagesContent.tsx:33
+#: src/features/messaging/components/popouts/SavedMessagesContent.tsx:31
 msgid "Bookmark messages to save them for later."
 msgstr "Bookmark messages to save them for later."
 
@@ -5842,6 +5823,7 @@ msgstr "Canary tester CTA nagbar"
 #: src/features/auth/flow/BrowserLoginHandoffModal.tsx:244
 #: src/features/channel/components/bottomsheets/CreateDMBottomSheet.tsx:137
 #: src/features/channel/components/MentionEveryonePopout.tsx:172
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:109
 #: src/features/channel/components/modals/ChannelDeleteModal.tsx:53
 #: src/features/channel/components/modals/CreateDMModal.tsx:92
 #: src/features/connection/components/modals/AddConnectionModal.tsx:373
@@ -6049,7 +6031,7 @@ msgid "Cards can keep TRY pricing after a quick {paymentProviderName} verificati
 msgstr "Cards can keep TRY pricing after a quick {paymentProviderName} verification, but the card must be issued in Türkiye."
 
 #. Sidebar entry above the channel list opening the community cast overview page.
-#: src/features/app/components/layout/ChannelListContent.tsx:78
+#: src/features/app/components/layout/ChannelListContent.tsx:79
 msgctxt "channel-list-entry"
 msgid "Cast"
 msgstr "Cast"
@@ -6067,10 +6049,14 @@ msgid "Cast"
 msgstr "Cast"
 
 #. Accessible label for the sidebar Cast entry when its page is the current view.
-#: src/features/app/components/layout/ChannelListContent.tsx:83
+#: src/features/app/components/layout/ChannelListContent.tsx:84
 msgctxt "channel-list-entry"
 msgid "Cast (selected)"
 msgstr "Cast (selected)"
+
+#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:270
+msgid "categories"
+msgstr "categories"
 
 #. Short label in the discovery category bottom sheet. Keep it concise.
 #: src/features/discovery/components/bottomsheets/DiscoveryCategoryBottomSheet.tsx:15
@@ -6079,7 +6065,7 @@ msgstr "Categories"
 
 #. Lowercase channel type label used inside channel-list accessible text.
 #. Lowercase source label for an inherited mature-content setting.
-#: src/features/app/components/layout/ChannelItem.tsx:79
+#: src/features/app/components/layout/ChannelItem.tsx:78
 #: src/features/channel/components/modals/channel_tabs/channel_overview_tab/MatureContentSection.tsx:21
 msgid "category"
 msgstr "category"
@@ -6121,7 +6107,7 @@ msgid "Category deleted"
 msgstr "Category deleted"
 
 #. Short label in the app layout channel list content.
-#: src/features/app/components/layout/ChannelListContent.tsx:65
+#: src/features/app/components/layout/ChannelListContent.tsx:66
 msgid "Category full"
 msgstr "Category full"
 
@@ -6143,7 +6129,7 @@ msgid "Category options"
 msgstr "Category options"
 
 #. Root label for category settings modal and settings search paths.
-#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:97
+#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:114
 msgid "Category settings"
 msgstr "Category settings"
 
@@ -6390,7 +6376,7 @@ msgstr "Changes apply instantly to the live client."
 
 #. Fallback channel-name placeholder used inside the textarea message hint when no name is available. Lowercase.
 #. Lowercase generic channel type label used inside channel-list accessible text.
-#: src/features/app/components/layout/ChannelItem.tsx:87
+#: src/features/app/components/layout/ChannelItem.tsx:86
 #: src/features/channel/components/channel_textarea/shared.ts:11
 msgid "channel"
 msgstr "channel"
@@ -6572,13 +6558,21 @@ msgid "Channel removed from favorites"
 msgstr "Channel removed from favorites"
 
 #. Root label for channel settings modal and settings search paths.
-#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:93
+#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:110
 msgid "Channel settings"
 msgstr "Channel settings"
 
 #: src/features/channel/components/modals/channel_tabs/ChannelPermissionsTab.tsx:497
 msgid "Channel synced with parent category"
 msgstr "Channel synced with parent category"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:169
+msgid "Channel theme applied"
+msgstr "Channel theme applied"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:284
+msgid "Channel theme cleared"
+msgstr "Channel theme cleared"
 
 #. Channel overview settings tab label, control, or validation message (name, topic, slowmode, voice region, mature content gate).
 #: src/features/channel/components/modals/channel_tabs/ChannelOverviewTab.tsx:67
@@ -7231,6 +7225,10 @@ msgstr "Clear all token overrides"
 msgid "Clear attachment mocks"
 msgstr "Clear attachment mocks"
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:403
+msgid "Clear channel theme"
+msgstr "Clear channel theme"
+
 #. Button or menu action label in the custom status bottom sheet. Keep it concise.
 #. Button or menu action label in the custom status modal. Keep it concise.
 #: src/features/user/components/modals/CustomStatusBottomSheet.tsx:52
@@ -7245,7 +7243,7 @@ msgid "Clear every reaction from this message?"
 msgstr "Clear every reaction from this message?"
 
 #. Accessible label for the clear button in the friends-tab search input of the quick switcher.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:85
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:91
 msgid "Clear friends search"
 msgstr "Clear friends search"
 
@@ -7279,7 +7277,7 @@ msgid "Clear search"
 msgstr "Clear search"
 
 #. Accessible label for the clear button in the quick switcher main search input.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:81
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:87
 msgid "Clear search input"
 msgstr "Clear search input"
 
@@ -7719,7 +7717,7 @@ msgstr "Collapse unread messages for {channelHeading}"
 
 #. Lowercase screen-reader fragment in the sidebar navigation guild folder item.
 #. Lowercase state label used inside channel-list accessible text for a collapsed category.
-#: src/features/app/components/layout/ChannelItem.tsx:95
+#: src/features/app/components/layout/ChannelItem.tsx:94
 #: src/features/app/components/layout/sidebar_nav/GuildFolderItem.tsx:73
 msgid "collapsed"
 msgstr "collapsed"
@@ -8343,7 +8341,7 @@ msgid "Connect with {providerName}"
 msgstr "Connect with {providerName}"
 
 #. Lowercase state label used inside channel-list accessible text for the current voice channel.
-#: src/features/app/components/layout/ChannelItem.tsx:111
+#: src/features/app/components/layout/ChannelItem.tsx:110
 msgid "connected"
 msgstr "connected"
 
@@ -9019,6 +9017,14 @@ msgstr "Copying image..."
 msgid "Corrupted installation nagbar"
 msgstr "Corrupted installation nagbar"
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:171
+msgid "Could not apply the channel theme"
+msgstr "Could not apply the channel theme"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:286
+msgid "Could not clear the channel theme"
+msgstr "Could not clear the channel theme"
+
 #. Error displayed when the browser fails to decode an audio file selected for entrance-sound upload.
 #: src/features/voice/components/EntranceSoundTrimmerModal.tsx:55
 msgid "Could not decode this audio file."
@@ -9043,10 +9049,18 @@ msgstr "Could not load the instance configuration. Try reloading the page."
 msgid "Could not load this page"
 msgstr "Could not load this page"
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:220
+msgid "Could not save the theme"
+msgstr "Could not save the theme"
+
 #. Body of the modal shown when a screen share attempt fails. Advises the user to try sharing the full screen.
 #: src/features/voice/components/alerts/ScreenShareFailedModal.tsx:12
 msgid "Could not start the screen share. The selected source may no longer be available or may have blocked capture. Try sharing your entire screen or monitor instead of a specific window."
 msgstr "Could not start the screen share. The selected source may no longer be available or may have blocked capture. Try sharing your entire screen or monitor instead of a specific window."
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:266
+msgid "Could not update the theme"
+msgstr "Could not update the theme"
 
 #. Title of the error modal shown when accepting an incoming friend request fails.
 #: src/features/relationship/components/alerts/RelationshipErrorModalUtils.tsx:50
@@ -9109,7 +9123,7 @@ msgid "Couldn't change your billing cycle"
 msgstr "Couldn't change your billing cycle"
 
 #. Modal title shown when a user-initiated update check fails.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:100
+#: src/features/updater/commands/UpdaterModalCommands.tsx:104
 msgid "Couldn't check for updates"
 msgstr "Couldn't check for updates"
 
@@ -9216,7 +9230,7 @@ msgid "Couldn't delete your messages"
 msgstr "Couldn't delete your messages"
 
 #. Modal title shown when a desktop update download fails.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:108
+#: src/features/updater/commands/UpdaterModalCommands.tsx:112
 msgid "Couldn't download the desktop update"
 msgstr "Couldn't download the desktop update"
 
@@ -9470,7 +9484,7 @@ msgid "Couldn't start the connection"
 msgstr "Couldn't start the connection"
 
 #. Modal title shown when starting installation of a downloaded desktop update fails.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:117
+#: src/features/updater/commands/UpdaterModalCommands.tsx:121
 msgid "Couldn't start the desktop update"
 msgstr "Couldn't start the desktop update"
 
@@ -10071,6 +10085,11 @@ msgstr "Custom"
 #: src/features/moderation/components/modals/BanMemberModal.tsx:64
 msgid "Custom ban duration (seconds)"
 msgstr "Custom ban duration (seconds)"
+
+#. Channel appearance settings tab label for the raw CSS editing surface. Keep it concise.
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:47
+msgid "Custom CSS"
+msgstr "Custom CSS"
 
 #. Short label in the guild members date range modal. Keep it concise.
 #: src/features/guild/components/modals/guild_tabs/GuildMembersDateRangeModal.tsx:11
@@ -10703,6 +10722,7 @@ msgstr "Defaults to off on mobile to preserve battery life and data usage."
 #: src/features/channel/components/embeds/media/EmbedAudio.tsx:27
 #: src/features/channel/components/embeds/media/MediaContainer.tsx:21
 #: src/features/channel/components/MobileMemesPicker.tsx:86
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:298
 #: src/features/channel/components/pickers/memes/MemeGridItem.tsx:39
 #: src/features/emoji/components/emojis/EmojiListItem.tsx:203
 #: src/features/emoji/components/emojis/EmojiListItem.tsx:215
@@ -10931,7 +10951,10 @@ msgstr "Delete their messages from the last 24 hours"
 msgid "Delete their messages from the last 7 days"
 msgstr "Delete their messages from the last 7 days"
 
+#. Button label in the channel appearance tab that deletes the loaded named theme.
 #. Button or menu action label in the theme studio library section. Keep it concise. Keep the tone plain and specific.
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:59
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:412
 #: src/features/theme_studio/sections/LibrarySection.tsx:59
 msgid "Delete theme"
 msgstr "Delete theme"
@@ -11007,6 +11030,10 @@ msgstr "Deleted your messages."
 #: src/features/user/components/modals/tabs/component_gallery_tab/ComponentGalleryTabButtonsTab.tsx:120
 msgid "Deleted."
 msgstr "Deleted."
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:297
+msgid "Deleting this theme cannot be undone."
+msgstr "Deleting this theme cannot be undone."
 
 #. Label in the typography tab.
 #: src/features/user/components/modals/tabs/component_gallery_tab/TypographyTab.tsx:14
@@ -11189,12 +11216,12 @@ msgid "Desktop update available. Choose a Linux package."
 msgstr "Desktop update available. Choose a Linux package."
 
 #. Modal title shown when a desktop app update has finished downloading.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:83
+#: src/features/updater/commands/UpdaterModalCommands.tsx:87
 msgid "Desktop update ready"
 msgstr "Desktop update ready"
 
 #. Desktop updater modal body. The version placeholder is the downloaded app version; productName is the app name.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:87
+#: src/features/updater/commands/UpdaterModalCommands.tsx:91
 msgid "Desktop version {version} has been downloaded. Restart {productName} to finish installing."
 msgstr "Desktop version {version} has been downloaded. Restart {productName} to finish installing."
 
@@ -12461,7 +12488,7 @@ msgstr "Edit attachment"
 #. Action that opens the edit-category modal.
 #. Action that opens the edit-category modal.
 #. Tooltip and accessible label for the category settings button in the channel list.
-#: src/features/app/components/layout/ChannelItem.tsx:115
+#: src/features/app/components/layout/ChannelItem.tsx:114
 #: src/features/ui/action_menu/items/CategoryMenuData.tsx:85
 #: src/features/ui/action_menu/items/CategoryMenuItems.tsx:62
 msgid "Edit category"
@@ -13929,7 +13956,7 @@ msgstr "Expand unread messages for {channelHeading}"
 
 #. Lowercase screen-reader fragment in the sidebar navigation guild folder item.
 #. Lowercase state label used inside channel-list accessible text for an expanded category.
-#: src/features/app/components/layout/ChannelItem.tsx:99
+#: src/features/app/components/layout/ChannelItem.tsx:98
 #: src/features/app/components/layout/sidebar_nav/GuildFolderItem.tsx:69
 msgid "expanded"
 msgstr "expanded"
@@ -15247,9 +15274,9 @@ msgstr "Forwarded a message"
 msgid "Forwarded from"
 msgstr "Forwarded from"
 
-#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:268
-msgid "Found {resultCount} results in {categoryCount} categories"
-msgstr "Found {resultCount} results in {categoryCount} categories"
+#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:270
+msgid "Found"
+msgstr "Found"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/user/components/settings_utils/section_registry/VoiceVideoSections.ts:229
@@ -17700,7 +17727,7 @@ msgid "Install sticker pack"
 msgstr "Install sticker pack"
 
 #. Label for the installed desktop version in the Linux update modal.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:132
+#: src/features/updater/commands/UpdaterModalCommands.tsx:136
 msgid "Installed"
 msgstr "Installed"
 
@@ -17966,8 +17993,6 @@ msgstr "Invite masking"
 
 #. Action label that opens the invite flow.
 #. Button or menu action label in the guild header popout. Keep it concise.
-#. Tooltip and accessible label for the invite button shown beside a channel in the channel list.
-#: src/features/app/components/layout/ChannelItem.tsx:119
 #: src/features/guild/components/popouts/GuildHeaderPopout.tsx:58
 #: src/features/ui/action_menu/items/GuildMenuData.tsx:92
 msgid "Invite members"
@@ -18083,7 +18108,7 @@ msgid "Invites"
 msgstr "Invites"
 
 #. Channel settings tab for invite management.
-#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:23
+#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:25
 msgctxt "channel-settings-tab"
 msgid "Invites"
 msgstr "Invites"
@@ -19122,7 +19147,7 @@ msgid "Linux default"
 msgstr "Linux default"
 
 #. Select label for choosing the Linux desktop package format to download.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:148
+#: src/features/updater/commands/UpdaterModalCommands.tsx:152
 msgid "Linux package"
 msgstr "Linux package"
 
@@ -19818,6 +19843,14 @@ msgstr "Mass spam, fraud, fake giveaways, or account abuse."
 msgid "Master volume"
 msgstr "Master volume"
 
+#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:150
+msgid "match"
+msgstr "match"
+
+#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:150
+msgid "matches"
+msgstr "matches"
+
 #. Short label in the guild audit log tab.renderers. Keep it concise.
 #: src/features/guild/components/modals/guild_tabs/GuildAuditLogTabRenderers.tsx:46
 msgid "Mature"
@@ -20389,7 +20422,7 @@ msgid "Message character limit"
 msgstr "Message character limit"
 
 #. Short label in the channel chat layout. Keep it concise.
-#: src/features/channel/components/ChannelChatLayout.tsx:21
+#: src/features/channel/components/ChannelChatLayout.tsx:22
 msgid "Message composer"
 msgstr "Message composer"
 
@@ -20580,7 +20613,7 @@ msgstr "Message: {0}."
 #. Short label in the channel chat layout. Keep it concise.
 #. Short label in the inline. Keep it concise.
 #. Short label in the keybinds tab. Keep it concise.
-#: src/features/channel/components/ChannelChatLayout.tsx:17
+#: src/features/channel/components/ChannelChatLayout.tsx:18
 #: src/features/channel/components/direct_message/DirectMessageList.tsx:280
 #: src/features/input/components/modals/KeyboardShortcutsCheatsheetModal.tsx:28
 #: src/features/user/components/modals/tabs/appearance_tab/AppearanceTabInline.tsx:31
@@ -21291,7 +21324,7 @@ msgstr "Mute stream audio"
 #. Lowercase screen-reader fragment in the sidebar navigation guild list item.
 #. Lowercase state label used inside channel-list accessible text when a channel is muted.
 #. Screen-reader fragment announcing that the DM list row is muted. Lowercase fragment.
-#: src/features/app/components/layout/ChannelItem.tsx:107
+#: src/features/app/components/layout/ChannelItem.tsx:106
 #: src/features/app/components/layout/sidebar_nav/GuildListDMItem.tsx:59
 #: src/features/app/components/layout/sidebar_nav/GuildListItem.tsx:96
 #: src/features/channel/components/direct_message/DMListItem.tsx:75
@@ -21741,7 +21774,7 @@ msgstr "New message"
 
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Short label in the app layout channel list content.
-#: src/features/app/components/layout/ChannelListContent.tsx:88
+#: src/features/app/components/layout/ChannelListContent.tsx:89
 #: src/features/user/components/settings_utils/section_registry/AccessibilitySections.ts:147
 msgid "New messages"
 msgstr "New messages"
@@ -21781,7 +21814,7 @@ msgid "New users can't join right now. You can still create an account or sign i
 msgstr "New users can't join right now. You can still create an account or sign in, then try this link again later."
 
 #. Fallback version label when the available desktop version is unknown.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:144
+#: src/features/updater/commands/UpdaterModalCommands.tsx:148
 msgid "New version"
 msgstr "New version"
 
@@ -21915,7 +21948,7 @@ msgstr "No authorized applications"
 
 #. Screen-reader announcement in the desktop quick switcher when no autocomplete suggestion is active.
 #. Screen-reader announcement in the quick switcher when no autocomplete suggestion is active.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:59
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:67
 #: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:39
 msgid "No autocomplete suggestion"
 msgstr "No autocomplete suggestion"
@@ -21941,7 +21974,7 @@ msgstr "No blocked users"
 #. Empty-state text in the saved messages page.
 #: src/features/channel/components/modals/BookmarksBottomSheet.tsx:162
 #: src/features/messaging/components/pages/SavedMessagesPage.tsx:21
-#: src/features/messaging/components/popouts/SavedMessagesContent.tsx:29
+#: src/features/messaging/components/popouts/SavedMessagesContent.tsx:27
 msgid "No bookmarks"
 msgstr "No bookmarks"
 
@@ -22158,7 +22191,7 @@ msgstr "No matches"
 #. Empty state title in the desktop quick switcher when no results match the query.
 #. Empty state title in the quick switcher when no results match the query.
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:47
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:65
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:70
 msgid "No matches found"
 msgstr "No matches found"
 
@@ -22305,6 +22338,10 @@ msgstr "No saved media"
 msgid "No saved payment methods."
 msgstr "No saved payment methods."
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:328
+msgid "No saved themes yet. Write CSS below and use Save theme to create one."
+msgstr "No saved themes yet. Write CSS below and use Save theme to create one."
+
 #. Empty state title in the scheduled messages popout when the user has none scheduled.
 #: src/features/messaging/components/popouts/ScheduledMessagesContent.tsx:18
 msgid "No scheduled messages"
@@ -22320,7 +22357,7 @@ msgstr "No screens or windows were returned by the Linux screen sharing portal. 
 msgid "No search results"
 msgstr "No search results"
 
-#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:250
+#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:251
 #: src/features/app/components/dialogs/components/DesktopSettingsView.tsx:548
 msgid "No settings found"
 msgstr "No settings found"
@@ -22379,6 +22416,11 @@ msgstr "No system channel"
 #: src/features/channel/components/ChannelMessage.tsx:73
 msgid "no text content"
 msgstr "no text content"
+
+#. Channel appearance theme picker option meaning the channel uses the default appearance.
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:420
+msgid "No theme"
+msgstr "No theme"
 
 #. Empty-state text in the theme studio library section.
 #: src/features/theme_studio/sections/LibrarySection.tsx:129
@@ -22699,6 +22741,13 @@ msgstr "OAuth2 URL builder"
 #: src/features/expressions/utils/UnicodeEmojis.ts:41
 msgid "Objects"
 msgstr "Objects"
+
+#. Joins the selected position to the total result count in the desktop quick switcher screen-reader announcement, as "3 of 10".
+#. Joins the selected position to the total result count in the quick switcher screen-reader announcement, as "3 of 10".
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:82
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:60
+msgid "of"
+msgstr "of"
 
 #. Channel overview settings tab label, control, or validation message (name, topic, slowmode, voice region, mature content gate).
 #. Explicit content filter option in the community moderation settings tab. Short standalone label meaning disabled.
@@ -23089,7 +23138,7 @@ msgstr "Open channel details for {channelName}"
 
 #. Context-menu action that opens a voice channel's embedded chat view without connecting to voice.
 #. Tooltip and accessible label for the chat icon shown beside a voice channel in the channel list.
-#: src/features/app/components/layout/ChannelItem.tsx:123
+#: src/features/app/components/layout/ChannelItem.tsx:118
 #: src/features/ui/action_menu/items/ChannelMenuData.tsx:152
 msgid "Open chat"
 msgstr "Open chat"
@@ -23114,7 +23163,7 @@ msgid "Open date picker"
 msgstr "Open date picker"
 
 #. Button label that opens the Fluxer desktop downloads page in a browser.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:79
+#: src/features/updater/commands/UpdaterModalCommands.tsx:83
 msgid "Open desktop downloads"
 msgstr "Open desktop downloads"
 
@@ -23308,6 +23357,11 @@ msgstr "Open quick switcher"
 #: src/features/permissions/system/components/modals/MacPermissionsModal.tsx:75
 msgid "Open settings"
 msgstr "Open settings"
+
+#. Button label that opens the software center via appstream protocol.
+#: src/features/updater/commands/UpdaterModalCommands.tsx:79
+msgid "Open software center"
+msgstr "Open software center"
 
 #. Action that opens the sticker URL in an external browser.
 #: src/features/ui/action_menu/items/StickerContextMenuItems.tsx:40
@@ -23656,7 +23710,7 @@ msgid "Overview"
 msgstr "Overview"
 
 #. Channel settings tab for basic channel details.
-#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:13
+#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:15
 msgctxt "channel-settings-tab"
 msgid "Overview"
 msgstr "Overview"
@@ -23666,6 +23720,14 @@ msgstr "Overview"
 msgctxt "community-settings-tab"
 msgid "Overview"
 msgstr "Overview"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:260
+msgid "Overwrite"
+msgstr "Overwrite"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:255
+msgid "Overwrite this theme with the current CSS, or save it as a new theme? Overwriting updates every channel using it."
+msgstr "Overwrite this theme with the current CSS, or save it as a new theme? Overwriting updates every channel using it."
 
 #: src/features/app/components/dialogs/components/PricingCard.tsx:63
 msgid "Owned"
@@ -24086,7 +24148,7 @@ msgid "Permissions"
 msgstr "Permissions"
 
 #. Channel settings tab for role and member permission overwrites.
-#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:18
+#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:20
 msgctxt "channel-settings-tab"
 msgid "Permissions"
 msgstr "Permissions"
@@ -24185,6 +24247,10 @@ msgstr "Photo"
 #: src/features/search/components/modals/SearchProviderPickerModal.tsx:19
 msgid "Pick a reverse image search provider"
 msgstr "Pick a reverse image search provider"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:323
+msgid "Pick a saved theme, or write CSS below. Changes apply to this channel only."
+msgstr "Pick a saved theme, or write CSS below. Changes apply to this channel only."
 
 #. Description text in the theme studio library section.
 #: src/features/theme_studio/sections/LibrarySection.tsx:133
@@ -25365,27 +25431,27 @@ msgstr "Quick reactions"
 #. Accessible label for the desktop quick switcher modal.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/channel/components/direct_message/DirectMessageList.tsx:484
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:77
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:84
 #: src/features/user/components/settings_utils/search_index/KeybindsIndex.ts:50
 msgid "Quick switcher"
 msgstr "Quick switcher"
 
 #. Accessible label for the desktop quick switcher result listbox.
 #. Accessible label for the quick switcher result listbox.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:106
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:98
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:112
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:105
 msgid "Quick switcher results"
 msgstr "Quick switcher results"
 
 #. Accessible label for the desktop quick switcher search input region.
 #. Accessible label for the quick switcher search input region.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:93
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:85
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:99
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:92
 msgid "Quick switcher search"
 msgstr "Quick switcher search"
 
 #. Accessible label for the tablist in the mobile quick switcher.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:89
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:95
 msgid "Quick switcher tabs"
 msgstr "Quick switcher tabs"
 
@@ -27017,7 +27083,7 @@ msgid "Restart {appName}"
 msgstr "Restart {appName}"
 
 #. Button label that restarts the app to apply a desktop update. productName is the app name.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:96
+#: src/features/updater/commands/UpdaterModalCommands.tsx:100
 msgid "Restart {productName}"
 msgstr "Restart {productName}"
 
@@ -27081,6 +27147,17 @@ msgstr "Resubscribe"
 #: src/features/channel/components/bottomsheets/ChannelSearchBottomSheet.tsx:133
 msgid "results"
 msgstr "results"
+
+#. Screen-reader live region suffix in the desktop quick switcher, joined after the result count as "5 results available".
+#. Screen-reader live region suffix in the quick switcher, joined after the result count as "5 results available".
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:62
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:79
+msgid "results available"
+msgstr "results available"
+
+#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:270
+msgid "results in"
+msgstr "results in"
 
 #: src/features/auth/components/pages/ForgotPasswordPage.tsx:56
 msgid "Return to sign-in"
@@ -27507,6 +27584,7 @@ msgstr "save"
 #: src/features/auth/components/modals/PasskeyNameModal.tsx:87
 #: src/features/cast/components/ManageCastCharactersModal.tsx:250
 #: src/features/cast/components/modals/CastEditOverrideModal.tsx:45
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:118
 #: src/features/channel/components/modals/EditGroupBottomSheet.tsx:366
 #: src/features/channel/components/modals/EditGroupModal.tsx:322
 #: src/features/channel/components/modals/RenameChannelModal.tsx:28
@@ -27538,10 +27616,18 @@ msgstr "Save"
 msgid "Save 17%"
 msgstr "Save 17%"
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:391
+msgid "Save and apply"
+msgstr "Save and apply"
+
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:75
 msgid "Save animation"
 msgstr "Save animation"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:269
+msgid "Save as new"
+msgstr "Save as new"
 
 #. Primary button label in the avatar crop modal.
 #: src/features/expressions/components/modals/AssetCropModal.tsx:103
@@ -27578,6 +27664,10 @@ msgstr "Save GIF favorites as saved media"
 msgid "Save icon"
 msgstr "Save icon"
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:344
+msgid "Save or revert your changes before loading another theme."
+msgstr "Save or revert your changes before loading another theme."
+
 #. Button or menu action label in the channel and chat memes picker view. Keep it concise.
 #. Empty state body in the mobile memes picker explaining how to save media. Tone can be friendly.
 #: src/features/channel/components/MobileMemesPicker.tsx:60
@@ -27585,6 +27675,9 @@ msgstr "Save icon"
 msgid "Save some media from messages to get started!"
 msgstr "Save some media from messages to get started!"
 
+#. Button label in the channel appearance tab that stores the current CSS as a named theme.
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:55
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:394
 #: src/features/theme_studio/sections/LibrarySection.tsx:574
 msgid "Save theme"
 msgstr "Save theme"
@@ -28024,7 +28117,7 @@ msgstr "Search for anything..."
 #. Placeholder text in the desktop quick switcher search input.
 #. Placeholder text in the mobile quick switcher search input.
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:39
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:81
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:88
 msgid "Search for channels, people, or communities"
 msgstr "Search for channels, people, or communities"
 
@@ -28206,7 +28299,7 @@ msgstr "Searching"
 #. Loading state in the desktop quick switcher while fetching people results. Trailing ellipsis is intentional.
 #. Loading state shown while the quick switcher fetches matching people. Trailing ellipsis is intentional.
 #: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:43
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:60
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:65
 msgid "Searching people..."
 msgstr "Searching people..."
 
@@ -28481,7 +28574,7 @@ msgstr "Selectable text"
 #. Lowercase screen-reader fragment in the sidebar navigation guild list item.
 #. Lowercase state label used inside channel-list accessible text for the selected channel.
 #. Screen-reader suffix announcing that the DM list row is the active selection. Lowercase fragment.
-#: src/features/app/components/layout/ChannelItem.tsx:91
+#: src/features/app/components/layout/ChannelItem.tsx:90
 #: src/features/app/components/layout/sidebar_nav/GuildListDMItem.tsx:51
 #: src/features/app/components/layout/sidebar_nav/GuildListItem.tsx:84
 #: src/features/channel/components/direct_message/DMListItem.tsx:67
@@ -31001,9 +31094,9 @@ msgstr "Start over"
 msgid "Start recording"
 msgstr "Start recording"
 
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:610
-msgid "Start searches with <0>{peoplePrefix}</0> <1>{textChannelPrefix}</1> <2>{voiceChannelPrefix}</2> <3>{communityPrefix}</3> to narrow down results."
-msgstr "Start searches with <0>{peoplePrefix}</0> <1>{textChannelPrefix}</1> <2>{voiceChannelPrefix}</2> <3>{communityPrefix}</3> to narrow down results."
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:623
+msgid "Start searches with"
+msgstr "Start searches with"
 
 #. Settings search entry description. One-line summary of what the settings search entry controls.
 #: src/features/user/components/settings_utils/search_index/ChatSettingsIndex.ts:151
@@ -32297,7 +32390,7 @@ msgstr "That message is gone, or you lost access to the conversation."
 #. End-of-list line in the saved messages popout after every bookmark has been shown.
 #. End-of-list line on the saved messages page after every bookmark has been shown.
 #: src/features/messaging/components/pages/SavedMessagesPage.tsx:29
-#: src/features/messaging/components/popouts/SavedMessagesContent.tsx:41
+#: src/features/messaging/components/popouts/SavedMessagesContent.tsx:39
 msgid "That's all of them."
 msgstr "That's all of them."
 
@@ -32346,17 +32439,17 @@ msgid "The community you're looking for may have been deleted or you may not hav
 msgstr "The community you're looking for may have been deleted or you may not have access to it."
 
 #. Modal body shown when a desktop update download fails.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:112
+#: src/features/updater/commands/UpdaterModalCommands.tsx:116
 msgid "The desktop update could not be downloaded. Try again from the update button when your connection is stable."
 msgstr "The desktop update could not be downloaded. Try again from the update button when your connection is stable."
 
 #. Desktop updater modal body when the downloaded version is unknown. productName is the app name.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:92
+#: src/features/updater/commands/UpdaterModalCommands.tsx:96
 msgid "The desktop update has been downloaded. Restart {productName} to finish installing."
 msgstr "The desktop update has been downloaded. Restart {productName} to finish installing."
 
 #. Help text below the Linux package format selector in the desktop updater modal.
-#: src/features/updater/commands/UpdaterModalCommands.tsx:152
+#: src/features/updater/commands/UpdaterModalCommands.tsx:156
 msgid "The downloaded file is saved to your computer. Install it with your normal package manager."
 msgstr "The downloaded file is saved to your computer. Install it with your normal package manager."
 
@@ -32457,10 +32550,12 @@ msgctxt "screen-share"
 msgid "The window or display you were sharing is no longer available, so your screen share was stopped."
 msgstr "The window or display you were sharing is no longer available, so your screen share was stopped."
 
+#. Channel appearance settings tab label for the saved theme picker. Keep it concise.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #. Short label in the appearance tab. Keep it concise.
 #. Short label in the inline. Keep it concise.
 #. Short label in the theme tab content. Keep it concise.
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:43
 #: src/features/user/components/modals/tabs/appearance_tab/AppearanceTabInline.tsx:23
 #: src/features/user/components/modals/tabs/appearance_tab/theme/ThemeTabContent.tsx:65
 #: src/features/user/components/modals/tabs/AppearanceTab.tsx:31
@@ -32501,6 +32596,10 @@ msgstr "Theme color"
 msgid "Theme CSS"
 msgstr "Theme CSS"
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:305
+msgid "Theme deleted"
+msgstr "Theme deleted"
+
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
 #: src/features/user/components/settings_utils/section_registry/AppearanceSections.ts:102
 msgid "Theme files"
@@ -32511,10 +32610,19 @@ msgstr "Theme files"
 msgid "Theme library"
 msgstr "Theme library"
 
+#. Label for the text input naming a saved channel theme. Keep it concise.
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:51
+msgid "Theme name"
+msgstr "Theme name"
+
 #: src/features/theme/components/pages/ThemeLoginPage.tsx:175
 #: src/features/theme/components/pages/ThemeRegisterPage.tsx:70
 msgid "Theme not found"
 msgstr "Theme not found"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:218
+msgid "Theme saved"
+msgstr "Theme saved"
 
 #. Short label in the theme studio library section. Keep it concise.
 #: src/features/theme_studio/sections/LibrarySection.tsx:47
@@ -32545,6 +32653,10 @@ msgstr "Theme tokens"
 #: src/features/channel/components/ThemeEmbed.tsx:33
 msgid "Theme unavailable"
 msgstr "Theme unavailable"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:265
+msgid "Theme updated"
+msgstr "Theme updated"
 
 #. Short label in the Discovery page sidebar. Keep it concise.
 #: src/features/discovery/discovery/DiscoverySidebar.tsx:22
@@ -32698,7 +32810,7 @@ msgid "This card does not match your billing country, so it cannot be used for t
 msgstr "This card does not match your billing country, so it cannot be used for this localized currency. Use a local card, choose another payment method, or return to {productName} and switch to the standard price."
 
 #. Modal body shown when a category cannot accept another channel because the per-category limit is reached. Limit is interpolated.
-#: src/features/app/components/layout/ChannelListContent.tsx:69
+#: src/features/app/components/layout/ChannelListContent.tsx:70
 msgid "This category already contains the maximum of {maxChannelsPerCategory} channels."
 msgstr "This category already contains the maximum of {maxChannelsPerCategory} channels."
 
@@ -33291,6 +33403,10 @@ msgstr "This textarea auto-expands between 4 and 12 rows as you type."
 msgid "This theme is no longer available."
 msgstr "This theme is no longer available."
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:350
+msgid "This theme is still applied to other channels and cannot be deleted:"
+msgstr "This theme is still applied to other channels and cannot be deleted:"
+
 #. Description text in the theme accept modal.
 #: src/features/theme/components/modals/ThemeAcceptModal.tsx:26
 msgid "This theme is still loading."
@@ -33629,6 +33745,10 @@ msgstr "Titlebar platform"
 #: src/features/guild/components/modals/guild_tabs/GuildWebhooksTab.tsx:106
 msgid "To create a webhook, open <0>{channelWebhooksSettingsPath}</0>. You can still edit and organize all existing webhooks here."
 msgstr "To create a webhook, open <0>{channelWebhooksSettingsPath}</0>. You can still edit and organize all existing webhooks here."
+
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:656
+msgid "to narrow down results."
+msgstr "to narrow down results."
 
 #: src/features/guild/components/modals/GuildOwnershipWarningModal.tsx:70
 msgid "To transfer ownership, go to {generalSettingsPath} and use the transfer ownership option."
@@ -34010,8 +34130,8 @@ msgstr "Try a different name or clear the search."
 
 #. Empty state hint in the desktop quick switcher describing the @, #, !, and * prefix filters. Keep the literal prefix characters.
 #. Empty state hint in the quick switcher describing the @, #, !, and * prefix filters. Keep the literal prefix characters.
-#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:101
-#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:93
+#: src/features/search/components/bottomsheets/QuickSwitcherBottomSheet.tsx:107
+#: src/features/search/components/quick_switcher/QuickSwitcherModal.tsx:100
 msgid "Try a different name or use @ / # / ! / * prefixes to filter results."
 msgstr "Try a different name or use @ / # / ! / * prefixes to filter results."
 
@@ -34108,7 +34228,7 @@ msgstr "Try editing your message again."
 msgid "TRY gifts are one-time payments. Cards charged in TRY still need to be issued in Türkiye for the purchase to stay eligible."
 msgstr "TRY gifts are one-time payments. Cards charged in TRY still need to be issued in Türkiye for the purchase to stay eligible."
 
-#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:253
+#: src/features/app/components/dialogs/components/AllSettingsRenderer.tsx:254
 msgid "Try searching for something like \"theme\", \"notifications\", or \"privacy\""
 msgstr "Try searching for something like \"theme\", \"notifications\", or \"privacy\""
 
@@ -34688,7 +34808,7 @@ msgstr "Universal fallback. Lowest quality, but it works everywhere."
 #: src/features/i18n/utils/CommonMessageDescriptors.ts:767
 #: src/features/invite/components/InviteListItem.tsx:34
 #: src/features/moderation/components/modals/BanDetailsModal.tsx:114
-#: src/features/updater/commands/UpdaterModalCommands.tsx:140
+#: src/features/updater/commands/UpdaterModalCommands.tsx:144
 msgid "Unknown"
 msgstr "Unknown"
 
@@ -35057,7 +35177,7 @@ msgstr "Unpinned group DM"
 #. Lowercase screen-reader fragment in the sidebar navigation guild list item.
 #. Lowercase state label used inside channel-list accessible text when a channel has unread messages.
 #. Screen-reader fragment announcing that the DM list row has unread messages. Lowercase fragment.
-#: src/features/app/components/layout/ChannelItem.tsx:103
+#: src/features/app/components/layout/ChannelItem.tsx:102
 #: src/features/app/components/layout/sidebar_nav/GuildFolderItem.tsx:82
 #: src/features/app/components/layout/sidebar_nav/GuildListDMItem.tsx:55
 #: src/features/app/components/layout/sidebar_nav/GuildListItem.tsx:92
@@ -35600,6 +35720,10 @@ msgstr "URL pattern must contain {url} placeholder."
 #: src/features/user/components/settings_utils/section_registry/ChatSettingsSections.ts:90
 msgid "URL preview"
 msgstr "URL preview"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:368
+msgid "Use :root selectors. The CSS is scoped to this channel automatically."
+msgstr "Use :root selectors. The CSS is scoped to this channel automatically."
 
 #. Permission description in the role/permission editor. Explains the Mention Everyone permission. The three placeholders render the literal @everyone, @here, and @role mention tokens and must not be translated.
 #: src/features/permissions/utils/PermissionLabelDescriptors.ts:8
@@ -37058,7 +37182,7 @@ msgstr "Voice call. {statusText}."
 
 #. Generic channel-type token used inside a wider delete confirmation string.
 #. Lowercase channel type label used inside channel-list accessible text.
-#: src/features/app/components/layout/ChannelItem.tsx:83
+#: src/features/app/components/layout/ChannelItem.tsx:82
 #: src/features/ui/action_menu/items/ChannelMenuItems.tsx:79
 msgid "voice channel"
 msgstr "voice channel"
@@ -37620,7 +37744,7 @@ msgid "Webhooks"
 msgstr "Webhooks"
 
 #. Channel settings tab for configuring channel webhooks.
-#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:28
+#: src/features/user/components/settings_utils/ChannelSettingsConstants.ts:36
 msgctxt "channel-settings-tab"
 msgid "Webhooks"
 msgstr "Webhooks"
@@ -38952,7 +39076,7 @@ msgstr "You've reached the community limit"
 #: src/features/app/components/shared/ChannelPinsContent.tsx:62
 #: src/features/messaging/components/pages/MessageListPage.tsx:25
 #: src/features/messaging/components/popouts/RecentMentionsContent.tsx:414
-#: src/features/messaging/components/popouts/SavedMessagesContent.tsx:37
+#: src/features/messaging/components/popouts/SavedMessagesContent.tsx:35
 msgid "You've reached the end"
 msgstr "You've reached the end"
 
