@@ -11,8 +11,15 @@ import {
 	SettingsModalSidebarFooter,
 	SettingsModalSidebarItem,
 	SettingsModalSidebarNav,
+	SettingsModalSidebarSubItem,
+	SettingsModalSidebarSubItems,
 } from '@app/features/app/components/dialogs/shared/SettingsModalLayout';
 import {ChannelDeleteModal} from '@app/features/channel/components/modals/ChannelDeleteModal';
+// LOCAL-ONLY: channel theme editor section nav — exclude from upstream sync.
+import {
+	CHANNEL_APPEARANCE_SECTION_IDS,
+	getChannelAppearanceSections,
+} from '@app/features/channel/components/modals/channel_tabs/ChannelAppearanceTab';
 import type {Channel} from '@app/features/channel/models/Channel';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 import styles from '@app/features/guild/components/modals/GuildSettingsModal.module.css';
@@ -32,6 +39,7 @@ import {
 	CHANNEL_SETTINGS_LABEL_DESCRIPTOR,
 } from '@app/features/user/components/settings_utils/ChannelSettingsConstants';
 import {useUnsavedChangesFlash} from '@app/features/user/hooks/useUnsavedChangesFlash';
+import {ScrollSpyProvider, useScrollSpyContext} from '@app/features/user/state/ScrollSpyContext';
 import {ChannelTypes, Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
@@ -39,7 +47,7 @@ import {ArrowLeftIcon, ArrowRightIcon, TrashIcon} from '@phosphor-icons/react';
 import {AnimatePresence, motion} from 'framer-motion';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
-import {useCallback, useMemo, useRef} from 'react';
+import {useCallback, useMemo, useRef, useState} from 'react';
 
 const BACK_TO_OVERRIDES_DESCRIPTOR = msg({
 	message: 'Back to overrides',
@@ -66,6 +74,37 @@ interface DesktopChannelSettingsViewProps {
 	onTabSelect: (tab: ChannelSettingsTabType) => void;
 }
 
+/**
+ * LOCAL-ONLY: scroll targets for the channel theme editor's category groups. Mirrors
+ * DesktopSettingsView's SidebarSections: a child component so it can read the scroll-spy context,
+ * with the active entry driven by activeSectionId. Exclude from upstream sync.
+ */
+const AppearanceSidebarSections: React.FC<{tabId: string}> = observer(({tabId}) => {
+	const scrollSpyContext = useScrollSpyContext();
+	const sections = getChannelAppearanceSections();
+	return (
+		<SettingsModalSidebarSubItems
+			expanded={true}
+			groupId="channel-settings-appearance-sections"
+			labelledBy={tabId}
+			data-flx="app.desktop-channel-settings-view.appearance-sections"
+		>
+			{sections.map((section) => (
+				<SettingsModalSidebarSubItem
+					key={section.id}
+					label={section.label}
+					sectionId={section.id}
+					isActive={scrollSpyContext?.activeSectionId === section.id}
+					onClick={() => scrollSpyContext?.scrollToSection(section.id)}
+					data-flx="app.desktop-channel-settings-view.appearance-section-item"
+				/>
+			))}
+		</SettingsModalSidebarSubItems>
+	);
+});
+
+const EMPTY_SECTION_IDS: ReadonlyArray<string> = [];
+
 const CATEGORY_LABELS = {
 	channel_settings: '',
 };
@@ -75,6 +114,7 @@ export const DesktopChannelSettingsView: React.FC<DesktopChannelSettingsViewProp
 		const {showUnsavedBanner, flashBanner, tabData, checkUnsavedChanges} = useUnsavedChangesFlash(selectedTab);
 		const prefersReducedMotion = Accessibility.useReducedMotion;
 		const contentRef = useRef<HTMLDivElement>(null);
+		const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null);
 		const focusContentPanel = useCallback(() => {
 			contentRef.current?.focus();
 		}, []);
@@ -122,7 +162,11 @@ export const DesktopChannelSettingsView: React.FC<DesktopChannelSettingsViewProp
 			[channel.id, selectedTab],
 		);
 		return (
-			<>
+			<ScrollSpyProvider
+				sectionIds={selectedTab === 'appearance' ? CHANNEL_APPEARANCE_SECTION_IDS : EMPTY_SECTION_IDS}
+				container={scrollContainer}
+				data-flx="app.desktop-channel-settings-view.scroll-spy-provider"
+			>
 				<SettingsModalDesktopSidebar data-flx="app.desktop-channel-settings-view.settings-modal-desktop-sidebar">
 					<div className={styles.sidebarHeader} data-flx="app.desktop-channel-settings-view.sidebar-header">
 						<div className={styles.guildName} data-flx="app.desktop-channel-settings-view.guild-name">
@@ -228,6 +272,12 @@ export const DesktopChannelSettingsView: React.FC<DesktopChannelSettingsViewProp
 													/>
 												);
 											})}
+											{tabs.some((tab) => tab.type === 'appearance') && selectedTab === 'appearance' && (
+												<AppearanceSidebarSections
+													tabId="channel-settings-tab-appearance"
+													data-flx="app.desktop-channel-settings-view.appearance-sidebar-sections"
+												/>
+											)}
 										</SettingsModalSidebarCategory>
 									))}
 									{!useOverride && canManageChannel && (
@@ -275,6 +325,7 @@ export const DesktopChannelSettingsView: React.FC<DesktopChannelSettingsViewProp
 					/>
 					<SettingsModalDesktopScroll
 						scrollKey={scrollKey}
+						scrollerRef={setScrollContainer}
 						data-flx="app.desktop-channel-settings-view.settings-modal-desktop-scroll"
 					>
 						{currentTab && (
@@ -285,7 +336,7 @@ export const DesktopChannelSettingsView: React.FC<DesktopChannelSettingsViewProp
 						)}
 					</SettingsModalDesktopScroll>
 				</SettingsModalDesktopContent>
-			</>
+			</ScrollSpyProvider>
 		);
 	},
 );
