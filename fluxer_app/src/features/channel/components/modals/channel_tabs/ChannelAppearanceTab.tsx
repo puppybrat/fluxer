@@ -3,11 +3,12 @@
  * theme editor shell: a theme library picker, a raw CSS surface, and the four save/apply actions.
  *
  * Structured per-variable controls are generated from theme-editor/variable-manifest.json and sit
- * below the CSS surface, grouped by the manifest's own categories and collapsed by default.
+ * below the CSS surface, grouped by the manifest's own categories, with the settings sidebar
+ * offering each group as a scroll target.
  *
  * The working CSS string is the only state: controls parse it to read and rewrite it to write, so
- * the textarea is authoritative by construction rather than by a precedence rule, and the two stay
- * in step in both directions.
+ * the CSS editor is authoritative by construction rather than by a precedence rule, and the two
+ * stay in step in both directions. The accent picker is a derivation tool over that same string.
  *
  * Do not confuse this with the user-settings Appearance tab (features/user/.../AppearanceTab.tsx),
  * which configures the global app theme and is unrelated to channels.
@@ -31,15 +32,19 @@ import Channels from '@app/features/channel/state/Channels';
 import ChannelThemes from '@app/features/channel/state/ChannelThemes';
 import variableManifest from '@app/features/channel/theme-editor/variable-manifest.json';
 import Theme from '@app/features/theme/state/Theme';
+import QuickCssEditor from '@app/features/theme_studio/sections/QuickCssEditor';
 import {StudioTokenColor, StudioTokenFont, StudioTokenValue} from '@app/features/theme_studio/ui/StudioToken';
+import {getThemeStudioBaseTheme} from '@app/features/theme_studio/utils/ThemeStudioPinnedVariables';
 import {Button} from '@app/features/ui/button/Button';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
 import * as ToastCommands from '@app/features/ui/commands/ToastCommands';
 import * as UnsavedChangesCommands from '@app/features/ui/commands/UnsavedChangesCommands';
+import {ColorPickerField} from '@app/features/ui/components/form/ColorPickerField';
 import {Combobox, type ComboboxOption} from '@app/features/ui/components/form/FormCombobox';
-import {Input, Textarea} from '@app/features/ui/components/form/FormInput';
+import {Input} from '@app/features/ui/components/form/FormInput';
 import type {ThemeVariableKind} from '@app/features/user/components/modals/tabs/appearance_tab/theme/ThemeConstants';
+import type {MessageDescriptor} from '@lingui/core';
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
@@ -69,6 +74,10 @@ const DELETE_THEME_DESCRIPTOR = msg({
 	comment: 'Button label in the channel appearance tab that deletes the loaded named theme.',
 });
 const NO_THEME_VALUE = '';
+const ACCENT_DESCRIPTOR = msg({
+	message: 'Accent colour',
+	comment: 'Label for the picker that re-tints every channel theme colour to one hue. Keep it concise.',
+});
 const ADVANCED_DESCRIPTOR = msg({
 	message: 'Advanced',
 	comment: 'Channel appearance section holding rarely-used theme variables. Keep it concise.',
@@ -101,6 +110,142 @@ const CONTROL_GROUPS = MANIFEST_CATEGORIES.map((category) => ({
 const ADVANCED_VARIABLES = MANIFEST_CATEGORIES.flatMap((category) =>
 	category.variables.filter((variable) => isRenderable(variable) && variable.impact === 'edge-case'),
 );
+
+/**
+ * Descriptions name the surface a group paints rather than restating its title. Only groups whose
+ * effect is genuinely unclear from the heading get one; "Text" and "Buttons" say what they are.
+ */
+const CATEGORY_DESCRIPTIONS: Record<string, MessageDescriptor> = {
+	Surfaces: msg({
+		message: 'Backgrounds behind the chat area, channel sidebar, and server rail.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	'Borders & focus': msg({
+		message: 'Dividers, outlines, corner rounding, and keyboard focus rings.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	Forms: msg({
+		message: 'The message input box and its buttons.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	'Markup & mentions': msg({
+		message: 'Mentions, links, and spoilers inside messages.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	'Code & terminal': msg({
+		message: 'Code blocks inside messages, and their terminal colours.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	'Alerts & callouts': msg({
+		message: 'Markdown callout blocks inside messages.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	'Status indicators': msg({
+		message: 'The presence dot on avatars.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	Tables: msg({
+		message: 'Markdown tables inside messages.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	Scrolling: msg({
+		message: 'Scrollbar colours. Scrollbar size is not themeable.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	Layout: msg({
+		message: 'Widths, heights, and spacing of the server rail, sidebar, and header.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	Motion: msg({
+		message: 'How quickly hover and state changes animate.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	Emoji: msg({
+		message: 'Emoji size inside messages.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+	Messages: msg({
+		message: 'Avatar size, spacing, timestamps, and replies in the message list.',
+		comment: 'Describes which surfaces a channel theme category paints. One short sentence.',
+	}),
+};
+
+/** Section ids in render order, so the settings sidebar can offer them as scroll targets. */
+export const CHANNEL_APPEARANCE_SECTION_IDS: ReadonlyArray<string> = [
+	'channel-theme',
+	'channel-theme-css',
+	'channel-theme-accent',
+	...CONTROL_GROUPS.map((group) => groupSectionId(group.name)),
+	'channel-theme-vars-advanced',
+];
+
+function groupSectionId(categoryName: string): string {
+	return `channel-theme-vars-${categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+/** Category labels paired with their section ids, for the sidebar's sub-item list. */
+export function getChannelAppearanceSections(): Array<{id: string; label: string}> {
+	return CONTROL_GROUPS.map((group) => ({id: groupSectionId(group.name), label: group.name}));
+}
+
+/**
+ * Rewrites a colour's hue while leaving saturation and lightness alone, which is what keeps each
+ * group's internal light/dark relationships intact when the whole palette is re-tinted.
+ *
+ * Works directly on the CSS text rather than parsing to a colour object, because most defaults are
+ * not plain colours: they are `hsl(258, calc(10% * var(--saturation-factor)), 14.15%)` or a
+ * `color-mix()` of two such. Both keep their hue as a bare leading number, so substituting every
+ * `hsl(`/`hsla(` hue in the string handles plain colours, calc-laden ones, and nested mixes alike.
+ *
+ * Skipped deliberately: `transparent` and `currentColor` (no hue to replace), and values that are
+ * only a `var()` reference (the hue lives in whatever they point at, which this pass also rewrites).
+ */
+function withReplacedHue(value: string, hue: number): string | null {
+	const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value.trim());
+	if (hexMatch) {
+		const hsl = hexToHsl(value.trim());
+		return hsl == null ? null : `hsl(${Math.round(hue)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`;
+	}
+	if (/hsla?\(/i.test(value)) {
+		return value.replace(
+			/(hsla?\(\s*)(-?[\d.]+)(deg|rad|turn)?/gi,
+			(_full, prefix: string) => `${prefix}${Math.round(hue)}`,
+		);
+	}
+	return null;
+}
+
+function hexToHsl(hex: string): {s: number; l: number} | null {
+	const normalized = hex.length === 4 ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}` : hex;
+	const int = Number.parseInt(normalized.slice(1), 16);
+	if (Number.isNaN(int)) return null;
+	const r = ((int >> 16) & 255) / 255;
+	const g = ((int >> 8) & 255) / 255;
+	const b = (int & 255) / 255;
+	const max = Math.max(r, g, b);
+	const min = Math.min(r, g, b);
+	const l = (max + min) / 2;
+	const d = max - min;
+	const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+	return {s: s * 100, l: l * 100};
+}
+
+/** Hue of a hex colour, 0-360, or null when it has none (pure greys still return 0). */
+function hexToHue(hex: string): number | null {
+	const int = Number.parseInt(hex.replace('#', ''), 16);
+	if (Number.isNaN(int)) return null;
+	const r = ((int >> 16) & 255) / 255;
+	const g = ((int >> 8) & 255) / 255;
+	const b = (int & 255) / 255;
+	const max = Math.max(r, g, b);
+	const d = max - Math.min(r, g, b);
+	if (d === 0) return 0;
+	let hue: number;
+	if (max === r) hue = ((g - b) / d) % 6;
+	else if (max === g) hue = (b - r) / d + 2;
+	else hue = (r - g) / d + 4;
+	return (hue * 60 + 360) % 360;
+}
 
 /**
  * The working CSS string is the single source of truth; the controls are a projection of it. That is
@@ -257,6 +402,8 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 	// reference a theme — the store knows the active state of channels visited this session, so a
 	// local pre-check could not be trusted to be complete.
 	const [blockedByChannelIds, setBlockedByChannelIds] = useState<Array<string>>([]);
+	// Not a saved variable: only the overrides it writes survive, so it resets with the tab.
+	const [accentColor, setAccentColor] = useState(0x7c3aed);
 
 	const appliedCss = ChannelThemes.getThemeCss(channelId) ?? '';
 	const activeState = ChannelThemes.getChannelState(channelId);
@@ -269,6 +416,34 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 	const handleVariableChange = useCallback((name: string, value: string | null) => {
 		setWorkingCss((current) => upsertDeclaration(current, name, value));
 	}, []);
+	/**
+	 * Derivation tool only: it is not a theme variable and nothing persists it. Its whole effect is
+	 * the individual overrides it writes, which the controls below then show as overridden and remain
+	 * separately editable.
+	 */
+	const handleAccentPick = useCallback(
+		(accent: number) => {
+			setAccentColor(accent);
+			const hue = hexToHue(accent.toString(16).padStart(6, '0'));
+			if (hue == null) return;
+			setWorkingCss((current) => {
+				let next = current;
+				for (const category of MANIFEST_CATEGORIES) {
+					for (const variable of category.variables) {
+						// Colours only. Sizes, fonts and z-indexes have no hue to re-tint.
+						if (variable.excluded === true || variable.inputType !== 'color-picker') continue;
+						const base = isLightTheme ? variable.defaultLight : variable.defaultDark;
+						const tinted = withReplacedHue(base, hue);
+						if (tinted == null) continue;
+						next = upsertDeclaration(next, variable.name, tinted);
+					}
+				}
+				return next;
+			});
+		},
+		[isLightTheme],
+	);
+
 	const renderControl = useCallback(
 		(variable: ManifestVariable) => (
 			<VariableControl
@@ -513,36 +688,46 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 				description={<Trans>Use :root selectors. The CSS is scoped to this channel automatically.</Trans>}
 				data-flx="channel.channel-appearance-tab.css-section"
 			>
-				<Textarea
-					label={i18n._(CUSTOM_CSS_DESCRIPTOR)}
+				<QuickCssEditor
+					ariaLabel={i18n._(CUSTOM_CSS_DESCRIPTOR)}
+					baseTheme={getThemeStudioBaseTheme(Theme.effectiveTheme)}
 					value={workingCss}
-					onChange={(event) => setWorkingCss(event.target.value)}
-					minRows={14}
-					maxRows={32}
-					spellCheck={false}
-					// These two variables between them paint every surface a theme is judged by, which is why
-					// the example sets both: --background-secondary carries the server rail and the channel
-					// sidebar (GuildsLayout.module.css, GuildNavbar.module.css), --background-secondary-lighter
-					// the channel header and the chat area (ChannelHeader.module.css,
-					// ChannelChatLayout.module.css). Setting only one retheme's half the window and reads as
-					// the feature being broken rather than the example being partial — which is exactly how
-					// it has been reported twice. --background-primary is deliberately absent: inside a
-					// channel it is read only by pickers and popouts, so it looks like it does nothing.
-					// The lighter value stays lighter, preserving the surface hierarchy the defaults have.
-					placeholder=":root {&#10;  --background-secondary: #1e1430;&#10;  --background-secondary-lighter: #271a3d;&#10;}"
-					className={styles.cssTextarea}
-					data-flx="channel.channel-appearance-tab.css-textarea"
+					onChange={setWorkingCss}
+					className={styles.cssEditor}
+					data-flx="channel.channel-appearance-tab.css-editor"
 				/>
 			</SettingsSection>
 
-			{/* One collapsed group per manifest category. Collapsed by default: there are a few hundred
+			<SettingsSection
+				id="channel-theme-accent"
+				title={i18n._(ACCENT_DESCRIPTOR)}
+				description={
+					<Trans>
+						Re-tints every colour below to this hue, keeping each one's own lightness. Adjust any of them afterwards.
+					</Trans>
+				}
+				data-flx="channel.channel-appearance-tab.accent-section"
+			>
+				<ColorPickerField
+					label={i18n._(ACCENT_DESCRIPTOR)}
+					value={accentColor}
+					onChange={handleAccentPick}
+					data-flx="channel.channel-appearance-tab.accent-picker"
+				/>
+			</SettingsSection>
+
+			{/* One group per manifest category. Collapsed by default: there are a few hundred
 			    controls in total, and an all-expanded tab would bury the CSS surface above it. */}
 			{CONTROL_GROUPS.map((group) => (
 				<SettingsSection
 					key={group.name}
-					id={`channel-theme-vars-${group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+					id={groupSectionId(group.name)}
 					title={group.name}
-					defaultExpanded={false}
+					description={
+						CATEGORY_DESCRIPTIONS[group.name]
+							? i18n._(CATEGORY_DESCRIPTIONS[group.name] as MessageDescriptor)
+							: undefined
+					}
 					data-flx="channel.channel-appearance-tab.variable-group"
 				>
 					<div className={styles.controlGroup} data-flx="channel.channel-appearance-tab.control-group">

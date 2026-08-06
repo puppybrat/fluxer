@@ -34,15 +34,14 @@
 	list-style: disc;
 }
 
-/* Monospace and no wrapping: this is CSS source, and a wrapped selector is harder to scan. */
-.cssTextarea {
+/* CodeMirror supplies the typography and highlighting; this frames it as a settings input. */
+.cssEditor {
 	min-height: 16rem;
-	font-family: var(--font-mono);
-	font-size: var(--font-size-xs);
-	line-height: 1.5;
-	white-space: pre;
-	overflow-wrap: normal;
-	overflow-x: auto;
+	max-height: 28rem;
+	overflow: auto;
+	border: 0.0625rem solid var(--border-color);
+	border-radius: var(--radius-md);
+	background-color: var(--background-secondary);
 }
 
 .actionBar {
