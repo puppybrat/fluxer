@@ -13,6 +13,7 @@ import {
 	SettingsModalSidebarNav,
 	SettingsModalSidebarSubItem,
 	SettingsModalSidebarSubItems,
+	SettingsTreeProvider,
 } from '@app/features/app/components/dialogs/shared/SettingsModalLayout';
 import {ChannelDeleteModal} from '@app/features/channel/components/modals/ChannelDeleteModal';
 // LOCAL-ONLY: channel theme editor section nav — exclude from upstream sync.
@@ -46,8 +47,7 @@ import {useLingui} from '@lingui/react/macro';
 import {ArrowLeftIcon, ArrowRightIcon, TrashIcon} from '@phosphor-icons/react';
 import {AnimatePresence, motion} from 'framer-motion';
 import {observer} from 'mobx-react-lite';
-import type React from 'react';
-import {useCallback, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
 
 const BACK_TO_OVERRIDES_DESCRIPTOR = msg({
 	message: 'Back to overrides',
@@ -79,13 +79,13 @@ interface DesktopChannelSettingsViewProps {
  * DesktopSettingsView's SidebarSections: a child component so it can read the scroll-spy context,
  * with the active entry driven by activeSectionId. Exclude from upstream sync.
  */
-const AppearanceSidebarSections: React.FC<{tabId: string}> = observer(({tabId}) => {
+const AppearanceSidebarSections: React.FC<{tabId: string; expanded: boolean}> = observer(({tabId, expanded}) => {
 	const scrollSpyContext = useScrollSpyContext();
 	const sections = getChannelAppearanceSections();
 	return (
 		<SettingsModalSidebarSubItems
-			expanded={true}
-			groupId="channel-settings-appearance-sections"
+			expanded={expanded}
+			groupId={APPEARANCE_SECTIONS_GROUP_ID}
 			labelledBy={tabId}
 			data-flx="app.desktop-channel-settings-view.appearance-sections"
 		>
@@ -104,6 +104,7 @@ const AppearanceSidebarSections: React.FC<{tabId: string}> = observer(({tabId}) 
 });
 
 const EMPTY_SECTION_IDS: ReadonlyArray<string> = [];
+const APPEARANCE_SECTIONS_GROUP_ID = 'channel-settings-appearance-sections';
 
 const CATEGORY_LABELS = {
 	channel_settings: '',
@@ -115,6 +116,17 @@ export const DesktopChannelSettingsView: React.FC<DesktopChannelSettingsViewProp
 		const prefersReducedMotion = Accessibility.useReducedMotion;
 		const contentRef = useRef<HTMLDivElement>(null);
 		const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null);
+		// Drives the sidebar chevron. Only the appearance tab is expandable, so one id is enough.
+		const [expandedTab, setExpandedTab] = useState<ChannelSettingsTabType | null>(null);
+		const treeApi = useMemo(
+			() => ({
+				isExpanded: (id: string) => expandedTab === id,
+				expand: (id: string) => setExpandedTab(id as ChannelSettingsTabType),
+				collapse: () => setExpandedTab(null),
+				toggle: (id: string) => setExpandedTab((current) => (current === id ? null : (id as ChannelSettingsTabType))),
+			}),
+			[expandedTab],
+		);
 		const focusContentPanel = useCallback(() => {
 			contentRef.current?.focus();
 		}, []);
@@ -167,145 +179,157 @@ export const DesktopChannelSettingsView: React.FC<DesktopChannelSettingsViewProp
 				container={scrollContainer}
 				data-flx="app.desktop-channel-settings-view.scroll-spy-provider"
 			>
-				<SettingsModalDesktopSidebar data-flx="app.desktop-channel-settings-view.settings-modal-desktop-sidebar">
-					<div className={styles.sidebarHeader} data-flx="app.desktop-channel-settings-view.sidebar-header">
-						<div className={styles.guildName} data-flx="app.desktop-channel-settings-view.guild-name">
-							<span
-								className={styles.channelNameWithIcon}
-								data-flx="app.desktop-channel-settings-view.channel-name-with-icon"
-							>
-								{ChannelUtils.getIcon(channel, {className: styles.channelNameIcon, weight: 'bold'})}
-								<span className={styles.channelNameText} data-flx="app.desktop-channel-settings-view.channel-name">
-									{channel.name}
+				<SettingsTreeProvider value={treeApi} data-flx="app.desktop-channel-settings-view.settings-tree-provider">
+					<SettingsModalDesktopSidebar data-flx="app.desktop-channel-settings-view.settings-modal-desktop-sidebar">
+						<div className={styles.sidebarHeader} data-flx="app.desktop-channel-settings-view.sidebar-header">
+							<div className={styles.guildName} data-flx="app.desktop-channel-settings-view.guild-name">
+								<span
+									className={styles.channelNameWithIcon}
+									data-flx="app.desktop-channel-settings-view.channel-name-with-icon"
+								>
+									{ChannelUtils.getIcon(channel, {className: styles.channelNameIcon, weight: 'bold'})}
+									<span className={styles.channelNameText} data-flx="app.desktop-channel-settings-view.channel-name">
+										{channel.name}
+									</span>
 								</span>
-							</span>
+							</div>
 						</div>
-					</div>
-					<SettingsModalSidebarNav data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-nav">
-						<AnimatePresence mode="wait" initial={false} data-flx="app.desktop-channel-settings-view.animate-presence">
-							{SettingsSidebar.hasOverride && useOverride ? (
-								<motion.div
-									key="custom"
-									initial={prefersReducedMotion ? {opacity: 1} : {opacity: 0}}
-									animate={{opacity: 1}}
-									exit={prefersReducedMotion ? {opacity: 1} : {opacity: 0}}
-									transition={prefersReducedMotion ? {duration: 0} : {duration: 0.2, ease: 'easeOut'}}
-									data-flx="app.desktop-channel-settings-view.div"
-								>
-									<div
-										className={styles.sidebarButtonWrapper}
-										data-flx="app.desktop-channel-settings-view.sidebar-button-wrapper"
-									>
-										<Button
-											variant="secondary"
-											leftIcon={
-												<ArrowLeftIcon
-													className={styles.sidebarButtonIcon}
-													data-flx="app.desktop-channel-settings-view.sidebar-button-icon"
-												/>
-											}
-											onClick={() => SettingsSidebar.dismissOverride()}
-											data-flx="app.desktop-channel-settings-view.button.dismiss-override"
-										>
-											{i18n._(BACK_TO_SETTINGS_DESCRIPTOR)}
-										</Button>
-									</div>
-									{SettingsSidebar.overrideContent}
-								</motion.div>
-							) : (
-								<motion.div
-									key="global"
-									initial={prefersReducedMotion ? {opacity: 1} : {opacity: 0}}
-									animate={{opacity: 1}}
-									exit={prefersReducedMotion ? {opacity: 1} : {opacity: 0}}
-									transition={prefersReducedMotion ? {duration: 0} : {duration: 0.2, ease: 'easeOut'}}
-									data-flx="app.desktop-channel-settings-view.div--2"
-								>
-									{SettingsSidebar.hasOverride &&
-										SettingsSidebar.ownerId === channelPermissionsOverrideOwnerId &&
-										!SettingsSidebar.isDismissed(channelPermissionsOverrideOwnerId) && (
-											<div
-												className={styles.sidebarButtonWrapper}
-												data-flx="app.desktop-channel-settings-view.sidebar-button-wrapper--2"
-											>
-												<Button
-													variant="secondary"
-													rightIcon={
-														<ArrowRightIcon
-															className={styles.sidebarButtonIcon}
-															data-flx="app.desktop-channel-settings-view.sidebar-button-icon--2"
-														/>
-													}
-													onClick={() => SettingsSidebar.activateOverride(channelPermissionsOverrideOwnerId)}
-													data-flx="app.desktop-channel-settings-view.button.activate-override"
-												>
-													{i18n._(BACK_TO_OVERRIDES_DESCRIPTOR)}
-												</Button>
-											</div>
-										)}
-									{Object.entries(groupedSettingsTabs).map(([category, tabs]) => (
-										<SettingsModalSidebarCategory
-											key={category}
-											data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-category"
-										>
-											{category !== 'channel_settings' && (
-												<SettingsModalSidebarCategoryTitle data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-category-title">
-													{CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS]}
-												</SettingsModalSidebarCategoryTitle>
-											)}
-											{tabs.map((tab) => {
-												const tabId = `channel-settings-tab-${tab.type}`;
-												const panelId = `channel-settings-tabpanel-${tab.type}`;
-												const requiresExplicitKeyboardActivation = tab.type === 'permissions';
-												return (
-													<SettingsModalSidebarItem
-														key={tab.type}
-														icon={tab.icon}
-														label={tab.label}
-														selected={tab.type === selectedTab}
-														autoSelectOnKeyboardNavigation={!requiresExplicitKeyboardActivation}
-														onClick={() => handleTabSelect(tab.type)}
-														onRequestContentFocus={focusContentPanel}
-														id={tabId}
-														controlsId={panelId}
-														data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-item.tab-select"
-													/>
-												);
-											})}
-											{tabs.some((tab) => tab.type === 'appearance') && selectedTab === 'appearance' && (
-												<AppearanceSidebarSections
-													tabId="channel-settings-tab-appearance"
-													data-flx="app.desktop-channel-settings-view.appearance-sidebar-sections"
-												/>
-											)}
-										</SettingsModalSidebarCategory>
-									))}
-									{!useOverride && canManageChannel && (
-										<SettingsModalSidebarItem
-											icon={TrashIcon}
-											label={isCategory ? i18n._(DELETE_CATEGORY_DESCRIPTOR) : i18n._(DELETE_CHANNEL_DESCRIPTOR)}
-											danger={true}
-											onClick={handleDeleteChannel}
-											data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-item.delete-channel"
-										/>
-									)}
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</SettingsModalSidebarNav>
-					{selectedTab === 'permissions' && canManageGuild && channel.guildId && SettingsSidebar.useOverride && (
-						<SettingsModalSidebarFooter data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-footer">
-							<Button
-								variant="secondary"
-								small={true}
-								onClick={() => openMessageHistoryThresholdSettings(channel.guildId!)}
-								data-flx="app.desktop-channel-settings-view.button.open-message-history-threshold-settings"
+						<SettingsModalSidebarNav data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-nav">
+							<AnimatePresence
+								mode="wait"
+								initial={false}
+								data-flx="app.desktop-channel-settings-view.animate-presence"
 							>
-								{i18n._(MESSAGE_HISTORY_THRESHOLD_DESCRIPTOR)}
-							</Button>
-						</SettingsModalSidebarFooter>
-					)}
-				</SettingsModalDesktopSidebar>
+								{SettingsSidebar.hasOverride && useOverride ? (
+									<motion.div
+										key="custom"
+										initial={prefersReducedMotion ? {opacity: 1} : {opacity: 0}}
+										animate={{opacity: 1}}
+										exit={prefersReducedMotion ? {opacity: 1} : {opacity: 0}}
+										transition={prefersReducedMotion ? {duration: 0} : {duration: 0.2, ease: 'easeOut'}}
+										data-flx="app.desktop-channel-settings-view.div"
+									>
+										<div
+											className={styles.sidebarButtonWrapper}
+											data-flx="app.desktop-channel-settings-view.sidebar-button-wrapper"
+										>
+											<Button
+												variant="secondary"
+												leftIcon={
+													<ArrowLeftIcon
+														className={styles.sidebarButtonIcon}
+														data-flx="app.desktop-channel-settings-view.sidebar-button-icon"
+													/>
+												}
+												onClick={() => SettingsSidebar.dismissOverride()}
+												data-flx="app.desktop-channel-settings-view.button.dismiss-override"
+											>
+												{i18n._(BACK_TO_SETTINGS_DESCRIPTOR)}
+											</Button>
+										</div>
+										{SettingsSidebar.overrideContent}
+									</motion.div>
+								) : (
+									<motion.div
+										key="global"
+										initial={prefersReducedMotion ? {opacity: 1} : {opacity: 0}}
+										animate={{opacity: 1}}
+										exit={prefersReducedMotion ? {opacity: 1} : {opacity: 0}}
+										transition={prefersReducedMotion ? {duration: 0} : {duration: 0.2, ease: 'easeOut'}}
+										data-flx="app.desktop-channel-settings-view.div--2"
+									>
+										{SettingsSidebar.hasOverride &&
+											SettingsSidebar.ownerId === channelPermissionsOverrideOwnerId &&
+											!SettingsSidebar.isDismissed(channelPermissionsOverrideOwnerId) && (
+												<div
+													className={styles.sidebarButtonWrapper}
+													data-flx="app.desktop-channel-settings-view.sidebar-button-wrapper--2"
+												>
+													<Button
+														variant="secondary"
+														rightIcon={
+															<ArrowRightIcon
+																className={styles.sidebarButtonIcon}
+																data-flx="app.desktop-channel-settings-view.sidebar-button-icon--2"
+															/>
+														}
+														onClick={() => SettingsSidebar.activateOverride(channelPermissionsOverrideOwnerId)}
+														data-flx="app.desktop-channel-settings-view.button.activate-override"
+													>
+														{i18n._(BACK_TO_OVERRIDES_DESCRIPTOR)}
+													</Button>
+												</div>
+											)}
+										{Object.entries(groupedSettingsTabs).map(([category, tabs]) => (
+											<SettingsModalSidebarCategory
+												key={category}
+												data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-category"
+											>
+												{category !== 'channel_settings' && (
+													<SettingsModalSidebarCategoryTitle data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-category-title">
+														{CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS]}
+													</SettingsModalSidebarCategoryTitle>
+												)}
+												{tabs.map((tab) => {
+													const tabId = `channel-settings-tab-${tab.type}`;
+													const panelId = `channel-settings-tabpanel-${tab.type}`;
+													const requiresExplicitKeyboardActivation = tab.type === 'permissions';
+													// Only the appearance tab has sections to expand into.
+													const hasTabSections = tab.type === 'appearance';
+													return (
+														<React.Fragment key={tab.type}>
+															<SettingsModalSidebarItem
+																icon={tab.icon}
+																label={tab.label}
+																selected={tab.type === selectedTab}
+																autoSelectOnKeyboardNavigation={!requiresExplicitKeyboardActivation}
+																onClick={() => handleTabSelect(tab.type)}
+																onRequestContentFocus={focusContentPanel}
+																id={tabId}
+																controlsId={panelId}
+																expandableId={hasTabSections ? tab.type : undefined}
+																sectionsGroupId={hasTabSections ? APPEARANCE_SECTIONS_GROUP_ID : undefined}
+																data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-item.tab-select"
+															/>
+															{hasTabSections && (
+																<AppearanceSidebarSections
+																	tabId={tabId}
+																	expanded={expandedTab === tab.type}
+																	data-flx="app.desktop-channel-settings-view.appearance-sidebar-sections"
+																/>
+															)}
+														</React.Fragment>
+													);
+												})}
+											</SettingsModalSidebarCategory>
+										))}
+										{!useOverride && canManageChannel && (
+											<SettingsModalSidebarItem
+												icon={TrashIcon}
+												label={isCategory ? i18n._(DELETE_CATEGORY_DESCRIPTOR) : i18n._(DELETE_CHANNEL_DESCRIPTOR)}
+												danger={true}
+												onClick={handleDeleteChannel}
+												data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-item.delete-channel"
+											/>
+										)}
+									</motion.div>
+								)}
+							</AnimatePresence>
+						</SettingsModalSidebarNav>
+						{selectedTab === 'permissions' && canManageGuild && channel.guildId && SettingsSidebar.useOverride && (
+							<SettingsModalSidebarFooter data-flx="app.desktop-channel-settings-view.settings-modal-sidebar-footer">
+								<Button
+									variant="secondary"
+									small={true}
+									onClick={() => openMessageHistoryThresholdSettings(channel.guildId!)}
+									data-flx="app.desktop-channel-settings-view.button.open-message-history-threshold-settings"
+								>
+									{i18n._(MESSAGE_HISTORY_THRESHOLD_DESCRIPTOR)}
+								</Button>
+							</SettingsModalSidebarFooter>
+						)}
+					</SettingsModalDesktopSidebar>
+				</SettingsTreeProvider>
 				<SettingsModalDesktopContent
 					ref={contentRef}
 					tabpanelId={activeTabPanelId}
