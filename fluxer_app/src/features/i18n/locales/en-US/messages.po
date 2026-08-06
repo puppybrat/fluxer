@@ -2842,7 +2842,7 @@ msgstr "Admins paused invites — you can't join right now."
 #. Disclosure button label in the voice connection status popout. Reveals technical bandwidth and network stats.
 #. User settings tab for power-user and experimental application preferences.
 #. Voice participant context menu submenu label for IDs and diagnostics.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:81
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:85
 #: src/features/channel/components/modals/channel_tabs/ChannelOverviewTab.tsx:613
 #: src/features/guild/components/modals/guild_tabs/guild_overview_tab/index.tsx:28
 #: src/features/ui/action_menu/items/VoiceParticipantMenuData.tsx:178
@@ -4691,7 +4691,7 @@ msgid "Avatar mode selection"
 msgstr "Avatar mode selection"
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:167
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:171
 msgid "Avatar size, spacing, timestamps, and replies in the message list."
 msgstr "Avatar size, spacing, timestamps, and replies in the message list."
 
@@ -4861,7 +4861,7 @@ msgid "Background selection area with drag and drop support"
 msgstr "Background selection area with drag and drop support"
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:119
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:123
 msgid "Backgrounds behind the chat area, channel sidebar, and server rail."
 msgstr "Backgrounds behind the chat area, channel sidebar, and server rail."
 
@@ -5462,7 +5462,9 @@ msgstr "Branding"
 msgid "Branding asset preview"
 msgstr "Branding asset preview"
 
+#. Label for the slider that lightens or darkens accent-derived colours. Keep it concise.
 #. Settings search synonym. Used to match this term when the user types it in the settings search bar.
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:81
 #: src/features/user/components/settings_utils/section_registry/AppearanceSections.ts:150
 msgid "Brightness"
 msgstr "Brightness"
@@ -5840,7 +5842,7 @@ msgstr "Canary tester CTA nagbar"
 #: src/features/auth/flow/BrowserLoginHandoffModal.tsx:244
 #: src/features/channel/components/bottomsheets/CreateDMBottomSheet.tsx:137
 #: src/features/channel/components/MentionEveryonePopout.tsx:172
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:379
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:399
 #: src/features/channel/components/modals/ChannelDeleteModal.tsx:53
 #: src/features/channel/components/modals/CreateDMModal.tsx:92
 #: src/features/connection/components/modals/AddConnectionModal.tsx:373
@@ -6583,11 +6585,11 @@ msgstr "Channel settings"
 msgid "Channel synced with parent category"
 msgstr "Channel synced with parent category"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:489
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:537
 msgid "Channel theme applied"
 msgstr "Channel theme applied"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:604
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:657
 msgid "Channel theme cleared"
 msgstr "Channel theme cleared"
 
@@ -7242,7 +7244,7 @@ msgstr "Clear all token overrides"
 msgid "Clear attachment mocks"
 msgstr "Clear attachment mocks"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:772
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:850
 msgid "Clear channel theme"
 msgstr "Clear channel theme"
 
@@ -7653,7 +7655,7 @@ msgid "Code blocks"
 msgstr "Code blocks"
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:135
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:139
 msgid "Code blocks inside messages, and their terminal colours."
 msgstr "Code blocks inside messages, and their terminal colours."
 
@@ -9039,11 +9041,11 @@ msgstr "Copying image..."
 msgid "Corrupted installation nagbar"
 msgstr "Corrupted installation nagbar"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:491
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:539
 msgid "Could not apply the channel theme"
 msgstr "Could not apply the channel theme"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:606
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:659
 msgid "Could not clear the channel theme"
 msgstr "Could not clear the channel theme"
 
@@ -9071,7 +9073,7 @@ msgstr "Could not load the instance configuration. Try reloading the page."
 msgid "Could not load this page"
 msgstr "Could not load this page"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:540
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:593
 msgid "Could not save the theme"
 msgstr "Could not save the theme"
 
@@ -9080,7 +9082,7 @@ msgstr "Could not save the theme"
 msgid "Could not start the screen share. The selected source may no longer be available or may have blocked capture. Try sharing your entire screen or monitor instead of a specific window."
 msgstr "Could not start the screen share. The selected source may no longer be available or may have blocked capture. Try sharing your entire screen or monitor instead of a specific window."
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:586
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:639
 msgid "Could not update the theme"
 msgstr "Could not update the theme"
 
@@ -10744,7 +10746,7 @@ msgstr "Defaults to off on mobile to preserve battery life and data usage."
 #: src/features/channel/components/embeds/media/EmbedAudio.tsx:27
 #: src/features/channel/components/embeds/media/MediaContainer.tsx:21
 #: src/features/channel/components/MobileMemesPicker.tsx:86
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:618
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:671
 #: src/features/channel/components/pickers/memes/MemeGridItem.tsx:39
 #: src/features/emoji/components/emojis/EmojiListItem.tsx:203
 #: src/features/emoji/components/emojis/EmojiListItem.tsx:215
@@ -10976,7 +10978,7 @@ msgstr "Delete their messages from the last 7 days"
 #. Button label in the channel appearance tab that deletes the loaded named theme.
 #. Button or menu action label in the theme studio library section. Keep it concise. Keep the tone plain and specific.
 #: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:72
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:781
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:859
 #: src/features/theme_studio/sections/LibrarySection.tsx:59
 msgid "Delete theme"
 msgstr "Delete theme"
@@ -11053,7 +11055,7 @@ msgstr "Deleted your messages."
 msgid "Deleted."
 msgstr "Deleted."
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:617
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:670
 msgid "Deleting this theme cannot be undone."
 msgstr "Deleting this theme cannot be undone."
 
@@ -11924,7 +11926,7 @@ msgid "Distributes malware, credential theft, or harmful files."
 msgstr "Distributes malware, credential theft, or harmful files."
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:123
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:127
 msgid "Dividers, outlines, corner rounding, and keyboard focus rings."
 msgstr "Dividers, outlines, corner rounding, and keyboard focus rings."
 
@@ -13003,7 +13005,7 @@ msgid "Emoji picker"
 msgstr "Emoji picker"
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:163
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:167
 msgid "Emoji size inside messages."
 msgstr "Emoji size inside messages."
 
@@ -16836,7 +16838,7 @@ msgid "How long they stay timed out."
 msgstr "How long they stay timed out."
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:159
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:163
 msgid "How quickly hover and state changes animate."
 msgstr "How quickly hover and state changes animate."
 
@@ -19016,6 +19018,10 @@ msgstr "Light mode"
 msgid "Light theme"
 msgstr "Light theme"
 
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:790
+msgid "Lightens or darkens the accent-derived colours. Hand-edited values are left alone."
+msgstr "Lightens or darkens the accent-derived colours. Hand-edited values are left alone."
+
 #. Singular external-post stat label on a social post embed. Lowercase to appear after the count.
 #: src/features/channel/components/embeds/channel_embed/ChannelEmbedShared.ts:75
 msgid "like"
@@ -19812,12 +19818,12 @@ msgid "Markdown"
 msgstr "Markdown"
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:139
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:143
 msgid "Markdown callout blocks inside messages."
 msgstr "Markdown callout blocks inside messages."
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:147
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:151
 msgid "Markdown tables inside messages."
 msgstr "Markdown tables inside messages."
 
@@ -20394,7 +20400,7 @@ msgid "Mentions only"
 msgstr "Mentions only"
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:131
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:135
 msgid "Mentions, links, and spoilers inside messages."
 msgstr "Mentions, links, and spoilers inside messages."
 
@@ -22390,7 +22396,7 @@ msgstr "No saved media"
 msgid "No saved payment methods."
 msgstr "No saved payment methods."
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:648
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:701
 msgid "No saved themes yet. Write CSS below and use Save theme to create one."
 msgstr "No saved themes yet. Write CSS below and use Save theme to create one."
 
@@ -22470,7 +22476,7 @@ msgid "no text content"
 msgstr "no text content"
 
 #. Channel appearance theme picker option meaning the channel uses the default appearance.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:789
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:867
 msgid "No theme"
 msgstr "No theme"
 
@@ -23773,11 +23779,11 @@ msgctxt "community-settings-tab"
 msgid "Overview"
 msgstr "Overview"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:580
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:633
 msgid "Overwrite"
 msgstr "Overwrite"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:575
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:628
 msgid "Overwrite this theme with the current CSS, or save it as a new theme? Overwriting updates every channel using it."
 msgstr "Overwrite this theme with the current CSS, or save it as a new theme? Overwriting updates every channel using it."
 
@@ -24300,7 +24306,7 @@ msgstr "Photo"
 msgid "Pick a reverse image search provider"
 msgstr "Pick a reverse image search provider"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:643
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:696
 msgid "Pick a saved theme, or write CSS below. Changes apply to this channel only."
 msgstr "Pick a saved theme, or write CSS below. Changes apply to this channel only."
 
@@ -24323,6 +24329,10 @@ msgstr "Pick a translation provider"
 #: src/features/search/components/modals/SearchProviderPickerModal.tsx:27
 msgid "Pick a web search provider"
 msgstr "Pick a web search provider"
+
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:788
+msgid "Pick an accent colour first. Brightness only adjusts colours the accent derived."
+msgstr "Pick an accent colour first. Brightness only adjusts colours the accent derived."
 
 #. Validation hint in the IAR modal when the user tries to advance without picking a radio option.
 #: src/features/moderation/components/report_modal/IARModal.tsx:73
@@ -25553,7 +25563,7 @@ msgctxt "adaptive-screen-share"
 msgid "Raised screen share to {resolution}"
 msgstr "Raised screen share to {resolution}"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:743
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:821
 msgid "Rarely-used variables. Editing these is unlikely to change how the channel looks."
 msgstr "Rarely-used variables. Editing these is unlikely to change how the channel looks."
 
@@ -25586,7 +25596,7 @@ msgstr "Re-enabled {0}."
 msgid "Re-record"
 msgstr "Re-record"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:705
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:758
 msgid "Re-tints every colour below to this hue, keeping each one's own lightness. Adjust any of them afterwards."
 msgstr "Re-tints every colour below to this hue, keeping each one's own lightness. Adjust any of them afterwards."
 
@@ -27644,7 +27654,7 @@ msgstr "save"
 #: src/features/auth/components/modals/PasskeyNameModal.tsx:87
 #: src/features/cast/components/ManageCastCharactersModal.tsx:250
 #: src/features/cast/components/modals/CastEditOverrideModal.tsx:45
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:388
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:408
 #: src/features/channel/components/modals/EditGroupBottomSheet.tsx:366
 #: src/features/channel/components/modals/EditGroupModal.tsx:322
 #: src/features/channel/components/modals/RenameChannelModal.tsx:28
@@ -27676,7 +27686,7 @@ msgstr "Save"
 msgid "Save 17%"
 msgstr "Save 17%"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:760
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:838
 msgid "Save and apply"
 msgstr "Save and apply"
 
@@ -27685,7 +27695,7 @@ msgstr "Save and apply"
 msgid "Save animation"
 msgstr "Save animation"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:589
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:642
 msgid "Save as new"
 msgstr "Save as new"
 
@@ -27724,7 +27734,7 @@ msgstr "Save GIF favorites as saved media"
 msgid "Save icon"
 msgstr "Save icon"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:664
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:717
 msgid "Save or revert your changes before loading another theme."
 msgstr "Save or revert your changes before loading another theme."
 
@@ -27737,7 +27747,7 @@ msgstr "Save some media from messages to get started!"
 
 #. Button label in the channel appearance tab that stores the current CSS as a named theme.
 #: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:68
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:763
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:841
 #: src/features/theme_studio/sections/LibrarySection.tsx:574
 msgid "Save theme"
 msgstr "Save theme"
@@ -28050,7 +28060,7 @@ msgid "Scroll to bottom when sending a message"
 msgstr "Scroll to bottom when sending a message"
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:151
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:155
 msgid "Scrollbar colours. Scrollbar size is not themeable."
 msgstr "Scrollbar colours. Scrollbar size is not themeable."
 
@@ -32546,7 +32556,7 @@ msgid "The mature content check was canceled. You can close this tab and try aga
 msgstr "The mature content check was canceled. You can close this tab and try again from the app."
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:127
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:131
 msgid "The message input box and its buttons."
 msgstr "The message input box and its buttons."
 
@@ -32568,7 +32578,7 @@ msgid "The page you're looking for doesn't exist or has been moved."
 msgstr "The page you're looking for doesn't exist or has been moved."
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:143
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:147
 msgid "The presence dot on avatars."
 msgstr "The presence dot on avatars."
 
@@ -32671,7 +32681,7 @@ msgstr "Theme color"
 msgid "Theme CSS"
 msgstr "Theme CSS"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:625
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:678
 msgid "Theme deleted"
 msgstr "Theme deleted"
 
@@ -32695,7 +32705,7 @@ msgstr "Theme name"
 msgid "Theme not found"
 msgstr "Theme not found"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:538
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:591
 msgid "Theme saved"
 msgstr "Theme saved"
 
@@ -32729,7 +32739,7 @@ msgstr "Theme tokens"
 msgid "Theme unavailable"
 msgstr "Theme unavailable"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:585
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:638
 msgid "Theme updated"
 msgstr "Theme updated"
 
@@ -33478,7 +33488,7 @@ msgstr "This textarea auto-expands between 4 and 12 rows as you type."
 msgid "This theme is no longer available."
 msgstr "This theme is no longer available."
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:670
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:723
 msgid "This theme is still applied to other channels and cannot be deleted:"
 msgstr "This theme is still applied to other channels and cannot be deleted:"
 
@@ -35796,7 +35806,7 @@ msgstr "URL pattern must contain {url} placeholder."
 msgid "URL preview"
 msgstr "URL preview"
 
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:688
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:741
 msgid "Use :root selectors. The CSS is scoped to this channel automatically."
 msgstr "Use :root selectors. The CSS is scoped to this channel automatically."
 
@@ -38104,7 +38114,7 @@ msgid "Whoa, this is heavy"
 msgstr "Whoa, this is heavy"
 
 #. Describes which surfaces a channel theme category paints. One short sentence.
-#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:155
+#: src/features/channel/components/modals/channel_tabs/ChannelAppearanceTab.tsx:159
 msgid "Widths, heights, and spacing of the server rail, sidebar, and header."
 msgstr "Widths, heights, and spacing of the server rail, sidebar, and header."
 

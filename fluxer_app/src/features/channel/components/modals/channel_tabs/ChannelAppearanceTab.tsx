@@ -49,7 +49,7 @@ import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
 export const CHANNEL_APPEARANCE_TAB_ID = 'appearance';
 
@@ -77,6 +77,10 @@ const NO_THEME_VALUE = '';
 const ACCENT_DESCRIPTOR = msg({
 	message: 'Accent colour',
 	comment: 'Label for the picker that re-tints every channel theme colour to one hue. Keep it concise.',
+});
+const BRIGHTNESS_DESCRIPTOR = msg({
+	message: 'Brightness',
+	comment: 'Label for the slider that lightens or darkens accent-derived colours. Keep it concise.',
 });
 const ADVANCED_DESCRIPTOR = msg({
 	message: 'Advanced',
@@ -200,19 +204,35 @@ export function getChannelAppearanceSections(): Array<{id: string; label: string
  * Skipped deliberately: `transparent` and `currentColor` (no hue to replace), and values that are
  * only a `var()` reference (the hue lives in whatever they point at, which this pass also rewrites).
  */
-function withReplacedHue(value: string, hue: number): string | null {
+function withReplacedHue(value: string, hue: number, brightnessPercent = 100): string | null {
 	const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value.trim());
 	if (hexMatch) {
 		const hsl = hexToHsl(value.trim());
-		return hsl == null ? null : `hsl(${Math.round(hue)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`;
+		if (hsl == null) return null;
+		return `hsl(${Math.round(hue)}, ${Math.round(hsl.s)}%, ${scaleLightness(hsl.l, brightnessPercent)}%)`;
 	}
 	if (/hsla?\(/i.test(value)) {
-		return value.replace(
+		const hueReplaced = value.replace(
 			/(hsla?\(\s*)(-?[\d.]+)(deg|rad|turn)?/gi,
 			(_full, prefix: string) => `${prefix}${Math.round(hue)}`,
 		);
+		if (brightnessPercent === 100) {
+			return hueReplaced;
+		}
+		// Lightness is the third comma-separated argument. Only a bare percentage is rescaled; a
+		// calc() lightness is left as-is rather than guessed at.
+		return hueReplaced.replace(
+			/(hsla?\([^,]+,[^,]+,\s*)(-?[\d.]+)%/gi,
+			(_full, prefix: string, lightness: string) =>
+				`${prefix}${scaleLightness(Number.parseFloat(lightness), brightnessPercent)}%`,
+		);
 	}
 	return null;
+}
+
+/** Scales a lightness by a percentage, clamped to the 0-100 the CSS syntax allows. */
+function scaleLightness(lightness: number, brightnessPercent: number): number {
+	return Math.round(Math.min(100, Math.max(0, (lightness * brightnessPercent) / 100)) * 100) / 100;
 }
 
 function hexToHsl(hex: string): {s: number; l: number} | null {
@@ -404,6 +424,8 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 	const [blockedByChannelIds, setBlockedByChannelIds] = useState<Array<string>>([]);
 	// Not a saved variable: only the overrides it writes survive, so it resets with the tab.
 	const [accentColor, setAccentColor] = useState(0x7c3aed);
+	const [accentHue, setAccentHue] = useState<number | null>(null);
+	const [brightness, setBrightness] = useState(100);
 
 	const appliedCss = ChannelThemes.getThemeCss(channelId) ?? '';
 	const activeState = ChannelThemes.getChannelState(channelId);
@@ -421,11 +443,8 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 	 * the individual overrides it writes, which the controls below then show as overridden and remain
 	 * separately editable.
 	 */
-	const handleAccentPick = useCallback(
-		(accent: number) => {
-			setAccentColor(accent);
-			const hue = hexToHue(accent.toString(16).padStart(6, '0'));
-			if (hue == null) return;
+	const applyAccent = useCallback(
+		(hue: number, brightnessPercent: number) => {
 			setWorkingCss((current) => {
 				let next = current;
 				for (const category of MANIFEST_CATEGORIES) {
@@ -433,7 +452,7 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 						// Colours only. Sizes, fonts and z-indexes have no hue to re-tint.
 						if (variable.excluded === true || variable.inputType !== 'color-picker') continue;
 						const base = isLightTheme ? variable.defaultLight : variable.defaultDark;
-						const tinted = withReplacedHue(base, hue);
+						const tinted = withReplacedHue(base, hue, brightnessPercent);
 						if (tinted == null) continue;
 						next = upsertDeclaration(next, variable.name, tinted);
 					}
@@ -442,6 +461,35 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 			});
 		},
 		[isLightTheme],
+	);
+
+	/**
+	 * Derivation tool only: not a theme variable, nothing persists it. Its whole effect is the
+	 * individual overrides it writes, which stay separately editable and show as overridden.
+	 */
+	const handleAccentPick = useCallback(
+		(accent: number) => {
+			setAccentColor(accent);
+			const hue = hexToHue(accent.toString(16).padStart(6, '0'));
+			if (hue == null) return;
+			setAccentHue(hue);
+			applyAccent(hue, brightness);
+		},
+		[applyAccent, brightness],
+	);
+
+	/**
+	 * Re-derives from the same base defaults rather than compounding on the current values, so
+	 * dragging the slider back to 100 lands exactly where the accent alone put things. Inert until an
+	 * accent has been picked -- there is nothing accent-derived to brighten before that.
+	 */
+	const handleBrightnessChange = useCallback(
+		(percent: number) => {
+			setBrightness(percent);
+			if (accentHue == null) return;
+			applyAccent(accentHue, percent);
+		},
+		[accentHue, applyAccent],
 	);
 
 	const renderControl = useCallback(
@@ -492,18 +540,23 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 		}
 	}, [channelId, workingCss]);
 
-	// Publishes dirtiness to the shared store the settings modal consults before closing, so the
-	// editor gets the same close guard every other settings tab has.
-	useEffect(() => {
-		UnsavedChangesCommands.setUnsavedChanges(CHANNEL_APPEARANCE_TAB_ID, hasUnsavedChanges);
-	}, [hasUnsavedChanges]);
+	// Published from one effect, not two. Split across separate effects with different dependency
+	// arrays, the dirty flag and the handlers can land in different commits, and the modal's save bar
+	// reads them independently -- a commit that updates one but not the other renders the banner with
+	// no buttons. Refs keep the published handlers current without making the effect churn on every
+	// keystroke, which the previous dependency on handleSaveAndApply did.
+	const saveRef = useRef(handleSaveAndApply);
+	const revertRef = useRef(handleRevert);
+	saveRef.current = handleSaveAndApply;
+	revertRef.current = handleRevert;
 	useEffect(() => {
 		UnsavedChangesCommands.setTabData(CHANNEL_APPEARANCE_TAB_ID, {
-			onReset: handleRevert,
-			onSave: handleSaveAndApply,
+			onReset: () => revertRef.current(),
+			onSave: () => void saveRef.current(),
 			isSubmitting: busy,
 		});
-	}, [handleRevert, handleSaveAndApply, busy]);
+		UnsavedChangesCommands.setUnsavedChanges(CHANNEL_APPEARANCE_TAB_ID, hasUnsavedChanges);
+	}, [hasUnsavedChanges, busy]);
 	useEffect(() => {
 		return () => {
 			UnsavedChangesCommands.clearUnsavedChanges(CHANNEL_APPEARANCE_TAB_ID);
@@ -708,12 +761,37 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 				}
 				data-flx="channel.channel-appearance-tab.accent-section"
 			>
-				<ColorPickerField
-					label={i18n._(ACCENT_DESCRIPTOR)}
-					value={accentColor}
-					onChange={handleAccentPick}
-					data-flx="channel.channel-appearance-tab.accent-picker"
-				/>
+				<div className={styles.accentControls} data-flx="channel.channel-appearance-tab.accent-controls">
+					<ColorPickerField
+						label={i18n._(ACCENT_DESCRIPTOR)}
+						value={accentColor}
+						onChange={handleAccentPick}
+						data-flx="channel.channel-appearance-tab.accent-picker"
+					/>
+					<div className={styles.brightnessRow} data-flx="channel.channel-appearance-tab.brightness-row">
+						<label className={styles.brightnessLabel} htmlFor="channel-theme-brightness">
+							{i18n._(BRIGHTNESS_DESCRIPTOR)}
+						</label>
+						<input
+							id="channel-theme-brightness"
+							type="range"
+							min={0}
+							max={200}
+							step={1}
+							value={brightness}
+							disabled={accentHue == null}
+							onChange={(event) => handleBrightnessChange(Number(event.target.value))}
+							data-flx="channel.channel-appearance-tab.brightness-slider"
+						/>
+						<span className={styles.brightnessHint} data-flx="channel.channel-appearance-tab.brightness-hint">
+							{accentHue == null ? (
+								<Trans>Pick an accent colour first. Brightness only adjusts colours the accent derived.</Trans>
+							) : (
+								<Trans>Lightens or darkens the accent-derived colours. Hand-edited values are left alone.</Trans>
+							)}
+						</span>
+					</div>
+				</div>
 			</SettingsSection>
 
 			{/* One group per manifest category. Collapsed by default: there are a few hundred

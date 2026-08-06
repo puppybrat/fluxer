@@ -51,10 +51,56 @@
 	align-items: center;
 }
 
-/* Token rows come from Theme Studio and lay themselves out; this only stacks them. */
+/*
+ * Theme Studio's token rows style themselves from --studio-* tokens, which are declared on Theme
+ * Studio's own root container and are therefore undefined here. Without them the value and hex
+ * inputs lose their background and border and read as floating text. Re-declared with the same
+ * mappings ThemeStudio.module.css uses, so the rows look native to the settings modal instead of
+ * requiring a fork of the components.
+ */
 .controlGroup {
+	--studio-bg-elevated: var(--background-secondary);
+	--studio-bg-input: var(--background-textarea);
+	--studio-bg-row-hover: var(--background-modifier-hover);
+	--studio-border-focus: var(--focus-primary);
+	--studio-border-input: var(--border-color);
+	--studio-border-strong: var(--border-color-hover);
+	--studio-fg-muted: var(--text-secondary);
+	--studio-fg-primary: var(--text-primary);
+	--studio-fg-subtle: var(--text-tertiary);
+	--studio-font-mono: var(--font-mono);
+	--studio-font-ui: var(--font-sans);
+	--studio-fs-sm: 0.75rem;
+	--studio-fs-xs: 0.6875rem;
+	--studio-radius-lg: var(--radius-lg);
+	--studio-radius-md: var(--radius-md);
+	--studio-shadow-popover: var(--shadow-lg);
+	--studio-transition-fast: 90ms ease;
+	--studio-accent-soft: color-mix(in srgb, var(--brand-primary) 18%, transparent);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-1);
 	min-width: 0;
+}
+
+.accentControls {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-3);
+}
+
+.brightnessRow {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-1);
+}
+
+.brightnessLabel {
+	font-size: var(--font-size-xs);
+	color: var(--text-secondary);
+}
+
+.brightnessHint {
+	font-size: var(--font-size-xs);
+	color: var(--text-tertiary);
 }
