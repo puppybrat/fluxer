@@ -375,7 +375,13 @@ const ChannelAppearanceTab: React.FC<{channelId: string}> = observer(({channelId
 					minRows={14}
 					maxRows={32}
 					spellCheck={false}
-					placeholder=":root {&#10;  --background-primary: #101014;&#10;}"
+					// Deliberately --background-secondary-lighter, not --background-primary. The channel's
+					// visible surfaces are painted by --background-secondary-lighter (the chat area, in
+					// ChannelChatLayout.module.css) and --background-tertiary (the <main> container). Inside
+					// a channel, --background-primary is only read by pickers and popouts, most of which
+					// portal outside the themed element — so a theme that sets it appears to do nothing,
+					// which reads as a broken feature rather than a mis-aimed variable.
+					placeholder=":root {&#10;  --background-secondary-lighter: #1a0a2a;&#10;  --background-tertiary: #14081f;&#10;}"
 					className={styles.cssTextarea}
 					data-flx="channel.channel-appearance-tab.css-textarea"
 				/>
