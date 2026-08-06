@@ -1,0 +1,2447 @@
+{
+  "categories": [
+    {
+      "name": "Surfaces",
+      "variables": [
+        {
+          "name": "--background-channel-header",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 89.13%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 15.72%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-header-primary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 86.18%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 19.25%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-header-primary-hover",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 86%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 23.57%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-header-secondary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 86.5%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 19.25%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-modifier-accent",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.22)",
+          "defaultDark": "hsla(258, calc(13% * var(--saturation-factor)), 80%, 0.15)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-modifier-hover",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.05)",
+          "defaultDark": "hsla(258, calc(10% * var(--saturation-factor)), 100%, 0.05)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-modifier-selected",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.1)",
+          "defaultDark": "hsla(258, calc(10% * var(--saturation-factor)), 100%, 0.1)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-primary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 98.5%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 5%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-secondary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 92.84%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 10.59%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-secondary-alt",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 90.96%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 14.15%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-secondary-lighter",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 94.61%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 12.44%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--background-tertiary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 88.2%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 17.16%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-active",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.1)",
+          "defaultDark": "hsla(258, calc(10% * var(--saturation-factor)), 100%, 0.1)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-blockquote",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 90.96%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 14.15%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-code",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 90.96%) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 88%, hsl(258, calc(10% * var(--saturation-factor)), 17.16%) 12%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-code-block",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-hover",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.05)",
+          "defaultDark": "hsla(258, calc(10% * var(--saturation-factor)), 100%, 0.05)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-primary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 98.5%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 5%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-secondary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 92.84%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 10.59%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-tertiary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 88.2%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 17.16%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--guild-list-foreground",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 87.53%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 16.7%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--panel-control-bg",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 65%, hsl(0, 0%, 100%) 35%)",
+          "defaultDark": "color-mix( in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 80%, hsl(258, calc(10% * var(--saturation-factor)), 2%) 20% )",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--surface-interactive-hover-bg",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.05)",
+          "defaultDark": "hsla(258, calc(10% * var(--saturation-factor)), 100%, 0.05)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--surface-interactive-selected-bg",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.1)",
+          "defaultDark": "hsla(258, calc(10% * var(--saturation-factor)), 100%, 0.1)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--surface-interactive-selected-color",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 15%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 96%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Text",
+      "variables": [
+        {
+          "name": "--text-chat",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 20.99%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 93.67%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-chat-muted",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 42.2%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 81.42%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-link",
+          "defaultLight": "hsl(198, calc(92% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(198, calc(92% * var(--saturation-factor)), 70%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-on-brand-primary",
+          "defaultLight": "hsl(0, 0%, 98%)",
+          "defaultDark": "hsl(0, 0%, 98%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-primary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 15%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 96%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-primary-muted",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 42.2%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 81.42%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-secondary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 33.78%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 90.36%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-selection",
+          "defaultLight": "hsla(210, calc(90% * var(--saturation-factor)), 50%, 0.2)",
+          "defaultDark": "hsla(198, calc(92% * var(--saturation-factor)), 70%, 0.35)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-tertiary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 47.76%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 70.4%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-tertiary-muted",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 53.12%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 62.88%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-tertiary-secondary",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 51.56%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 60%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-warning",
+          "defaultLight": "hsl(45, calc(93% * var(--saturation-factor)), 55%)",
+          "defaultDark": "hsl(45, calc(93% * var(--saturation-factor)), 55%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Brand & accents",
+      "variables": [
+        {
+          "name": "--accent-danger",
+          "defaultLight": "hsl(359, calc(70% * var(--saturation-factor)), 50%)",
+          "defaultDark": "hsl(0, calc(84% * var(--saturation-factor)), 60%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--accent-info",
+          "defaultLight": "hsl(198, calc(92% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(198, calc(92% * var(--saturation-factor)), 70%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--accent-primary",
+          "defaultLight": "hsl(242, calc(70% * var(--saturation-factor)), 55%)",
+          "defaultDark": "hsl(242, calc(70% * var(--saturation-factor)), 55%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--accent-purple",
+          "defaultLight": "hsl(278, calc(85% * var(--saturation-factor)), 65%)",
+          "defaultDark": "hsl(278, calc(85% * var(--saturation-factor)), 65%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--accent-success",
+          "defaultLight": "hsl(152, calc(70% * var(--saturation-factor)), 40%)",
+          "defaultDark": "hsl(152, calc(72% * var(--saturation-factor)), 40%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--accent-warning",
+          "defaultLight": "hsl(45, calc(90% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(45, calc(93% * var(--saturation-factor)), 50%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--brand-primary",
+          "defaultLight": "hsl(242, calc(70% * var(--saturation-factor)), 55%)",
+          "defaultDark": "hsl(242, calc(70% * var(--saturation-factor)), 55%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--brand-primary-fill",
+          "defaultLight": "hsl(0, 0%, 100%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--brand-primary-light",
+          "defaultLight": "hsl(242, calc(100% * var(--saturation-factor)), 84%)",
+          "defaultDark": "hsl(242, calc(100% * var(--saturation-factor)), 84%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--brand-secondary",
+          "defaultLight": "hsl(242, calc(60% * var(--saturation-factor)), 49%)",
+          "defaultDark": "hsl(242, calc(60% * var(--saturation-factor)), 49%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--plutonium",
+          "defaultLight": "hsl(242, calc(70% * var(--saturation-factor)), 55%)",
+          "defaultDark": "hsl(242, calc(70% * var(--saturation-factor)), 55%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--plutonium-hover",
+          "defaultLight": "hsl(242, calc(60% * var(--saturation-factor)), 49%)",
+          "defaultDark": "hsl(242, calc(60% * var(--saturation-factor)), 49%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--plutonium-icon",
+          "defaultLight": "hsl(38, calc(92% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(38, calc(92% * var(--saturation-factor)), 50%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--plutonium-text",
+          "defaultLight": "hsl(0, 0%, 98%)",
+          "defaultDark": "hsl(0, 0%, 98%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Borders & focus",
+      "variables": [
+        {
+          "name": "--background-modifier-accent-focus",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.32)",
+          "defaultDark": "hsla(258, calc(13% * var(--saturation-factor)), 80%, 0.22)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--border-color",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.15)",
+          "defaultDark": "hsla(258, calc(10% * var(--saturation-factor)), 50%, 0.2)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--border-color-focus",
+          "defaultLight": "hsla(210, calc(90% * var(--saturation-factor)), 50%, 0.4)",
+          "defaultDark": "hsla(198, calc(92% * var(--saturation-factor)), 70%, 0.45)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--border-color-hover",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.25)",
+          "defaultDark": "hsla(258, calc(10% * var(--saturation-factor)), 50%, 0.3)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--focus-primary",
+          "defaultLight": "#00b0f4",
+          "defaultDark": "#00b0f4",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--media-border-radius",
+          "defaultLight": "0.25rem",
+          "defaultDark": "0.25rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--panel-control-border",
+          "defaultLight": "hsla(220, calc(25% * var(--saturation-factor)), 45%, 0.25)",
+          "defaultDark": "hsla(258, calc(30% * var(--saturation-factor)), 65%, 0.45)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--radius-2xl",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--radius-full",
+          "defaultLight": "624.9375rem",
+          "defaultDark": "624.9375rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--radius-lg",
+          "defaultLight": "0.5rem",
+          "defaultDark": "0.5rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--radius-md",
+          "defaultLight": "0.375rem",
+          "defaultDark": "0.375rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--radius-sm",
+          "defaultLight": "0.25rem",
+          "defaultDark": "0.25rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--radius-xl",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--shadow-lg",
+          "defaultLight": "0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1)",
+          "defaultDark": "0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1)",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--shadow-md",
+          "defaultLight": "0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1)",
+          "defaultDark": "0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1)",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--shadow-sm",
+          "defaultLight": "0 1px 2px rgba(0, 0, 0, 0.1)",
+          "defaultDark": "0 1px 2px rgba(0, 0, 0, 0.1)",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--shadow-xl",
+          "defaultLight": "0 10px 20px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1)",
+          "defaultDark": "0 10px 20px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1)",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--theme-border",
+          "defaultLight": "transparent",
+          "defaultDark": "transparent",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--theme-border-width",
+          "defaultLight": "0px",
+          "defaultDark": "0px",
+          "impact": "high",
+          "inputType": "border-width"
+        }
+      ]
+    },
+    {
+      "name": "Typography",
+      "variables": [
+        {
+          "name": "--font-keybind",
+          "defaultLight": "-apple-system, BlinkMacSystemFont, 'Fluxer Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          "defaultDark": "-apple-system, BlinkMacSystemFont, 'Fluxer Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          "impact": "edge-case",
+          "inputType": "font-family"
+        },
+        {
+          "name": "--font-mono",
+          "defaultLight": "'Fluxer Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+          "defaultDark": "'Fluxer Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+          "impact": "medium",
+          "inputType": "font-family"
+        },
+        {
+          "name": "--font-sans",
+          "defaultLight": "'Fluxer Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          "defaultDark": "'Fluxer Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          "impact": "high",
+          "inputType": "font-family"
+        },
+        {
+          "name": "--font-size",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--font-size-xs",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "variables": [
+        {
+          "name": "--message-action-bar-offset",
+          "defaultLight": "3rem",
+          "defaultDark": "3rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-avatar-align-offset",
+          "defaultLight": "clamp(0px, calc((1.375rem * 2 - 2.5rem) / 2), 0.5rem)",
+          "defaultDark": "clamp(0px, calc((1.375rem * 2 - 2.5rem) / 2), 0.5rem)",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-avatar-size",
+          "defaultLight": "2.5rem",
+          "defaultDark": "2.5rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-avatar-size-compact",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-container-margin",
+          "defaultLight": "calc(3.5rem + 0.25rem)",
+          "defaultDark": "calc(3.5rem + 0.25rem)",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-gap",
+          "defaultLight": "0.25rem",
+          "defaultDark": "0.25rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-indent",
+          "defaultLight": "calc(3.5rem + 0.25rem)",
+          "defaultDark": "calc(3.5rem + 0.25rem)",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-markdown-alert-padding-block",
+          "defaultLight": "0.35rem",
+          "defaultDark": "0.35rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-markdown-alert-padding-inline",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-markdown-block-gap",
+          "defaultLight": "0.5rem",
+          "defaultDark": "0.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-markdown-blockquote-divider-margin-end",
+          "defaultLight": "0.35rem",
+          "defaultDark": "0.35rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-markdown-blockquote-gap",
+          "defaultLight": "0.25rem",
+          "defaultDark": "0.25rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-table-max-inline-size",
+          "defaultLight": "100%",
+          "defaultDark": "100%",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-table-min-cell-width",
+          "defaultLight": "5rem",
+          "defaultDark": "5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-timestamp-width",
+          "defaultLight": "3.5rem",
+          "defaultDark": "3.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-compact-username-gap",
+          "defaultLight": "0.45rem",
+          "defaultDark": "0.45rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-container-gap",
+          "defaultLight": "0.25rem",
+          "defaultDark": "0.25rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-container-padding-y",
+          "defaultLight": "0.125rem",
+          "defaultDark": "0.125rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-edited-font-size",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-edited-label-font-size",
+          "defaultLight": "0.625rem",
+          "defaultDark": "0.625rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-failed-indicator-font-size",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-failed-indicator-gap",
+          "defaultLight": "0.375rem",
+          "defaultDark": "0.375rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-failed-opacity",
+          "defaultLight": "0.5",
+          "defaultDark": "0.5",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-group-spacing",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-gutter",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-highlight-bar-width",
+          "defaultLight": "0.125rem",
+          "defaultDark": "0.125rem",
+          "impact": "medium",
+          "inputType": "border-width"
+        },
+        {
+          "name": "--message-icon-size-lg",
+          "defaultLight": "1.25rem",
+          "defaultDark": "1.25rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-icon-size-md",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-icon-size-sm",
+          "defaultLight": "0.875rem",
+          "defaultDark": "0.875rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-line-height",
+          "defaultLight": "1.375rem",
+          "defaultDark": "1.375rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-mention-bg",
+          "defaultLight": "rgb(234 197 50 / 0.1)",
+          "defaultDark": "rgb(234 197 50 / 0.1)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--message-mention-bg-hover",
+          "defaultLight": "rgb(234 197 50 / 0.14)",
+          "defaultDark": "rgb(234 197 50 / 0.14)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--message-mention-color",
+          "defaultLight": "rgb(234 197 50)",
+          "defaultDark": "rgb(234 197 50)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--message-mobile-margin",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-replied-username-opacity",
+          "defaultLight": "0.64",
+          "defaultDark": "0.64",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-reply-bg",
+          "defaultLight": "rgb(59 130 246 / 0.1)",
+          "defaultDark": "rgb(59 130 246 / 0.1)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--message-reply-color",
+          "defaultLight": "rgb(59 130 246)",
+          "defaultDark": "rgb(59 130 246)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--message-reply-font-size",
+          "defaultLight": "0.875rem",
+          "defaultDark": "0.875rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-reply-height",
+          "defaultLight": "1.125rem",
+          "defaultDark": "1.125rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-reply-spacing",
+          "defaultLight": "0.25rem",
+          "defaultDark": "0.25rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-reply-spine-radius",
+          "defaultLight": "0.375rem",
+          "defaultDark": "0.375rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-reply-spine-width",
+          "defaultLight": "0.125rem",
+          "defaultDark": "0.125rem",
+          "impact": "medium",
+          "inputType": "border-width"
+        },
+        {
+          "name": "--message-sending-link-opacity",
+          "defaultLight": "0.7",
+          "defaultDark": "0.7",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-sending-opacity",
+          "defaultLight": "0.5",
+          "defaultDark": "0.5",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-spacing-y",
+          "defaultLight": "0.125rem",
+          "defaultDark": "0.125rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-timestamp-color",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 42.2%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 81.42%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--message-timestamp-compact-font-size",
+          "defaultLight": "0.6875rem",
+          "defaultDark": "0.6875rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-timestamp-compact-height",
+          "defaultLight": "1.25rem",
+          "defaultDark": "1.25rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-timestamp-font-size",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-transition-highlight",
+          "defaultLight": "320ms cubic-bezier(0.32, 0.72, 0, 1)",
+          "defaultDark": "320ms cubic-bezier(0.32, 0.72, 0, 1)",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--message-typing-avatar-margin",
+          "defaultLight": "0.2rem",
+          "defaultDark": "0.2rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-typing-gap",
+          "defaultLight": "0.35rem",
+          "defaultDark": "0.35rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-typing-pill-gap",
+          "defaultLight": "0.2rem",
+          "defaultDark": "0.2rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-typing-pill-padding",
+          "defaultLight": "0.45rem",
+          "defaultDark": "0.45rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-typing-text-font-size",
+          "defaultLight": "0.6875rem",
+          "defaultDark": "0.6875rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--message-unknown-warning-color",
+          "defaultLight": "#ff9933",
+          "defaultDark": "#ff9933",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--typing-avatar-size",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--typing-indicator-animation-size",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--typing-indicator-gap",
+          "defaultLight": "0",
+          "defaultDark": "0",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--typing-indicator-height",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--typing-pill-height",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--typing-upload-column-width",
+          "defaultLight": "calc( 2.25rem + (max( 0, calc((2.5rem - 2.25rem) / 2) ) * 2) )",
+          "defaultDark": "calc( 2.25rem + (max( 0, calc((2.5rem - 2.25rem) / 2) ) * 2) )",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        }
+      ]
+    },
+    {
+      "name": "Forms",
+      "variables": [
+        {
+          "name": "--background-textarea",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 95.68%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 22.05%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--form-surface-background",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 98.5%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 17.16%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--input-container-min-height",
+          "defaultLight": "4.5rem",
+          "defaultDark": "4.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--input-container-padding",
+          "defaultLight": "0.625rem",
+          "defaultDark": "0.625rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--input-wrapper-padding-bottom",
+          "defaultLight": "0.5rem",
+          "defaultDark": "0.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--input-wrapper-padding-x",
+          "defaultLight": "0.5rem",
+          "defaultDark": "0.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-button-compact-height",
+          "defaultLight": "2.25rem",
+          "defaultDark": "2.25rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-button-compact-icon-size",
+          "defaultLight": "1.375rem",
+          "defaultDark": "1.375rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-button-height",
+          "defaultLight": "2.25rem",
+          "defaultDark": "2.25rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-button-icon-size",
+          "defaultLight": "1.625rem",
+          "defaultDark": "1.625rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-button-min-width",
+          "defaultLight": "auto",
+          "defaultDark": "auto",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--textarea-button-padding-x",
+          "defaultLight": "0",
+          "defaultDark": "0",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-container-padding-x",
+          "defaultLight": "0",
+          "defaultDark": "0",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-container-padding-y",
+          "defaultLight": "0",
+          "defaultDark": "0",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-content-offset",
+          "defaultLight": "calc((2.25rem - calc(1rem * 1.375)) / 2)",
+          "defaultDark": "calc((2.25rem - calc(1rem * 1.375)) / 2)",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-font-size",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-horizontal-padding",
+          "defaultLight": "1rem)",
+          "defaultDark": "1rem)",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-line-height",
+          "defaultLight": "calc(1rem * 1.375)",
+          "defaultDark": "calc(1rem * 1.375)",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-min-height",
+          "defaultLight": "4.5rem",
+          "defaultDark": "4.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-side-button-padding",
+          "defaultLight": "max( 0, calc((2.5rem - 2.25rem) / 2) )",
+          "defaultDark": "max( 0, calc((2.5rem - 2.25rem) / 2) )",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-top-bar-height",
+          "defaultLight": "2.5rem",
+          "defaultDark": "2.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--textarea-upload-gap",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        }
+      ]
+    },
+    {
+      "name": "Buttons",
+      "variables": [
+        {
+          "name": "--button-danger-active-fill",
+          "defaultLight": "hsl(359, calc(65% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(359, calc(65% * var(--saturation-factor)), 45%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-danger-fill",
+          "defaultLight": "hsl(359, calc(70% * var(--saturation-factor)), 54%)",
+          "defaultDark": "hsl(359, calc(70% * var(--saturation-factor)), 54%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-danger-outline-active-border",
+          "defaultLight": "transparent",
+          "defaultDark": "transparent",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--button-danger-outline-active-fill",
+          "defaultLight": "hsl(359, calc(70% * var(--saturation-factor)), 50%)",
+          "defaultDark": "hsl(359, calc(65% * var(--saturation-factor)), 48%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-danger-outline-border",
+          "defaultLight": "1px solid hsl(359, calc(70% * var(--saturation-factor)), 50%)",
+          "defaultDark": "1px solid hsl(359, calc(70% * var(--saturation-factor)), 54%)",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--button-danger-outline-text",
+          "defaultLight": "hsl(359, calc(70% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-danger-text",
+          "defaultLight": "hsl(0, 0%, 100%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-ghost-text",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 20%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-inverted-fill",
+          "defaultLight": "hsl(0, 0%, 100%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-inverted-text",
+          "defaultLight": "hsl(0, 0%, 10%)",
+          "defaultDark": "hsl(0, 0%, 0%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-outline-active-border",
+          "defaultLight": "1px solid hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.5)",
+          "defaultDark": "1px solid hsla(0, 0%, 100%, 0.4)",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--button-outline-active-fill",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.1)",
+          "defaultDark": "hsla(0, 0%, 100%, 0.15)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-outline-border",
+          "defaultLight": "1px solid hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.3)",
+          "defaultDark": "1px solid hsla(0, 0%, 100%, 0.3)",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--button-outline-text",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 20%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-primary-active-fill",
+          "defaultLight": "hsl(136, calc(60% * var(--saturation-factor)), 38%)",
+          "defaultDark": "hsl(136, calc(60% * var(--saturation-factor)), 38%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-primary-fill",
+          "defaultLight": "hsl(139, calc(55% * var(--saturation-factor)), 44%)",
+          "defaultDark": "hsl(139, calc(55% * var(--saturation-factor)), 44%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-primary-text",
+          "defaultLight": "hsl(0, 0%, 100%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-secondary-active-fill",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.15)",
+          "defaultDark": "hsla(0, 0%, 100%, 0.15)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-secondary-active-text",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 10%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-secondary-fill",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 10%, 0.1)",
+          "defaultDark": "hsla(0, 0%, 100%, 0.1)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--button-secondary-text",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 15%)",
+          "defaultDark": "hsl(0, 0%, 100%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--control-button-active-bg",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 85%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 24%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--control-button-active-text",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 15%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 96%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--control-button-danger-hover-bg",
+          "defaultLight": "hsl(359, calc(70% * var(--saturation-factor)), 95%)",
+          "defaultDark": "hsl(1, calc(77% * var(--saturation-factor)), 20%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--control-button-danger-text",
+          "defaultLight": "hsl(359, calc(70% * var(--saturation-factor)), 50%)",
+          "defaultDark": "hsl(1, calc(77% * var(--saturation-factor)), 60%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--control-button-hover-bg",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 88%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 22%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--control-button-hover-text",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 20%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 96%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--control-button-normal-bg",
+          "defaultLight": "transparent",
+          "defaultDark": "transparent",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--control-button-normal-text",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 50%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 81.42%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Markup & mentions",
+      "variables": [
+        {
+          "name": "--markup-everyone-border",
+          "defaultLight": "hsla(250, calc(70% * var(--saturation-factor)), 45%, 0.4)",
+          "defaultDark": "hsla(250, calc(80% * var(--saturation-factor)), 75%, 0.3)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-everyone-fill",
+          "defaultLight": "color-mix(in srgb, hsl(250, calc(70% * var(--saturation-factor)), 45%) 12%, transparent)",
+          "defaultDark": "color-mix(in srgb, hsl(250, calc(80% * var(--saturation-factor)), 75%) 18%, transparent)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-everyone-text",
+          "defaultLight": "hsl(250, calc(70% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(250, calc(80% * var(--saturation-factor)), 75%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-here-border",
+          "defaultLight": "hsla(40, calc(85% * var(--saturation-factor)), 40%, 0.4)",
+          "defaultDark": "hsla(45, calc(90% * var(--saturation-factor)), 70%, 0.3)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-here-fill",
+          "defaultLight": "color-mix(in srgb, hsl(40, calc(85% * var(--saturation-factor)), 40%) 12%, transparent)",
+          "defaultDark": "color-mix(in srgb, hsl(45, calc(90% * var(--saturation-factor)), 70%) 18%, transparent)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-here-text",
+          "defaultLight": "hsl(40, calc(85% * var(--saturation-factor)), 40%)",
+          "defaultDark": "hsl(45, calc(90% * var(--saturation-factor)), 70%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-interactive-hover-fill",
+          "defaultLight": "color-mix(in srgb, hsl(198, calc(92% * var(--saturation-factor)), 45%) 30%, transparent)",
+          "defaultDark": "color-mix(in srgb, hsl(198, calc(92% * var(--saturation-factor)), 70%) 30%, transparent)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-interactive-hover-text",
+          "defaultLight": "hsl(198, calc(92% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(198, calc(92% * var(--saturation-factor)), 70%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-jump-link-fill",
+          "defaultLight": "color-mix(in srgb, hsl(198, calc(92% * var(--saturation-factor)), 45%) 8%, transparent)",
+          "defaultDark": "color-mix(in srgb, hsl(198, calc(92% * var(--saturation-factor)), 70%) 12%, transparent)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-jump-link-hover-fill",
+          "defaultLight": "color-mix(in srgb, hsl(198, calc(92% * var(--saturation-factor)), 45%) 20%, transparent)",
+          "defaultDark": "color-mix(in srgb, hsl(198, calc(92% * var(--saturation-factor)), 70%) 20%, transparent)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-jump-link-text",
+          "defaultLight": "hsl(198, calc(92% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(198, calc(92% * var(--saturation-factor)), 70%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-mention-border",
+          "defaultLight": "hsla(198, calc(92% * var(--saturation-factor)), 45%, 0.4)",
+          "defaultDark": "hsla(198, calc(92% * var(--saturation-factor)), 70%, 0.3)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-mention-fill",
+          "defaultLight": "color-mix(in srgb, hsl(198, calc(92% * var(--saturation-factor)), 45%) 20%, transparent)",
+          "defaultDark": "color-mix(in srgb, hsl(198, calc(92% * var(--saturation-factor)), 70%) 20%, transparent)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-mention-text",
+          "defaultLight": "hsl(198, calc(92% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(198, calc(92% * var(--saturation-factor)), 70%)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--markup-strikethrough-color",
+          "defaultLight": "currentColor",
+          "defaultDark": "currentColor",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--spoiler-border-radius",
+          "defaultLight": "0.375rem",
+          "defaultDark": "0.375rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spoiler-overlay-color",
+          "defaultLight": "rgba(0, 0, 0, 0.1)",
+          "defaultDark": "rgba(0, 0, 0, 0.2)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--spoiler-overlay-hover-color",
+          "defaultLight": "rgba(0, 0, 0, 0.15)",
+          "defaultDark": "rgba(0, 0, 0, 0.3)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Code & terminal",
+      "variables": [
+        {
+          "name": "--ansi-bg-black",
+          "defaultLight": "color-mix(in srgb, hsl(0, 0%, 0%) 86%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 14%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, 0%, 12%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-blue",
+          "defaultLight": "color-mix(in srgb, hsl(211, calc(95% * var(--saturation-factor)), 33%) 86%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 14%)",
+          "defaultDark": "color-mix(in srgb, hsl(207, calc(61% * var(--saturation-factor)), 59%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-bright-black",
+          "defaultLight": "color-mix(in srgb, hsl(0, 0%, 40%) 88%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, 0%, 50%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-bright-blue",
+          "defaultLight": "color-mix(in srgb, hsl(211, calc(95% * var(--saturation-factor)), 33%) 88%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(207, calc(61% * var(--saturation-factor)), 59%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-bright-cyan",
+          "defaultLight": "color-mix(in srgb, hsl(192, calc(95% * var(--saturation-factor)), 38%) 88%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(168, calc(53% * var(--saturation-factor)), 55%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-bright-green",
+          "defaultLight": "color-mix(in srgb, hsl(120, calc(82% * var(--saturation-factor)), 44%) 88%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(99, calc(29% * var(--saturation-factor)), 47%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-bright-magenta",
+          "defaultLight": "color-mix(in srgb, hsl(300, calc(95% * var(--saturation-factor)), 38%) 88%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(305, calc(35% * var(--saturation-factor)), 65%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-bright-red",
+          "defaultLight": "color-mix(in srgb, hsl(0, calc(62% * var(--saturation-factor)), 50%) 88%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, calc(88% * var(--saturation-factor)), 62%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-bright-white",
+          "defaultLight": "color-mix(in srgb, hsl(0, 0%, 90%) 90%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 10%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, 0%, 100%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-bright-yellow",
+          "defaultLight": "color-mix(in srgb, hsl(62, calc(100% * var(--saturation-factor)), 36%) 88%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(41, calc(53% * var(--saturation-factor)), 67%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-cyan",
+          "defaultLight": "color-mix(in srgb, hsl(192, calc(95% * var(--saturation-factor)), 38%) 86%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 14%)",
+          "defaultDark": "color-mix(in srgb, hsl(168, calc(53% * var(--saturation-factor)), 55%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-green",
+          "defaultLight": "color-mix(in srgb, hsl(120, calc(100% * var(--saturation-factor)), 25%) 86%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 14%)",
+          "defaultDark": "color-mix(in srgb, hsl(99, calc(29% * var(--saturation-factor)), 47%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-magenta",
+          "defaultLight": "color-mix(in srgb, hsl(288, calc(100% * var(--saturation-factor)), 43%) 86%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 14%)",
+          "defaultDark": "color-mix(in srgb, hsl(305, calc(35% * var(--saturation-factor)), 65%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-red",
+          "defaultLight": "color-mix(in srgb, hsl(0, calc(62% * var(--saturation-factor)), 50%) 86%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 14%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, calc(88% * var(--saturation-factor)), 62%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-white",
+          "defaultLight": "color-mix(in srgb, hsl(0, 0%, 90%) 86%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 14%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, 0%, 83%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-bg-yellow",
+          "defaultLight": "color-mix(in srgb, hsl(37, calc(52% * var(--saturation-factor)), 31%) 86%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%) 14%)",
+          "defaultDark": "color-mix(in srgb, hsl(41, calc(53% * var(--saturation-factor)), 67%) 88%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-black",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 15%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, 0%, 12%) 72%, hsl(258, calc(10% * var(--saturation-factor)), 70.4%) 28%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-blue",
+          "defaultLight": "color-mix(in srgb, hsl(211, calc(95% * var(--saturation-factor)), 33%) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(207, calc(61% * var(--saturation-factor)), 59%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-bright-black",
+          "defaultLight": "color-mix(in srgb, hsl(0, 0%, 40%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 47.76%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, 0%, 50%) 86%, hsl(258, calc(10% * var(--saturation-factor)), 70.4%) 14%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-bright-blue",
+          "defaultLight": "color-mix(in srgb, hsl(211, calc(95% * var(--saturation-factor)), 33%) 92%, hsl(220, calc(10% * var(--saturation-factor)), 15%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(207, calc(61% * var(--saturation-factor)), 59%) 94%, hsl(258, calc(10% * var(--saturation-factor)), 96%) 6%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-bright-cyan",
+          "defaultLight": "color-mix(in srgb, hsl(192, calc(95% * var(--saturation-factor)), 38%) 92%, hsl(220, calc(10% * var(--saturation-factor)), 15%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(168, calc(53% * var(--saturation-factor)), 55%) 94%, hsl(258, calc(10% * var(--saturation-factor)), 96%) 6%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-bright-green",
+          "defaultLight": "color-mix(in srgb, hsl(120, calc(82% * var(--saturation-factor)), 44%) 90%, hsl(220, calc(10% * var(--saturation-factor)), 15%) 10%)",
+          "defaultDark": "color-mix(in srgb, hsl(99, calc(29% * var(--saturation-factor)), 47%) 88%, hsl(258, calc(10% * var(--saturation-factor)), 96%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-bright-magenta",
+          "defaultLight": "color-mix(in srgb, hsl(300, calc(95% * var(--saturation-factor)), 38%) 92%, hsl(220, calc(10% * var(--saturation-factor)), 15%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(305, calc(35% * var(--saturation-factor)), 65%) 94%, hsl(258, calc(10% * var(--saturation-factor)), 96%) 6%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-bright-red",
+          "defaultLight": "color-mix(in srgb, hsl(0, calc(62% * var(--saturation-factor)), 50%) 92%, hsl(220, calc(10% * var(--saturation-factor)), 15%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, calc(88% * var(--saturation-factor)), 62%) 94%, hsl(258, calc(10% * var(--saturation-factor)), 96%) 6%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-bright-white",
+          "defaultLight": "color-mix(in srgb, hsl(0, 0%, 65%) 86%, hsl(220, calc(10% * var(--saturation-factor)), 15%) 14%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 96%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-bright-yellow",
+          "defaultLight": "color-mix(in srgb, hsl(62, calc(100% * var(--saturation-factor)), 36%) 90%, hsl(220, calc(10% * var(--saturation-factor)), 15%) 10%)",
+          "defaultDark": "color-mix(in srgb, hsl(41, calc(53% * var(--saturation-factor)), 67%) 94%, hsl(258, calc(10% * var(--saturation-factor)), 96%) 6%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-cyan",
+          "defaultLight": "color-mix(in srgb, hsl(192, calc(95% * var(--saturation-factor)), 38%) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(168, calc(53% * var(--saturation-factor)), 55%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-green",
+          "defaultLight": "color-mix(in srgb, hsl(120, calc(100% * var(--saturation-factor)), 25%) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(99, calc(29% * var(--saturation-factor)), 47%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-magenta",
+          "defaultLight": "color-mix(in srgb, hsl(288, calc(100% * var(--saturation-factor)), 43%) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(305, calc(35% * var(--saturation-factor)), 65%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-red",
+          "defaultLight": "color-mix(in srgb, hsl(0, calc(62% * var(--saturation-factor)), 50%) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, calc(88% * var(--saturation-factor)), 62%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-white",
+          "defaultLight": "color-mix(in srgb, hsl(0, 0%, 33%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(0, 0%, 83%) 88%, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 12%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-fg-yellow",
+          "defaultLight": "color-mix(in srgb, hsl(37, calc(52% * var(--saturation-factor)), 31%) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(41, calc(53% * var(--saturation-factor)), 67%) 92%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-inverse-bg",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--ansi-inverse-text",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--code-block-bg",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 98.5%) 88%, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 12%)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 92%, hsl(258, calc(10% * var(--saturation-factor)), 5%) 8%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--code-block-border",
+          "defaultLight": "color-mix(in srgb, hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.15) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsla(258, calc(10% * var(--saturation-factor)), 50%, 0.2) 90%, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%) 10%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--code-block-highlight",
+          "defaultLight": "color-mix(in srgb, hsl(0, 0%, 100%) 82%, transparent)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 96%) 10%, transparent)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--code-inline-bg",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 90.96%) 92%, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 8%)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 14.15%) 88%, hsl(258, calc(10% * var(--saturation-factor)), 17.16%) 12%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--code-muted",
+          "defaultLight": "color-mix(in srgb, color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%) 34%, hsl(220, calc(10% * var(--saturation-factor)), 47.76%) 66%)",
+          "defaultDark": "color-mix(in srgb, color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%) 42%, hsl(258, calc(10% * var(--saturation-factor)), 70.4%) 58%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--code-text",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--text-code",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 72%, hsl(340, calc(50% * var(--saturation-factor)), 38%) 28%)",
+          "defaultDark": "color-mix(in srgb, hsl(258, calc(10% * var(--saturation-factor)), 90.36%) 82%, hsl(340, calc(50% * var(--saturation-factor)), 90%) 18%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Alerts & callouts",
+      "variables": [
+        {
+          "name": "--alert-caution-color",
+          "defaultLight": "hsl(358, calc(80% * var(--saturation-factor)), 50%)",
+          "defaultDark": "hsl(359, calc(75% * var(--saturation-factor)), 60%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--alert-important-color",
+          "defaultLight": "hsl(278, calc(85% * var(--saturation-factor)), 50%)",
+          "defaultDark": "hsl(278, calc(85% * var(--saturation-factor)), 65%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--alert-note-color",
+          "defaultLight": "hsl(198, calc(92% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(198, calc(92% * var(--saturation-factor)), 70%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--alert-tip-color",
+          "defaultLight": "hsl(150, calc(80% * var(--saturation-factor)), 35%)",
+          "defaultDark": "hsl(152, calc(72% * var(--saturation-factor)), 45%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--alert-warning-color",
+          "defaultLight": "hsl(45, calc(90% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(45, calc(93% * var(--saturation-factor)), 55%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Status indicators",
+      "variables": [
+        {
+          "name": "--status-danger",
+          "defaultLight": "hsl(1, calc(77% * var(--saturation-factor)), 55%)",
+          "defaultDark": "hsl(1, calc(77% * var(--saturation-factor)), 55%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--status-dnd",
+          "defaultLight": "hsl(359, calc(70% * var(--saturation-factor)), 50%)",
+          "defaultDark": "hsl(0, calc(84% * var(--saturation-factor)), 60%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--status-idle",
+          "defaultLight": "hsl(45, calc(90% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(45, calc(93% * var(--saturation-factor)), 50%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--status-offline",
+          "defaultLight": "hsl(210, calc(10% * var(--saturation-factor)), 55%)",
+          "defaultDark": "hsl(218, calc(11% * var(--saturation-factor)), 65%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--status-online",
+          "defaultLight": "hsl(152, calc(70% * var(--saturation-factor)), 40%)",
+          "defaultDark": "hsl(152, calc(72% * var(--saturation-factor)), 40%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--status-warning",
+          "defaultLight": "hsl(45, calc(90% * var(--saturation-factor)), 45%)",
+          "defaultDark": "hsl(45, calc(93% * var(--saturation-factor)), 50%)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Tables",
+      "variables": [
+        {
+          "name": "--bg-table-header",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 88.2%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 17.16%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-table-row-even",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 92.84%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 10.59%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--bg-table-row-odd",
+          "defaultLight": "hsl(220, calc(10% * var(--saturation-factor)), 98.5%)",
+          "defaultDark": "hsl(258, calc(10% * var(--saturation-factor)), 5%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Scrolling",
+      "variables": [
+        {
+          "name": "--scrollbar-thumb-bg",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 86.5%) 40%, hsl(220, calc(10% * var(--saturation-factor)), 33.78%) 60%)",
+          "defaultDark": "rgba(121, 122, 124, 0.4)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--scrollbar-thumb-bg-hover",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 86.5%) 30%, hsl(220, calc(10% * var(--saturation-factor)), 15%) 70%)",
+          "defaultDark": "rgba(121, 122, 124, 0.7)",
+          "impact": "high",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--scrollbar-track-bg",
+          "defaultLight": "color-mix(in srgb, hsl(220, calc(10% * var(--saturation-factor)), 92.84%) 50%, transparent)",
+          "defaultDark": "transparent",
+          "impact": "medium",
+          "inputType": "color-picker"
+        }
+      ]
+    },
+    {
+      "name": "Layout",
+      "variables": [
+        {
+          "name": "--chat-horizontal-padding",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--content-padding",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--content-padding-lg",
+          "defaultLight": "1.5rem",
+          "defaultDark": "1.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--content-padding-sm",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--footer-row-height",
+          "defaultLight": "4.5rem",
+          "defaultDark": "4.5rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--footer-row-padding-y",
+          "defaultLight": "calc((4.5rem - 2.25rem) / 2)",
+          "defaultDark": "calc((4.5rem - 2.25rem) / 2)",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--guild-icon-gap",
+          "defaultLight": "0.5rem",
+          "defaultDark": "0.5rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--guild-icon-size",
+          "defaultLight": "2.75rem",
+          "defaultDark": "2.75rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-gap",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-gap-lg",
+          "defaultLight": "1.5rem",
+          "defaultDark": "1.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-gap-sm",
+          "defaultLight": "0.5rem",
+          "defaultDark": "0.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-guild-list-width",
+          "defaultLight": "4.5rem",
+          "defaultDark": "4.5rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-header-height",
+          "defaultLight": "3.5rem",
+          "defaultDark": "3.5rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-header-popout-width",
+          "defaultLight": "calc(16.875rem - (1rem * 2))",
+          "defaultDark": "calc(16.875rem - (1rem * 2))",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-mobile-bottom-nav-reserved-height",
+          "defaultLight": "0px",
+          "defaultDark": "0px",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-sidebar-width",
+          "defaultLight": "16.875rem",
+          "defaultDark": "16.875rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-user-area-height",
+          "defaultLight": "4.5rem",
+          "defaultDark": "4.5rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--layout-user-area-reserved-height",
+          "defaultLight": "0px",
+          "defaultDark": "0px",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--mobile-bottom-nav-height",
+          "defaultLight": "3.75rem",
+          "defaultDark": "3.75rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--native-titlebar-height",
+          "defaultLight": "2rem",
+          "defaultDark": "2rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--scroller-spacer-height",
+          "defaultLight": "1.75rem",
+          "defaultDark": "1.75rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--slowmode-indicator-height",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-0",
+          "defaultLight": "0",
+          "defaultDark": "0",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-1",
+          "defaultLight": "0.25rem",
+          "defaultDark": "0.25rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-1-5",
+          "defaultLight": "0.375rem",
+          "defaultDark": "0.375rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-10",
+          "defaultLight": "2.5rem",
+          "defaultDark": "2.5rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-12",
+          "defaultLight": "3rem",
+          "defaultDark": "3rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-16",
+          "defaultLight": "4rem",
+          "defaultDark": "4rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-2",
+          "defaultLight": "0.5rem",
+          "defaultDark": "0.5rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-20",
+          "defaultLight": "5rem",
+          "defaultDark": "5rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-24",
+          "defaultLight": "6rem",
+          "defaultDark": "6rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-3",
+          "defaultLight": "0.75rem",
+          "defaultDark": "0.75rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-4",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "high",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-5",
+          "defaultLight": "1.25rem",
+          "defaultDark": "1.25rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-6",
+          "defaultLight": "1.5rem",
+          "defaultDark": "1.5rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--spacing-8",
+          "defaultLight": "2rem",
+          "defaultDark": "2rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--system-message-icon-size",
+          "defaultLight": "1.125rem",
+          "defaultDark": "1.125rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--user-area-content-height",
+          "defaultLight": "2.25rem",
+          "defaultDark": "2.25rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--user-area-padding-x",
+          "defaultLight": "1rem",
+          "defaultDark": "1rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--user-area-padding-y",
+          "defaultLight": "calc((4.5rem - 2.25rem) / 2)",
+          "defaultDark": "calc((4.5rem - 2.25rem) / 2)",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--voice-connection-padding-y",
+          "defaultLight": "0.5rem",
+          "defaultDark": "0.5rem",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        }
+      ]
+    },
+    {
+      "name": "Emoji",
+      "variables": [
+        {
+          "name": "--emoji-size-emoji",
+          "defaultLight": "1.5em",
+          "defaultDark": "1.5em",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--emoji-size-jumbo-emoji",
+          "defaultLight": "3rem",
+          "defaultDark": "3rem",
+          "impact": "medium",
+          "inputType": "numeric-with-unit"
+        }
+      ]
+    },
+    {
+      "name": "Motion",
+      "variables": [
+        {
+          "name": "--transition-fast",
+          "defaultLight": "100ms ease",
+          "defaultDark": "100ms ease",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--transition-normal",
+          "defaultLight": "200ms ease",
+          "defaultDark": "200ms ease",
+          "impact": "medium",
+          "inputType": "text"
+        },
+        {
+          "name": "--transition-slow",
+          "defaultLight": "300ms ease",
+          "defaultDark": "300ms ease",
+          "impact": "medium",
+          "inputType": "text"
+        }
+      ]
+    },
+    {
+      "name": "Layering",
+      "variables": [
+        {
+          "name": "--z-index-base",
+          "defaultLight": "0",
+          "defaultDark": "0",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-contextmenu",
+          "defaultLight": "44000",
+          "defaultDark": "44000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-elevated-1",
+          "defaultLight": "10",
+          "defaultDark": "10",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-elevated-2",
+          "defaultLight": "20",
+          "defaultDark": "20",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-elevated-3",
+          "defaultLight": "30",
+          "defaultDark": "30",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-modal",
+          "defaultLight": "10000",
+          "defaultDark": "10000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-modal-swap",
+          "defaultLight": "25000",
+          "defaultDark": "25000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-overlay",
+          "defaultLight": "40000",
+          "defaultDark": "40000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-popout",
+          "defaultLight": "15000",
+          "defaultDark": "15000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-popout-above-swap",
+          "defaultLight": "30000",
+          "defaultDark": "30000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-titlebar",
+          "defaultLight": "100000",
+          "defaultDark": "100000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-toast",
+          "defaultLight": "50000",
+          "defaultDark": "50000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--z-index-tooltip",
+          "defaultLight": "45000",
+          "defaultDark": "45000",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        }
+      ]
+    },
+    {
+      "name": "Other",
+      "variables": [
+        {
+          "name": "--interactive-active",
+          "defaultLight": "color-mix( in oklab, hsl(0, calc(0% * var(--saturation-factor)), 100%) 100%, hsl(245, calc(100% * var(--saturation-factor)), 80%) 40% )",
+          "defaultDark": "color-mix( in oklab, hsl(0, calc(0% * var(--saturation-factor)), 100%) 100%, hsl(245, calc(100% * var(--saturation-factor)), 80%) 40% )",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--interactive-muted",
+          "defaultLight": "color-mix( in oklab, hsl(228, calc(10% * var(--saturation-factor)), 35%) 100%, hsl(245, calc(100% * var(--saturation-factor)), 80%) 40% )",
+          "defaultDark": "color-mix( in oklab, hsl(228, calc(10% * var(--saturation-factor)), 35%) 100%, hsl(245, calc(100% * var(--saturation-factor)), 80%) 40% )",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--invite-verified-icon-color",
+          "defaultLight": "hsl(242, calc(70% * var(--saturation-factor)), 55%)",
+          "defaultDark": "hsl(0, 0%, 98%)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--link-decoration",
+          "defaultLight": "none",
+          "defaultDark": "none",
+          "impact": "medium",
+          "inputType": "select"
+        },
+        {
+          "name": "--panel-control-divider",
+          "defaultLight": "hsla(220, calc(30% * var(--saturation-factor)), 35%, 0.2)",
+          "defaultDark": "hsla(258, calc(30% * var(--saturation-factor)), 55%, 0.35)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--panel-control-highlight",
+          "defaultLight": "hsla(0, 0%, 100%, 0.65)",
+          "defaultDark": "hsla(0, 0%, 100%, 0.04)",
+          "impact": "medium",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--saturation-factor",
+          "defaultLight": "1",
+          "defaultDark": "1",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--system-message-icon-opacity",
+          "defaultLight": "0.6",
+          "defaultDark": "0.6",
+          "impact": "edge-case",
+          "inputType": "numeric-with-unit"
+        },
+        {
+          "name": "--user-area-divider-color",
+          "defaultLight": "hsla(220, calc(10% * var(--saturation-factor)), 40%, 0.2)",
+          "defaultDark": "color-mix(in srgb, hsla(258, calc(10% * var(--saturation-factor)), 100%, 0.05) 70%, transparent)",
+          "impact": "edge-case",
+          "inputType": "color-picker"
+        },
+        {
+          "name": "--user-select",
+          "defaultLight": "auto",
+          "defaultDark": "auto",
+          "impact": "edge-case",
+          "inputType": "select"
+        }
+      ]
+    }
+  ],
+  "hardcodedGaps": [
+    "Scrollbar geometry is hardcoded, not variable-driven. Only the three colors (--scrollbar-thumb-bg, --scrollbar-thumb-bg-hover, --scrollbar-track-bg) are tokens. In features/theme/styles/Scroller.module.css the track width/height is a literal 1rem (L10-13), the thumb min-height is 2.5rem (L21), the thumb/track inset border is 0.25rem solid transparent with border-radius 0.5rem (L42-47), and .scrollerWithBottomGutter adds a literal 0.5rem margin (L29). A channel theme can recolor the scrollbar but cannot resize or reshape it.",
+    "Avatar shape is not themeable. The circular crop is a literal border-radius: 50% in features/ui/components/BaseAvatar.module.css (L22, .overlay) and features/ui/avatars/AvatarStack.module.css (L24, L32). No avatar-shape token exists anywhere, so a channel theme cannot make avatars squared or rounded-rect. Only --message-avatar-size / --message-avatar-size-compact (size, not shape) are exposed.",
+    "Avatar status-badge and mask variables exist in CSS but are absent from the manifest. features/ui/components/BaseAvatar.module.css consumes --avatar-status-radius (L47), --avatar-mask-cx / --avatar-mask-x / --avatar-mask-width (L69-71), --avatar-status-right / -bottom / -width / -height (L40-45). These are never declared in any CSS file; they are written as inline styles from BaseAvatar.tsx (see the typed style keys at L40 and the assignment at L231). Inline styles on the avatar element beat an inherited channel-scope value, so overriding them from a channel theme would not work even if they were surfaced.",
+    "Avatar transition timing is hardcoded outside the manifest. --avatar-status-transition-duration (160ms) and --avatar-status-transition-easing (ease-out) are declared on the .container component class in features/ui/components/BaseAvatar.module.css (L5-6), not on :root, so the manifest generator never sees them. They also do not reuse --transition-fast/normal/slow.",
+    "The manifest generator only reads :root and .theme-light declaration blocks (scripts/GenerateThemeVariables.ts, readSourceVariables - it skips every block whose selector is neither, L174-179). Any custom property declared on a component class is structurally invisible to the manifest. This is the root cause of the avatar gaps above and is a general blind spot, not a one-off omission.",
+    "The manifest models only two themes, but four exist. features/theme/styles/generated/color-system.css defines :root (dark, L3), .theme-light (L190), .theme-coal (L324) and .theme-dark_legacy (L427). THEME_STUDIO_DARK/LIGHT_DEFAULT_VARIABLE_VALUES cover only the first two, so for a user on coal or dark_legacy the editor default shown next to a control will not match what they actually see.",
+    "--saturation-factor is inert when set at channel scope. Every color in color-system.css bakes var(--saturation-factor) into its own declared value on :root (e.g. --background-primary: hsl(258, calc(10% * var(--saturation-factor)), 5%)). Per the CSS custom-property spec, var() inside a custom property is substituted at computed-value time on the element the declaration applies to, so descendants inherit an already-substituted color. Overriding --saturation-factor inside [data-channel-theme-id] therefore affects only declarations written in that same scope, not the inherited palette. It is in the manifest but effectively a no-op for a channel theme.",
+    "--textarea-horizontal-padding has a malformed default value in the manifest: \"1rem)\" with an unbalanced closing paren (ThemeVariableManifest.ts L1166 and L1502). The real source is --textarea-horizontal-padding: var(--chat-horizontal-padding, var(--spacing-4)) (features/channel/components/textarea/TextareaInput.module.css L16). The generator regex for var() fallbacks is /var\\(\\s*(--[a-zA-Z0-9_-]+)(?:\\s*,\\s*([^)]+))?\\)/g - the [^)]+ fallback group stops at the first closing paren, so a nested var() fallback is truncated and leaves a stray \")\". This is the only malformed value of the 333 (verified by a paren-balance scan over both maps); the true runtime value is 1rem. An editor seeding a control from this default would emit invalid CSS.",
+    "--textarea-side-button-padding and --typing-upload-column-width use a unitless zero inside max() alongside lengths: max( 0, calc((2.5rem - 2.25rem) / 2) ). CSS math functions require consistent argument types, so a bare <number> against a <length> is invalid at computed-value time. This is the same bug class the repo already fixed elsewhere (commit dbe38255, \"fix(app): unitless zero fallback in voice calc\"). Source: features/channel/components/textarea/TextareaInput.module.css L19-22 and src/app/globals.css L115-118.",
+    "Markdown code blocks use the wrong scrollbar tokens. features/theme/styles/Markup.module.css L307 sets scrollbar-color: var(--background-tertiary) var(--background-primary) instead of --scrollbar-thumb-bg / --scrollbar-track-bg, so retheming the scrollbar colors leaves code-block scrollbars on the surface palette.",
+    "Transition durations are hardcoded at many channel-scope sites even though --transition-fast/normal/slow exist: GuildMembersPage.module.css L222, L263, L600; ChannelAttachmentArea.module.css L84; MessageAttachments.module.css L66; EmojiPicker.module.css L50, L242; GifPicker.module.css L185, L200, L322; ScheduledMessageEditBar.module.css L36; MemesPicker.module.css L33. Motion is therefore only partially themeable.",
+    "Hardcoded colors inside the channel content area, all non-tokenised and therefore not retheamable: ChannelAttachmentArea.module.css L66, L80, L88, L103, L270, L282; MemesPicker.module.css L146, L200, L206; PremiumUpsellBanner.module.css L31, L36, L39, L57; MemberListItem.module.css L121 (owner crown, hsl(39, 57%, 64%)); RecipientRemoveMessage.module.css L4; GuildJoinMessage.module.css L4; ChannelReplyBar.module.css L48; ChannelSearchHighlight.css L4 (search hit highlight, rgba(255, 230, 0, 0.25)); ChannelIndexPage.module.css L9, L15, L38, L62 and direct_message/DirectMessageLayout.module.css L22, L45, L57 (literal #000 backgrounds).",
+    "Portal-rendered surfaces escape the channel scope entirely. Modals, popouts, tooltips, toasts, bottom sheets, the media viewer, the expression picker and the mobile SelectMode overlay all render via createPortal into document.body (features/ui/popover/PopoverPopouts.tsx, features/ui/toast/Toasts.tsx, features/ui/sheet/Sheet.tsx, features/messaging/components/modals/MediaViewerModal.tsx, features/expressions/components/popouts/ExpressionPickerPopout.tsx, features/channel/components/channel_view/GuildChannelView.tsx L336). They are not descendants of the themed <main>, so no channel-scoped override reaches them - including every --z-index-* variable.",
+    "Sixteen app-shell variables are present in the manifest but unreachable from a channel theme, because they are consumed only outside <main>: --layout-sidebar-width, --layout-guild-list-width, --guild-icon-size, --guild-icon-gap, --layout-user-area-height, --layout-user-area-reserved-height, --user-area-content-height, --user-area-padding-x, --user-area-padding-y, --user-area-divider-color, --native-titlebar-height, --mobile-bottom-nav-height, --layout-mobile-bottom-nav-reserved-height, --footer-row-height, --footer-row-padding-y, --layout-header-popout-width. Verified by tracing var() consumers into features/app/components/layout/ and features/guild/components/popouts/. They are marked edge-case here and should be hidden or disabled in the editor rather than offered as working controls.",
+    "Eight variables are written as inline styles on document.documentElement by useThemeCssVariables (features/theme/hooks/useThemeCssVariables.ts L30-46): --saturation-factor, --user-select, --font-size, --chat-horizontal-padding, --message-group-spacing, --link-decoration, --markup-strikethrough-color, plus the non-custom dynamic-range-limit. A channel-scope declaration on a descendant still wins for that subtree, so these remain overridable - but they are bound to the user accessibility settings (font size, message gutter, group spacing, link underline, text selection). Overriding them in a channel theme silently overrides a per-user accessibility preference inside that channel."
+  ]
+}
