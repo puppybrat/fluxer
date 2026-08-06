@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+// LOCAL-ONLY: ChannelAppearanceTab is a local-only addition — exclude from upstream sync.
+import ChannelAppearanceTab from '@app/features/channel/components/modals/channel_tabs/ChannelAppearanceTab';
 import ChannelInvitesTab from '@app/features/channel/components/modals/channel_tabs/ChannelInvitesTab';
 import ChannelOverviewTab from '@app/features/channel/components/modals/channel_tabs/ChannelOverviewTab';
 import ChannelPermissionsTab from '@app/features/channel/components/modals/channel_tabs/ChannelPermissionsTab';
@@ -7,7 +9,7 @@ import ChannelWebhooksTab from '@app/features/channel/components/modals/channel_
 import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import type {I18n, MessageDescriptor} from '@lingui/core';
 import {msg} from '@lingui/core/macro';
-import {GearIcon, type Icon, ShieldIcon, TicketIcon, WebhooksLogoIcon} from '@phosphor-icons/react';
+import {GearIcon, type Icon, PaintBrushIcon, ShieldIcon, TicketIcon, WebhooksLogoIcon} from '@phosphor-icons/react';
 import type React from 'react';
 
 const OVERVIEW_DESCRIPTOR = msg({
@@ -25,13 +27,19 @@ const INVITES_DESCRIPTOR = msg({
 	context: 'channel-settings-tab',
 	comment: 'Channel settings tab for invite management.',
 });
+// LOCAL-ONLY: channel theme editor tab — exclude from upstream sync.
+const APPEARANCE_DESCRIPTOR = msg({
+	message: 'Appearance',
+	context: 'channel-settings-tab',
+	comment: 'Channel settings tab for the per-channel theme editor.',
+});
 const WEBHOOKS_DESCRIPTOR = msg({
 	message: 'Webhooks',
 	context: 'channel-settings-tab',
 	comment: 'Channel settings tab for configuring channel webhooks.',
 });
 
-export type ChannelSettingsTabType = 'overview' | 'permissions' | 'invites' | 'webhooks';
+export type ChannelSettingsTabType = 'overview' | 'permissions' | 'invites' | 'webhooks' | 'appearance';
 type ChannelSettingsTabCategories = 'channel_settings';
 
 export interface ChannelSettingsTab {
@@ -79,6 +87,15 @@ const CHANNEL_SETTINGS_TABS_DESCRIPTORS: Array<ChannelSettingsTabDescriptor> = [
 		label: INVITES_DESCRIPTOR,
 		icon: TicketIcon,
 		component: ChannelInvitesTab,
+		permission: Permissions.MANAGE_CHANNELS,
+	},
+	// LOCAL-ONLY: channel theme editor tab — exclude from upstream sync.
+	{
+		type: 'appearance',
+		category: 'channel_settings',
+		label: APPEARANCE_DESCRIPTOR,
+		icon: PaintBrushIcon,
+		component: ChannelAppearanceTab,
 		permission: Permissions.MANAGE_CHANNELS,
 	},
 	{

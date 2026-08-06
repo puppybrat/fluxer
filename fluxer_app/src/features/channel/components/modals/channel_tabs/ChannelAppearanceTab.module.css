@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+.container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--layout-gap);
+	min-width: 0;
+}
+
+.emptyState {
+	color: var(--text-tertiary);
+	font-size: var(--font-size-xs);
+}
+
+.hint {
+	margin-top: var(--spacing-2);
+	color: var(--text-tertiary);
+	font-size: var(--font-size-xs);
+}
+
+.blockedList {
+	margin-top: var(--spacing-3);
+	padding: var(--spacing-3);
+	border: var(--theme-border-width) solid var(--border-color);
+	border-radius: var(--radius-md);
+	background-color: var(--background-secondary);
+	color: var(--text-secondary);
+	font-size: var(--font-size-xs);
+}
+
+.blockedList ul {
+	margin-top: var(--spacing-1);
+	padding-left: var(--spacing-4);
+	list-style: disc;
+}
+
+/* Monospace and no wrapping: this is CSS source, and a wrapped selector is harder to scan. */
+.cssTextarea {
+	min-height: 16rem;
+	font-family: var(--font-mono);
+	font-size: var(--font-size-xs);
+	line-height: 1.5;
+	white-space: pre;
+	overflow-wrap: normal;
+	overflow-x: auto;
+}
+
+.actionBar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing-2);
+	align-items: center;
+}
