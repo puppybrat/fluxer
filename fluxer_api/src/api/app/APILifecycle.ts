@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {randomUUID} from 'node:crypto';
+// LOCAL-ONLY: cast system client lifecycle
 import {initCastClient, shutdownCastClient} from '@pkgs/cast_client/src/CastClient';
 import {initCassandra, shutdownCassandra} from '@pkgs/cassandra/src/Client';
 import {ensureGeoipDatabaseOnStartup} from '@pkgs/geoip/src/GeoipStartup';
@@ -8,6 +9,7 @@ import {JetStreamConnectionManager} from '@pkgs/nats/src/JetStreamConnectionMana
 import {getDefaultPostgresClient, initPostgres, shutdownPostgres} from '@pkgs/postgres/src/Client';
 import type {APIConfig} from '../config/APIConfig';
 import {hasDatabaseQueryExecutor, setDatabaseQueryExecutor} from '../database/CassandraQueryExecution';
+// LOCAL-ONLY: channel themes schema init
 import {ensureChannelThemeSchema} from '../database/ChannelThemeSchema';
 import {ensurePostgresKvSchema, PostgresKvQueryExecutor} from '../database/PostgresKvQueryExecutor';
 import {GuildDataRepository} from '../guild/repositories/GuildDataRepository';
@@ -67,6 +69,7 @@ export function createInitializer(config: APIConfig, logger: ILogger): () => Pro
 				await initPostgres(config.postgres);
 				const postgres = getDefaultPostgresClient();
 				await ensurePostgresKvSchema(postgres);
+				// LOCAL-ONLY: channel themes schema init
 				await ensureChannelThemeSchema(postgres);
 				setDatabaseQueryExecutor(new PostgresKvQueryExecutor(postgres));
 				logger.info('Postgres KV client initialized');
@@ -119,6 +122,7 @@ export function createInitializer(config: APIConfig, logger: ILogger): () => Pro
 			logger.info('Profile substring blocklist cache initialized');
 			await initializeServiceSingletons();
 			logger.info('Service singletons initialized');
+			// LOCAL-ONLY: cast system client lifecycle
 			initCastClient({apiUrl: config.cast.apiUrl ?? '', apiSecret: config.cast.apiSecret ?? ''});
 			logger.info({configured: Boolean(config.cast.apiUrl)}, 'Cast client initialized');
 			if (!config.dev.testModeEnabled) {
@@ -234,6 +238,7 @@ export function createShutdown(logger: ILogger): () => Promise<void> {
 			logger.error({error}, 'Error shutting down search service');
 		}
 		try {
+			// LOCAL-ONLY: cast system client lifecycle
 			shutdownCastClient();
 			logger.info('Cast client shut down');
 		} catch (error) {

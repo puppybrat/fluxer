@@ -5,6 +5,7 @@ import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
 import {useContextMenuHoverState} from '@app/features/app/hooks/useContextMenuHoverState';
 import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import {Limits} from '@app/features/app/utils/UserLimits';
+// LOCAL-ONLY: in-character composer (cast system)
 import ComposerInCharacter from '@app/features/cast/state/ComposerInCharacter';
 import {fetchSlowmodeState} from '@app/features/channel/commands/ChannelCommands';
 import {ChannelAttachmentArea} from '@app/features/channel/components/ChannelAttachmentArea';
@@ -229,6 +230,7 @@ export const LexicalChannelTextareaContent = observer(
 			setIsFocused(false);
 			setIsInputAreaFocused(false);
 		}, [inputSuppressed]);
+		// LOCAL-ONLY: in-character composer (cast system)
 		// Resolve in-character eligibility once per channel on mount, so the composer toggle is
 		// present or absent from first paint rather than popping in after a per-message check.
 		useEffect(() => {
@@ -240,6 +242,7 @@ export const LexicalChannelTextareaContent = observer(
 		const showStickersButton = Accessibility.showStickersButton;
 		const showEmojiButton = Accessibility.showEmojiButton;
 		const showMessageSendButton = Accessibility.showMessageSendButton;
+		// LOCAL-ONLY: in-character composer (cast system)
 		// In-character composer toggle, gated on the current user having a primary character in THIS
 		// channel's effective cast (resolved once per channel). Hidden entirely otherwise, matching how
 		// the other expression buttons are conditionally rendered rather than disabled.
@@ -1305,6 +1308,7 @@ export const LexicalChannelTextareaContent = observer(
 								showMemesButton={showMemesButton}
 								showStickersButton={showStickersButton}
 								showEmojiButton={showEmojiButton}
+								// LOCAL-ONLY: in-character composer (cast system)
 								showInCharacterButton={showInCharacterButton}
 								inCharacterActive={inCharacterActive}
 								onInCharacterToggle={handleInCharacterToggle}
