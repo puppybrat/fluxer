@@ -8,6 +8,8 @@ import {
 	UnclaimedAccountBarrier,
 	UnverifiedEmailBarrier,
 } from '@app/features/channel/components/barriers/BarrierComponents';
+// LOCAL-ONLY: GuildCastDisplay is a local-only addition — exclude from upstream sync.
+import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
 import {ChannelChatLayout} from '@app/features/channel/components/ChannelChatLayout';
 import {ChannelHeader} from '@app/features/channel/components/ChannelHeader';
 import styles from '@app/features/channel/components/ChannelIndexPage.module.css';
@@ -30,6 +32,8 @@ import {useChannelMemberListVisibility} from '@app/features/channel/hooks/useCha
 import {useChannelSearchVisibility} from '@app/features/channel/hooks/useChannelSearchVisibility';
 import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
+// LOCAL-ONLY: ChannelThemes is a local-only addition — exclude from upstream sync.
+import ChannelThemes from '@app/features/channel/state/ChannelThemes';
 // LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
 import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
@@ -175,6 +179,27 @@ const VoiceChannelJoinEmptyState = observer(function VoiceChannelJoinEmptyState(
 export const GuildChannelView = observer(({channelId, guildId}: GuildChannelViewProps) => {
 	const channel = Channels.getChannel(channelId);
 	const guild = guildId ? Guilds.getGuild(guildId) : null;
+	// LOCAL-ONLY: relocated here from ChannelChatLayout, which upstream reduced to a presentational
+	// component with no channel prop. Loaded once per guild, on channel mount rather than per
+	// in-character message, so a message never renders as its sender and then visibly flips to a
+	// character. Guilds without a cast configured resolve to an empty map and cost one request per
+	// session. Keyed on the props rather than `channel`, which may not be resolved yet.
+	useEffect(() => {
+		if (!guildId) return;
+		void GuildCastDisplay.ensureLoaded(guildId);
+		// Also load this channel's effective cast, so a message renders with its channel/category
+		// nickname and pfp rather than the guild-wide identity. Falls back to the guild identity
+		// (loaded above) for any character not present in this channel's resolved cast.
+		void GuildCastDisplay.ensureChannelLoaded(guildId, channelId);
+	}, [guildId, channelId]);
+	// LOCAL-ONLY: relocated from ChannelChatLayout for the same reason. useChannelThemeStyle reads the
+	// resolved CSS synchronously, so fetching on mount rather than lazily keeps a channel from
+	// rendering unstyled and then visibly restyling. Both loads are deduped, so repeat mounts cost
+	// nothing.
+	useEffect(() => {
+		void ChannelThemes.ensureLibraryLoaded();
+		void ChannelThemes.ensureChannelStateLoaded(channelId);
+	}, [channelId]);
 	const isVoiceChannel = channel?.type === ChannelTypes.GUILD_VOICE;
 	const memberListDefaultHiddenForChannel = Boolean(isVoiceChannel);
 	const isMemberListVisible = useMemberListVisible({
@@ -207,7 +232,7 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 		activeSearchSegments,
 	} = searchState;
 	const isSearchPanelVisible = isSearchActive && !isMobileLayout;
-	const {hasMessagesBottomBar, onBottomBarVisibilityChange} = useMessagesBottomBarVisibility(channelId);
+	const {onBottomBarVisibilityChange} = useMessagesBottomBarVisibility(channelId);
 	const {
 		showFullscreenView: showVoiceCallFullscreenView,
 		fullscreenRequestNonce: voiceCallFullscreenRequestNonce,
@@ -526,7 +551,6 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 				}
 				chatArea={
 					<ChannelChatLayout
-						channel={channel}
 						messages={
 							<Messages
 								key={channel.id}
@@ -537,7 +561,6 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 							/>
 						}
 						textarea={renderChatArea(isVoiceTextCallExpanded)}
-						hideBottomBar={hasMessagesBottomBar}
 						data-flx="channel.channel-view.guild-channel-view.channel-chat-layout"
 					/>
 				}
@@ -587,7 +610,6 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 			}
 			chatArea={
 				<ChannelChatLayout
-					channel={channel}
 					messages={
 						<Messages
 							key={channel.id}
@@ -597,7 +619,6 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 						/>
 					}
 					textarea={renderChatArea()}
-					hideBottomBar={hasMessagesBottomBar}
 					data-flx="channel.channel-view.guild-channel-view.channel-chat-layout--2"
 				/>
 			}

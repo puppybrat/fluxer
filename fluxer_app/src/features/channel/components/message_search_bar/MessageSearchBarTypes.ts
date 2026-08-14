@@ -2,6 +2,7 @@
 
 import type {CastDisplayCharacter} from '@app/features/cast/state/GuildCastDisplay';
 import type {Channel} from '@app/features/channel/models/Channel';
+import type {LexicalSearchInputHandle} from '@app/features/lexical/search/LexicalSearchInput';
 import type {SearchHistoryEntry} from '@app/features/search/state/SearchHistory';
 import type {SearchSegment} from '@app/features/search/utils/SearchSegmentManager';
 import type {SearchFilterOption} from '@app/features/search/utils/SearchUtils';
@@ -15,7 +16,7 @@ export interface SearchBarProps {
 	onClear: () => void;
 	isResultsOpen?: boolean;
 	onCloseResults?: () => void;
-	inputRefExternal?: React.Ref<HTMLInputElement>;
+	inputRefExternal?: React.Ref<LexicalSearchInputHandle>;
 	highContrast?: boolean;
 }
 

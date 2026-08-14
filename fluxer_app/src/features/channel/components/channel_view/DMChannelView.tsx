@@ -40,6 +40,8 @@ import {useMessagesBottomBarVisibility} from '@app/features/channel/components/M
 import {useChannelMemberListVisibility} from '@app/features/channel/hooks/useChannelMemberListVisibility';
 import {useChannelSearchVisibility} from '@app/features/channel/hooks/useChannelSearchVisibility';
 import Channels from '@app/features/channel/state/Channels';
+// LOCAL-ONLY: ChannelThemes is a local-only addition — exclude from upstream sync.
+import ChannelThemes from '@app/features/channel/state/ChannelThemes';
 // LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
 import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
@@ -50,6 +52,7 @@ import {useMemberListVisible} from '@app/features/member/hooks/useMemberListVisi
 import {ComponentDispatch} from '@app/features/platform/utils/ComponentBus';
 import ReadStates from '@app/features/read_state/state/ReadStates';
 import Relationships from '@app/features/relationship/state/Relationships';
+import {remFromPx} from '@app/features/theme/layout/RemFromPx';
 import {Button} from '@app/features/ui/button/Button';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
 import {isMobileExperienceEnabled} from '@app/features/ui/utils/MobileExperience';
@@ -82,6 +85,13 @@ interface DMChannelViewProps {
 export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 	const {i18n} = useLingui();
 	const channel = Channels.getChannel(channelId);
+	// LOCAL-ONLY: relocated here from ChannelChatLayout, which upstream reduced to a presentational
+	// component with no channel prop. Deliberately NOT gated on a guild, unlike the cast effect in
+	// GuildChannelView — a DM can carry a theme, and this instance's primary writing channel is one.
+	useEffect(() => {
+		void ChannelThemes.ensureLibraryLoaded();
+		void ChannelThemes.ensureChannelStateLoaded(channelId);
+	}, [channelId]);
 	const recipientId = channel?.recipientIds?.[0];
 	const recipient = recipientId ? Users.getUser(recipientId) : null;
 	const isRecipientBlocked = recipientId ? Relationships.isBlocked(recipientId) : false;
@@ -108,7 +118,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 		activeSearchQuery,
 		activeSearchSegments,
 	} = searchState;
-	const {hasMessagesBottomBar, onBottomBarVisibilityChange} = useMessagesBottomBarVisibility(channelId);
+	const {onBottomBarVisibilityChange} = useMessagesBottomBarVisibility(channelId);
 	const {enabled: isMobileLayout} = MobileLayout;
 	const isSearchPanelVisible = isSearchActive && !isMobileLayout;
 	useChannelSearchVisibility(channelId, isSearchPanelVisible);
@@ -413,7 +423,11 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 										variant="secondary"
 										onClick={handleOpenCallSheet}
 										leftIcon={
-											<PhoneIcon size={16} weight="fill" data-flx="channel.channel-view.dm-channel-view.phone-icon" />
+											<PhoneIcon
+												size={remFromPx(16)}
+												weight="fill"
+												data-flx="channel.channel-view.dm-channel-view.phone-icon"
+											/>
 										}
 										data-flx="channel.channel-view.dm-channel-view.button.open-call-sheet"
 									>
@@ -510,7 +524,6 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 				}
 				chatArea={
 					<ChannelChatLayout
-						channel={channel}
 						messages={
 							<Messages
 								key={channel.id}
@@ -538,7 +551,6 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 								/>
 							)
 						}
-						hideBottomBar={hasMessagesBottomBar}
 						data-flx="channel.channel-view.dm-channel-view.channel-chat-layout"
 					/>
 				}

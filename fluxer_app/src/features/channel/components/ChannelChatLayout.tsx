@@ -1,19 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import GuildCastDisplay from '@app/features/cast/state/GuildCastDisplay';
-import {fetchSlowmodeState} from '@app/features/channel/commands/ChannelCommands';
 import styles from '@app/features/channel/components/ChannelChatLayout.module.css';
-import {SlowmodeIndicator} from '@app/features/channel/components/SlowmodeIndicator';
-import {TypingUsers} from '@app/features/channel/components/TypingUsers';
-import type {Channel} from '@app/features/channel/models/Channel';
-import ChannelThemes from '@app/features/channel/state/ChannelThemes';
-import Messages from '@app/features/messaging/state/MessagingMessages';
-import {useSlowmode} from '@app/features/slowmode/hooks/useSlowmode';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
-import {useEffect} from 'react';
+import {createContext, useContext} from 'react';
 
 const MESSAGES_DESCRIPTOR = msg({
 	message: 'Messages',
@@ -25,66 +17,19 @@ const MESSAGE_COMPOSER_DESCRIPTOR = msg({
 });
 
 interface ChannelChatLayoutProps {
-	channel: Channel;
 	messages: React.ReactNode;
 	textarea: React.ReactNode;
 	hideBottomBar?: boolean;
 }
 
-export function getChannelChatStatusVisibility({
-	hideBottomBar = false,
-	isSlowmodeEnabled,
-	messagesReady,
-}: {
-	hideBottomBar?: boolean;
-	isSlowmodeEnabled: boolean;
-	messagesReady: boolean;
-}) {
-	const showFloatingStatus = !hideBottomBar;
-	const showTypingUsers = messagesReady && showFloatingStatus;
-	const showSlowmodeIndicator = isSlowmodeEnabled && showFloatingStatus;
-	return {
-		showTypingUsers,
-		showSlowmodeIndicator,
-		showRow: showTypingUsers || showSlowmodeIndicator,
-	};
+const ChannelComposerAmbientStatusVisibilityContext = createContext(true);
+
+export function useChannelComposerAmbientStatusVisibility(): boolean {
+	return useContext(ChannelComposerAmbientStatusVisibilityContext);
 }
 
-export const ChannelChatLayout = observer(({channel, messages, textarea, hideBottomBar}: ChannelChatLayoutProps) => {
+export const ChannelChatLayout = observer(({messages, textarea, hideBottomBar = false}: ChannelChatLayoutProps) => {
 	const {i18n} = useLingui();
-	const {slowmodeRemaining, isSlowmodeEnabled, isSlowmodeImmune} = useSlowmode(channel);
-	void Messages.version;
-	const messagesReady = Messages.getMessages(channel.id).ready;
-	const shouldFetchSlowmode = Boolean(channel.guildId) && (channel.rateLimitPerUser ?? 0) > 0;
-	useEffect(() => {
-		if (!shouldFetchSlowmode) return;
-		void fetchSlowmodeState(channel.id);
-	}, [channel.id, shouldFetchSlowmode]);
-	// Loaded once per guild, on channel mount rather than per in-character message, so a
-	// message never renders as its sender and then visibly flips to a character. Guilds
-	// without a cast configured resolve to an empty map and cost one request per session.
-	useEffect(() => {
-		if (!channel.guildId) return;
-		void GuildCastDisplay.ensureLoaded(channel.guildId);
-		// Also load this channel's effective cast, so a message renders with its channel/category
-		// nickname and pfp rather than the guild-wide identity. Falls back to the guild identity
-		// (loaded above) for any character not present in this channel's resolved cast.
-		void GuildCastDisplay.ensureChannelLoaded(channel.guildId, channel.id);
-	}, [channel.guildId, channel.id]);
-	// Channel themes, loaded on the same mount for the same reason: ChannelLayout's
-	// useChannelThemeStyle reads the resolved CSS synchronously, so fetching here rather than lazily
-	// keeps a channel from rendering unstyled and then visibly restyling. Both loads are deduped, so
-	// repeat mounts cost nothing. Deliberately NOT gated on channel.guildId, unlike the cast effect
-	// above — a DM can carry a theme, and this instance's primary writing channel is one.
-	useEffect(() => {
-		void ChannelThemes.ensureLibraryLoaded();
-		void ChannelThemes.ensureChannelStateLoaded(channel.id);
-	}, [channel.id]);
-	const {showTypingUsers, showSlowmodeIndicator} = getChannelChatStatusVisibility({
-		hideBottomBar,
-		isSlowmodeEnabled,
-		messagesReady,
-	});
 	return (
 		<div className={styles.container} data-flx="channel.channel-chat-layout.container">
 			<section
@@ -94,31 +39,14 @@ export const ChannelChatLayout = observer(({channel, messages, textarea, hideBot
 			>
 				{messages}
 			</section>
-			<div className={styles.typingArea} data-flx="channel.channel-chat-layout.typing-area">
-				{showTypingUsers && (
-					<div className={styles.typingContent} data-flx="channel.channel-chat-layout.typing-content">
-						<div className={styles.typingLeft} data-flx="channel.channel-chat-layout.typing-left">
-							<TypingUsers channel={channel} data-flx="channel.channel-chat-layout.typing-users" />
-						</div>
-					</div>
-				)}
-				{showSlowmodeIndicator && (
-					<div className={styles.slowmodePin} data-flx="channel.channel-chat-layout.slowmode-target">
-						<SlowmodeIndicator
-							slowmodeRemaining={slowmodeRemaining}
-							slowmodeDuration={channel.rateLimitPerUser * 1000}
-							isImmune={isSlowmodeImmune}
-							data-flx="channel.channel-chat-layout.slowmode-indicator"
-						/>
-					</div>
-				)}
-			</div>
 			<section
 				className={styles.textareaArea}
 				aria-label={i18n._(MESSAGE_COMPOSER_DESCRIPTOR)}
 				data-flx="channel.channel-chat-layout.textarea-area"
 			>
-				{textarea}
+				<ChannelComposerAmbientStatusVisibilityContext.Provider value={!hideBottomBar}>
+					{textarea}
+				</ChannelComposerAmbientStatusVisibilityContext.Provider>
 			</section>
 		</div>
 	);

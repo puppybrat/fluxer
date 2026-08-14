@@ -4,7 +4,6 @@ import {registerAdminControllers} from '../admin/controllers/index';
 import {AuthController} from '../auth/AuthController';
 import {BlueskyOAuthController} from '../bluesky/BlueskyOAuthController';
 import {Config} from '../Config';
-import {CanaryTesterController} from '../canary_tester/CanaryTesterController';
 import {CastController} from '../cast/CastController';
 import {ChannelController} from '../channel/ChannelController';
 import type {APIConfig} from '../config/APIConfig';
@@ -69,7 +68,6 @@ export function registerControllers(routes: HonoApp, config: APIConfig): void {
 		TestHarnessController(routes);
 	}
 	UserController(routes);
-	CanaryTesterController(routes);
 	registerInboundSmsWebhook(routes);
 	WebhookController(routes);
 	OAuth2Controller(routes);
