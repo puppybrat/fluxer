@@ -281,6 +281,7 @@ export function useMessageSearchAutocomplete({
 			setMemberSearchResults([]);
 			return;
 		}
+		// LOCAL-ONLY: cached member fallback while MemberSearch loads
 		const fallbackGuildId = currentGuildIdForScope;
 		if (fallbackGuildId) {
 			const cachedMembers = deduplicateMembers(GuildMembers.getMembers(fallbackGuildId));
@@ -403,6 +404,7 @@ export function useMessageSearchAutocomplete({
 				const searchTerm = currentWord.slice(currentFilter.syntax.length);
 				const plan = getUserGuildSearchPlan(activeScope, currentGuildIdForScope);
 				if (plan.mode !== 'none') {
+					// LOCAL-ONLY: cached member fallback when guild fully loaded
 					if (memberSearchResults.length > 0) {
 						return memberSearchResults.slice(0, 12);
 					}
