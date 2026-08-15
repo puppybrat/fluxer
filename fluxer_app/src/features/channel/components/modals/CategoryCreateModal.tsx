@@ -27,7 +27,7 @@ interface FormInputs {
 	name: string;
 }
 
-export const CategoryCreateModal = observer(({guildId}: {guildId: string}) => {
+export const CategoryCreateModal = observer(({guildId, parentId}: {guildId: string; parentId?: string}) => {
 	const {i18n} = useLingui();
 	const form = useForm<FormInputs>();
 	const onSubmit = async (data: FormInputs) => {
@@ -35,7 +35,7 @@ export const CategoryCreateModal = observer(({guildId}: {guildId: string}) => {
 			name: data.name,
 			url: null,
 			type: ChannelTypes.GUILD_CATEGORY,
-			parent_id: null,
+			parent_id: parentId ?? null,
 			bitrate: null,
 			user_limit: null,
 		});

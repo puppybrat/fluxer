@@ -3,6 +3,7 @@
 import {showChannelDeleteFailedModal} from '@app/features/app/components/alerts/ChannelDeleteFailedModal';
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
 import * as ChannelCommands from '@app/features/channel/commands/ChannelCommands';
+import {CategoryCreateModal} from '@app/features/channel/components/modals/CategoryCreateModal';
 import {ChannelSettingsModal} from '@app/features/channel/components/modals/ChannelSettingsModal';
 import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
@@ -24,6 +25,7 @@ import ReadStates from '@app/features/read_state/state/ReadStates';
 import {
 	CollapseCategoryIcon,
 	CopyIdIcon,
+	CreateCategoryIcon,
 	DebugChannelIcon,
 	DeleteIcon,
 	MarkAsReadIcon,
@@ -82,6 +84,10 @@ const COLLAPSE_ALL_CATEGORIES_DESCRIPTOR = msg({
 	message: 'Collapse all categories',
 	comment: 'Action label that collapses every channel category.',
 });
+const CREATE_CATEGORY_DESCRIPTOR = msg({
+	message: 'Create category',
+	comment: 'Action that opens the create-category modal to nest a new category inside this one.',
+});
 const EDIT_CATEGORY_DESCRIPTOR = msg({
 	message: 'Edit category',
 	comment: 'Action that opens the edit-category modal.',
@@ -108,6 +114,7 @@ export interface CategoryMenuHandlers {
 	handleToggleCollapse: () => void;
 	handleToggleCollapseAll: () => void;
 	handleOpenMuteSheet: () => void;
+	handleCreateCategory: () => void;
 	handleEditCategory: () => void;
 	handleDeleteCategory: () => void;
 	handleCopyCategoryId: () => Promise<void>;
@@ -188,6 +195,18 @@ export function useCategoryMenuData(category: Channel, options: CategoryMenuData
 			},
 			handleOpenMuteSheet: () => {
 				onOpenMuteSheet?.();
+			},
+			handleCreateCategory: () => {
+				ModalCommands.pushAfterBottomSheetClose(
+					onClose,
+					modal(() => (
+						<CategoryCreateModal
+							guildId={category.guildId!}
+							parentId={category.id}
+							data-flx="ui.action-menu.items.category-menu-data.handle-create-category.category-create-modal"
+						/>
+					)),
+				);
 			},
 			handleEditCategory: () => {
 				ModalCommands.pushAfterBottomSheetClose(
@@ -308,6 +327,11 @@ export function useCategoryMenuData(category: Channel, options: CategoryMenuData
 		if (state.canManageChannels) {
 			menuGroups.push({
 				items: [
+					{
+						icon: React.createElement(CreateCategoryIcon, {size: 20}),
+						label: i18n._(CREATE_CATEGORY_DESCRIPTOR),
+						onClick: handlers.handleCreateCategory,
+					},
 					{
 						icon: React.createElement(SettingsIcon, {size: 20}),
 						label: i18n._(EDIT_CATEGORY_DESCRIPTOR),
