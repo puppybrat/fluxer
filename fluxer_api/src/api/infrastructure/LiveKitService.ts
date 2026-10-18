@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type {ChannelID, GuildID, UserID} from '@app/api/BrandedTypes';
+import {Config} from '@app/api/Config';
+import type {
+	ListActiveRoomsResult,
+	ListParticipantsResult,
+	LiveKitServerError,
+} from '@app/api/infrastructure/ILiveKitService';
+import {ILiveKitService} from '@app/api/infrastructure/ILiveKitService';
+import {Logger} from '@app/api/Logger';
+import type {VoiceRegionMetadata, VoiceServerRecord} from '@app/api/voice/VoiceModel';
+import type {VoiceTopology} from '@app/api/voice/VoiceTopology';
 import {AccessToken, RoomServiceClient, TrackSource} from 'livekit-server-sdk';
-import type {ChannelID, GuildID, UserID} from '../BrandedTypes';
-import {Config} from '../Config';
-import {Logger} from '../Logger';
-import type {VoiceRegionMetadata, VoiceServerRecord} from '../voice/VoiceModel';
-import type {VoiceTopology} from '../voice/VoiceTopology';
-import type {ListActiveRoomsResult, ListParticipantsResult, LiveKitServerError} from './ILiveKitService';
-import {ILiveKitService} from './ILiveKitService';
 
 interface CreateTokenParams {
 	userId: UserID;
@@ -324,9 +328,6 @@ export class LiveKitService extends ILiveKitService {
 				participants: participants.map((participant) => ({identity: participant.identity})),
 			};
 		} catch (error) {
-			if (LiveKitService.isHttp404(error)) {
-				return {status: 'ok', participants: []};
-			}
 			Logger.warn({error, regionId, serverId, roomName}, 'LiveKit listParticipants failed');
 			const status = LiveKitService.getHttpStatus(error);
 			const isRetryable = status != null && status >= 500;

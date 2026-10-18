@@ -42,7 +42,6 @@
 		"@pkgs/email": "workspace:*",
 		"@pkgs/geoip": "workspace:*",
 		"@pkgs/http_client": "workspace:*",
-		"@pkgs/initialization": "workspace:*",
 		"@pkgs/kv_client": "workspace:*",
 		"@pkgs/locale": "workspace:*",
 		"@pkgs/media_proxy_utils": "workspace:*",
@@ -83,6 +82,7 @@
 		"transliteration": "catalog:",
 		"tsx": "catalog:",
 		"uint8array-extras": "catalog:",
+		"undici": "catalog:",
 		"validator": "catalog:",
 		"zod": "catalog:"
 	},
@@ -92,7 +92,6 @@
 		"@typescript/native-preview": "catalog:",
 		"esbuild": "catalog:",
 		"msw": "catalog:",
-		"vite-tsconfig-paths": "catalog:",
 		"vitest": "catalog:"
 	},
 	"packageManager": "pnpm@10.29.3"

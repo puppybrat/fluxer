@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type {APIConfig, BlueskyOAuthConfig} from '@app/api/config/APIConfig';
+import type {WorkerTaskName} from '@app/api/worker/WorkerLaneConfig';
 import type {MasterConfig} from '@fluxer/config/src/MasterConfig';
 import {resolveDownloadsProvider} from '@fluxer/config/src/S3DownloadsProvider';
 import {parseIpAddress} from '@fluxer/ip_utils/src/IpAddress';
 import {parseGeoipSourceConfig, resolveGeoipRuntimeSourceConfig} from '@pkgs/geoip/src/GeoipStartup';
-import type {APIConfig, BlueskyOAuthConfig} from './config/APIConfig';
-import type {WorkerTaskName} from './worker/WorkerLaneConfig';
 
 function extractHostname(url: string): string {
 	try {
@@ -113,17 +113,18 @@ function mapPushProviderApps(
 				project_id?: string;
 		  }>
 		| undefined,
+	configName: string,
 ): APIConfig['push']['apns']['apps'] {
-	return (apps ?? []).flatMap((app) => {
-		if (!app.app_id) return [];
-		return [
-			{
-				appId: app.app_id,
-				topic: app.topic,
-				environment: app.environment,
-				projectId: app.project_id,
-			},
-		];
+	return (apps ?? []).map((app) => {
+		if (!app.app_id) {
+			throw new Error(`${configName} contains an entry with no app_id`);
+		}
+		return {
+			appId: app.app_id,
+			topic: app.topic,
+			environment: app.environment,
+			projectId: app.project_id,
+		};
 	});
 }
 
@@ -139,7 +140,17 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		serviceName: 'api',
 	});
 	const uploadRelayConfig = master.services.media_proxy.upload_relay;
-	const uploadRelaySecretBase64 = process.env.FLUXER_MEDIA_PROXY_UPLOAD_RELAY_SECRET_BASE64 ?? '';
+	const uploadRelaySecretBase64 = uploadRelayConfig.secret_base64;
+	if (uploadRelaySecretBase64.length === 0) {
+		throw new Error('FLUXER_MEDIA_PROXY_UPLOAD_RELAY_SECRET_BASE64 is required for the API');
+	}
+	if (Buffer.from(uploadRelaySecretBase64, 'base64').length < 32) {
+		throw new Error('FLUXER_MEDIA_PROXY_UPLOAD_RELAY_SECRET_BASE64 must decode to at least 32 bytes');
+	}
+	const donationProxyKey = (master.services.api.donation_proxy_key ?? '').trim();
+	if (donationProxyKey.length > 0 && donationProxyKey.length < 32) {
+		throw new Error('FLUXER_API_DONATION_PROXY_KEY must be at least 32 characters');
+	}
 	if (!s3Config) {
 		throw new Error('S3 configuration is required for the API');
 	}
@@ -149,7 +160,6 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		downloads: '',
 		reports: '',
 		harvests: '',
-		static: '',
 	};
 	if (master.database.backend === 'cassandra' && !cassandraSource) {
 		throw new Error('Cassandra configuration is required.');
@@ -227,6 +237,11 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			jetStreamUrl: master.services.nats?.jetstream_url ?? 'nats://127.0.0.1:4223',
 			authToken: master.services.nats?.auth_token ?? '',
 		},
+		storageChangeFeed: {
+			enabled: master.services.api.storage_change_feed?.enabled ?? false,
+			stream: master.services.api.storage_change_feed?.stream ?? 'STORAGE_CHANGES',
+			skipBuckets: master.services.api.storage_change_feed?.skip_buckets ?? [s3Buckets.uploads],
+		},
 		search: {
 			engine: master.integrations.search?.engine ?? 'elasticsearch',
 			url: master.integrations.search?.url ?? 'http://127.0.0.1:9200',
@@ -269,6 +284,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		internal: {
 			gateway: resolveGatewayInternalUrl(master),
 			gatewayRpcAuthToken: master.services.gateway.rpc_auth_token ?? '',
+			donationProxyKey,
 		},
 		hosts: {
 			invite: extractHostname(master.endpoints.invite),
@@ -366,17 +382,29 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 						monthlyUsd: master.integrations.stripe.prices.monthly_usd,
 						monthlyEur: master.integrations.stripe.prices.monthly_eur,
 						monthlyBrl: master.integrations.stripe.prices.monthly_brl,
+						monthlyDkk: master.integrations.stripe.prices.monthly_dkk,
 						monthlyInr: master.integrations.stripe.prices.monthly_inr,
+						monthlyNok: master.integrations.stripe.prices.monthly_nok,
 						monthlyPln: master.integrations.stripe.prices.monthly_pln,
+						monthlySek: master.integrations.stripe.prices.monthly_sek,
 						monthlyTry: master.integrations.stripe.prices.monthly_try,
 						yearlyUsd: master.integrations.stripe.prices.yearly_usd,
 						yearlyEur: master.integrations.stripe.prices.yearly_eur,
 						yearlyBrl: master.integrations.stripe.prices.yearly_brl,
+						yearlyDkk: master.integrations.stripe.prices.yearly_dkk,
 						yearlyInr: master.integrations.stripe.prices.yearly_inr,
+						yearlyNok: master.integrations.stripe.prices.yearly_nok,
 						yearlyPln: master.integrations.stripe.prices.yearly_pln,
+						yearlySek: master.integrations.stripe.prices.yearly_sek,
 						yearlyTry: master.integrations.stripe.prices.yearly_try,
 						gift1MonthUsd: master.integrations.stripe.prices.gift_1_month_usd,
 						gift1MonthEur: master.integrations.stripe.prices.gift_1_month_eur,
+						gift1MonthSek: master.integrations.stripe.prices.gift_1_month_sek,
+						gift1YearSek: master.integrations.stripe.prices.gift_1_year_sek,
+						gift1MonthDkk: master.integrations.stripe.prices.gift_1_month_dkk,
+						gift1YearDkk: master.integrations.stripe.prices.gift_1_year_dkk,
+						gift1MonthNok: master.integrations.stripe.prices.gift_1_month_nok,
+						gift1YearNok: master.integrations.stripe.prices.gift_1_year_nok,
 						gift1MonthBrl: master.integrations.stripe.prices.gift_1_month_brl,
 						gift1MonthInr: master.integrations.stripe.prices.gift_1_month_inr,
 						gift1MonthPln: master.integrations.stripe.prices.gift_1_month_pln,
@@ -389,11 +417,15 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 						gift1YearTry: master.integrations.stripe.prices.gift_1_year_try,
 					}
 				: undefined,
+			legacyPrices: master.integrations.stripe.legacy_prices,
 		},
-		bunny: {
-			purgeEnabled: master.integrations.bunny.purge_enabled,
-			apiKey: master.integrations.bunny.api_key,
-			pullZoneId: master.integrations.bunny.pull_zone_id,
+		cachePurge: {
+			adapter: master.integrations.cache_purge.adapter,
+			http: {
+				endpoint: master.integrations.cache_purge.http.endpoint,
+				token: master.integrations.cache_purge.http.token,
+				timeoutMs: master.integrations.cache_purge.http.timeout_ms,
+			},
 		},
 		clamav: {
 			enabled: master.integrations.clamav.enabled,
@@ -428,7 +460,6 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			},
 			bluesky: master.auth.bluesky as BlueskyOAuthConfig,
 		},
-		cookie: master.cookie,
 		klipy: {
 			apiKey: master.integrations.klipy.api_key,
 		},
@@ -452,6 +483,8 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 				wordmarkUrl: master.instance.branding.wordmark_url,
 				faviconUrl: master.instance.branding.favicon_url,
 				themeColor: master.instance.branding.theme_color,
+				statusPageUrl: master.instance.branding.status_page_url,
+				statusPageIncidentHistoryUrl: master.instance.branding.status_page_incident_history_url,
 			},
 			setup: {
 				configured: master.instance.setup.configured,
@@ -499,7 +532,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 				privateKey: master.integrations.push.apns.private_key,
 				privateKeyPath: master.integrations.push.apns.private_key_path,
 				defaultEnvironment: master.integrations.push.apns.default_environment ?? 'production',
-				apps: mapPushProviderApps(master.integrations.push.apns.apps),
+				apps: mapPushProviderApps(master.integrations.push.apns.apps, 'FLUXER_PUSH_APNS_APPS'),
 			},
 			fcm: {
 				enabled: master.integrations.push.fcm.enabled,
@@ -509,7 +542,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 				privateKeyPath: master.integrations.push.fcm.private_key_path,
 				serviceAccountJsonPath: master.integrations.push.fcm.service_account_json_path,
 				tokenUri: master.integrations.push.fcm.token_uri ?? 'https://oauth2.googleapis.com/token',
-				apps: mapPushProviderApps(master.integrations.push.fcm.apps),
+				apps: mapPushProviderApps(master.integrations.push.fcm.apps, 'FLUXER_PUSH_FCM_APPS'),
 			},
 		},
 		worker: {
@@ -517,15 +550,6 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			laneName: apiWorkerConfig?.lane,
 			taskName: apiWorkerConfig?.task as WorkerTaskName | undefined,
 			enableCronScheduler: apiWorkerConfig?.enable_cron_scheduler,
-			enableVoiceReconciliation: apiWorkerConfig?.enable_voice_reconciliation ?? true,
-			voiceReconciliation: {
-				intervalMs: apiWorkerConfig?.voice_reconciliation?.interval_ms,
-				staggerDelayMs: apiWorkerConfig?.voice_reconciliation?.stagger_delay_ms,
-				lockTtlSeconds: apiWorkerConfig?.voice_reconciliation?.lock_ttl_seconds,
-				cadenceTtlSeconds: apiWorkerConfig?.voice_reconciliation?.cadence_ttl_seconds,
-				gatewayOnlyGraceMs: apiWorkerConfig?.voice_reconciliation?.gateway_only_grace_ms,
-				liveKitOnlyGraceMs: apiWorkerConfig?.voice_reconciliation?.livekit_only_grace_ms,
-			},
 			laneConcurrencyOverrides: {
 				realtime: apiWorkerConfig?.lane_concurrency_overrides?.realtime,
 				unfurl: apiWorkerConfig?.lane_concurrency_overrides?.unfurl,

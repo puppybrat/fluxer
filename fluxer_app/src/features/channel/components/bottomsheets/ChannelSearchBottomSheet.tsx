@@ -73,6 +73,8 @@ import {HashIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
+const UNNAMED_CHANNEL_DESCRIPTOR = msg({message: 'Unnamed channel'});
+
 const NEWEST_DESCRIPTOR = msg({
 	message: 'Newest',
 	comment: 'Sort mode label in the mobile channel search bottom sheet. Sorts results newest first.',
@@ -714,7 +716,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 																className={styles.channelName}
 																data-flx="channel.channel-search-bottom-sheet.render-content.channel-name"
 															>
-																{messageChannel.name || 'Unnamed Channel'}
+																{messageChannel.name || i18n._(UNNAMED_CHANNEL_DESCRIPTOR)}
 															</span>
 														</div>
 													)}

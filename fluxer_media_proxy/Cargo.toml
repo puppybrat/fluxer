@@ -25,11 +25,13 @@ axum = {version = "0.8.9", default-features = false, features = ["http1", "json"
 base64 = "0.22.1"
 bytes = "1.11.1"
 clap = {version = "4.6.1", features = ["derive"]}
+futures-util = {version = "0.3.32", default-features = false, features = ["std"]}
 hex = "0.4.3"
 hmac = "0.13.0"
 http = "1.4.2"
 http-body = "1.0.1"
 http-body-util = "0.1.3"
+hyper = {version = "1.10.1", default-features = false}
 libc = "0.2.186"
 moka = {version = "0.12.15", features = ["sync"]}
 parking_lot = "0.12.5"

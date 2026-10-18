@@ -14,7 +14,7 @@ import styles from '@app/features/user/components/modals/tabs/AdvancedSettingsTa
 import {CompactComboboxRow} from '@app/features/user/components/modals/tabs/components/CompactComboboxRow';
 import PrivacyPreferences from '@app/features/user/state/PrivacyPreferences';
 import * as VoiceSettingsCommands from '@app/features/voice/commands/VoiceSettingsCommands';
-import VoiceSettings, {DEFAULT_SCREEN_SHARE_MAX_BITRATE_MBPS} from '@app/features/voice/state/VoiceSettings';
+import VoiceSettings from '@app/features/voice/state/VoiceSettings';
 import type {
 	CodecPreference,
 	ScreenShareBackupCodecMode,
@@ -78,11 +78,11 @@ const SOFTWARE_QUALITY_DESCRIPTOR = msg({
 	comment: 'Label for an advanced screen-share select. Refers to software video encoder quality bias.',
 });
 const SOFTWARE_QUALITY_DESCRIPTION_DESCRIPTOR = msg({
-	message: 'Higher quality can cost more CPU and latency.',
+	message: 'Higher quality can increase CPU usage and latency.',
 	comment: 'Description for a software encoder quality select. Keep AV1 and CPU literal.',
 });
 const SOFTWARE_QUALITY_REALTIME_DESCRIPTOR = msg({
-	message: 'Realtime',
+	message: 'Real-time',
 	comment: 'Option label for a software encoder quality select. Means fastest/lower-latency.',
 });
 const SOFTWARE_QUALITY_BALANCED_DESCRIPTOR = msg({
@@ -122,7 +122,7 @@ const BACKUP_CODEC_DESCRIPTOR = msg({
 	comment: 'Label for an advanced screen-share select. H.264 is a codec name and should stay literal.',
 });
 const BACKUP_CODEC_DESCRIPTION_DESCRIPTOR = msg({
-	message: 'Adds H.264 for mixed clients. Uses more encode work.',
+	message: 'Adds H.264 for mixed clients. Requires more encoding.',
 	comment: 'Description for an H.264 backup stream select. Keep H.264, CPU, and GPU literal.',
 });
 const BACKUP_CODEC_OFF_DESCRIPTOR = msg({
@@ -157,63 +157,10 @@ const CONTENT_HINT_TEXT_DESCRIPTOR = msg({
 	message: 'Text',
 	comment: 'Option label for a WebRTC content hint select.',
 });
-const MAX_BITRATE_DESCRIPTOR = msg({
-	message: 'Maximum screen share bitrate',
-	comment: 'Label for an advanced screen-share bitrate select.',
-});
-const MAX_BITRATE_DESCRIPTION_DESCRIPTOR = msg({
-	message: 'Upper bitrate cap before WebRTC adapts to the network.',
-	comment: 'Description for the maximum screen share bitrate select. Keep WebRTC literal.',
-});
 const CONFIGURE_DESCRIPTOR = msg({
 	message: 'Configure',
 	comment: 'Button label that opens a dedicated advanced settings modal for configuring screen-share encoder controls.',
 });
-const MBPS_DESCRIPTOR = msg({
-	message: '{megabits} Mbps',
-	comment: 'Screen share bitrate option label. Mbps means megabits per second.',
-});
-
-const DECODE_CODEC_CAP_DESCRIPTOR = msg({
-	message: 'Emulate decode codec (testing)',
-	comment: 'Label for an advanced select that caps the best video codec this client advertises it can decode.',
-});
-const DECODE_CODEC_CAP_AUTO_DESCRIPTOR = msg({
-	message: 'Automatic',
-	comment: 'Option label for the emulated decode codec select. Means advertise true decode support.',
-});
-
-const SCREEN_SHARE_MAX_BITRATE_OPTIONS = [1, 5, 10, 15, 25, 50] as const;
-
-const getNearestNumericOptionValue = <V extends number>(
-	value: number,
-	options: ReadonlyArray<ComboboxOption<V>>,
-): V | undefined => {
-	let nearestOption: ComboboxOption<V> | undefined;
-	let nearestDistance = Number.POSITIVE_INFINITY;
-	for (const option of options) {
-		const distance = Math.abs(option.value - value);
-		if (distance < nearestDistance) {
-			nearestDistance = distance;
-			nearestOption = option;
-		}
-	}
-	return nearestOption?.value;
-};
-
-const resolveScreenShareBitrateInput = (
-	inputValue: string,
-	options: ReadonlyArray<ComboboxOption<number>>,
-): number | undefined => {
-	const normalized = inputValue.trim().toLowerCase();
-	if (!normalized) return undefined;
-	const numericMatch = normalized.match(/([0-9]+(?:\.[0-9]+)?)/);
-	if (!numericMatch) return undefined;
-	const parsedValue = Number(numericMatch[1]);
-	if (!Number.isFinite(parsedValue)) return undefined;
-	const valueInMbps = normalized.includes('kbps') ? parsedValue / 1000 : parsedValue;
-	return getNearestNumericOptionValue(valueInMbps, options);
-};
 
 const PREFERRED_SCREEN_SHARE_CODEC_DESCRIPTOR = msg({
 	message: 'Preferred screen share codec',
@@ -314,29 +261,6 @@ export const ScreenShareHevcOptInControl = observer(() => {
 	);
 });
 
-export const EmulatedDecodeCodecCapControl = observer(() => {
-	const {i18n} = useLingui();
-	const options: ReadonlyArray<ComboboxOption<CodecPreference>> = [
-		{value: 'auto', label: i18n._(DECODE_CODEC_CAP_AUTO_DESCRIPTOR)},
-		{value: 'av1', label: 'AV1'},
-		{value: 'h265', label: 'H.265'},
-		{value: 'vp9', label: 'VP9'},
-		{value: 'h264', label: 'H.264'},
-		{value: 'vp8', label: 'VP8'},
-	];
-	return (
-		<Combobox<CodecPreference, false>
-			value={VoiceSettings.emulatedDecodeVideoCodecCap}
-			options={options}
-			onChange={(value) => VoiceSettingsCommands.update({emulatedDecodeVideoCodecCap: value})}
-			density="compact"
-			isSearchable={false}
-			aria-label={i18n._(DECODE_CODEC_CAP_DESCRIPTOR)}
-			data-flx="user.advanced-settings-tab.select.emulated-decode-codec-cap"
-		/>
-	);
-});
-
 export const OpenH264Control = observer(() => {
 	const {i18n} = useLingui();
 	const handleChange = useCallback((value: boolean) => {
@@ -415,18 +339,6 @@ const ScreenShareEncoderControlsContent = observer(() => {
 		{value: 'detail', label: i18n._(CONTENT_HINT_DETAIL_DESCRIPTOR)},
 		{value: 'text', label: i18n._(CONTENT_HINT_TEXT_DESCRIPTOR)},
 	];
-	const bitrateOptions: ReadonlyArray<ComboboxOption<number>> = SCREEN_SHARE_MAX_BITRATE_OPTIONS.map((megabits) => ({
-		value: megabits,
-		label: i18n._(MBPS_DESCRIPTOR, {megabits}),
-	}));
-	const storedMaxBitrate = VoiceSettings.screenShareMaxBitrateMbps;
-	const selectedMaxBitrate =
-		getNearestNumericOptionValue(storedMaxBitrate, bitrateOptions) ?? DEFAULT_SCREEN_SHARE_MAX_BITRATE_MBPS;
-	useEffect(() => {
-		if (storedMaxBitrate !== selectedMaxBitrate) {
-			VoiceSettingsCommands.update({screenShareMaxBitrateMbps: selectedMaxBitrate});
-		}
-	}, [selectedMaxBitrate, storedMaxBitrate]);
 	return (
 		<div className={styles.controlStackCompact} data-flx="user.advanced-settings-tab.screen-share-encoder-controls">
 			<CompactComboboxRow<ScreenShareEncoderMode>
@@ -483,17 +395,6 @@ const ScreenShareEncoderControlsContent = observer(() => {
 				controlWidth="small"
 				dataFlx="user.advanced-settings-tab.select.screen-share-content-hint"
 				data-flx="user.advanced-settings-tab.advanced-video-controls.screen-share-encoder-controls-content.compact-combobox-row.update--5"
-			/>
-			<CompactComboboxRow<number>
-				label={i18n._(MAX_BITRATE_DESCRIPTOR)}
-				description={i18n._(MAX_BITRATE_DESCRIPTION_DESCRIPTOR)}
-				value={selectedMaxBitrate}
-				options={bitrateOptions}
-				onChange={(value) => VoiceSettingsCommands.update({screenShareMaxBitrateMbps: value})}
-				autoSelectValueFromInput={resolveScreenShareBitrateInput}
-				controlWidth="small"
-				dataFlx="user.advanced-settings-tab.select.screen-share-max-bitrate"
-				data-flx="user.advanced-settings-tab.advanced-video-controls.screen-share-encoder-controls-content.compact-combobox-row.update--6"
 			/>
 		</div>
 	);

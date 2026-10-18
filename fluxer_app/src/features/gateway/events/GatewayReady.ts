@@ -10,6 +10,7 @@ import Channels from '@app/features/channel/state/Channels';
 import UserConnection from '@app/features/connection/state/UserConnection';
 import Emoji from '@app/features/emoji/state/Emoji';
 import Sticker from '@app/features/emoji/state/EmojiSticker';
+import ExperimentAssignments from '@app/features/experiment/state/ExperimentAssignments';
 import type {FavoriteMemeWire} from '@app/features/expressions/models/FavoriteMeme';
 import FavoriteMemes from '@app/features/expressions/state/FavoriteMemes';
 import type {GatewayHandlerContext} from '@app/features/gateway/events/EventRouter';
@@ -45,7 +46,6 @@ import Users from '@app/features/user/state/Users';
 import WebAuthnCredentials, {type WebAuthnCredential} from '@app/features/user/state/WebAuthnCredentials';
 import MediaEngine from '@app/features/voice/engine/MediaEngineFacade';
 import RtcRegions from '@app/features/voice/state/RtcRegions';
-import VoiceSettings from '@app/features/voice/state/VoiceSettings';
 import type {RtcRegionResponse, Channel as WireChannel} from '@fluxer/schema/src/domains/channel/ChannelSchemas';
 import type {UserPrivate, User as WireUser} from '@fluxer/schema/src/domains/user/UserResponseSchemas';
 import {runInAction} from 'mobx';
@@ -129,6 +129,7 @@ function handleReadyInternal(data: ReadyPayload, context: GatewayHandlerContext)
 	if (data.rtc_regions) {
 		RtcRegions.setRegions(data.rtc_regions);
 	}
+	ExperimentAssignments.start();
 	Users.handleGatewayReady(data.user);
 	if (data.users && data.users.length > 0) {
 		Users.cacheUsers(data.users);
@@ -145,7 +146,6 @@ function handleReadyInternal(data: ReadyPayload, context: GatewayHandlerContext)
 		void accountStorage.updateAccountUserData(user.id, userData);
 		void AccountManager.updateAccountUserData(user.id, userData);
 	}
-	VoiceSettings.handleGatewayReady(data.user);
 	Authentication.handleGatewayReady({user: data.user});
 	void PremiumCommands.refreshPremiumState().catch((error) => {
 		logger.warn('Failed to refresh premium state after READY', error);

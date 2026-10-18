@@ -198,6 +198,7 @@
 		"@radix-ui/react-checkbox": "catalog:",
 		"@radix-ui/react-radio-group": "catalog:",
 		"@radix-ui/react-switch": "catalog:",
+		"@sapphi-red/web-noise-suppressor": "catalog:",
 		"@simplewebauthn/browser": "catalog:",
 		"@tanstack/react-virtual": "^3.13.23",
 		"animejs": "4.5.0",
@@ -229,6 +230,7 @@
 		"mobx-persist-store": "catalog:",
 		"mobx-react-lite": "catalog:",
 		"motion": "catalog:",
+		"onnxruntime-web": "catalog:",
 		"qrcode": "catalog:",
 		"react": "catalog:",
 		"react-aria-components": "catalog:",
@@ -265,6 +267,7 @@
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@typescript/native-preview": "catalog:",
+		"@webgpu/types": "catalog:",
 		"autoprefixer": "catalog:",
 		"esbuild": "catalog:",
 		"happy-dom": "20.12.0",
@@ -275,7 +278,6 @@
 		"sharp": "catalog:",
 		"tsx": "catalog:",
 		"typed-css-modules": "catalog:",
-		"vite-tsconfig-paths": "catalog:",
 		"vitest": "catalog:"
 	},
 	"packageManager": "pnpm@10.29.3"

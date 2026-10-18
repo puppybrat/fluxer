@@ -10,7 +10,11 @@ import {
 	type RowModalOpener,
 } from '@app/features/cast/utils/CastOverviewRowModel';
 import type {CastOverviewEntry, CastOverviewEntryStatus} from '@app/features/cast/utils/CastOverviewTree';
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
+
+// CastOverviewRowModel imports CastCommands -> RestTransport, which builds a lingui descriptor at
+// module load; the macro is a compile-time transform, so tests stub it (upstream's convention).
+vi.mock('@lingui/core/macro', () => ({msg: (descriptor: unknown) => descriptor}));
 
 const GUILD = '1517785346346057728';
 const CHANNEL = '1524705144518737920';

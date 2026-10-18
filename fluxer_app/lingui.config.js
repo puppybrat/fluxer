@@ -9,7 +9,7 @@ module.exports = {
 		{
 			path: 'src/features/i18n/locales/{locale}/messages',
 			include: ['src'],
-			exclude: ['**/node_modules/**', '**/*.d.ts'],
+			exclude: ['**/node_modules/**', '**/*.d.ts', '**/*.test.*', '**/*.spec.*', '**/testing/**'],
 		},
 	],
 	format: 'po',

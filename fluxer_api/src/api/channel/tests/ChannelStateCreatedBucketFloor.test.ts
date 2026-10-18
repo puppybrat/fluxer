@@ -59,7 +59,6 @@ describe('channel_state.created_bucket floor', () => {
 			message_reference: null,
 			message_snapshots: null,
 			call: null,
-			nsfw_emojis: null,
 			has_reaction: false,
 			version: 1,
 		});

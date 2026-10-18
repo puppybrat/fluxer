@@ -20,6 +20,7 @@ import {
 	ExpressionAutocompleteControl,
 	HideMutedChannelsByDefaultControl,
 	InputButtonsControl,
+	KeepAttachmentsOnEmptyEditAdvancedControl,
 	MediaButtonsControl,
 	MessageActionBarControl,
 	PreuploadMessageAttachmentsControl,
@@ -38,9 +39,11 @@ import {
 	HardwareAccelerationControl,
 	NativeTitleBarControl,
 } from '@app/features/user/components/modals/tabs/advanced_settings_tab/AdvancedDesktopControls';
-import {UnreadBadgeCustomizationControl} from '@app/features/user/components/modals/tabs/advanced_settings_tab/AdvancedExperimentalControls';
 import {
-	EmulatedDecodeCodecCapControl,
+	ExpressionCloneShortcutsControl,
+	UnreadBadgeCustomizationControl,
+} from '@app/features/user/components/modals/tabs/advanced_settings_tab/AdvancedExperimentalControls';
+import {
 	OpenH264Control,
 	ScreenShareAv1OptInControl,
 	ScreenShareCodecControl,
@@ -77,6 +80,7 @@ export const DIRECT_CONTROL_ITEM_IDS = new Set([
 	'chat-settings-expression-autocomplete',
 	'chat-settings-input-buttons',
 	'chat-settings-convert-emoticons',
+	'chat-settings-keep-attachments-on-empty-edit',
 	'chat-settings-preupload-attachments',
 	'chat-settings-sequential-file-send',
 	'chat-settings-scroll-to-bottom-on-send',
@@ -87,11 +91,11 @@ export const DIRECT_CONTROL_ITEM_IDS = new Set([
 	'voice-video-screen-share-codec',
 	'voice-video-screen-share-av1-opt-in',
 	'voice-video-screen-share-hevc-opt-in',
-	'voice-video-emulated-decode-codec-cap',
 	'voice-video-openh264-codec',
 	'voice-video-screen-share-preview-behavior',
 	'voice-video-screen-share-encoder-controls',
 	'advanced-unread-badge-customization',
+	'advanced-expression-clone-shortcuts',
 	'client-developer-mode',
 	'accessibility-stay-interactive-unfocused',
 	'advanced-native-title-bar',
@@ -117,6 +121,7 @@ export const COMPACT_SWITCH_CONTROL_ITEM_IDS = new Set([
 	'chat-settings-strip-tracking',
 	'chat-settings-trust-domains',
 	'chat-settings-convert-emoticons',
+	'chat-settings-keep-attachments-on-empty-edit',
 	'chat-settings-preupload-attachments',
 	'chat-settings-sequential-file-send',
 	'chat-settings-scroll-to-bottom-on-send',
@@ -128,6 +133,7 @@ export const COMPACT_SWITCH_CONTROL_ITEM_IDS = new Set([
 	'voice-video-screen-share-av1-opt-in',
 	'voice-video-screen-share-hevc-opt-in',
 	'advanced-unread-badge-customization',
+	'advanced-expression-clone-shortcuts',
 	'client-developer-mode',
 	'accessibility-stay-interactive-unfocused',
 	'advanced-native-title-bar',
@@ -241,6 +247,10 @@ export const AdvancedSettingControl = observer(({item}: {item: SearchableSetting
 			return (
 				<ConvertEmoticonsAdvancedControl data-flx="user.advanced-setting-direct-controls.advanced-setting-control.convert-emoticons-advanced-control" />
 			);
+		case 'chat-settings-keep-attachments-on-empty-edit':
+			return (
+				<KeepAttachmentsOnEmptyEditAdvancedControl data-flx="user.advanced-setting-direct-controls.advanced-setting-control.keep-attachments-on-empty-edit-advanced-control" />
+			);
 		case 'chat-settings-preupload-attachments':
 			return (
 				<PreuploadMessageAttachmentsControl data-flx="user.advanced-setting-direct-controls.advanced-setting-control.preupload-message-attachments-control" />
@@ -281,10 +291,6 @@ export const AdvancedSettingControl = observer(({item}: {item: SearchableSetting
 			return (
 				<ScreenShareHevcOptInControl data-flx="user.advanced-setting-direct-controls.advanced-setting-control.screen-share-hevc-opt-in-control" />
 			);
-		case 'voice-video-emulated-decode-codec-cap':
-			return (
-				<EmulatedDecodeCodecCapControl data-flx="user.advanced-setting-direct-controls.advanced-setting-control.emulated-decode-codec-cap-control" />
-			);
 		case 'voice-video-openh264-codec':
 			return (
 				<OpenH264Control data-flx="user.advanced-setting-direct-controls.advanced-setting-control.open-h264-control" />
@@ -303,6 +309,10 @@ export const AdvancedSettingControl = observer(({item}: {item: SearchableSetting
 		case 'advanced-unread-badge-customization':
 			return (
 				<UnreadBadgeCustomizationControl data-flx="user.advanced-setting-direct-controls.advanced-setting-control.unread-badge-customization-control" />
+			);
+		case 'advanced-expression-clone-shortcuts':
+			return (
+				<ExpressionCloneShortcutsControl data-flx="user.advanced-setting-direct-controls.advanced-setting-control.expression-clone-shortcuts-control" />
 			);
 		case 'client-developer-mode':
 			return (

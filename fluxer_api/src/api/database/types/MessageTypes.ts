@@ -10,7 +10,7 @@ import type {
 	StickerID,
 	UserID,
 	WebhookID,
-} from '../../BrandedTypes';
+} from '@app/api/BrandedTypes';
 
 type Nullish<T> = T | null;
 
@@ -96,7 +96,6 @@ export interface MessageStickerItem {
 	sticker_id: StickerID;
 	name: string;
 	animated?: boolean;
-	nsfw?: boolean;
 }
 
 export interface MessageReference {
@@ -155,7 +154,6 @@ export interface MessageRow {
 	 */
 	ic?: Nullish<boolean>;
 	cast_character_ids?: Nullish<Array<string>>;
-	nsfw_emojis: Nullish<Set<EmojiID>>;
 	has_reaction: Nullish<boolean>;
 	version: number;
 }
@@ -183,7 +181,6 @@ export const MESSAGE_COLUMNS = [
 	'message_reference',
 	'message_snapshots',
 	'call',
-	'nsfw_emojis',
 	'has_reaction',
 	'ic',
 	'cast_character_ids',

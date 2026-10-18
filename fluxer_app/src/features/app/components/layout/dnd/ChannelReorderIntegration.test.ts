@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {
+	type ChannelReorderRect,
+	type ChannelReorderTarget,
+	selectChannelReorderIntent,
+} from '@app/features/app/components/layout/dnd/ChannelReorderStateMachine';
 import {type DragItem, DragItemType, type DropResult} from '@app/features/app/components/layout/types/DndTypes';
 import {
 	type ChannelMoveOperation,
@@ -12,11 +17,6 @@ import {
 	computeGuildChannelReorderPlan,
 } from '@fluxer/schema/src/domains/channel/GuildChannelOrdering';
 import {describe, expect, it} from 'vitest';
-import {
-	type ChannelReorderRect,
-	type ChannelReorderTarget,
-	selectChannelReorderIntent,
-} from './ChannelReorderStateMachine';
 
 const rect: ChannelReorderRect = {
 	top: 100,

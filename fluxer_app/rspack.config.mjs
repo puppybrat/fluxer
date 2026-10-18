@@ -285,6 +285,14 @@ export default () => {
 					},
 				},
 				{
+					test: /[\\/]@sapphi-red[\\/]web-noise-suppressor[\\/]dist[\\/][^\\/]+[\\/]workletProcessor\.js$/,
+					type: 'asset/resource',
+					use: [{loader: path.join(ROOT_DIR, 'scripts/build/rspack/noise-suppressor-worklet-loader.cjs')}],
+					generator: {
+						filename: isProduction ? 'assets/[contenthash:16].worklet.js' : 'assets/[name].[hash].worklet.js',
+					},
+				},
+				{
 					test: /\.(tsx|ts|jsx|js)$/,
 					exclude: /node_modules/,
 					type: 'javascript/auto',
@@ -375,6 +383,13 @@ export default () => {
 					generator: {
 						filename: isProduction ? 'assets/[contenthash:16][ext]' : 'assets/[name].[hash][ext]',
 						...(workerWasmPublicPath ? {publicPath: workerWasmPublicPath} : {}),
+					},
+				},
+				{
+					test: /\.onnx$/,
+					type: 'asset/resource',
+					generator: {
+						filename: isProduction ? 'assets/[contenthash:16][ext]' : 'assets/[name].[hash][ext]',
 					},
 				},
 				{
@@ -584,6 +599,7 @@ export default () => {
 					compress: true,
 					mangle: true,
 					format: {comments: false},
+					exclude: /\.worklet\.js$/,
 				}),
 				new LightningCssMinimizerRspackPlugin(),
 			],

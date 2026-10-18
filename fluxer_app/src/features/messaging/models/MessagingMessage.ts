@@ -160,7 +160,6 @@ export class Message {
 	readonly embeds: ReadonlyArray<MessageEmbed>;
 	readonly attachments: ReadonlyArray<MessageAttachment>;
 	readonly stickerItems: ReadonlyArray<MessageStickerItem>;
-	readonly nsfwEmojis: ReadonlySet<string>;
 	readonly messageReference?: MessageReference;
 	readonly referencedMessage?: Message | null;
 	readonly messageSnapshots?: ReadonlyArray<MessageSnapshot>;
@@ -226,7 +225,6 @@ export class Message {
 		);
 		this.attachments = Object.freeze(message.attachments ?? []);
 		this.stickerItems = Object.freeze(message.stickers ?? []);
-		this.nsfwEmojis = Object.freeze(new Set(message.nsfw_emojis ?? []));
 		if (!options?.skipReactionHydration) {
 			if ('reactions' in message) {
 				MessageReactions.hydrateMessageReactions(this.id, message.reactions);
