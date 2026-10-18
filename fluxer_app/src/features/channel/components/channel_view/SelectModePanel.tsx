@@ -13,10 +13,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {OutlineFrame} from '@app/features/app/components/layout/OutlineFrame';
-// LOCAL-ONLY: the destination channel dropdown reuses the splash screen's quote attribution
-// style verbatim for the parent category suffix — see destChannelOptions / renderOption below.
-// Exclude from upstream sync.
-import splashStyles from '@app/features/app/components/layout/SplashScreen.module.css';
+// LOCAL-ONLY: the destination channel dropdown's parent category suffix uses .quoteSource, a
+// verbatim copy of the (upstream-deleted) splash screen's quote attribution style kept in our own
+// module — see destChannelOptions / renderOption below. Exclude from upstream sync.
 import styles from '@app/features/channel/components/channel_view/SelectModePanel.module.css';
 import {formatRecentOrFallback} from '@app/features/channel/components/guild_members_page/GuildMembersPageFormatting';
 import type {Channel} from '@app/features/channel/models/Channel';
@@ -296,7 +295,7 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                         value={SelectMode.destChannelId ?? ''}
                         options={destChannelOptions}
                         // LOCAL-ONLY: channel name stays primary; the immediate parent category is
-                        // appended in the splash screen's quote attribution style (smaller, muted).
+                        // appended in the old splash quote attribution style (smaller, muted).
                         // Channels with no parent category render the name alone — that branch is
                         // deliberately left unwrapped, as a bare channel name is never the thing
                         // that overflows. The .destOptionRow wrapper caps the popup's width and
@@ -310,7 +309,7 @@ export const SelectModePanel = observer(function SelectModePanel({guild, channel
                                 >
                                     {option.channelLabel}
                                     <span
-                                        className={splashStyles.quoteSource}
+                                        className={styles.quoteSource}
                                         data-flx="channel.channel-view.select-mode-panel.dest-option-category"
                                     >
                                         {' - '}

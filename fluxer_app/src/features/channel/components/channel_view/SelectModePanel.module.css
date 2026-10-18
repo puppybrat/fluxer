@@ -211,3 +211,28 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/*
+ * Parent category suffix in the destination-channel dropdown. Copied verbatim from the splash
+ * screen's .quoteSource (SplashScreen.module.css, deleted upstream in 98c40c697), including its
+ * user-select override and 640px breakpoint, so the suffix renders exactly as before.
+ */
+.quoteSource {
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    margin: var(--spacing-1) 0 0;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+}
+
+@media (min-width: 640px) {
+    .quoteSource {
+        font-size: 0.75rem;
+    }
+}
