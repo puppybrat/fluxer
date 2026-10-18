@@ -101,7 +101,6 @@ export const RichEmbedRequest = z.object({
 	timestamp: DateTimeType.nullish().describe('ISO8601 timestamp for the embed'),
 	description: z
 		.preprocess(omitEmptyString, createStringType(1, RICH_EMBED_DESCRIPTION_MAX_LENGTH).nullish())
-		.optional()
 		.describe(`Description of the embed (1-${RICH_EMBED_DESCRIPTION_MAX_LENGTH} characters)`),
 	author: RichEmbedAuthorRequest.nullish().describe('Author information'),
 	image: RichEmbedMediaRequest.nullish().describe('Image to display in the embed'),
@@ -437,7 +436,7 @@ export type MessagesQuery = z.infer<typeof MessagesQuery>;
 
 const BulkMessageFetchEntryRequest = z.object({
 	channel_id: SnowflakeType.describe('The ID of the channel to fetch messages from'),
-	limit: z.number().int().min(1).max(25).describe('Number of messages to return for this channel (1-25)'),
+	limit: z.number().int().min(1).max(50).describe('Number of messages to return for this channel (1-50)'),
 	before: SnowflakeType.optional().describe('Get messages before this message ID'),
 	after: SnowflakeType.optional().describe('Get messages after this message ID'),
 	around: SnowflakeType.optional().describe('Get messages around this message ID'),

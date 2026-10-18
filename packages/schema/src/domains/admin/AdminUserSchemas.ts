@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {AdminACLs} from '@fluxer/constants/src/AdminACLs';
 import {
 	PremiumFlags,
 	PremiumFlagsDescriptions,
@@ -20,6 +21,8 @@ import {
 } from '@fluxer/schema/src/primitives/SchemaPrimitives';
 import {DiscriminatorType, EmailType, UsernameType} from '@fluxer/schema/src/primitives/UserValidators';
 import {z} from 'zod';
+
+const ADMIN_ACL_COUNT = Object.keys(AdminACLs).length;
 
 export const UserAdminResponseSchema = z.object({
 	id: SnowflakeStringType,
@@ -57,12 +60,15 @@ export const UserAdminResponseSchema = z.object({
 		'Suspicious activity indicators',
 		'SuspiciousActivityFlags',
 	),
+	phone_verification_deferred: z
+		.boolean()
+		.describe('Whether a stored phone requirement is deferred until the user joins a discoverable or large community'),
 	temp_banned_until: z.string().nullable(),
 	pending_deletion_at: z.string().nullable(),
 	pending_bulk_message_deletion_at: z.string().nullable(),
 	deletion_reason_code: Int32Type.nullable(),
 	deletion_public_reason: z.string().nullable(),
-	acls: z.array(z.string()).max(100),
+	acls: z.array(z.string()).max(ADMIN_ACL_COUNT),
 	traits: z.array(z.string()).max(100),
 	has_totp: z.boolean(),
 	authenticator_types: z.array(Int32Type).max(10),
@@ -350,14 +356,14 @@ export type ScheduleAccountDeletionRequest = z.infer<typeof ScheduleAccountDelet
 
 export const SetUserAclsRequest = z.object({
 	user_id: SnowflakeType.describe('ID of the user to set ACLs for'),
-	acls: z.array(createStringType(1, 64)).max(100).describe('List of access control permissions to assign'),
+	acls: z.array(createStringType(1, 64)).max(ADMIN_ACL_COUNT).describe('List of access control permissions to assign'),
 });
 
 export type SetUserAclsRequest = z.infer<typeof SetUserAclsRequest>;
 
 export const SetUserTraitsRequest = z.object({
 	user_id: SnowflakeType.describe('ID of the user to set traits for'),
-	traits: z.array(createStringType(1, 64)).max(100).describe('List of traits to assign to the user'),
+	traits: z.array(createStringType(1, 128)).max(100).describe('List of traits to assign to the user'),
 });
 
 export type SetUserTraitsRequest = z.infer<typeof SetUserTraitsRequest>;

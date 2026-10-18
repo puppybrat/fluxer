@@ -236,6 +236,12 @@ export async function resolveBlueskyOAuthService(
 				_blueskyOAuthConfigSignature = signature;
 				return service;
 			})
+			.catch((error) => {
+				Logger.error({error}, 'Bluesky OAuth signing keys were rejected – disabling Bluesky OAuth.');
+				_blueskyOAuthService = getDisabledBlueskyOAuthService();
+				_blueskyOAuthConfigSignature = signature;
+				return _blueskyOAuthService;
+			})
 			.finally(() => {
 				_blueskyOAuthInitializationPromise = null;
 				_blueskyOAuthInitializationSignature = null;
@@ -299,4 +305,21 @@ export function getLiveKitServiceInstance(): ILiveKitService | null {
 
 export function getVoiceRoomStoreInstance(): IVoiceRoomStore | null {
 	return voiceRoomStoreInstance;
+}
+
+export function resetServiceRegistryForTesting(): void {
+	_kvClient = null;
+	_snowflakeService = null;
+	_billingRepository = null;
+	_blueskyOAuthService = undefined;
+	_blueskyOAuthInitializationPromise = null;
+	_blueskyOAuthConfigSignature = null;
+	_blueskyOAuthInitializationSignature = null;
+	_disabledBlueskyOAuthService = undefined;
+	voiceTopology = null;
+	voiceAvailabilityService = null;
+	liveKitServiceInstance = null;
+	voiceRoomStoreInstance = null;
+	voiceConfigSubscriber = null;
+	voiceInitializationPromise = null;
 }

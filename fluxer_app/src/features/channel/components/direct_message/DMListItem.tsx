@@ -132,9 +132,10 @@ const ResolvedDMListItem = observer(function ResolvedDMListItem({
 		: TypingIndicator.isTyping(channel.id, recipientId);
 	const hasUnreadMessages = () => ReadStates.hasUnread(channel.id);
 	const isMobile = MobileLayout.isMobileLayout();
-	const isMuted = UserGuildSettings.isChannelMuted(null, channel.id);
+	const isMuted = UserGuildSettings.isChannelDirectlyMuted(null, channel.id);
 	const mentionCount = ReadStates.getMentionCount(channel.id);
 	const unreadState = getChannelUnreadState({
+		hasUnread: ReadStates.hasUnread(channel.id),
 		unreadCount: ReadStates.getUnreadCount(channel.id),
 		mentionCount,
 		isMuted,
@@ -249,7 +250,7 @@ const ResolvedDMListItem = observer(function ResolvedDMListItem({
 		const isCurrentUser = lastMessage.author.id === currentUser?.id;
 		const authorPrefix = isCurrentUser
 			? `${i18n._(YOU_DESCRIPTOR)}: `
-			: `${NicknameUtils.getNickname(lastMessage.author)}: `;
+			: `${NicknameUtils.getNickname(lastMessage.author, null, channel.id)}: `;
 		if (lastMessage.type !== MessageTypes.DEFAULT && lastMessage.type !== MessageTypes.REPLY) {
 			const systemText = SystemMessageUtils.stringify(lastMessage, i18n);
 			if (systemText) {

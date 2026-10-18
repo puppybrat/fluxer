@@ -48,7 +48,7 @@ function extraCorsOrigins(): Array<string> {
 
 export async function createAPIApp(options: CreateAPIAppOptions): Promise<APIAppResult> {
 	const {config, logger} = options;
-	const shutdownApiLifecycle = createShutdown(logger);
+	const shutdownApiLifecycle = createShutdown(config, logger);
 	setIsDevelopment(config.nodeEnv === 'development');
 	const routes = new Hono<HonoEnv>({strict: true});
 	configureMiddleware(routes, {

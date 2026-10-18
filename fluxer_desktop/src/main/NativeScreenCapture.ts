@@ -19,7 +19,6 @@ import type {
 import {ipcMain} from 'electron';
 import {getTccStatus} from './MacTcc';
 import {isValidStartOptions, normalizeScreenCaptureDimension} from './NativeScreenCaptureValidation';
-import {createNativeVoiceEngineScreenFrameSinkHandle} from './NativeVoiceEngine';
 
 const logger = createChildLogger('NativeScreenCapture');
 const requireModule = createRequire(import.meta.url);
@@ -822,24 +821,18 @@ async function startNativeScreenCapture(
 	if (activeSessions.has(captureId)) {
 		throw new Error('Native screen capture id is already active');
 	}
-	const frameSinkHandle = createNativeVoiceEngineScreenFrameSinkHandle(captureId);
-	if (!frameSinkHandle) {
-		throw new Error('Native screen capture requires a native frame sink handle, but none is active');
-	}
 	const capture = new loadResult.addon.ScreenCapture({
 		sourceId: options.sourceId,
 		sourceKind: options.sourceKind,
 		width: requestedWidth,
 		height: requestedHeight,
 		frameRate: options.frameRate ?? 30,
-		injectionMethod: options.sourceKind === 'game' ? options.injectionMethod : undefined,
 		captureId,
 		colorRange: options.colorRange,
 		colorSpace: options.colorSpace,
 		showCursorClicks: options.showCursorClicks === true,
 		captureRect: options.captureRect,
 		nativeFrameSinkRequired: true,
-		frameSinkHandle,
 	});
 	const session: ActiveNativeScreenSession = {
 		captureId,

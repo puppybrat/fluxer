@@ -68,7 +68,9 @@ export function registerControllers(routes: HonoApp, config: APIConfig): void {
 		TestHarnessController(routes);
 	}
 	UserController(routes);
-	registerInboundSmsWebhook(routes);
+	if (config.sms.enabled) {
+		registerInboundSmsWebhook(routes);
+	}
 	WebhookController(routes);
 	OAuth2Controller(routes);
 	OAuth2ApplicationsController(routes);

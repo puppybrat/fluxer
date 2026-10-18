@@ -233,10 +233,10 @@ class SelectMode {
             const startBigInt = BigInt(startMessageId);
             const endBigInt = BigInt(endMessageId);
             const idsToRemove: Array<string> = [];
-            // forAll (not forEach) walks the before/after buffers too, not just the visible window —
+            // forEachBuffered (not forEach) walks the before/after buffers too, not just the visible window —
             // otherwise moved messages that have scrolled into beforeBuffer are never collected here,
             // never removed from the local cache, and get replayed on scroll-up via loadFromCache.
-            channelMsgs.forAll((message) => {
+            channelMsgs.forEachBuffered((message) => {
                 const mid = BigInt(message.id);
                 if (mid >= startBigInt && mid <= endBigInt) {
                     idsToRemove.push(message.id);
@@ -272,7 +272,7 @@ class SelectMode {
                 // MessagingMessages.pruneStaleIndexedChannels on the next commit, since it drops any
                 // indexed channel with no live ChannelMessages instance.
                 ChannelMessages.clear(destChannelId);
-                Dimension.clearChannelDimensions(destChannelId);
+                Dimension.forgetChannelDimensions(destChannelId);
 
                 if (idsToRemove.length > 0) {
                     MessagingMessages.handleMessageDeleteBulk({ids: idsToRemove, channelId});

@@ -49,7 +49,7 @@ import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
 import {useMobileSelectModeHistoryDismiss} from '@app/features/channel/utils/MobileSelectModeHistory';
 import {INCOMING_CALL_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {useMemberListVisible} from '@app/features/member/hooks/useMemberListVisible';
-import {ComponentDispatch} from '@app/features/platform/utils/ComponentBus';
+import {ComponentBus} from '@app/features/platform/utils/ComponentBus';
 import ReadStates from '@app/features/read_state/state/ReadStates';
 import Relationships from '@app/features/relationship/state/Relationships';
 import {remFromPx} from '@app/features/theme/layout/RemFromPx';
@@ -178,7 +178,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 	});
 	useEffect(() => {
 		if (!showCompactVoiceView || !currentChannelId) return;
-		return ComponentDispatch.subscribe('COMPACT_VOICE_CALL_EXPANSION_TOGGLE', (payload?: unknown) => {
+		return ComponentBus.subscribe('COMPACT_VOICE_CALL_EXPANSION_TOGGLE', (payload?: unknown) => {
 			const {channelId: targetChannelId} = (payload ?? {}) as {channelId?: string};
 			if (targetChannelId && targetChannelId !== currentChannelId) return false;
 			handleToggleCompactCallExpanded();
@@ -538,7 +538,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 							) : isDM && isRecipientBlocked && recipient ? (
 								<BlockedUserBarrier
 									userId={recipient.id}
-									username={NicknameUtils.getNickname(recipient)}
+									username={NicknameUtils.getNickname(recipient, null)}
 									data-flx="channel.channel-view.dm-channel-view.blocked-user-barrier"
 								/>
 							) : isCurrentUserUnclaimed && isDM && !isPersonalNotes && !isGroupDM ? (

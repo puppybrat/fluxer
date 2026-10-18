@@ -2,7 +2,9 @@
 
 import Accessibility from '@app/features/accessibility/state/Accessibility';
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
+import {reportSkeletonComposerLayout} from '@app/features/app/components/skeleton/SkeletonLayoutMemory';
 import {useContextMenuHoverState} from '@app/features/app/hooks/useContextMenuHoverState';
+import {useSkeletonLayoutReport} from '@app/features/app/hooks/useSkeletonLayoutMemoryCapture';
 import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import {Limits} from '@app/features/app/utils/UserLimits';
 // LOCAL-ONLY: in-character composer (cast system)
@@ -52,8 +54,7 @@ import type {FlatEmoji} from '@app/features/emoji/types/EmojiTypes';
 import {ExpressionPickerSheet} from '@app/features/expressions/components/modals/ExpressionPickerSheet';
 import GuildGuilds from '@app/features/guild/state/Guilds';
 import {CANCEL_DESCRIPTOR, CONTINUE_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
-import Keybind from '@app/features/input/state/InputKeybind';
-import type {ComposerHandle, ComposerSelectionRange} from '@app/features/lexical/composer/ComposerHandle';
+import type {ComposerHandle} from '@app/features/lexical/composer/ComposerHandle';
 import {insertComposerEmoji} from '@app/features/lexical/composer/ComposerInsertion';
 import {LexicalComposerInput} from '@app/features/lexical/composer/LexicalComposerInput';
 import {
@@ -69,7 +70,7 @@ import {showAttachmentPermissionDeniedModal} from '@app/features/messaging/compo
 import {FileSizeTooLargeModal} from '@app/features/messaging/components/alerts/FileSizeTooLargeModal';
 import {TooManyAttachmentsModal} from '@app/features/messaging/components/alerts/TooManyAttachmentsModal';
 import {useTextareaAttachments} from '@app/features/messaging/hooks/useCloudUpload';
-import {doesEventMatchShortcut, useMarkdownKeybinds} from '@app/features/messaging/hooks/useMarkdownKeybinds';
+import {useMarkdownKeybinds} from '@app/features/messaging/hooks/useMarkdownKeybinds';
 import {type SendMessageFunction, useMessageSubmission} from '@app/features/messaging/hooks/useMessageSubmission';
 import {useTextareaDraftAndTyping} from '@app/features/messaging/hooks/useTextareaDraftAndTyping';
 import {useTextareaEditing} from '@app/features/messaging/hooks/useTextareaEditing';
@@ -98,7 +99,7 @@ import {
 	resolveTypedEmojiShortcodes,
 	resolveTypedEmojiToken,
 } from '@app/features/messaging/utils/TypedEmojiShortcodeUtils';
-import {ComponentDispatch} from '@app/features/platform/utils/ComponentBus';
+import {ComponentBus} from '@app/features/platform/utils/ComponentBus';
 import {useSlowmode} from '@app/features/slowmode/hooks/useSlowmode';
 import * as ContextMenuCommands from '@app/features/ui/commands/ContextMenuCommands';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
@@ -121,7 +122,7 @@ import type React from 'react';
 import {useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from 'react';
 
 const PLUS_MENU_DOUBLE_CLICK_MS = 500;
-const MESSAGE_SCROLLER_SELECTOR = '[data-fluxer-scroll-container="true"]';
+const MESSAGE_SCROLLER_SELECTOR = '[data-flx="channel.messages.scroller"][data-fluxer-scroll-container="true"]';
 const MESSAGE_SCROLLER_BOTTOM_THRESHOLD = 16;
 const getActiveMessageScroller = (): HTMLElement | null =>
 	document.querySelector<HTMLElement>(MESSAGE_SCROLLER_SELECTOR);
@@ -251,6 +252,28 @@ export const LexicalChannelTextareaContent = observer(
 		const handleInCharacterToggle = useCallback(() => {
 			ComposerInCharacter.toggleChannel(channel.id);
 		}, [channel.id]);
+		const desktopComposerActionCount = [
+			showAllButtons && showGifButton,
+			showAllButtons && showMemesButton,
+			showAllButtons && showStickersButton,
+			// LOCAL-ONLY: in-character composer (cast system)
+			showAllButtons && showInCharacterButton,
+			showEmojiButton,
+			showMessageSendButton,
+		].filter(Boolean).length;
+		let mobileComposerActionCount = 1;
+		if (showEmojiButton) {
+			mobileComposerActionCount += 1;
+		}
+		useSkeletonLayoutReport(
+			() =>
+				reportSkeletonComposerLayout({
+					desktopActionCount: desktopComposerActionCount,
+					mobileActionCount: mobileComposerActionCount,
+					sendDividerVisible: showMessageSendButton,
+				}),
+			`${desktopComposerActionCount}|${mobileComposerActionCount}|${showMessageSendButton}`,
+		);
 		const mobileLayout = MobileLayout;
 		const replyingMessage = MessageReply.getReplyingMessage(channel.id);
 		const referencedMessage = MessageReply.getReferencedMessage(channel.id);
@@ -283,13 +306,17 @@ export const LexicalChannelTextareaContent = observer(
 			previousValueRef.current = initialDraftRef.current.display;
 			rememberSegmentsForValue(initialDraftRef.current.display, initialDraftRef.current.segments);
 		}
+		const [wireValue, setWireValue] = useState(() =>
+			segmentManagerRef.current.displayToActual(initialDraftRef.current.display),
+		);
 		const handleEditorChange = useCallback(
-			(display: string, segments: Array<MentionSegment>) => {
+			(display: string, segments: Array<MentionSegment>, wire: string) => {
 				editorDisplayRef.current = display;
 				segmentManagerRef.current.setSegments(segments);
 				previousValueRef.current = display;
 				rememberSegmentsForValue(display, segments);
 				setValue(display);
+				setWireValue(wire);
 			},
 			[previousValueRef, rememberSegmentsForValue, segmentManagerRef],
 		);
@@ -339,10 +366,7 @@ export const LexicalChannelTextareaContent = observer(
 		const sendMentionConfirmationEvent = useCallback((event: MentionConfirmationEvent) => {
 			setMentionConfirmationSnapshot((snapshot) => transitionMentionConfirmationSnapshot(snapshot, event));
 		}, []);
-		const currentMentionConfirmationSourceContent = useMemo(
-			() => displayToActual(value).trim(),
-			[displayToActual, value],
-		);
+		const currentMentionConfirmationSourceContent = useMemo(() => wireValue.trim(), [wireValue]);
 		const currentMentionConfirmationSourceContentRef = useRef(currentMentionConfirmationSourceContent);
 		const pendingMentionConfirmationRef = useRef<MentionConfirmationInfo | null>(pendingMentionConfirmation);
 		const handleSendMessageRef = useRef(handleSendMessage);
@@ -421,6 +445,7 @@ export const LexicalChannelTextareaContent = observer(
 							onSecondary={() => {
 								handleMentionCancel();
 							}}
+							data-flx="channel.lexical-channel-textarea-content.confirm-modal"
 						/>
 					)),
 					mentionModalKey,
@@ -449,6 +474,7 @@ export const LexicalChannelTextareaContent = observer(
 								handleMentionCancel();
 								onClose();
 							}}
+							data-flx="channel.lexical-channel-textarea-content.mention-everyone-popout"
 						/>
 					),
 					position: 'top-start',
@@ -509,8 +535,8 @@ export const LexicalChannelTextareaContent = observer(
 			[channel, i18n],
 		);
 		const trimmedMessageContent = useMemo(
-			() => resolveTypedEmojiContent(displayToActual(value).trim()),
-			[displayToActual, resolveTypedEmojiContent, value],
+			() => resolveTypedEmojiContent(wireValue.trim()),
+			[resolveTypedEmojiContent, wireValue],
 		);
 		const hasMessageContent = useMemo(() => hasVisibleMessageContent(trimmedMessageContent), [trimmedMessageContent]);
 		const isSubmissionBlockedBySlowmode = useMemo(() => {
@@ -562,9 +588,20 @@ export const LexicalChannelTextareaContent = observer(
 			);
 			if (!result.success) {
 				if (result.error === 'too_many_attachments') {
-					ModalCommands.push(modal(() => <TooManyAttachmentsModal />));
+					ModalCommands.push(
+						modal(() => (
+							<TooManyAttachmentsModal data-flx="channel.lexical-channel-textarea-content.handle-file-button-click.too-many-attachments-modal" />
+						)),
+					);
 				} else if (result.error === 'file_size_too_large') {
-					ModalCommands.push(modal(() => <FileSizeTooLargeModal oversizedFileCount={result.oversizedFileCount} />));
+					ModalCommands.push(
+						modal(() => (
+							<FileSizeTooLargeModal
+								oversizedFileCount={result.oversizedFileCount}
+								data-flx="channel.lexical-channel-textarea-content.handle-file-button-click.file-size-too-large-modal"
+							/>
+						)),
+					);
 				}
 				return;
 			}
@@ -591,9 +628,20 @@ export const LexicalChannelTextareaContent = observer(
 			);
 			if (!result.success) {
 				if (result.error === 'too_many_attachments') {
-					ModalCommands.push(modal(() => <TooManyAttachmentsModal />));
+					ModalCommands.push(
+						modal(() => (
+							<TooManyAttachmentsModal data-flx="channel.lexical-channel-textarea-content.handle-upload-message-as-file.too-many-attachments-modal" />
+						)),
+					);
 				} else if (result.error === 'file_size_too_large') {
-					ModalCommands.push(modal(() => <FileSizeTooLargeModal oversizedFileCount={result.oversizedFileCount} />));
+					ModalCommands.push(
+						modal(() => (
+							<FileSizeTooLargeModal
+								oversizedFileCount={result.oversizedFileCount}
+								data-flx="channel.lexical-channel-textarea-content.handle-upload-message-as-file.file-size-too-large-modal"
+							/>
+						)),
+					);
 				}
 				return;
 			}
@@ -662,7 +710,7 @@ export const LexicalChannelTextareaContent = observer(
 				wasAtBottomBeforeComposerBoundaryChange.current &&
 				(stickerBoundaryChanged || (attachmentBoundaryChanged && Messages.getMessages(channel.id).hasMoreAfter))
 			) {
-				ComponentDispatch.dispatch('FORCE_JUMP_TO_PRESENT', {channelId: channel.id});
+				ComponentBus.dispatch('FORCE_JUMP_TO_PRESENT', {channelId: channel.id});
 			}
 			previousComposerBoundaryState.current = {channelId: channel.id, hasAttachments, hasPendingSticker};
 			const scrollerElement = getActiveMessageScroller();
@@ -762,7 +810,7 @@ export const LexicalChannelTextareaContent = observer(
 			replyingMessage,
 		]);
 		useEffect(() => {
-			return ComponentDispatch.subscribe('TEXTAREA_DISMISS_AFFORDANCE', (request?: unknown) => {
+			return ComponentBus.subscribe('TEXTAREA_DISMISS_AFFORDANCE', (request?: unknown) => {
 				const dismissalRequest = request as ChannelComposerDismissalRequest | undefined;
 				if (dismissalRequest?.channelId !== channel.id) {
 					return false;
@@ -820,22 +868,9 @@ export const LexicalChannelTextareaContent = observer(
 		}, [channel.guildId]);
 		const handleEditorKeyDown = useCallback(
 			(event: React.KeyboardEvent<HTMLElement>) => {
-				const handle = handleRef.current;
-				let selection: ComposerSelectionRange | null = null;
-				if (handle !== null) {
-					selection = handle.getSelection();
-				}
-				const hasSelectionRange = selection ? selection.start !== selection.end : false;
-				const inboxCombo = Keybind.getByAction('chat_toggle_inbox').combo;
-				if (doesEventMatchShortcut(event, inboxCombo) && !hasSelectionRange && value.trim().length === 0) {
-					event.preventDefault();
-					event.stopPropagation();
-					ComponentDispatch.dispatch('INBOX_OPEN');
-					return;
-				}
 				handleEscapeKey(event);
 			},
-			[handleEscapeKey, value],
+			[handleEscapeKey],
 		);
 		const handleSubmit = useCallback(() => {
 			if (!canSubmit) {
@@ -849,7 +884,7 @@ export const LexicalChannelTextareaContent = observer(
 		}, [canSubmit, channel, hasAttachments, onSubmit]);
 		const handleArrowUpEmpty = useCallback(() => {
 			if (KeyboardMode.keyboardModeEnabled) {
-				ComponentDispatch.dispatch('FOCUS_BOTTOMMOST_MESSAGE', {channelId: channel.id});
+				ComponentBus.dispatch('FOCUS_BOTTOMMOST_MESSAGE', {channelId: channel.id});
 				return;
 			}
 			const message = Messages.getLastEditableMessage(channel.id);
@@ -895,7 +930,7 @@ export const LexicalChannelTextareaContent = observer(
 						Number.MAX_SAFE_INTEGER,
 					);
 		useEffect(() => {
-			const unsubscribe = ComponentDispatch.subscribe('FOCUS_TEXTAREA', (payload?: unknown) => {
+			const unsubscribe = ComponentBus.subscribe('FOCUS_TEXTAREA', (payload?: unknown) => {
 				const payloadValue = payload === null || payload === undefined ? {} : payload;
 				const {channelId, enterKeyboardMode} = payloadValue as {
 					channelId?: string;
@@ -930,7 +965,7 @@ export const LexicalChannelTextareaContent = observer(
 		}, [editingMessageId, mobileLayout.enabled, textareaInputDisabled]);
 		useEffect(() => {
 			if (textareaInputDisabled) return;
-			const unsubscribe = ComponentDispatch.subscribe('TEXTAREA_UPLOAD_FILE', (payload?: unknown) => {
+			const unsubscribe = ComponentBus.subscribe('TEXTAREA_UPLOAD_FILE', (payload?: unknown) => {
 				const payloadValue = payload === null || payload === undefined ? {} : payload;
 				const {channelId} = payloadValue as {channelId?: string};
 				if (channelId && channelId !== channel.id) return;
@@ -939,7 +974,7 @@ export const LexicalChannelTextareaContent = observer(
 			return unsubscribe;
 		}, [channel.id, textareaInputDisabled, handleFileButtonClick]);
 		useEffect(() => {
-			const unsubscribe = ComponentDispatch.subscribe('TEXTAREA_SEND_VOICE_MESSAGE', (payload?: unknown) => {
+			const unsubscribe = ComponentBus.subscribe('TEXTAREA_SEND_VOICE_MESSAGE', (payload?: unknown) => {
 				const payloadValue = payload === null || payload === undefined ? {} : payload;
 				const {channelId} = payloadValue as {channelId?: string};
 				if (channelId && channelId !== channel.id) return undefined;
@@ -1083,6 +1118,7 @@ export const LexicalChannelTextareaContent = observer(
 											}
 										}
 							}
+							data-flx="channel.lexical-channel-textarea-content.open-plus-menu.textarea-plus-menu"
 						/>
 					),
 					{
@@ -1166,7 +1202,13 @@ export const LexicalChannelTextareaContent = observer(
 		}
 		let topBarContent: React.ReactNode = null;
 		if (isMobileEditBarVisible) {
-			topBarContent = <EditBar channel={channel} onCancel={handleCancelEdit} />;
+			topBarContent = (
+				<EditBar
+					channel={channel}
+					onCancel={handleCancelEdit}
+					data-flx="channel.lexical-channel-textarea-content.edit-bar"
+				/>
+			);
 		} else if (referencedMessage !== null) {
 			topBarContent = (
 				<ReplyBar
@@ -1174,11 +1216,15 @@ export const LexicalChannelTextareaContent = observer(
 					shouldReplyMention={shouldReplyMention}
 					setShouldReplyMention={(mentioning) => MessageCommands.setReplyMentioning(channel.id, mentioning)}
 					channel={channel}
+					data-flx="channel.lexical-channel-textarea-content.reply-bar"
 				/>
 			);
 		}
 		const renderSection = (content: React.ReactNode, sectionClassName?: string) => (
-			<flx-channel-textarea-section className={flxElementClassName(wrapperStyles.stackSection, sectionClassName)}>
+			<flx-channel-textarea-section
+				className={flxElementClassName(wrapperStyles.stackSection, sectionClassName)}
+				data-flx="channel.lexical-channel-textarea-content.render-section.flx-channel-textarea-section"
+			>
 				{content}
 			</flx-channel-textarea-section>
 		);
@@ -1196,21 +1242,40 @@ export const LexicalChannelTextareaContent = observer(
 						textareaInputDisabled && wrapperStyles.disabled,
 						!mobileLayout.enabled && styles.textareaOuterRow,
 					)}
+					data-flx="channel.lexical-channel-textarea-content.textarea-outer"
 				>
-					<flx-channel-textarea-status-rail className={flxElementClassName(wrapperStyles.statusRail)}>
-						<flx-channel-textarea-status-rail-left className={flxElementClassName(wrapperStyles.statusRailLeft)}>
+					<flx-channel-textarea-status-rail
+						className={flxElementClassName(wrapperStyles.statusRail)}
+						data-flx="channel.lexical-channel-textarea-content.flx-channel-textarea-status-rail"
+					>
+						<flx-channel-textarea-status-rail-left
+							className={flxElementClassName(wrapperStyles.statusRailLeft)}
+							data-flx="channel.lexical-channel-textarea-content.flx-channel-textarea-status-rail-left"
+						>
 							{isTypingStatusVisible && (
-								<flx-channel-textarea-typing-slot className={flxElementClassName(wrapperStyles.statusTypingSlot)}>
-									<TypingUsers channel={channel} withText={true} showAvatars={true} />
+								<flx-channel-textarea-typing-slot
+									className={flxElementClassName(wrapperStyles.statusTypingSlot)}
+									data-flx="channel.lexical-channel-textarea-content.flx-channel-textarea-typing-slot"
+								>
+									<TypingUsers
+										channel={channel}
+										withText={true}
+										showAvatars={true}
+										data-flx="channel.lexical-channel-textarea-content.typing-users"
+									/>
 								</flx-channel-textarea-typing-slot>
 							)}
 						</flx-channel-textarea-status-rail-left>
 						{isSlowmodeIndicatorVisible && (
-							<flx-channel-textarea-slowmode-slot className={flxElementClassName(wrapperStyles.statusSlowmodeSlot)}>
+							<flx-channel-textarea-slowmode-slot
+								className={flxElementClassName(wrapperStyles.statusSlowmodeSlot)}
+								data-flx="channel.lexical-channel-textarea-content.flx-channel-textarea-slowmode-slot"
+							>
 								<SlowmodeIndicator
 									slowmodeRemaining={slowmodeRemaining}
 									slowmodeDuration={channel.rateLimitPerUser * 1000}
 									isImmune={isSlowmodeImmune}
+									data-flx="channel.lexical-channel-textarea-content.slowmode-indicator"
 								/>
 							</flx-channel-textarea-slowmode-slot>
 						)}
@@ -1224,24 +1289,40 @@ export const LexicalChannelTextareaContent = observer(
 							)}
 							{slashCommandState.activeSlot !== null && (
 								<div className={wrapperStyles.composerActionRow} data-flx="channel.textarea.slash-command-action-row">
-									<SlashCommandParamBar activeSlot={slashCommandState.activeSlot} onClear={handleClearSlashCommand} />
+									<SlashCommandParamBar
+										activeSlot={slashCommandState.activeSlot}
+										onClear={handleClearSlashCommand}
+										data-flx="channel.lexical-channel-textarea-content.slash-command-param-bar"
+									/>
 								</div>
 							)}
 						</div>
 					)}
 					{showAttachments &&
-						renderSection(<ChannelAttachmentArea channelId={channel.id} />, styles.collapsibleSection)}
+						renderSection(
+							<ChannelAttachmentArea
+								channelId={channel.id}
+								data-flx="channel.lexical-channel-textarea-content.channel-attachment-area"
+							/>,
+							styles.collapsibleSection,
+						)}
 					{showStickers &&
 						renderSection(
-							<ChannelStickersArea channelId={channel.id} hasAttachments={hasAttachments} />,
+							<ChannelStickersArea
+								channelId={channel.id}
+								hasAttachments={hasAttachments}
+								data-flx="channel.lexical-channel-textarea-content.channel-stickers-area"
+							/>,
 							styles.collapsibleSection,
 						)}
 					{renderSection(
 						<flx-channel-textarea-box
 							className={flxElementClassName(styles.mainWrapperDense, textareaInputDisabled && wrapperStyles.disabled)}
+							data-flx="channel.lexical-channel-textarea-content.main-wrapper-dense"
 						>
 							<flx-channel-textarea-upload-column
 								className={flxElementClassName(styles.uploadButtonColumn, styles.sideButtonPadding)}
+								data-flx="channel.lexical-channel-textarea-content.upload-button-column"
 							>
 								<TextareaButton
 									iconProps={PLUS_ICON_PROPS}
@@ -1254,13 +1335,18 @@ export const LexicalChannelTextareaContent = observer(
 									forceHover={!slashCommandState.hasSlots && plusContextMenuOpen}
 									className={plusContextMenuOpen ? styles.plusButtonAboveBackdrop : undefined}
 									ref={plusButtonRef}
+									data-flx="channel.lexical-channel-textarea-content.plus-button-above-backdrop.clear-slash-command"
 								/>
 							</flx-channel-textarea-upload-column>
 							<flx-channel-textarea-content
 								ref={contentAreaRef}
 								className={flxElementClassName(styles.contentAreaDense)}
+								data-flx="channel.lexical-channel-textarea-content.content-area-dense"
 							>
-								<flx-channel-textarea-composer className={flxElementClassName(lexicalStyles.composerHost)}>
+								<flx-channel-textarea-composer
+									className={flxElementClassName(lexicalStyles.composerHost)}
+									data-flx="channel.lexical-channel-textarea-content.flx-channel-textarea-composer"
+								>
 									<LexicalComposerInput
 										placeholder={placeholderText}
 										disabled={textareaInputDisabled}
@@ -1298,6 +1384,7 @@ export const LexicalChannelTextareaContent = observer(
 											setIsInputAreaFocused(false);
 										}}
 										onSlashCommandStateChange={setSlashCommandState}
+										data-flx="channel.lexical-channel-textarea-content.lexical-composer-input.editor-change"
 									/>
 								</flx-channel-textarea-composer>
 							</flx-channel-textarea-content>
@@ -1313,7 +1400,10 @@ export const LexicalChannelTextareaContent = observer(
 								inCharacterActive={inCharacterActive}
 								onInCharacterToggle={handleInCharacterToggle}
 								showMessageSendButton={showMessageSendButton}
-								showVoiceMessageButton={false}
+								canRecordVoice={canAttachFilesInChannel(channel)}
+								isEditingMessage={isEditingMessageInComposer || editingMessageId != null}
+								hasPendingSticker={hasPendingSticker}
+								voiceTooltipAnchorRef={contentAreaRef}
 								expressionPickerOpen={expressionPickerOpen}
 								selectedTab={selectedTab}
 								isMobile={mobileLayout.enabled}
@@ -1326,6 +1416,7 @@ export const LexicalChannelTextareaContent = observer(
 								onExpressionPickerToggle={handleExpressionPickerTabToggle}
 								onSubmit={handleSubmit}
 								channelId={channel.id}
+								data-flx="channel.lexical-channel-textarea-content.textarea-buttons.submit"
 							/>
 						</flx-channel-textarea-box>,
 						styles.inputSection,
@@ -1335,6 +1426,7 @@ export const LexicalChannelTextareaContent = observer(
 						maxLength={maxMessageLength}
 						canUpgrade={maxMessageLength < premiumMaxLength}
 						premiumMaxLength={premiumMaxLength}
+						data-flx="channel.lexical-channel-textarea-content.message-character-counter"
 					/>
 				</flx-channel-textarea>
 				{mobileLayout.enabled && (
@@ -1344,6 +1436,7 @@ export const LexicalChannelTextareaContent = observer(
 							onClose={() => setExpressionPickerOpen(false)}
 							channelId={channel.id}
 							onEmojiSelect={handleEmojiSelect}
+							data-flx="channel.lexical-channel-textarea-content.expression-picker-sheet"
 						/>
 						<MobileTextareaPlusBottomSheet
 							isOpen={mobilePlusSheetOpen}
@@ -1351,6 +1444,7 @@ export const LexicalChannelTextareaContent = observer(
 							onUploadFile={handleFileButtonClick}
 							textareaValue={value}
 							onUploadAsFile={handleUploadMessageAsFile}
+							data-flx="channel.lexical-channel-textarea-content.mobile-textarea-plus-bottom-sheet"
 						/>
 					</>
 				)}

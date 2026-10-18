@@ -20,7 +20,8 @@ export type PremiumScenarioOverride =
 	| 'expired_old'
 	| 'visionary';
 export type DeveloperOptionsState = Readonly<{
-	bypassSplashScreen: boolean;
+	bypassLoadingSkeleton: boolean;
+	forceLoadingSkeleton: boolean;
 	forceFailMessageSends: boolean;
 	forceFailMessageLoads: boolean;
 	forceRenderPlaceholders: boolean;
@@ -96,14 +97,14 @@ export type DeveloperOptionsState = Readonly<{
 		}
 	>;
 	noOpInAppReports: boolean;
-	gameCaptureInjectionMethod: 'auto' | 'remote-thread' | 'set-windows-hook';
 }>;
 type MutableDeveloperOptionsState = {
 	-readonly [K in keyof DeveloperOptionsState]: DeveloperOptionsState[K];
 };
 
 class DeveloperOptions implements DeveloperOptionsState {
-	bypassSplashScreen = false;
+	bypassLoadingSkeleton = false;
+	forceLoadingSkeleton = false;
 	forceFailMessageSends = false;
 	forceFailMessageLoads = false;
 	forceRenderPlaceholders = false;
@@ -180,7 +181,6 @@ class DeveloperOptions implements DeveloperOptionsState {
 	mockGiftRedeemed: boolean | null = null;
 	mockTitlebarPlatformOverride: DeveloperOptionsState['mockTitlebarPlatformOverride'] = 'auto';
 	noOpInAppReports = false;
-	gameCaptureInjectionMethod: DeveloperOptionsState['gameCaptureInjectionMethod'] = 'auto';
 
 	constructor() {
 		makeAutoObservable(this, {}, {autoBind: true});
@@ -189,7 +189,8 @@ class DeveloperOptions implements DeveloperOptionsState {
 
 	private async initPersistence(): Promise<void> {
 		await makePersistent(this, 'DeveloperOptions', [
-			'bypassSplashScreen',
+			'bypassLoadingSkeleton',
+			'forceLoadingSkeleton',
 			'forceFailMessageSends',
 			'forceFailMessageLoads',
 			'forceRenderPlaceholders',
@@ -252,7 +253,6 @@ class DeveloperOptions implements DeveloperOptionsState {
 			'mockTitlebarPlatformOverride',
 			'mockAttachmentStates',
 			'noOpInAppReports',
-			'gameCaptureInjectionMethod',
 		]);
 	}
 

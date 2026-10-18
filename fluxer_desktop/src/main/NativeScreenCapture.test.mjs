@@ -86,12 +86,7 @@ function makeNativeAddon({
 	};
 }
 
-function loadNativeScreenCapture({
-	platform = 'linux',
-	addon,
-	tccStatus = 'not-determined',
-	frameSinkHandle = null,
-} = {}) {
+function loadNativeScreenCapture({platform = 'linux', addon, tccStatus = 'not-determined'} = {}) {
 	const handlers = new Map();
 	const calls = {
 		logs: {debug: [], warn: []},
@@ -148,12 +143,6 @@ function loadNativeScreenCapture({
 		}
 		if (specifier === './MacTcc') {
 			return {getTccStatus: () => tccStatus};
-		}
-		if (specifier === './NativeVoiceEngine') {
-			return {
-				createNativeVoiceEngineScreenFrameSinkHandle: (captureId) =>
-					typeof frameSinkHandle === 'function' ? frameSinkHandle(captureId) : frameSinkHandle,
-			};
 		}
 		if (specifier === './NativeScreenCaptureValidation') {
 			return {
@@ -242,15 +231,10 @@ describe('NativeScreenCapture source identity and capability reporting', () => {
 	});
 
 	test('starts display and window captures with exact source id and kind and reports diagnostics', async () => {
-		const frameSinkHandles = {
-			'capture-1': {native: true, captureId: 'capture-1'},
-			'capture-2': {native: true, captureId: 'capture-2'},
-		};
 		const {addon, captures} = makeNativeAddon();
 		const harness = loadNativeScreenCapture({
 			platform: 'linux',
 			addon,
-			frameSinkHandle: (captureId) => frameSinkHandles[captureId] ?? null,
 		});
 		const {sender, sent} = makeSender();
 		harness.module.registerNativeScreenCaptureHandlers();
@@ -289,14 +273,12 @@ describe('NativeScreenCapture source identity and capability reporting', () => {
 				width: 2560,
 				height: 1440,
 				frameRate: 60,
-				injectionMethod: undefined,
 				captureId: 'capture-1',
 				colorRange: 'full',
 				colorSpace: 'rec709',
 				showCursorClicks: true,
 				captureRect: {x: 10, y: 20, width: 300, height: 200},
 				nativeFrameSinkRequired: true,
-				frameSinkHandle: frameSinkHandles['capture-1'],
 			},
 			{
 				sourceId: 'window:4242',
@@ -304,14 +286,12 @@ describe('NativeScreenCapture source identity and capability reporting', () => {
 				width: 1280,
 				height: 720,
 				frameRate: 30,
-				injectionMethod: undefined,
 				captureId: 'capture-2',
 				colorRange: undefined,
 				colorSpace: undefined,
 				showCursorClicks: false,
 				captureRect: undefined,
 				nativeFrameSinkRequired: true,
-				frameSinkHandle: frameSinkHandles['capture-2'],
 			},
 		]);
 		assert.equal(displayResult.captureId, 'capture-1');
@@ -342,37 +322,11 @@ describe('NativeScreenCapture source identity and capability reporting', () => {
 		assert.equal(captures[1].stopCount, 1);
 	});
 
-	test('fails fast when native frame sink is required but unavailable', async () => {
-		const {addon, captures} = makeNativeAddon();
-		const harness = loadNativeScreenCapture({platform: 'linux', addon});
-		const {sender} = makeSender();
-		harness.module.registerNativeScreenCaptureHandlers();
-
-		await assert.rejects(
-			() =>
-				harness.handlers.get('native-screen-capture:start')(
-					{sender},
-					{
-						sourceId: 'window:4242',
-						sourceKind: 'window',
-						width: 1280,
-						height: 720,
-						captureId: 'preselected-capture-id',
-						nativeFrameSinkRequired: true,
-					},
-				),
-			/requires a native frame sink handle/,
-		);
-		assert.equal(captures.length, 0);
-	});
-
-	test('passes caller-provided capture id and native sink handle to the platform wrapper', async () => {
-		const frameSinkHandle = {native: true};
+	test('passes caller-provided capture id to the platform wrapper', async () => {
 		const {addon, captures} = makeNativeAddon();
 		const harness = loadNativeScreenCapture({
 			platform: 'linux',
 			addon,
-			frameSinkHandle: (captureId) => (captureId === 'preselected-capture-id' ? frameSinkHandle : null),
 		});
 		const {sender, sent} = makeSender();
 		harness.module.registerNativeScreenCaptureHandlers();
@@ -396,14 +350,12 @@ describe('NativeScreenCapture source identity and capability reporting', () => {
 			width: 1280,
 			height: 720,
 			frameRate: 30,
-			injectionMethod: undefined,
 			captureId: 'preselected-capture-id',
 			colorRange: undefined,
 			colorSpace: undefined,
 			showCursorClicks: false,
 			captureRect: undefined,
 			nativeFrameSinkRequired: true,
-			frameSinkHandle,
 		});
 		assert.deepEqual(sent, []);
 	});
@@ -518,7 +470,6 @@ describe('NativeScreenCapture source identity and capability reporting', () => {
 		const harness = loadNativeScreenCapture({
 			platform: 'win32',
 			addon,
-			frameSinkHandle: (captureId) => ({native: true, captureId}),
 		});
 		harness.module.registerNativeScreenCaptureHandlers();
 		const {sender} = makeSender();
@@ -531,14 +482,12 @@ describe('NativeScreenCapture source identity and capability reporting', () => {
 				width: 2560,
 				height: 1440,
 				frameRate: 60,
-				injectionMethod: 'set-windows-hook',
 				nativeFrameSinkRequired: true,
 			},
 		);
 
 		assert.equal(captures.length, 1);
 		assert.equal(captures[0].options.sourceKind, 'screen');
-		assert.equal(captures[0].options.injectionMethod, undefined);
 
 		const diagnostics = await harness.handlers.get('native-screen-capture:get-diagnostics')({sender}, result.captureId);
 		assert.equal(diagnostics.sourceKind, 'screen');

@@ -469,25 +469,6 @@ where
     Ok(())
 }
 
-pub(crate) async fn upload_directory_to_s3_overwrite<F>(
-    client: &S3Client,
-    bucket: &str,
-    prefix: &str,
-    root: &Path,
-    include: F,
-) -> Result<()>
-where
-    F: Fn(&Path) -> bool,
-{
-    let plan = directory_upload_plan(prefix, root, include)?;
-    let stats = upload_s3_plan_overwrite(client, bucket, plan).await?;
-    println!(
-        "Overwrite upload complete for s3://{bucket}/{prefix}: uploaded {}",
-        stats.uploaded
-    );
-    Ok(())
-}
-
 pub(crate) async fn upload_s3_plan_append_only(
     client: &S3Client,
     bucket: &str,
@@ -1088,7 +1069,7 @@ pub(crate) async fn download_s3_prefix(
         if relative.is_empty() {
             continue;
         }
-        let output = target.join(relative);
+        let output = safe_download_target(target, relative)?;
         if let Some(parent) = output.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
@@ -1265,6 +1246,17 @@ pub(crate) fn path_to_s3_key(path: &Path) -> String {
         })
         .collect::<Vec<_>>()
         .join("/")
+}
+
+fn safe_download_target(target: &Path, relative: &str) -> Result<PathBuf> {
+    let candidate = Path::new(relative);
+    for component in candidate.components() {
+        ensure!(
+            matches!(component, std::path::Component::Normal(_)),
+            "Refusing to write S3 object outside download target: {relative}"
+        );
+    }
+    Ok(target.join(candidate))
 }
 
 pub(crate) async fn download_file(url: &str, path: &Path) -> Result<()> {

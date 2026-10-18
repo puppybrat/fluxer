@@ -11,6 +11,7 @@ import type {ChannelMessages} from '@app/features/messaging/state/ChannelMessage
 import {type ChannelStreamItem, ChannelStreamType} from '@app/features/messaging/utils/MessageGroupingUtils';
 import {IS_DEV} from '@app/features/platform/types/Env';
 import {Logger} from '@app/features/platform/utils/AppLogger';
+import type {MessagePreviewContext} from '@fluxer/constants/src/ChannelConstants';
 import {MessageTypes} from '@fluxer/constants/src/ChannelConstants';
 import type React from 'react';
 
@@ -33,13 +34,14 @@ interface RenderChannelStreamProps {
 	highlightedMessageId: string | null;
 	messageDisplayCompact: boolean;
 	messageGroupSpacing: number;
-	revealedMessageId: string | null;
+	unblurredMessageId: string | null;
 	onMessageEdit?: (target: HTMLElement) => void;
 	onReveal?: (messageId: string | null) => void;
 	messageRowClassName?: string;
 	messageActionsClassName?: string;
 	renderMessageActions?: (message: Message) => React.ReactNode;
-	readonlyPreview?: boolean;
+	suppressMessageActions?: boolean;
+	previewContext?: keyof typeof MessagePreviewContext;
 	dateDividerClassName?: string;
 	suppressUnreadIndicator?: boolean;
 	getMessageHeadingActivate?: (message: Message) => (() => void) | undefined;
@@ -52,13 +54,14 @@ export function renderChannelStream(props: RenderChannelStreamProps): Array<Reac
 		highlightedMessageId,
 		messageDisplayCompact,
 		messageGroupSpacing,
-		revealedMessageId,
+		unblurredMessageId,
 		onMessageEdit,
 		onReveal,
 		messageRowClassName,
 		messageActionsClassName,
 		renderMessageActions,
-		readonlyPreview,
+		suppressMessageActions,
+		previewContext,
 		dateDividerClassName,
 		suppressUnreadIndicator,
 		getMessageHeadingActivate,
@@ -112,9 +115,6 @@ export function renderChannelStream(props: RenderChannelStreamProps): Array<Reac
 		const unreadDividerBeforeMessageId = getUnreadDividerBeforeMessageId(pendingStreamItems, suppressUnreadIndicator);
 		const firstMessageHasUnreadDivider = unreadDividerBeforeMessageId === pendingMessages[0].id;
 		pushSpacerIfNeeded(groupKind, groupKey, firstMessageHasUnreadDivider);
-		const getUnreadDividerVisibility = (messageId: string, position: 'before' | 'after') => {
-			return position === 'before' && unreadDividerBeforeMessageId === messageId;
-		};
 		nodes.push(
 			<MessageGroup
 				key={groupKey}
@@ -124,12 +124,14 @@ export function renderChannelStream(props: RenderChannelStreamProps): Array<Reac
 				highlightedMessageId={highlightedMessageId}
 				messageDisplayCompact={messageDisplayCompact}
 				flashKey={pendingFlashKey}
-				getUnreadDividerVisibility={getUnreadDividerVisibility}
+				showUnreadDividerSlots={true}
+				unreadDividerBeforeMessageId={unreadDividerBeforeMessageId}
 				idPrefix="chat-messages"
 				messageRowClassName={messageRowClassName}
 				messageActionsClassName={messageActionsClassName}
 				renderMessageActions={renderMessageActions}
-				readonlyPreview={readonlyPreview}
+				suppressMessageActions={suppressMessageActions}
+				previewContext={previewContext}
 				getMessageHeadingActivate={getMessageHeadingActivate}
 				data-flx="channel.channel-message-stream.flush-pending-group.message-group"
 			/>,
@@ -178,20 +180,22 @@ export function renderChannelStream(props: RenderChannelStreamProps): Array<Reac
 				registerKey(item.key, 'BlockedMessageGroups', i, {
 					groupId: item.key ?? null,
 					itemCount: Array.isArray(item.content) ? item.content.length : 0,
-					revealed: item.key === revealedMessageId,
+					revealed: item.key === unblurredMessageId,
 					variant,
 				});
 				pushSpacerIfNeeded('regular', item.key ?? `${variant}-${i}`);
 				nodes.push(
 					<BlockedMessageGroups
 						key={item.key}
-						revealed={item.key === revealedMessageId}
+						revealed={item.key === unblurredMessageId}
 						messageGroups={item.content as Array<ChannelStreamItem>}
+						hasUnread={item.hasUnread === true && !suppressUnreadIndicator}
 						onReveal={onReveal ?? (() => {})}
 						compact={messageDisplayCompact}
 						channel={channel}
 						messageGroupSpacing={messageGroupSpacing}
 						variant={variant}
+						suppressUnreadIndicator={suppressUnreadIndicator}
 						data-flx="channel.channel-message-stream.render-channel-stream.blocked-message-groups"
 					/>,
 				);

@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {PremiumFlags, SuspiciousActivityFlags, UserFlags} from '@fluxer/constants/src/UserConstants';
+import {
+	DEFERRED_PHONE_ON_COMMUNITY_JOIN,
+	imposePhoneRequirements,
+	PremiumFlags,
+	SuspiciousActivityFlags,
+	UserFlags,
+} from '@fluxer/constants/src/UserConstants';
 import type {RpcSessionTimings} from '@fluxer/schema/src/domains/rpc/RpcSchemas';
 import {Config} from '../Config';
 import type {UserRow} from '../database/types/UserTypes';
@@ -44,10 +50,6 @@ interface SessionStartDiscriminatorService extends Pick<IDiscriminatorService, '
 
 interface SessionStartPaymentRepository extends Pick<PaymentRepository, 'hasEverPaidSuccessfully'> {}
 
-interface SessionStartPneumaticPostService {
-	considerPlutoniumMobileBetaDispatch(user: User, settings: UserData['settings']): Promise<void>;
-}
-
 interface SessionStartDeps {
 	userRepository: SessionStartUserRepository;
 	guildRepository: SessionStartGuildRepository;
@@ -55,7 +57,6 @@ interface SessionStartDeps {
 	gatewayService: SessionStartGatewayService;
 	discriminatorService: SessionStartDiscriminatorService;
 	paymentRepository: SessionStartPaymentRepository;
-	pneumaticPostService: SessionStartPneumaticPostService;
 }
 
 interface ProcessSessionStartParams {
@@ -278,9 +279,6 @@ export class RpcSessionStartService {
 				}
 			});
 		}
-		await timings.time('consider_pneumatic_post_dispatches', async () => {
-			await this.deps.pneumaticPostService.considerPlutoniumMobileBetaDispatch(user, userData.settings);
-		});
 		return {user, flagsToUpdate, timings: timings.finalize()};
 	}
 
@@ -370,12 +368,14 @@ export class RpcSessionStartService {
 			timeRpcStepSync(
 				timingSteps,
 				'check_required_inbound_phone_flags_already_set',
-				() => (user.suspiciousActivityFlags & requiredFlags) === requiredFlags,
+				() =>
+					(user.suspiciousActivityFlags & requiredFlags) === requiredFlags &&
+					(user.suspiciousActivityFlags & DEFERRED_PHONE_ON_COMMUNITY_JOIN) === 0,
 			)
 		) {
 			return null;
 		}
-		const newFlags = user.suspiciousActivityFlags | requiredFlags;
+		const newFlags = imposePhoneRequirements(user.suspiciousActivityFlags, requiredFlags);
 		try {
 			const updatedUser = await timeRpcStep(timingSteps, 'persist_inbound_phone_requirement', async () =>
 				this.deps.userRepository.patchUpsert(user.id, {suspicious_activity_flags: newFlags}, user.toRow()),

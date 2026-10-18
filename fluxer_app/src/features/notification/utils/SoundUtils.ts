@@ -236,10 +236,33 @@ export function getSoundCaptureMasterGainNode(): GainNode {
 	return getMasterGainNode();
 }
 
+const soundCaptureActivationListeners: Set<() => void> = new Set();
+
+export function isSoundCaptureActive(): boolean {
+	return captureTaps.size > 0;
+}
+
+export function onSoundCaptureActivated(listener: () => void): () => void {
+	soundCaptureActivationListeners.add(listener);
+	return () => {
+		soundCaptureActivationListeners.delete(listener);
+	};
+}
+
 export function addSoundCaptureDestination(node: AudioNode): void {
 	if (captureTaps.has(node)) return;
 	const master = getMasterGainNode();
+	const wasInactive = captureTaps.size === 0;
 	captureTaps.add(node);
+	if (wasInactive) {
+		for (const listener of soundCaptureActivationListeners) {
+			try {
+				listener();
+			} catch (error) {
+				logger.warn('Sound capture activation listener failed', error);
+			}
+		}
+	}
 	try {
 		master.connect(node);
 	} catch (error) {
@@ -476,6 +499,7 @@ export function clearCustomSoundCache(type?: SoundType): void {
 export async function stopSound(type: SoundType): Promise<void> {
 	const activeSound = activeSounds.get(type);
 	if (!activeSound) return;
+	activeSounds.delete(type);
 	const {audio, gainNode, sourceNode} = activeSound;
 	try {
 		await fadeOut(gainNode, 0.08);
@@ -484,7 +508,6 @@ export async function stopSound(type: SoundType): Promise<void> {
 	audio.currentTime = 0;
 	audio.loop = false;
 	disconnectNodes(sourceNode, gainNode);
-	activeSounds.delete(type);
 }
 
 export async function stopAllSounds(): Promise<void> {

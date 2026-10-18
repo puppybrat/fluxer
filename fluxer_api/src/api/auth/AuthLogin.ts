@@ -105,9 +105,7 @@ export interface IpAuthorizationTicketCache {
 	userId: string;
 	email: string;
 	username: string;
-	clientIp: string;
-	userAgent: string;
-	platform: string | null;
+	origin: AuthSession.SessionOrigin;
 	authToken: string;
 	clientLocation: string;
 	inviteCode?: string | null;
@@ -115,8 +113,8 @@ export interface IpAuthorizationTicketCache {
 	createdAt: number;
 }
 
-function getTicketCacheKey(ticket: string): string {
-	return `ip-auth-ticket:${ticket}`;
+export function getTicketCacheKey(ticket: string): string {
+	return `ip-auth-ticket-v2:${ticket}`;
 }
 
 function getTokenCacheKey(token: string): string {
@@ -148,7 +146,7 @@ export async function resendIpAuthorization(
 		payload.email,
 		payload.username,
 		payload.authToken,
-		payload.clientIp,
+		payload.origin.ip,
 		payload.clientLocation,
 		null,
 	);
@@ -172,7 +170,7 @@ export async function completeIpAuthorization(
 	user_id: string;
 	ticket: string;
 }> {
-	const {users, cache, config} = ctx.services;
+	const {users, cache} = ctx.services;
 	const tokenMapping = await cache.get<{
 		ticket: string;
 	}>(getTokenCacheKey(token));
@@ -193,19 +191,8 @@ export async function completeIpAuthorization(
 		throw new UnknownUserError();
 	}
 	AuthUtility.assertNonBotUser(ctx, user);
-	await users.createAuthorizedIp(user.id, payload.clientIp);
-	const headers: Record<string, string> = {
-		[config.proxy.client_ip_header]: payload.clientIp,
-		'user-agent': payload.userAgent,
-	};
-	if (payload.platform) {
-		headers['x-fluxer-platform'] = payload.platform;
-	}
-	const syntheticRequest = new Request('https://api.fluxer.app/auth/ip-authorization', {
-		headers,
-		method: 'POST',
-	});
-	const [sessionToken] = await AuthSession.createAuthSession(ctx, {user, request: syntheticRequest});
+	await users.createAuthorizedIp(user.id, payload.origin.ip);
+	const [sessionToken] = await AuthSession.createAuthSession(ctx, {user, origin: payload.origin});
 	await cache.delete(cacheKey);
 	await cache.delete(getTokenCacheKey(token));
 	return {token: sessionToken, user_id: user.id.toString(), ticket: tokenMapping.ticket};
@@ -313,15 +300,11 @@ export async function login(
 				const authToken = createIpAuthorizationToken(await AuthUtility.generateSecureToken(ctx));
 				const geoipResult = await lookupGeoip(clientIp);
 				const clientLocation = formatGeoipLocation(geoipResult) ?? UNKNOWN_LOCATION;
-				const userAgent = request.headers.get('user-agent') || '';
-				const platform = request.headers.get('x-fluxer-platform');
 				const cachePayload: IpAuthorizationTicketCache = {
 					userId: currentUser.id.toString(),
 					email: currentUser.email!,
 					username: currentUser.username,
-					clientIp,
-					userAgent,
-					platform: platform ?? null,
+					origin: AuthSession.resolveSessionOrigin(ctx, request),
 					authToken,
 					clientLocation,
 					inviteCode: data.invite_code ?? null,
@@ -329,7 +312,7 @@ export async function login(
 					createdAt: Date.now(),
 				};
 				const ttlSeconds = seconds('15 minutes');
-				await cache.set<IpAuthorizationTicketCache>(`ip-auth-ticket:${ticket}`, cachePayload, ttlSeconds);
+				await cache.set<IpAuthorizationTicketCache>(getTicketCacheKey(ticket), cachePayload, ttlSeconds);
 				await cache.set<{
 					ticket: string;
 				}>(`ip-auth-token:${authToken}`, {ticket}, ttlSeconds);
@@ -364,7 +347,10 @@ export async function login(
 			Logger.warn({inviteCode: data.invite_code, error}, 'Failed to auto-join invite on login');
 		}
 	}
-	const [token] = await AuthSession.createAuthSession(ctx, {user: currentUser, request});
+	const [token] = await AuthSession.createAuthSession(ctx, {
+		user: currentUser,
+		origin: AuthSession.resolveSessionOrigin(ctx, request),
+	});
 	return {
 		user_id: currentUser.id.toString(),
 		token,
@@ -373,13 +359,36 @@ export async function login(
 
 const MFA_TICKET_MAX_ATTEMPTS = 5;
 const MFA_USER_MAX_ATTEMPTS = 10;
-const MFA_USER_ATTEMPTS_WINDOW = seconds('15 minutes');
+
+async function consumeMfaAttempt(
+	ctx: ApiContext,
+	{userId, ticket, field}: {userId: string; ticket: string; field: string},
+): Promise<void> {
+	const {cache, rateLimit} = ctx.services;
+	const userLimit = await rateLimit.checkLimit({
+		identifier: `mfa:user:${userId}`,
+		maxAttempts: MFA_USER_MAX_ATTEMPTS,
+		windowMs: ms('15 minutes'),
+	});
+	if (!userLimit.allowed) {
+		throw InputValidationError.fromCode(field, ValidationErrorCodes.INVALID_CODE);
+	}
+	const ticketLimit = await rateLimit.checkLimit({
+		identifier: `mfa:ticket:${ticket}`,
+		maxAttempts: MFA_TICKET_MAX_ATTEMPTS,
+		windowMs: ms('5 minutes'),
+	});
+	if (!ticketLimit.allowed) {
+		await cache.delete(`mfa-ticket:${ticket}`);
+		throw InputValidationError.fromCode(field, ValidationErrorCodes.INVALID_CODE);
+	}
+}
 
 export async function loginMfaTotp(
 	ctx: ApiContext,
 	{code, ticket, request}: LoginMfaTotpParams,
 ): Promise<LoginTokenResult> {
-	const {users, cache} = ctx.services;
+	const {users, cache, rateLimit} = ctx.services;
 	const userId = await cache.get<string>(`mfa-ticket:${ticket}`);
 	if (!userId) {
 		throw InputValidationError.fromCode('code', ValidationErrorCodes.SESSION_TIMEOUT);
@@ -392,33 +401,23 @@ export async function loginMfaTotp(
 	if (!user.totpSecret || !user.authenticatorTypes?.has(UserAuthenticatorTypes.TOTP)) {
 		throw InputValidationError.fromCode('code', ValidationErrorCodes.TOTP_NOT_ENABLED);
 	}
-	const userAttemptsKey = `mfa-user-attempts:${user.id}`;
-	const userAttempts = (await cache.get<number>(userAttemptsKey)) ?? 0;
-	if (userAttempts >= MFA_USER_MAX_ATTEMPTS) {
-		throw InputValidationError.fromCode('code', ValidationErrorCodes.INVALID_CODE);
-	}
+	await consumeMfaAttempt(ctx, {userId: user.id.toString(), ticket, field: 'code'});
 	const isValid = await AuthMfa.verifyMfaCode(ctx, {
 		userId: user.id,
 		mfaSecret: user.totpSecret,
 		code,
 		allowBackup: true,
 	});
-	const attemptsKey = `mfa-ticket-attempts:${ticket}`;
 	if (!isValid) {
-		await cache.set(userAttemptsKey, userAttempts + 1, MFA_USER_ATTEMPTS_WINDOW);
-		const attempts = ((await cache.get<number>(attemptsKey)) ?? 0) + 1;
-		if (attempts >= MFA_TICKET_MAX_ATTEMPTS) {
-			await cache.delete(`mfa-ticket:${ticket}`);
-			await cache.delete(attemptsKey);
-		} else {
-			await cache.set(attemptsKey, attempts, seconds('5 minutes'));
-		}
 		throw InputValidationError.fromCode('code', ValidationErrorCodes.INVALID_CODE);
 	}
 	await cache.delete(`mfa-ticket:${ticket}`);
-	await cache.delete(attemptsKey);
-	await cache.delete(userAttemptsKey);
-	const [token] = await AuthSession.createAuthSession(ctx, {user, request});
+	await rateLimit.resetLimit(`mfa:ticket:${ticket}`);
+	await rateLimit.resetLimit(`mfa:user:${user.id}`);
+	const [token] = await AuthSession.createAuthSession(ctx, {
+		user,
+		origin: AuthSession.resolveSessionOrigin(ctx, request),
+	});
 	return {user_id: user.id.toString(), token};
 }
 
@@ -426,7 +425,7 @@ export async function loginMfaWebAuthn(
 	ctx: ApiContext,
 	{response, challenge, ticket, request}: LoginMfaWebAuthnParams,
 ): Promise<LoginTokenResult> {
-	const {users, cache} = ctx.services;
+	const {users, cache, rateLimit} = ctx.services;
 	const userId = await cache.get<string>(`mfa-ticket:${ticket}`);
 	if (!userId) {
 		throw InputValidationError.fromCode('ticket', ValidationErrorCodes.SESSION_TIMEOUT);
@@ -436,9 +435,15 @@ export async function loginMfaWebAuthn(
 		throw new UnknownUserError();
 	}
 	AuthUtility.assertNonBotUser(ctx, user);
+	await consumeMfaAttempt(ctx, {userId: user.id.toString(), ticket, field: 'ticket'});
 	await AuthMfa.verifyWebAuthnAuthentication(ctx, user.id, response, challenge, 'mfa', ticket);
 	await cache.delete(`mfa-ticket:${ticket}`);
-	const [token] = await AuthSession.createAuthSession(ctx, {user, request});
+	await rateLimit.resetLimit(`mfa:ticket:${ticket}`);
+	await rateLimit.resetLimit(`mfa:user:${user.id}`);
+	const [token] = await AuthSession.createAuthSession(ctx, {
+		user,
+		origin: AuthSession.resolveSessionOrigin(ctx, request),
+	});
 	return {user_id: user.id.toString(), token};
 }
 

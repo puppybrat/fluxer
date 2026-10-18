@@ -2,6 +2,7 @@
 
 mod activity_pub;
 mod cache_policy;
+mod charset;
 mod direct_media;
 mod embed_normalizer;
 mod html_markdown;
@@ -39,11 +40,11 @@ async fn main() -> anyhow::Result<()> {
 
     match config.mode {
         Mode::Router => {
-            let router = UnfurlRouter::new(config.cache_max_entries);
+            let router = UnfurlRouter::new(config.cache_max_entries, config.cache_ttl);
             fluxer_svc::router::run_router(&config, router, transport).await
         }
         Mode::Shard => {
-            let shard = UnfurlShard::new();
+            let shard = UnfurlShard::new(config.cache_ttl);
             fluxer_svc::shard::run_shard(&config, shard, transport).await
         }
     }

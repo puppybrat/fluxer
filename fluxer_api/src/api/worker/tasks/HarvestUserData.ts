@@ -50,7 +50,8 @@ import type {User} from '../../models/User';
 import type {UserGuildSettings} from '../../models/UserGuildSettings';
 import type {UserSettings} from '../../models/UserSettings';
 import type {WebAuthnCredential} from '../../models/WebAuthnCredential';
-import {resolveSessionClientInfo} from '../../utils/UserAgentUtils';
+import {buildHarvestDownloadUrl} from '../../user/services/HarvestDownloadUrl';
+import {resolveSessionClientInfo} from '../../utils/SessionClientIdentity';
 import {createArchiveJsonBuffer} from '../utils/ArchiveJson';
 import {appendAssetToArchive, buildHashedAssetKey, getAnimatedAssetExtension} from '../utils/AssetArchiveHelpers';
 import {ContentAddressedAttachmentCollector} from '../utils/ContentAddressedAttachmentCollector';
@@ -114,6 +115,7 @@ interface HarvestMessageResult {
 interface UserDataJsonParams {
 	user: User;
 	userId: UserID;
+	productName: string;
 	authSessions: Array<AuthSession>;
 	relationships: Array<Relationship>;
 	userNotes: Map<UserID, string>;
@@ -354,6 +356,7 @@ function buildUserDataJson(params: UserDataJsonParams) {
 	const {
 		user,
 		userId,
+		productName,
 		authSessions,
 		relationships,
 		userNotes,
@@ -412,17 +415,18 @@ function buildUserDataJson(params: UserDataJsonParams) {
 			authenticator_types: Array.from(user.authenticatorTypes),
 		},
 		auth_sessions: authSessions.map((session) => {
-			const {clientOs, clientPlatform} = resolveSessionClientInfo({
+			const clientInfo = resolveSessionClientInfo({
 				userAgent: session.clientUserAgent,
-				isDesktopClient: session.clientIsDesktop,
+				reportedOs: session.clientOs ?? null,
+				productName,
 			});
 			return {
 				created_at: session.createdAt.toISOString(),
 				approx_last_used_at: session.approximateLastUsedAt?.toISOString() ?? null,
 				client_ip: session.clientIp,
-				client_os: clientOs,
+				client_os: clientInfo.os,
 				client_user_agent: session.clientUserAgent,
-				client_platform: clientPlatform,
+				client_platform: clientInfo.platform,
 			};
 		}),
 		relationships: relationships.map((rel) => ({
@@ -671,7 +675,9 @@ async function createAndUploadArchive(params: ArchiveParams): Promise<ArchiveRes
 			output.on('close', resolve);
 			output.on('error', reject);
 		});
-		const storageKey = `exports/${userId}/${harvestId}/user-data.zip`;
+		const storageKey = isAdminArchive
+			? `archives/users/${userId}/${harvestId}/user-data.zip`
+			: `exports/${userId}/${harvestId}/user-data.zip`;
 		const expiresAt = new Date(Date.now() + (isAdminArchive ? ms('1 year') : ZIP_EXPIRY_MS));
 		const zipStat = await fs.promises.stat(zipPath);
 		const fileSize = BigInt(zipStat.size);
@@ -682,10 +688,12 @@ async function createAndUploadArchive(params: ArchiveParams): Promise<ArchiveRes
 			contentType: 'application/zip',
 			expiresAt: expiresAt,
 		});
-		const downloadUrl = await storageService.getPresignedDownloadURL({
-			bucket: Config.s3.buckets.harvests,
-			key: storageKey,
-			expiresIn: ZIP_EXPIRY_MS / 1000,
+		const downloadUrl = await buildHarvestDownloadUrl({
+			userId,
+			harvestId,
+			storageKey,
+			expiresInSeconds: ZIP_EXPIRY_MS / 1000,
+			storageService,
 		});
 		return {fileSize, storageKey, expiresAt, downloadUrl};
 	} finally {
@@ -872,9 +880,11 @@ const harvestUserData: WorkerTaskHandler = async (payload, helpers) => {
 		const guildSettings = await Promise.all(
 			guildIds.map((guildId: GuildID) => userRepository.findGuildSettings(userId, guildId)),
 		);
+		const {branding} = await instanceConfigRepository.getAppPublicConfig();
 		const userData = buildUserDataJson({
 			user,
 			userId,
+			productName: branding.product_name,
 			authSessions,
 			relationships,
 			userNotes,

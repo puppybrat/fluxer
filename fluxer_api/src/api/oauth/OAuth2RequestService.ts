@@ -273,6 +273,7 @@ export class OAuth2RequestService {
 						}
 					}
 					await this.guildService.members.addUserToGuild({
+						skipRiskGate: true,
 						userId: botUserId,
 						guildId,
 						skipGuildLimitCheck: true,
@@ -315,7 +316,10 @@ export class OAuth2RequestService {
 				throw err;
 			}
 		}
-		Logger.info({redirectTo}, 'OAuth2 consent: returning redirect URL');
+		Logger.info(
+			{clientId: params.body.client_id.toString(), userId: params.userId.toString()},
+			'OAuth2 consent: returning redirect URL',
+		);
 		return {redirect_to: redirectTo};
 	}
 

@@ -19,11 +19,14 @@ import {$isComposerStandardEmojiNode} from '@app/features/lexical/composer/nodes
 import {$isSlashSlotNode} from '@app/features/lexical/composer/nodes/SlashSlotNode';
 import {$createSyntaxMarkerNode, $isSyntaxMarkerNode} from '@app/features/lexical/composer/nodes/SyntaxMarkerNode';
 import {
+	$createNodeSelection,
 	$createTextNode,
 	$getNodeByKey,
 	$getSelection,
 	$isLineBreakNode,
+	$isNodeSelection,
 	$isRangeSelection,
+	$setSelection,
 	type LexicalEditor,
 	type LexicalNode,
 	ParagraphNode,
@@ -136,6 +139,16 @@ function $reconcileParagraph(paragraph: ParagraphNode, parserFlags?: number): vo
 	}
 }
 
+function $isEscapedAtOffset(source: string, offset: number): boolean {
+	let backslashes = 0;
+	let cursor = offset - 1;
+	while (cursor >= 0 && source[cursor] === '\\') {
+		backslashes += 1;
+		cursor -= 1;
+	}
+	return backslashes % 2 === 1;
+}
+
 function $reconcileLine(
 	line: Array<LexicalNode>,
 	parserFlags?: number,
@@ -150,13 +163,15 @@ function $reconcileLine(
 		const nodeText = $nodeWireText(node);
 		const nodeEnd = sourceOffset + nodeText.length;
 		if ($isComposerMentionNode(node) || $isComposerCustomEmojiNode(node) || $isComposerStandardEmojiNode(node)) {
-			const literal = spans.some(
-				(span) =>
-					span.role === 'content' &&
-					(span.format & MarkdownHl.code) !== 0 &&
-					span.start <= sourceOffset &&
-					span.end >= nodeEnd,
-			);
+			const literal =
+				$isEscapedAtOffset(source, sourceOffset) ||
+				spans.some(
+					(span) =>
+						span.role === 'content' &&
+						(span.format & MarkdownHl.code) !== 0 &&
+						span.start <= sourceOffset &&
+						span.end >= nodeEnd,
+				);
 			if (node.isLiteral() !== literal) {
 				node.setLiteral(literal);
 			}
@@ -205,8 +220,21 @@ function $reconcileLine(
 	const selectionKeys = $isRangeSelection(currentSelection)
 		? {anchor: currentSelection.anchor.key, focus: currentSelection.focus.key}
 		: null;
+	const nodeSelectionKeys = $isNodeSelection(currentSelection)
+		? currentSelection.getNodes().map((node) => node.getKey())
+		: null;
 	const selection = $captureSelectionOffsets();
 	$applyDescriptors(line, desired);
+	if (nodeSelectionKeys != null) {
+		if (nodeSelectionKeys.every((key) => $getNodeByKey(key)?.isAttached() === true)) {
+			const restored = $createNodeSelection();
+			for (const key of nodeSelectionKeys) {
+				restored.add(key);
+			}
+			$setSelection(restored);
+		}
+		return;
+	}
 	const anchorNode = selectionKeys == null ? null : $getNodeByKey(selectionKeys.anchor);
 	const focusNode = selectionKeys == null ? null : $getNodeByKey(selectionKeys.focus);
 	const selectionNodesSurvived =

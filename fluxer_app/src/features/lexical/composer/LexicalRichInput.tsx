@@ -34,6 +34,7 @@ export interface LexicalRichInputProps {
 	disabled?: boolean;
 	channel?: Channel | null;
 	allowedTriggers?: Array<TriggerType>;
+	allowSpecialMentions?: boolean;
 	markdown?: boolean;
 	markdownParserFlags?: number;
 	singleLine?: boolean;
@@ -51,6 +52,7 @@ export interface LexicalRichInputProps {
 	richInputRef?: React.Ref<LexicalRichInputHandle>;
 	onChange?: (display: string, segments: Array<MentionSegment>, wire: string) => void;
 	onSubmit?: () => void;
+	submitOnEnter?: boolean;
 	onKeyDown?: (event: React.KeyboardEvent<HTMLElement>) => void;
 	onFocus?: () => void;
 	onBlur?: () => void;
@@ -68,6 +70,7 @@ export const LexicalRichInput = ({
 	disabled = false,
 	channel = null,
 	allowedTriggers,
+	allowSpecialMentions = true,
 	markdown = true,
 	markdownParserFlags,
 	singleLine = false,
@@ -85,6 +88,7 @@ export const LexicalRichInput = ({
 	richInputRef,
 	onChange,
 	onSubmit,
+	submitOnEnter,
 	onKeyDown,
 	onFocus,
 	onBlur,
@@ -128,12 +132,8 @@ export const LexicalRichInput = ({
 		useLexicalAutocomplete({
 			channel,
 			handleRef,
-			allowedTriggers:
-				allowedTriggers == null
-					? channel == null
-						? SAFE_CONTEXT_FREE_TRIGGERS
-						: SAFE_CHANNEL_TRIGGERS
-					: allowedTriggers,
+			allowedTriggers: allowedTriggers ?? (channel == null ? SAFE_CONTEXT_FREE_TRIGGERS : SAFE_CHANNEL_TRIGGERS),
+			allowSpecialMentions,
 			allowMediaOptions: false,
 			maxActualLength: maxLength,
 			onExceedMaxLength,
@@ -207,6 +207,7 @@ export const LexicalRichInput = ({
 				size === 'form' && composerStyles.formSize,
 				className,
 			)}
+			data-flx="lexical.composer.lexical-rich-input.flx-lexical-rich-input"
 		>
 			<LexicalComposerInput
 				placeholder={placeholder}
@@ -225,7 +226,7 @@ export const LexicalRichInput = ({
 				emojiShortcodeResolver={emojiShortcodeResolver}
 				channelId={channel == null ? undefined : channel.id}
 				guildId={channel == null ? undefined : channel.guildId}
-				submitOnEnter={singleLine}
+				submitOnEnter={submitOnEnter ?? singleLine}
 				autocompleteOptions={autocompleteOptions}
 				autocompleteType={autocompleteType}
 				autocompleteQuery={autocompleteQuery}
@@ -241,6 +242,7 @@ export const LexicalRichInput = ({
 				onKeyDown={onKeyDown}
 				onFocus={onFocus}
 				onBlur={onBlur}
+				data-flx="lexical.composer.lexical-rich-input.lexical-composer-input.emit-change"
 			/>
 		</flx-lexical-rich-input>
 	);

@@ -39,6 +39,7 @@ import {
 	normalizePolicyContactDomain,
 } from '../risk/AccountPolicyEvaluator';
 import type {IRegistrationEventsRepository} from '../risk/adapters/VelocityAdapter';
+import {deferPhoneFlagsUntilCommunityJoin} from '../risk/DeferredPhoneGate';
 import type {IRiskHistoryRepository} from '../risk/HistoricalOutcomeRepository';
 import type {IRiskAssessmentRepository} from '../risk/RiskAssessmentRepository';
 import {deriveLatestRiskContext} from '../risk/RiskHistoryContext';
@@ -291,7 +292,6 @@ export async function register(
 		last_voice_activity_sharing_change_at: null,
 		version: 1,
 	});
-	await kvActivityTracker.updateActivity(user.id, now);
 	await users.upsertSettings(
 		UserSettings.getDefaultUserSettings({
 			userId,
@@ -300,6 +300,9 @@ export async function register(
 			theme: data.theme,
 		}),
 	);
+	void kvActivityTracker.updateActivity(user.id, now).catch((error: unknown) => {
+		Logger.warn({error, userId: user.id}, 'Failed to update real-time user activity');
+	});
 	const isUnclaimed = !rawEmail;
 	const usernameIsUserChosen = data.username != null || data.global_name != null;
 	const riskResult = await registrationRiskEvaluator.evaluate({
@@ -332,7 +335,7 @@ export async function register(
 			action: riskResult.recommendedAction,
 		},
 	});
-	const combinedFlags = policyDecision.flagBits;
+	const combinedFlags = await deferPhoneFlagsUntilCommunityJoin(policyDecision.flagBits);
 	const createdAt = new Date();
 	const riskContext = deriveLatestRiskContext({
 		userId: userId.toString(),
@@ -441,7 +444,10 @@ export async function register(
 		);
 	}
 	await singleCommunityService.joinStockCommunity(userId, requestCache);
-	const [token] = await AuthSession.createAuthSession(ctx, {user, request});
+	const [token] = await AuthSession.createAuthSession(ctx, {
+		user,
+		origin: AuthSession.resolveSessionOrigin(ctx, request),
+	});
 	if (grantBootstrapAdmin) {
 		await instanceConfigRepository.markAdminBootstrapped();
 	}

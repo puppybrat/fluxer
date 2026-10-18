@@ -8,9 +8,9 @@ use reqwest::Url;
 pub struct RuntimeCspSources {
     pub static_cdn_endpoint: Option<String>,
     pub media_endpoint: Option<String>,
-    pub gateway_endpoint: Option<String>,
     pub s3_public_endpoint: Option<String>,
     pub s3_uploads_bucket: Option<String>,
+    pub branding_image_origins: Vec<String>,
 }
 
 const FRAME_SOURCES: &[&str] = &[
@@ -18,6 +18,7 @@ const FRAME_SOURCES: &[&str] = &[
     "https://www.youtube.com/s/player/",
     "https://hcaptcha.com",
     "https://*.hcaptcha.com",
+    "https://challenges.cloudflare.com",
 ];
 
 const IMAGE_SOURCES: &[&str] = &[
@@ -26,7 +27,6 @@ const IMAGE_SOURCES: &[&str] = &[
     "https://*.youtube.com",
     "https://*.fluxer.media",
     "https://fluxer.media",
-    "https://obyr.us",
 ];
 
 const MEDIA_SOURCES: &[&str] = &[
@@ -40,6 +40,7 @@ const SCRIPT_SOURCES: &[&str] = &[
     "https://*.fluxer.app",
     "https://hcaptcha.com",
     "https://*.hcaptcha.com",
+    "https://challenges.cloudflare.com",
 ];
 
 const STYLE_SOURCES: &[&str] = &[
@@ -64,10 +65,9 @@ const CONNECT_SOURCES: &[&str] = &[
     "https://fluxer-uploads.ewr1.vultrobjects.com",
     "https://hcaptcha.com",
     "https://*.hcaptcha.com",
+    "https://challenges.cloudflare.com",
     "https://fluxerstatus.com",
     "https://fluxer.media",
-    "http://127.0.0.1:21863",
-    "http://127.0.0.1:21864",
 ];
 
 const WORKER_SOURCES: &[&str] = &["https://*.fluxer.app", "blob:"];
@@ -95,7 +95,7 @@ fn build_csp_directives(
     let mut directives = Vec::with_capacity(14);
 
     let mut default = vec!["'self'".to_owned()];
-    extend_from(&mut default, config.default_src.as_deref(), &[]);
+    extend_from(&mut default, config.extra_default_src.as_deref(), &[]);
     directives.push(format!("default-src {}", default.join(" ")));
 
     let mut script = vec![
@@ -106,50 +106,64 @@ fn build_csp_directives(
     if let Some(n) = nonce {
         script.insert(1, format!("'nonce-{n}'"));
     }
-    extend_from(&mut script, config.script_src.as_deref(), SCRIPT_SOURCES);
+    extend_from(
+        &mut script,
+        config.extra_script_src.as_deref(),
+        SCRIPT_SOURCES,
+    );
     extend_runtime_sources(&mut script, runtime_sources, true, false);
     directives.push(format!("script-src {}", script.join(" ")));
 
     let mut style = vec!["'self'".to_owned(), "'unsafe-inline'".to_owned()];
-    extend_from(&mut style, config.style_src.as_deref(), STYLE_SOURCES);
+    extend_from(&mut style, config.extra_style_src.as_deref(), STYLE_SOURCES);
     extend_runtime_sources(&mut style, runtime_sources, true, true);
     directives.push(format!("style-src {}", style.join(" ")));
 
     let mut img = vec!["'self'".to_owned(), "blob:".to_owned(), "data:".to_owned()];
-    extend_from(&mut img, config.img_src.as_deref(), IMAGE_SOURCES);
+    extend_from(&mut img, config.extra_img_src.as_deref(), IMAGE_SOURCES);
     extend_runtime_sources(&mut img, runtime_sources, true, true);
+    for origin in &runtime_sources.branding_image_origins {
+        push_endpoint_source(&mut img, Some(origin));
+    }
     directives.push(format!("img-src {}", img.join(" ")));
 
     let mut media = vec!["'self'".to_owned(), "blob:".to_owned()];
-    extend_from(&mut media, config.media_src.as_deref(), MEDIA_SOURCES);
+    extend_from(&mut media, config.extra_media_src.as_deref(), MEDIA_SOURCES);
     extend_runtime_sources(&mut media, runtime_sources, true, true);
     directives.push(format!("media-src {}", media.join(" ")));
 
     let mut font = vec!["'self'".to_owned(), "data:".to_owned()];
-    extend_from(&mut font, config.font_src.as_deref(), FONT_SOURCES);
+    extend_from(&mut font, config.extra_font_src.as_deref(), FONT_SOURCES);
     extend_runtime_sources(&mut font, runtime_sources, true, true);
     directives.push(format!("font-src {}", font.join(" ")));
 
     let mut connect = vec!["'self'".to_owned(), "data:".to_owned()];
-    extend_from(&mut connect, config.connect_src.as_deref(), CONNECT_SOURCES);
+    extend_from(
+        &mut connect,
+        config.extra_connect_src.as_deref(),
+        CONNECT_SOURCES,
+    );
     extend_runtime_sources(&mut connect, runtime_sources, true, true);
-    push_endpoint_source(&mut connect, runtime_sources.gateway_endpoint.as_deref());
     extend_runtime_s3_sources(&mut connect, runtime_sources);
     directives.push(format!("connect-src {}", connect.join(" ")));
 
     let mut frame = vec!["'self'".to_owned()];
-    extend_from(&mut frame, config.frame_src.as_deref(), FRAME_SOURCES);
+    extend_from(&mut frame, config.extra_frame_src.as_deref(), FRAME_SOURCES);
     directives.push(format!("frame-src {}", frame.join(" ")));
 
     let mut worker = vec!["'self'".to_owned(), "blob:".to_owned()];
-    extend_from(&mut worker, config.worker_src.as_deref(), WORKER_SOURCES);
+    extend_from(
+        &mut worker,
+        config.extra_worker_src.as_deref(),
+        WORKER_SOURCES,
+    );
     extend_runtime_sources(&mut worker, runtime_sources, true, false);
     directives.push(format!("worker-src {}", worker.join(" ")));
 
     let mut manifest = vec!["'self'".to_owned()];
     extend_from(
         &mut manifest,
-        config.manifest_src.as_deref(),
+        config.extra_manifest_src.as_deref(),
         MANIFEST_SOURCES,
     );
     extend_runtime_sources(&mut manifest, runtime_sources, true, false);
@@ -178,6 +192,20 @@ fn extend_runtime_sources(
     if include_media {
         push_endpoint_source(target, runtime_sources.media_endpoint.as_deref());
     }
+}
+
+pub fn http_origin(raw: &str) -> Option<String> {
+    let url = Url::parse(raw.trim()).ok()?;
+    let scheme = url.scheme();
+    if scheme != "http" && scheme != "https" {
+        return None;
+    }
+    let host = url.host_str()?;
+    let port = url
+        .port()
+        .map(|port| format!(":{port}"))
+        .unwrap_or_default();
+    Some(format!("{scheme}://{host}{port}"))
 }
 
 fn push_endpoint_source(target: &mut Vec<String>, endpoint: Option<&str>) {
@@ -225,11 +253,15 @@ fn s3_uploads_bucket_origin(runtime_sources: &RuntimeCspSources) -> Option<Strin
     Some(format!("{scheme}://{host}{port}"))
 }
 
-fn extend_from(target: &mut Vec<String>, overrides: Option<&[String]>, defaults: &[&str]) {
-    if let Some(sources) = overrides {
-        target.extend(sources.iter().cloned());
-    } else {
-        target.extend(defaults.iter().map(|s| (*s).to_owned()));
+fn extend_from(target: &mut Vec<String>, extra: Option<&[String]>, defaults: &[&str]) {
+    target.extend(defaults.iter().map(|s| (*s).to_owned()));
+
+    for source in extra.into_iter().flatten() {
+        let source = source.trim();
+        if source.is_empty() || target.iter().any(|existing| existing == source) {
+            continue;
+        }
+        target.push(source.to_owned());
     }
 }
 

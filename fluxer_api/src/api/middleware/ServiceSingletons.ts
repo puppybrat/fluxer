@@ -60,7 +60,7 @@ import {KVActivityTracker} from '../infrastructure/KVActivityTracker';
 import {KVBulkMessageDeletionQueueService} from '../infrastructure/KVBulkMessageDeletionQueueService';
 import {NatsUnfurlerService} from '../infrastructure/NatsUnfurlerService';
 import {PremiumStateReconciliationQueueService} from '../infrastructure/PremiumStateReconciliationQueueService';
-import {createStorageService} from '../infrastructure/StorageServiceFactory';
+import {createDownloadsStorageService, createStorageService} from '../infrastructure/StorageServiceFactory';
 import {UserCacheService} from '../infrastructure/UserCacheService';
 import {createUsersServiceClient} from '../infrastructure/UsersServiceClient';
 import {VirusScanService} from '../infrastructure/VirusScanService';
@@ -97,7 +97,7 @@ import {
 	getSnowflakeService,
 	getWorkerService,
 } from './ServiceRegistry';
-import {singleton} from './Singleton';
+import {clearSingletonsForTesting, singleton} from './Singleton';
 
 export const getUserRepository = singleton(() => new UserRepository(getKVClient()));
 export const getGuildRepository = singleton(() => new GuildRepository());
@@ -121,7 +121,10 @@ export const getPasswordChangeRepository = singleton(() => new PasswordChangeRep
 const getUserContactChangeLogRepository = singleton(() => new UserContactChangeLogRepository());
 export const getDonationRepository = singleton(() => new DonationRepository());
 const getAdminApiKeyRepository = singleton(() => new AdminApiKeyRepository());
-export const getInstanceConfigRepository = singleton(() => new InstanceConfigRepository(getKVClient()));
+export const getInstanceConfigRepository = singleton(
+	() => new InstanceConfigRepository(getKVClient()),
+	(repository) => repository.shutdown(),
+);
 export const getGatewayRolloutConfigPublisher = singleton(
 	() =>
 		new GatewayRolloutConfigPublisher(
@@ -157,7 +160,7 @@ function createEmailServiceForConfig(
 		enabled: emailConfigSource.enabled,
 		fromEmail: emailConfigSource.fromEmail,
 		fromName: emailConfigSource.fromName,
-		appBaseUrl: Config.endpoints.webApp,
+		appBaseUrl: emailConfigSource.appBaseUrl,
 		marketingBaseUrl: Config.endpoints.marketing,
 	};
 	return new EmailService(emailConfig, emailI18n, createEmailProvider(emailConfigSource), bouncedEmailChecker);
@@ -193,9 +196,14 @@ export const getStorageService: () => IStorageService = (() => {
 	const fallback = singleton(() => createStorageService());
 	return () => _injectedStorageService ?? fallback();
 })();
+const getDownloadsStorageService: () => IStorageService = (() => {
+	const override = singleton(() => createDownloadsStorageService());
+	return () => override() ?? getStorageService();
+})();
 export const getErrorI18nService = singleton(() => new ErrorI18nService());
 export const getLimitConfigService = singleton(
 	() => new LimitConfigService(getInstanceConfigRepository(), getCacheService(), getKVClient()),
+	(service) => service.shutdown(),
 );
 export const getPurgeQueue: () => IPurgeQueue = singleton(() =>
 	Config.bunny.purgeEnabled ? new BunnyPurgeQueue(getKVClient()) : new NoopPurgeQueue(),
@@ -262,7 +270,7 @@ export function getKVAccountDeletionQueue(): KVAccountDeletionQueueService {
 	return accountDeletionQueue;
 }
 
-export const getDownloadService = singleton(() => new DownloadService(getStorageService()));
+export const getDownloadService = singleton(() => new DownloadService(getDownloadsStorageService()));
 export const getThemeService = singleton(() => new ThemeService(getStorageService()));
 const getNcmecReporter = singleton(() => new NcmecReporter({config: createNcmecApiConfig(), fetch}));
 const getNcmecRepository = singleton(() => new NcmecRepository());
@@ -429,4 +437,21 @@ export async function initializeServiceSingletons(): Promise<void> {
 		})();
 	}
 	await serviceSingletonInitializationPromise;
+}
+
+export function resetServiceSingletonsForTesting(): void {
+	activityTracker?.shutdown();
+	clearSingletonsForTesting();
+	_virusScanInitPromise = null;
+	serviceSingletonInitializationPromise = null;
+	bulkMessageDeletionQueue = null;
+	bulkMessageDeletionQueueClient = null;
+	premiumStateQueue = null;
+	premiumStateQueueClient = null;
+	activityTracker = null;
+	activityTrackerClient = null;
+	activityBuffer = null;
+	activityBufferClient = null;
+	accountDeletionQueue = null;
+	accountDeletionQueueClient = null;
 }

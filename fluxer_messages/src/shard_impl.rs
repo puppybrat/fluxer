@@ -15,13 +15,11 @@ use crate::types::{
     MessageSnapshot, MessageStickerItem,
 };
 use crate::udt;
-use base64::Engine;
 use chrono::{DateTime, Utc};
 use fluxer_svc::shard::ShardService;
 use fluxer_svc::transport::NatsTransport;
 use fluxer_svc::{postgres, postgres::BigIntBound, postgres::KeyPart};
 use futures::stream::{self, StreamExt};
-use hmac::{Hmac, KeyInit, Mac};
 #[cfg(feature = "scylla")]
 use scylla::DeserializeRow;
 #[cfg(feature = "scylla")]
@@ -31,7 +29,6 @@ use scylla::response::query_result::QueryRowsResult;
 #[cfg(feature = "scylla")]
 use scylla::statement::prepared::PreparedStatement;
 use serde::Deserialize;
-use sha2::Sha256;
 use std::collections::{HashMap, HashSet};
 #[cfg(feature = "scylla")]
 use std::sync::Arc;
@@ -42,6 +39,12 @@ const BUCKET_DURATION_MS: i64 = 864_000_000;
 const FLUXER_EPOCH_MS: i64 = 1_420_070_400_000;
 const SERVICE_REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 const MESSAGE_REFERENCE_TYPE_DEFAULT: i32 = 0;
+
+fn effective_reference_type(reference: &MessageReference) -> i32 {
+    reference
+        .reference_type
+        .unwrap_or(MESSAGE_REFERENCE_TYPE_DEFAULT)
+}
 const MESSAGE_FLAG_SUPPRESS_EMBEDS: i64 = 1 << 2;
 const PUBLIC_USER_FLAGS: i64 =
     (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6);
@@ -790,7 +793,7 @@ impl MessagesShard {
             let Some(reference) = &message.message_reference else {
                 continue;
             };
-            if reference.reference_type != Some(MESSAGE_REFERENCE_TYPE_DEFAULT) {
+            if effective_reference_type(reference) != MESSAGE_REFERENCE_TYPE_DEFAULT {
                 continue;
             }
             let (Some(channel_id), Some(message_id)) = (reference.channel_id, reference.message_id)
@@ -1102,23 +1105,25 @@ impl MessagesShard {
                     Some((
                         reference.channel_id?,
                         reference.message_id?,
-                        reference.reference_type?,
+                        effective_reference_type(reference),
                     ))
                 })
                 .filter(|(_, _, reference_type)| *reference_type == MESSAGE_REFERENCE_TYPE_DEFAULT)
-                .and_then(|(channel_id, message_id, _)| {
-                    context.referenced_messages.get(&(channel_id, message_id))
-                })
-                .map(|referenced| {
-                    let mut referenced_options = options.clone();
-                    referenced_options.nonce = None;
-                    referenced_options.tts = false;
-                    Box::new(self.map_message_response(
-                        referenced,
-                        &referenced_options,
-                        context,
-                        false,
-                    ))
+                .map(|(channel_id, message_id, _)| {
+                    context
+                        .referenced_messages
+                        .get(&(channel_id, message_id))
+                        .map(|referenced| {
+                            let mut referenced_options = options.clone();
+                            referenced_options.nonce = None;
+                            referenced_options.tts = false;
+                            Box::new(self.map_message_response(
+                                referenced,
+                                &referenced_options,
+                                context,
+                                false,
+                            ))
+                        })
                 })
         } else {
             None
@@ -2754,7 +2759,7 @@ fn map_message_reference(reference: &MessageReference) -> Option<ApiMessageRefer
         channel_id: reference.channel_id?.to_string(),
         message_id: reference.message_id?.to_string(),
         guild_id: reference.guild_id.map(|id| id.to_string()),
-        reference_type: reference.reference_type.unwrap_or_default(),
+        reference_type: effective_reference_type(reference),
     })
 }
 
@@ -2804,23 +2809,12 @@ fn external_media_proxy_url(input_url: &str, options: &ResponseBuildOptions) -> 
         Ok(url) => url,
         Err(_) => return input_url.to_owned(),
     };
-    let encoded =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(parsed_url.as_str().as_bytes());
-    let path = format!("v2/{encoded}");
-    let signature = create_signature(&path, &options.media_proxy_secret_key);
-    format!(
-        "{}/external/{}/{}",
+    fluxer_common::external_media_path::build_external_media_proxy_url(
         options.media_endpoint.trim_end_matches('/'),
-        signature,
-        path
+        parsed_url.as_str(),
+        options.media_proxy_secret_key.as_bytes(),
     )
-}
-
-fn create_signature(input: &str, secret: &str) -> String {
-    let mut mac =
-        Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("hmac accepts any key size");
-    mac.update(input.as_bytes());
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes())
+    .unwrap_or_else(|| input_url.to_owned())
 }
 
 fn dt_to_epoch_millis(dt: &DateTime<Utc>) -> i64 {
@@ -3236,6 +3230,40 @@ mod tests {
         assert_eq!(bucket_page_limit(25), 32);
         assert_eq!(bucket_page_limit(50), 50);
         assert_eq!(bucket_page_limit(500), BUCKET_INDEX_PAGE_SIZE);
+    }
+
+    #[test]
+    fn reference_with_no_stored_type_is_treated_as_a_reply_everywhere() {
+        let legacy = MessageReference {
+            channel_id: Some(1),
+            message_id: Some(2),
+            guild_id: None,
+            reference_type: None,
+        };
+        let explicit = MessageReference {
+            reference_type: Some(MESSAGE_REFERENCE_TYPE_DEFAULT),
+            ..legacy.clone()
+        };
+        let forward = MessageReference {
+            reference_type: Some(MESSAGE_REFERENCE_TYPE_DEFAULT + 1),
+            ..legacy.clone()
+        };
+
+        assert_eq!(
+            effective_reference_type(&legacy),
+            MESSAGE_REFERENCE_TYPE_DEFAULT
+        );
+        assert_eq!(
+            effective_reference_type(&legacy),
+            effective_reference_type(&explicit)
+        );
+        assert_ne!(
+            effective_reference_type(&forward),
+            MESSAGE_REFERENCE_TYPE_DEFAULT
+        );
+
+        let mapped = map_message_reference(&legacy).expect("legacy reference maps");
+        assert_eq!(mapped.reference_type, MESSAGE_REFERENCE_TYPE_DEFAULT);
     }
 
     #[test]

@@ -79,11 +79,22 @@ export interface MasterConfig {
 			static: string;
 		};
 	};
+	s3_downloads?: {
+		endpoint: string;
+		presigned_url_base?: string;
+		force_path_style?: boolean;
+		region?: string;
+		access_key_id?: string;
+		secret_access_key?: string;
+	};
 	services: {
 		api: {
 			port: number;
 			ip_ban_exempt_ips: Array<string>;
+			desktop_github_redirect_countries: Array<string>;
 			presigned_attachment_uploads_enabled: boolean;
+			presigned_downloads_enabled: boolean;
+			presigned_harvest_downloads_enabled: boolean;
 			unfurl_ignored_hosts: Array<string>;
 			embeds: {
 				oembed_html_enabled: boolean;
@@ -103,6 +114,14 @@ export interface MasterConfig {
 				task?: string;
 				enable_cron_scheduler?: boolean;
 				enable_voice_reconciliation?: boolean;
+				voice_reconciliation?: {
+					interval_ms?: number;
+					stagger_delay_ms?: number;
+					lock_ttl_seconds?: number;
+					cadence_ttl_seconds?: number;
+					gateway_only_grace_ms?: number;
+					livekit_only_grace_ms?: number;
+				};
 				lane_concurrency_overrides?: {
 					realtime?: number;
 					unfurl?: number;
@@ -155,6 +174,7 @@ export interface MasterConfig {
 	auth: {
 		sudo_mode_secret: string;
 		connection_initiation_secret: string;
+		sso_allow_private_addresses: boolean;
 		passkeys: {
 			rp_name: string;
 			rp_id: string;
@@ -189,6 +209,7 @@ export interface MasterConfig {
 			provider: 'smtp' | 'none';
 			from_email: string;
 			from_name: string;
+			app_base_url: string;
 			webhook_secret?: string;
 			smtp?: {
 				host: string;
@@ -224,6 +245,7 @@ export interface MasterConfig {
 			api_key: string;
 			api_secret: string;
 			url: string;
+			internal_url: string;
 			webhook_url: string;
 			default_region?: {
 				id: string;

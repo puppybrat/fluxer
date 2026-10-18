@@ -14,6 +14,7 @@ use thiserror::Error;
 const ANIMATED_ENCODE_FLUSH_HEADROOM_MS: i64 = 3_000;
 const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
 const APNG_FRAME_PNG_SUFFIX: &str = ".png[strip,compression=9,filter=all]";
+const VIPS_WEBP_MAX_EFFORT: u8 = 6;
 static PNG_CRC_TABLE: OnceLock<[u32; 256]> = OnceLock::new();
 
 #[derive(Clone, Debug)]
@@ -188,7 +189,7 @@ fn output_suffix(
         "false"
     };
     let effort = effort_override
-        .map(|v| v.min(9))
+        .map(|v| v.min(VIPS_WEBP_MAX_EFFORT))
         .unwrap_or_else(|| effort_for(quality, animated));
     let suffix = match format {
         AssetExtension::Jpeg => format!(".jpg[Q={q},strip,interlace=true,optimize_coding=true]"),
@@ -1204,12 +1205,18 @@ fn resize_animated_gif_with_ffmpeg(
             dims.width,
             dims.height,
             options.deadline_ms.unwrap_or(0),
+            i64::from(Limits::animated_frames()),
+            Limits::animated_total_pixels().min(i64::MAX as usize) as i64,
             &mut out_ptr,
             &mut out_size,
         )
     };
     if rc == -2 {
         return Err(MediaError::RequestTimeout);
+    }
+    if rc == -3 {
+        clear_vips_error();
+        return Err(MediaError::InvalidImageDimensions);
     }
     if rc != 0 || out_ptr.is_null() {
         clear_vips_error();
@@ -1276,6 +1283,7 @@ pub fn transform_image(input: &[u8], options: &ImageOptions) -> Result<Processed
         && !options.cover_crop
         && sniffed.mime == "image/gif"
     {
+        probe_animated(input)?;
         let bytes = if let Some(dims) = gif_resize_dims(sniffed, options) {
             resize_animated_gif_with_ffmpeg(input, dims, options)?
         } else {
@@ -2240,6 +2248,22 @@ mod tests {
             }
         }
         delays
+    }
+
+    #[test]
+    fn webp_effort_override_is_clamped_to_the_encoder_maximum() {
+        for requested in [7u8, 8, 9, 200] {
+            let suffix =
+                output_suffix(AssetExtension::Webp, "high", None, Some(requested)).unwrap();
+            let suffix = suffix.to_str().unwrap().to_owned();
+            assert!(
+                suffix.contains("effort=6"),
+                "effort={requested} produced {suffix}, but libvips webpsave rejects effort above 6 \
+                 and silently falls back to its own default"
+            );
+        }
+        let suffix = output_suffix(AssetExtension::Webp, "high", None, Some(5)).unwrap();
+        assert!(suffix.to_str().unwrap().contains("effort=5"));
     }
 
     #[test]

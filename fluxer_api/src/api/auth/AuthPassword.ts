@@ -267,7 +267,7 @@ export async function resetPassword(
 		},
 		user.toRow(),
 	);
-	await users.deleteAllAuthSessions(user.id);
+	await AuthSession.terminateAllUserSessions(ctx, user.id);
 	await users.deletePasswordResetToken(data.token);
 	const hasMfa =
 		updatedUser.authenticatorTypes.has(UserAuthenticatorTypes.TOTP) ||
@@ -275,7 +275,10 @@ export async function resetPassword(
 	if (hasMfa) {
 		return await createMfaTicketResponse(ctx, updatedUser);
 	}
-	const [token] = await AuthSession.createAuthSession(ctx, {user: updatedUser, request});
+	const [token] = await AuthSession.createAuthSession(ctx, {
+		user: updatedUser,
+		origin: AuthSession.resolveSessionOrigin(ctx, request),
+	});
 	return {user_id: updatedUser.id.toString(), token};
 }
 

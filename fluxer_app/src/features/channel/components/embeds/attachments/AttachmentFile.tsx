@@ -3,6 +3,7 @@
 import {TextualAttachmentPreview} from '@app/features/channel/components/embeds/attachments/TextualAttachmentPreview';
 import {splitFilename} from '@app/features/channel/components/embeds/EmbedUtils';
 import {canDeleteAttachmentUtil} from '@app/features/channel/components/MessageActionUtils';
+import {ATTACHMENT_CARD_WIDTH} from '@app/features/channel/components/MessageAttachmentUtils';
 import {useMaybeMessageViewContext} from '@app/features/channel/components/MessageViewContext';
 import {DELETE_ATTACHMENT_DESCRIPTOR, DOWNLOAD_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {useDeleteAttachment} from '@app/features/messaging/hooks/useDeleteAttachment';
@@ -47,9 +48,10 @@ interface AttachmentFileProps {
 	attachment: MessageAttachment;
 	isPreview?: boolean;
 	message?: Message;
+	spoilerHidden?: boolean;
 }
 
-export const AttachmentFile = observer(({attachment, message, isPreview}: AttachmentFileProps) => {
+export const AttachmentFile = observer(({attachment, message, isPreview, spoilerHidden}: AttachmentFileProps) => {
 	const {i18n} = useLingui();
 	const {enabled: isMobile} = MobileLayout;
 	const isExpired = Boolean(attachment.expired);
@@ -181,8 +183,8 @@ export const AttachmentFile = observer(({attachment, message, isPreview}: Attach
 		containerStyles = {
 			display: 'grid',
 			width: '100%',
-			maxWidth: '400px',
-			minWidth: 'min(400px, 100%)',
+			maxWidth: remFromPx(ATTACHMENT_CARD_WIDTH),
+			minWidth: `min(${remFromPx(ATTACHMENT_CARD_WIDTH)}, 100%)`,
 		};
 	}
 	const handleDownload = async (e: React.MouseEvent) => {
@@ -246,6 +248,7 @@ export const AttachmentFile = observer(({attachment, message, isPreview}: Attach
 			{showTextPreview ? (
 				<TextualAttachmentPreview
 					attachment={attachment}
+					spoilerHidden={spoilerHidden}
 					data-flx="channel.embeds.attachments.attachment-file.textual-attachment-preview"
 				/>
 			) : (

@@ -20,13 +20,29 @@ export interface SearchBarProps {
 	highContrast?: boolean;
 }
 
-export type AutocompleteType = 'filters' | 'users' | 'characters' | 'channels' | 'values' | 'date' | 'history' | null;
+export type AutocompleteType =
+	| 'filters'
+	| 'users'
+	| 'characters'
+	| 'channels'
+	| 'values'
+	| 'date'
+	| 'history'
+	| 'plaintext'
+	| null;
 
 export interface SearchHints {
 	usersByTag: Record<string, string>;
 	channelsByName: Record<string, string>;
 	charactersByName: Record<string, string>;
 }
+
+export type HistoryFilterRow = {kind: 'filter'; option: SearchFilterOption};
+
+export type PlaintextAutocompleteRow =
+	| {kind: 'user-suggestion'; filterKey: string; user: User}
+	| {kind: 'channel-suggestion'; filterKey: string; channel: Channel}
+	| {kind: 'filter-key'; filter: SearchFilterOption};
 
 export type AutocompleteOption =
 	| SearchFilterOption
@@ -38,4 +54,6 @@ export type AutocompleteOption =
 			label: string;
 	  }
 	| string
-	| SearchHistoryEntry;
+	| SearchHistoryEntry
+	| PlaintextAutocompleteRow
+	| HistoryFilterRow;

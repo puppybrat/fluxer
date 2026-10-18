@@ -34,12 +34,10 @@ enum Command {
     BuildDesktopNativeAddon(desktop_native::BuildDesktopNativeAddonArgs),
     BuildGatewayNifs(gateway::BuildGatewayNifsArgs),
     Ci(ci_workflow::CiArgs),
-    CiScripts(ci_workflow::CiScriptsArgs),
     CleanSchemaGeneratedFiles(schema::CleanSchemaGeneratedFilesArgs),
     Gateway(gateway::GatewayArgs),
     Release(release::ReleaseArgs),
     ResolveCalver(calver::ResolveCalverArgs),
-    TestWebrtcSenderRust(desktop_native::TestWebrtcSenderRustArgs),
 }
 
 pub async fn run() -> Result<()> {
@@ -54,11 +52,9 @@ pub async fn run() -> Result<()> {
         }
         Command::BuildGatewayNifs(args) => gateway::run_build_gateway_nifs(args),
         Command::Ci(args) => ci_workflow::run_ci(args).await,
-        Command::CiScripts(args) => ci_workflow::run_ci_scripts(args).await,
         Command::CleanSchemaGeneratedFiles(args) => schema::run_clean_generated_files(args),
         Command::Gateway(args) => gateway::run_gateway(args),
         Command::Release(args) => release::run(args).await,
         Command::ResolveCalver(args) => calver::run(args),
-        Command::TestWebrtcSenderRust(args) => desktop_native::run_test_webrtc_sender_rust(args),
     }
 }

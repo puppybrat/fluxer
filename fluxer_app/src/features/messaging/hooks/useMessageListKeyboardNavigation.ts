@@ -3,7 +3,7 @@
 import MessageFocus from '@app/features/messaging/state/MessageFocus';
 import type {ScrollerHandle} from '@app/features/ui/components/Scroller';
 import KeyboardMode from '@app/features/ui/state/KeyboardMode';
-import {type RefObject, useEffect, useRef} from 'react';
+import {type RefObject, useEffect} from 'react';
 
 interface MessageListKeyboardNavigationOptions {
 	containerRef?: RefObject<ScrollerHandle | HTMLElement | null>;
@@ -18,10 +18,10 @@ interface MessageListKeyboardNavigationOptions {
 	allowWhenInactive?: boolean;
 }
 
-const getScrollerNode = (value: ScrollerHandle | HTMLElement | null | undefined): HTMLElement | null => {
+const getViewportElement = (value: ScrollerHandle | HTMLElement | null | undefined): HTMLElement | null => {
 	if (!value) return null;
-	if ('getScrollerNode' in value && typeof value.getScrollerNode === 'function') {
-		return value.getScrollerNode();
+	if ('getViewportElement' in value && typeof value.getViewportElement === 'function') {
+		return value.getViewportElement();
 	}
 	if (value instanceof HTMLElement) {
 		return value;
@@ -77,15 +77,15 @@ export function useMessageListKeyboardNavigation(options: MessageListKeyboardNav
 		onEscape,
 		allowWhenInactive = false,
 	} = options;
-	const messageNodesCache = useRef<MessageNodesSnapshot>(EMPTY_MESSAGE_NODES_SNAPSHOT);
 	const keyboardModeEnabled = KeyboardMode.keyboardModeEnabled;
 	useEffect(() => {
 		if (!keyboardModeEnabled) return;
+		let messageNodesCache: MessageNodesSnapshot = EMPTY_MESSAGE_NODES_SNAPSHOT;
 		let observedRoot: ParentNode | null = null;
 		let observer: MutationObserver | null = null;
 		const invalidateMessageNodesCache = () => {
-			messageNodesCache.current = {
-				...messageNodesCache.current,
+			messageNodesCache = {
+				...messageNodesCache,
 				nodes: [],
 				indexById: new Map(),
 				ts: 0,
@@ -108,14 +108,14 @@ export function useMessageListKeyboardNavigation(options: MessageListKeyboardNav
 		};
 		const getMessageElementsSnapshot = (): MessageNodesSnapshot => {
 			const now = Date.now();
-			const cache = messageNodesCache.current;
-			const container = getScrollerNode(containerRef?.current ?? null);
+			const cache = messageNodesCache;
+			const container = getViewportElement(containerRef?.current ?? null);
 			if (!container && containerRef) {
-				messageNodesCache.current = {
+				messageNodesCache = {
 					...EMPTY_MESSAGE_NODES_SNAPSHOT,
 					ts: now,
 				};
-				return messageNodesCache.current;
+				return messageNodesCache;
 			}
 			const root = container ?? document;
 			const selector = getMessageSelector(channelId);
@@ -131,14 +131,14 @@ export function useMessageListKeyboardNavigation(options: MessageListKeyboardNav
 					indexById.set(messageId, i);
 				}
 			}
-			messageNodesCache.current = {
+			messageNodesCache = {
 				nodes,
 				indexById,
 				root,
 				selector,
 				ts: now,
 			};
-			return messageNodesCache.current;
+			return messageNodesCache;
 		};
 		const focusNode = (node: HTMLElement, messageId: string) => {
 			if (onFocusMessage) {
@@ -202,7 +202,7 @@ export function useMessageListKeyboardNavigation(options: MessageListKeyboardNav
 			const isNavigationKey = delta !== 0;
 			if (isNavigationKey && hasShortcutModifier(event)) return;
 			if (!isNavigationKey && event.key !== 'Escape') return;
-			const container = getScrollerNode(containerRef?.current ?? null);
+			const container = getViewportElement(containerRef?.current ?? null);
 			if (container && !canHandleInsideContainer(container)) {
 				return;
 			}
@@ -220,6 +220,9 @@ export function useMessageListKeyboardNavigation(options: MessageListKeyboardNav
 		return () => {
 			window.removeEventListener('keydown', handleKeyDown, true);
 			observer?.disconnect();
+			observer = null;
+			observedRoot = null;
+			messageNodesCache = EMPTY_MESSAGE_NODES_SNAPSHOT;
 		};
 	}, [
 		keyboardModeEnabled,

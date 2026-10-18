@@ -5,7 +5,7 @@ import {Channel} from '@app/features/channel/models/Channel';
 import {Message} from '@app/features/messaging/models/MessagingMessage';
 import {http} from '@app/features/platform/transport/RestTransport';
 import SearchHistory from '@app/features/search/state/SearchHistory';
-import {parseQuery} from '@app/features/search/utils/SearchQueryParser';
+import {addUniqueSearchParam as addUnique, parseQuery} from '@app/features/search/utils/SearchQueryParser';
 import type {SearchSegment} from '@app/features/search/utils/SearchSegmentManager';
 import type {Channel as WireChannel} from '@fluxer/schema/src/domains/channel/ChannelSchemas';
 import type {Message as WireMessage} from '@fluxer/schema/src/domains/message/MessageResponseSchemas';
@@ -255,7 +255,7 @@ export interface SearchContext {
 }
 
 interface SearchQueryExecutionContext {
-	channelId?: string;
+	historyKey?: string;
 	guildId?: string | null;
 }
 
@@ -309,20 +309,11 @@ export interface SearchFilterOption {
 	values?: Array<SearchValueOption>;
 	requiresValue?: boolean;
 	requiresGuild?: boolean;
+	dmEligible?: boolean;
 }
 
 export function getSearchFilterOptions(i18n: I18n): Array<SearchFilterOption> {
 	const hasContentValues: Array<SearchValueOption> = [
-		{
-			value: 'link',
-			label: i18n._(VALUE_LINK_LABEL_DESCRIPTOR),
-			description: i18n._(VALUE_LINK_DESCRIPTION_DESCRIPTOR),
-		},
-		{
-			value: 'embed',
-			label: i18n._(VALUE_EMBED_LABEL_DESCRIPTOR),
-			description: i18n._(VALUE_EMBED_DESCRIPTION_DESCRIPTOR),
-		},
 		{
 			value: 'image',
 			label: i18n._(VALUE_IMAGE_LABEL_DESCRIPTOR),
@@ -334,9 +325,9 @@ export function getSearchFilterOptions(i18n: I18n): Array<SearchFilterOption> {
 			description: i18n._(VALUE_VIDEO_DESCRIPTION_DESCRIPTOR),
 		},
 		{
-			value: 'sound',
-			label: i18n._(VALUE_SOUND_LABEL_DESCRIPTOR),
-			description: i18n._(VALUE_SOUND_DESCRIPTION_DESCRIPTOR),
+			value: 'link',
+			label: i18n._(VALUE_LINK_LABEL_DESCRIPTOR),
+			description: i18n._(VALUE_LINK_DESCRIPTION_DESCRIPTOR),
 		},
 		{
 			value: 'file',
@@ -344,14 +335,24 @@ export function getSearchFilterOptions(i18n: I18n): Array<SearchFilterOption> {
 			description: i18n._(VALUE_FILE_DESCRIPTION_DESCRIPTOR),
 		},
 		{
-			value: 'sticker',
-			label: i18n._(VALUE_STICKER_LABEL_DESCRIPTOR),
-			description: i18n._(VALUE_STICKER_DESCRIPTION_DESCRIPTOR),
+			value: 'embed',
+			label: i18n._(VALUE_EMBED_LABEL_DESCRIPTOR),
+			description: i18n._(VALUE_EMBED_DESCRIPTION_DESCRIPTOR),
+		},
+		{
+			value: 'sound',
+			label: i18n._(VALUE_SOUND_LABEL_DESCRIPTOR),
+			description: i18n._(VALUE_SOUND_DESCRIPTION_DESCRIPTOR),
 		},
 		{
 			value: 'poll',
 			label: i18n._(VALUE_POLL_LABEL_DESCRIPTOR),
 			description: i18n._(VALUE_POLL_DESCRIPTION_DESCRIPTOR),
+		},
+		{
+			value: 'sticker',
+			label: i18n._(VALUE_STICKER_LABEL_DESCRIPTOR),
+			description: i18n._(VALUE_STICKER_DESCRIPTION_DESCRIPTOR),
 		},
 		{
 			value: 'forward',
@@ -453,6 +454,7 @@ export function getSearchFilterOptions(i18n: I18n): Array<SearchFilterOption> {
 			syntax: 'in:',
 			requiresValue: true,
 			requiresGuild: true,
+			dmEligible: true,
 		},
 		{
 			key: '-in',
@@ -461,6 +463,7 @@ export function getSearchFilterOptions(i18n: I18n): Array<SearchFilterOption> {
 			syntax: '-in:',
 			requiresValue: true,
 			requiresGuild: true,
+			dmEligible: true,
 		},
 		{
 			key: 'pinned',
@@ -637,10 +640,6 @@ function buildHintsFromSegments(segments: Array<SearchSegment>) {
 	};
 }
 
-function addUnique<T>(values: Array<T> | undefined, value: T): Array<T> {
-	return values?.includes(value) ? values : [...(values ?? []), value];
-}
-
 function segmentMatchesQuery(query: string, segment: SearchSegment): boolean {
 	return (
 		segment.start >= 0 && segment.end <= query.length && query.slice(segment.start, segment.end) === segment.displayText
@@ -696,12 +695,21 @@ function applySegmentsToParams(
 	return params;
 }
 
+export function hasSearchableParams(params: MessageSearchParams): boolean {
+	for (const value of Object.values(params)) {
+		if (value !== undefined) {
+			return true;
+		}
+	}
+	return false;
+}
+
 export function parseSearchQueryWithSegments(
 	query: string,
 	segments: Array<SearchSegment>,
 	ctx?: SearchQueryExecutionContext,
 ): MessageSearchParams {
-	const entry = SearchHistory.recent(ctx?.channelId).find((historyEntry) => historyEntry.query === query);
+	const entry = SearchHistory.recent(ctx?.historyKey).find((historyEntry) => historyEntry.query === query);
 	const segmentHints = buildHintsFromSegments(segments);
 	const segmentUserValues = new Set<string>();
 	for (const segment of segments) {

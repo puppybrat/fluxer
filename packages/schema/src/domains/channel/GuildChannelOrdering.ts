@@ -85,6 +85,12 @@ export function sortChannelsForOrdering<Id extends string | bigint, Channel exte
 		if (!children) {
 			return;
 		}
+		// Children of a category (channels and subcategories alike) are visited in stored-position order
+		// only; upstream's text-before-voice grouping (61b4511ae) is deliberately not applied here.
+		// This order drives position/move math (ChannelMoveOperation, the API's ChannelOperationsService).
+		// It is NOT the display order: the sidebar (organizeChannels) buckets text, then voice, then
+		// subcategories, and the Cast overview tree lists channels before subcategories. Unifying all
+		// three on one interleaved position order is deferred to a post-sync feature.
 		for (const child of [...children].sort(compareChannelOrdering)) {
 			visit(child);
 		}

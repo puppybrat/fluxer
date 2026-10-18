@@ -5,7 +5,8 @@ import type {DeveloperOptionsState} from '@app/features/devtools/state/Developer
 import DeveloperOptions from '@app/features/devtools/state/DeveloperOptions';
 
 export const DEFAULT_DEVELOPER_OPTIONS = {
-	bypassSplashScreen: false,
+	bypassLoadingSkeleton: false,
+	forceLoadingSkeleton: false,
 	forceFailMessageSends: false,
 	forceFailMessageLoads: false,
 	forceRenderPlaceholders: false,
@@ -68,7 +69,6 @@ export const DEFAULT_DEVELOPER_OPTIONS = {
 	mockTitlebarPlatformOverride: 'auto',
 	mockAttachmentStates: {},
 	noOpInAppReports: false,
-	gameCaptureInjectionMethod: 'auto',
 } satisfies DeveloperOptionsState;
 const PREMIUM_SCENARIO_OVERRIDE_KEYS = new Set<keyof DeveloperOptionsState>([
 	'premiumTypeOverride',

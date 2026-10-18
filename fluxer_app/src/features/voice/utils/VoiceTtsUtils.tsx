@@ -3,7 +3,7 @@
 import Accessibility from '@app/features/accessibility/state/Accessibility';
 import Authentication from '@app/features/auth/state/Authentication';
 import Channels from '@app/features/channel/state/Channels';
-import MessageReferences from '@app/features/messaging/state/MessageReferences';
+import MessageReferences, {MessageReferenceState} from '@app/features/messaging/state/MessageReferences';
 import {SystemMessageUtils} from '@app/features/messaging/utils/SystemMessageUtils';
 import SelectedChannel from '@app/features/navigation/state/SelectedChannel';
 import Relationships from '@app/features/relationship/state/Relationships';
@@ -419,7 +419,7 @@ function handleIncomingTtsMessage(message: Message): void {
 	}
 	if (
 		UserGuildSettings.isGuildOrChannelMuted(channel.guildId ?? null, channel.id) ||
-		UserGuildSettings.isCategoryMuted(channel.guildId ?? null, channel.id)
+		UserGuildSettings.isParentCategoryMuted(channel.guildId ?? null, channel.id)
 	) {
 		return;
 	}
@@ -438,7 +438,7 @@ function handleIncomingTtsMessage(message: Message): void {
 	if (!author) {
 		return;
 	}
-	const authorName = NicknameUtils.getNickname(author, channel.guildId ?? undefined);
+	const authorName = NicknameUtils.getNickname(author, channel.guildId ?? null);
 	if (!message.content.trim()) {
 		const description = describeNonTextContent(message, localI18n);
 		if (!description) {
@@ -454,10 +454,10 @@ function handleIncomingTtsMessage(message: Message): void {
 		const refChannelId = message.message_reference.channel_id ?? message.channel_id;
 		const refMessageId = message.message_reference.message_id;
 		const ref = MessageReferences.getMessageReference(refChannelId, refMessageId);
-		if (ref.message) {
+		if (ref.state === MessageReferenceState.LOADED) {
 			const replyAuthor = Users.getUser(ref.message.author.id);
 			if (replyAuthor) {
-				replyAuthorName = NicknameUtils.getNickname(replyAuthor, channel.guildId ?? undefined);
+				replyAuthorName = NicknameUtils.getNickname(replyAuthor, channel.guildId ?? null);
 			}
 		}
 	}

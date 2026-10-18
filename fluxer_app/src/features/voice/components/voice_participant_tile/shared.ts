@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {Logger} from '@app/features/platform/utils/AppLogger';
-import {VoiceTrackKind, VoiceTrackSource} from '@app/features/voice/engine/VoiceTrackSource';
+import {VoiceTrackSource} from '@app/features/voice/engine/VoiceTrackSource';
+import {MEDIA_PROXY_AVATAR_SIZE_PROFILE} from '@fluxer/constants/src/MediaProxyAssetSizes';
+import type {MediaProxyImageSize} from '@fluxer/constants/src/MediaProxyImageSizes';
 import {msg} from '@lingui/core/macro';
 import type {TrackReferenceOrPlaceholder} from '@livekit/components-react';
 import type React from 'react';
 
 export const logger = new Logger('VoiceParticipantTile');
 export const TILE_AVATAR_BASE = 192;
+export const TILE_AVATAR_MEDIA_SIZE: MediaProxyImageSize = MEDIA_PROXY_AVATAR_SIZE_PROFILE;
 export const TILE_AVATAR_STYLE = {
 	width: 'var(--tile-avatar-size)',
 	height: 'var(--tile-avatar-size)',
@@ -125,16 +128,6 @@ export interface VoiceParticipantTileInnerProps {
 
 export function isCameraSource(source: unknown) {
 	return source === VoiceTrackSource.Camera;
-}
-
-export function isAudioTrackWithVolume(track: unknown): track is {kind: string; setVolume: (volume: number) => void} {
-	return (
-		track != null &&
-		typeof track === 'object' &&
-		'kind' in track &&
-		(track as {kind: string}).kind === VoiceTrackKind.Audio &&
-		'setVolume' in track
-	);
 }
 
 export function getSourceDataAttr(source: unknown) {

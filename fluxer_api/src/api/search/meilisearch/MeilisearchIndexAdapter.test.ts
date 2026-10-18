@@ -93,6 +93,10 @@ describe('MeilisearchMessageAdapter', () => {
 			'PATCH /indexes/messages/settings/pagination',
 		]);
 		expect(client.waitedTaskUids).toEqual([1, 2, 3, 4, 5, 6]);
+		// The messages index defines its own result window, which wins over the 10k default.
+		expect(client.requests.find((request) => request.path.endsWith('/settings/pagination'))?.body).toEqual({
+			maxTotalHits: 100_000,
+		});
 	});
 
 	it('builds Meilisearch search requests from message filters', async () => {

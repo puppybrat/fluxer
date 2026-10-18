@@ -7,6 +7,8 @@ import {
 	NagbarType,
 } from '@app/features/app/components/layout/app_layout/AppLayoutTypes';
 import {isScheduledMaintenanceNagbarDismissed} from '@app/features/app/components/layout/app_layout/ScheduledMaintenanceDismissal';
+import Config from '@app/features/app/config/Config';
+import {isClientReconnecting} from '@app/features/app/state/ClientReadiness';
 import Initialization from '@app/features/app/state/Initialization';
 import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import Authentication from '@app/features/auth/state/Authentication';
@@ -42,12 +44,16 @@ function sortNagbarsByPriority(a: NagbarState, b: NagbarState): number {
 
 export function selectVisibleNagbars(nagbars: Array<NagbarState>): Array<NagbarState> {
 	const visibleNagbars = nagbars.filter((nagbar) => nagbar.visible).sort(sortNagbarsByPriority);
-	const nonDismissible = visibleNagbars.filter((nagbar) => !nagbar.dismissible);
-	const dismissible = visibleNagbars.filter((nagbar) => nagbar.dismissible);
+	const pinned = visibleNagbars.filter((nagbar) => nagbar.type === NagbarType.BUILD_ENVIRONMENT);
+	const selectable = visibleNagbars.filter((nagbar) => nagbar.type !== NagbarType.BUILD_ENVIRONMENT);
+	const nonDismissible = selectable.filter((nagbar) => !nagbar.dismissible);
+	const dismissible = selectable.filter((nagbar) => nagbar.dismissible);
 	const selectedNonDismissible = nonDismissible.slice(0, 1);
 	const selectedDismissible = dismissible.slice(0, 1);
-	return [...selectedNonDismissible, ...selectedDismissible].sort(sortNagbarsByPriority);
+	return [...pinned, ...selectedNonDismissible, ...selectedDismissible].sort(sortNagbarsByPriority);
 }
+
+const BUILD_ENVIRONMENT_HIDDEN_RELEASE_CHANNELS = new Set<string>(['stable', 'canary']);
 
 export const useAppLayoutState = (): AppLayoutState => {
 	const [isStandalone, setIsStandalone] = useState(isStandalonePwa());
@@ -106,9 +112,11 @@ export const useNagbarConditions = (): NagbarConditions => {
 		const now = new Date();
 		const expiryDate = new Date(user.premiumUntil);
 		const gracePeriodMs = 3 * MS_PER_DAY;
-		const graceEndDate = new Date(expiryDate.getTime() + gracePeriodMs);
+		const graceEndDate = user.premiumGraceEndsAt
+			? new Date(user.premiumGraceEndsAt)
+			: new Date(expiryDate.getTime() + gracePeriodMs);
 		const isInGracePeriod = now > expiryDate && now <= graceEndDate;
-		return isInGracePeriod;
+		return isInGracePeriod && !nagbarState.premiumGracePeriodDismissed;
 	})();
 	const canShowPremiumExpired = (() => {
 		if (isSelfHosted) return false;
@@ -119,11 +127,13 @@ export const useNagbarConditions = (): NagbarConditions => {
 		const expiryDate = new Date(user.premiumUntil);
 		const gracePeriodMs = 3 * MS_PER_DAY;
 		const expiredStateDurationMs = 30 * MS_PER_DAY;
-		const graceEndDate = new Date(expiryDate.getTime() + gracePeriodMs);
-		const expiredStateEndDate = new Date(expiryDate.getTime() + expiredStateDurationMs);
+		const graceEndDate = user.premiumGraceEndsAt
+			? new Date(user.premiumGraceEndsAt)
+			: new Date(expiryDate.getTime() + gracePeriodMs);
+		const expiredStateEndDate = new Date(graceEndDate.getTime() + expiredStateDurationMs);
 		const isExpired = now > graceEndDate;
 		const showExpiredState = isExpired && now <= expiredStateEndDate;
-		return showExpiredState;
+		return showExpiredState && !nagbarState.premiumExpiredDismissed;
 	})();
 	const canShowGiftInventory = (() => {
 		if (isSelfHosted) return false;
@@ -220,6 +230,14 @@ export const useNagbarConditions = (): NagbarConditions => {
 	const canShowLinuxInputAccess = NativePermission.shouldShowLinuxInputAccessNagbar;
 	const canShowSoftwareEncoder = SoftwareEncoderWarning.showWarning;
 	const canShowStreamerMode = StreamerMode.shouldShowNagbar;
+	const canShowBuildEnvironment =
+		!BUILD_ENVIRONMENT_HIDDEN_RELEASE_CHANNELS.has(Config.PUBLIC_RELEASE_CHANNEL) &&
+		!nagbarState.buildEnvironmentDismissedThisSession;
+	const canShowConnection = nagbarState.forceHideConnectionNotice
+		? false
+		: nagbarState.forceConnectionNotice
+			? true
+			: isClientReconnecting();
 	const needsTermsAcceptance = (() => {
 		if (!user) return false;
 		if (isSelfHosted) return false;
@@ -235,6 +253,8 @@ export const useNagbarConditions = (): NagbarConditions => {
 		return termsOutdated || privacyOutdated;
 	})();
 	return {
+		canShowBuildEnvironment,
+		canShowConnection,
 		canShowCorruptedInstallation: nagbarState.forceHideCorruptedInstallation
 			? false
 			: nagbarState.forceCorruptedInstallation
@@ -273,6 +293,18 @@ export const useNagbarConditions = (): NagbarConditions => {
 export const useActiveNagbars = (conditions: NagbarConditions): Array<NagbarState> => {
 	return useMemo(() => {
 		const nagbars: Array<NagbarState> = [
+			{
+				type: NagbarType.BUILD_ENVIRONMENT,
+				priority: -1000,
+				visible: conditions.canShowBuildEnvironment,
+				dismissible: true,
+			},
+			{
+				type: NagbarType.CONNECTION,
+				priority: -100,
+				visible: conditions.canShowConnection,
+				dismissible: false,
+			},
 			{
 				type: NagbarType.CORRUPTED_INSTALLATION,
 				priority: -10,

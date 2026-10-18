@@ -23,12 +23,14 @@ import type {Channel} from '../models/Channel';
 import {getMessageSearchService} from '../SearchFactory';
 import type {IUserRepository} from '../user/IUserRepository';
 import {canUserAccessNsfwContent} from '../utils/AgeUtils';
+import {mapWithConcurrency} from '../utils/ConcurrencyUtils';
 import type {WorkerTaskName} from '../worker/WorkerLaneConfig';
 import {buildMessageSearchFilters} from './BuildMessageSearchFilters';
 import {channelNeedsReindexing} from './ChannelIndexingUtils';
 import type {IMessageSearchService} from './IMessageSearchService';
 import {MessageSearchResponseMapper} from './MessageSearchResponseMapper';
 import {searchExistingMessages} from './MessageSearchResultReconciler';
+import {channelRequiresAgeVerification} from './SearchNsfwUtils';
 
 const CHANNEL_INDEX_CHECK_CONCURRENCY = 32;
 const CHANNEL_INDEX_JOB_ENQUEUE_CONCURRENCY = 16;
@@ -100,7 +102,7 @@ export class GlobalSearchService {
 			this.guildService.search.collectAccessibleGuildChannels(params.userId),
 			this.findDmScopeContextChannel(params.userId, params.includeChannelId),
 		]);
-		const {accessibleChannels, unindexedChannelIds, guildNsfwLevels} = guildAccess;
+		const {accessibleChannels, unindexedChannelIds, guildNsfwLevels, parentCategories} = guildAccess;
 		if (unindexedChannelIds.size > 0) {
 			await this.queueIndexingChannels(unindexedChannelIds);
 			return {indexing: true};
@@ -132,7 +134,7 @@ export class GlobalSearchService {
 			if (guildIsAgeRestricted) {
 				return canIncludeNsfw;
 			}
-			if (channel.isNsfw) {
+			if (channelRequiresAgeVerification(channel, parentCategories, false)) {
 				return canIncludeNsfw;
 			}
 			return true;
@@ -269,22 +271,4 @@ export class GlobalSearchService {
 		}
 		return canUserAccessNsfwContent(user);
 	}
-}
-
-async function mapWithConcurrency<T, TResult>(
-	items: ReadonlyArray<T>,
-	concurrency: number,
-	mapper: (item: T, index: number) => Promise<TResult>,
-): Promise<Array<TResult>> {
-	const results = new Array<TResult>(items.length);
-	let nextIndex = 0;
-	async function worker(): Promise<void> {
-		for (;;) {
-			const index = nextIndex++;
-			if (index >= items.length) return;
-			results[index] = await mapper(items[index]!, index);
-		}
-	}
-	await Promise.all(Array.from({length: Math.min(concurrency, items.length)}, () => worker()));
-	return results;
 }

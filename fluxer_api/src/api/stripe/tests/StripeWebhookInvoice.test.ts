@@ -166,7 +166,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: `in_test_${Date.now()}`,
 						billing_reason: 'subscription_cycle',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 					},
 				},
 			};
@@ -217,7 +217,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: `in_test_${Date.now()}`,
 						billing_reason: 'subscription_cycle',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 					},
 				},
 			};
@@ -252,7 +252,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: invoiceId,
 						billing_reason: 'subscription_cycle',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 					},
 				},
 			};
@@ -300,7 +300,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: `in_test_${Date.now()}`,
 						billing_reason: 'subscription_create',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 					},
 				},
 			};
@@ -351,7 +351,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: `in_test_${Date.now()}`,
 						billing_reason: 'subscription_cycle',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 					},
 				},
 			};
@@ -372,7 +372,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: `in_test_${Date.now()}`,
 						billing_reason: 'subscription_cycle',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 					},
 				},
 			};
@@ -422,7 +422,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: `in_test_${Date.now()}`,
 						billing_reason: 'subscription_cycle',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 					},
 				},
 			};
@@ -439,7 +439,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 		test('skips zero-amount subscription_update invoice without granting an extra monthly cycle', async () => {
 			const account = await createTestAccount(harness);
 			const subscriptionId = `sub_test_${Date.now()}`;
-			const baselinePremiumUntil = new Date('2026-08-25T21:57:05.000Z');
+			const baselinePremiumUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 			await createBuilder(harness, account.token)
 				.post(`/test/users/${account.userId}/premium`)
 				.body({
@@ -460,7 +460,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: `in_test_${Date.now()}`,
 						billing_reason: 'subscription_update',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 						amount_paid: 0,
 						amount_due: 0,
 						total: 0,
@@ -481,7 +481,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 		test('skips paid subscription_update invoices so interval switches do not grant extra time', async () => {
 			const account = await createTestAccount(harness);
 			const subscriptionId = `sub_test_${Date.now()}`;
-			const baselinePremiumUntil = new Date('2026-08-25T21:57:05.000Z');
+			const baselinePremiumUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 			await createBuilder(harness, account.token)
 				.post(`/test/users/${account.userId}/premium`)
 				.body({
@@ -503,7 +503,7 @@ describe('Stripe Webhook - Invoice Events', () => {
 					object: {
 						id: `in_test_${Date.now()}`,
 						billing_reason: 'subscription_update',
-						subscription: subscriptionId,
+						parent: {subscription_details: {subscription: subscriptionId}},
 						amount_paid: 1250,
 						amount_due: 1250,
 						total: 1250,

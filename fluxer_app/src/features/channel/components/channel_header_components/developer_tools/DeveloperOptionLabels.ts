@@ -38,8 +38,12 @@ const MONTHS_PLURAL_DESCRIPTOR = msg({
 	message: '{months, plural, one {# month} other {# months}}',
 	comment: 'Developer tools debug menu label. Internal-only surface for developers; translators may keep this terse.',
 });
-const BYPASS_SPLASH_SCREEN_DESCRIPTOR = msg({
-	message: 'Bypass splash screen',
+const BYPASS_LOADING_SKELETON_DESCRIPTOR = msg({
+	message: 'Bypass loading skeleton',
+	comment: 'Developer tools debug menu label. Internal-only surface for developers; translators may keep this terse.',
+});
+const FORCE_LOADING_SKELETON_DESCRIPTOR = msg({
+	message: 'Force loading skeleton',
 	comment: 'Developer tools debug menu label. Internal-only surface for developers; translators may keep this terse.',
 });
 const FAIL_MESSAGE_SENDS_DESCRIPTOR = msg({
@@ -274,10 +278,6 @@ const DEVELOPER_OPTION_DESCRIPTOR = msg({
 	message: 'Developer option',
 	comment: 'Developer tools debug menu label. Internal-only surface for developers; translators may keep this terse.',
 });
-const GAME_CAPTURE_INJECTION_METHOD_DESCRIPTOR = msg({
-	message: 'Game capture injection (Windows)',
-	comment: 'Developer tools debug menu label. Internal-only surface for developers; translators may keep this terse.',
-});
 const DEVELOPER_OPTION_LABEL_FALLBACKS: Partial<Record<keyof DeveloperOptionsState, MessageDescriptor>> = {
 	mockAttachmentStates: ATTACHMENT_MOCKS_DESCRIPTOR,
 };
@@ -323,7 +323,6 @@ const formatDeveloperOptionValue = <K extends keyof DeveloperOptionsState>(
 		case 'mockRequiredActionsResendOutcome':
 		case 'mockTitlebarPlatformOverride':
 		case 'mockUpdaterState':
-		case 'gameCaptureInjectionMethod':
 			return String(value).replace(/_/g, ' ');
 		case 'premiumSinceOverride':
 		case 'premiumUntilOverride':
@@ -354,8 +353,10 @@ const formatDeveloperOptionValue = <K extends keyof DeveloperOptionsState>(
 };
 export const getDeveloperOptionLabel = (key: keyof DeveloperOptionsState): MessageDescriptor => {
 	switch (key) {
-		case 'bypassSplashScreen':
-			return BYPASS_SPLASH_SCREEN_DESCRIPTOR;
+		case 'bypassLoadingSkeleton':
+			return BYPASS_LOADING_SKELETON_DESCRIPTOR;
+		case 'forceLoadingSkeleton':
+			return FORCE_LOADING_SKELETON_DESCRIPTOR;
 		case 'forceFailMessageSends':
 			return FAIL_MESSAGE_SENDS_DESCRIPTOR;
 		case 'forceFailMessageLoads':
@@ -404,8 +405,6 @@ export const getDeveloperOptionLabel = (key: keyof DeveloperOptionsState): Messa
 			return VANITY_URL_DISCLAIMER_DESCRIPTOR;
 		case 'forceShowVoiceConnection':
 			return VOICE_CONNECTION_DEBUG_DESCRIPTOR;
-		case 'gameCaptureInjectionMethod':
-			return GAME_CAPTURE_INJECTION_METHOD_DESCRIPTOR;
 		case 'premiumTypeOverride':
 			return PREMIUM_TYPE_DESCRIPTOR;
 		case 'premiumLifetimeSequenceOverride':

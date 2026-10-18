@@ -931,9 +931,8 @@ export class MessageSendService {
 				algorithm: 'leaky_bucket',
 			});
 			if (!slowmodeResult.allowed) {
-				const retryAfter = Math.max(0, slowmodeResult.resetTime.getTime() - Date.now());
 				throw new SlowmodeRateLimitError({
-					retryAfter,
+					retryAfter: slowmodeResult.retryAfter,
 					retryAfterDecimal: slowmodeResult.retryAfterDecimal,
 				});
 			}
@@ -1226,7 +1225,7 @@ export class MessageSendService {
 		await this.deps.mentionService.handleMentionTasks({
 			guildId: channel.guildId,
 			message,
-			authorId: createUserID(0n),
+			authorId: createUserID(BigInt(webhook.id)),
 			mentionHere: mentionData?.mentionHere ?? false,
 		});
 		await this.deps.dispatchService.dispatchMessageCreate({

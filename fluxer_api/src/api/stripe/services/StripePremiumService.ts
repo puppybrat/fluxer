@@ -17,7 +17,7 @@ import {createRequestCache} from '../../middleware/RequestCacheMiddleware';
 import {addGiftCodeDuration} from '../../models/GiftCode';
 import type {User} from '../../models/User';
 import type {IUserRepository} from '../../user/IUserRepository';
-import {createPremiumClearPatch} from '../../user/UserHelpers';
+import {createPremiumClearPatch, getEffectivePremiumUntil} from '../../user/UserHelpers';
 import {mapUserToPrivateResponse} from '../../user/UserMappers';
 
 export class StripePremiumService {
@@ -230,6 +230,10 @@ export class StripePremiumService {
 		if (user.premiumType === UserPremiumTypes.LIFETIME) {
 			return false;
 		}
+		const effective = getEffectivePremiumUntil(user);
+		if (effective != null && Date.now() <= effective.getTime()) {
+			return false;
+		}
 		const updatedUser = await this.userRepository.patchUpsert(userId, createPremiumClearPatch(), user.toRow());
 		await this.dispatchUser(updatedUser);
 		Logger.debug({userId}, 'Premium grace period ended early');
@@ -296,6 +300,7 @@ export class StripePremiumService {
 		const existingMember = await this.guildRepository.getMember(visionariesGuildId, userId);
 		if (!existingMember) {
 			await this.guildService.members.addUserToGuild({
+				skipRiskGate: true,
 				userId,
 				guildId: visionariesGuildId,
 				sendJoinMessage: true,

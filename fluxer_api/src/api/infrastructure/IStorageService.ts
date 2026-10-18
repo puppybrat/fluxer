@@ -72,7 +72,13 @@ export interface IStorageService {
 		destinationKey: string;
 		newContentType?: string;
 	}): Promise<void>;
-	getPresignedDownloadURL(params: {bucket: string; key: string; expiresIn?: number}): Promise<string>;
+	getPresignedDownloadURL(params: {
+		bucket: string;
+		key: string;
+		expiresIn?: number;
+		responseContentType?: string;
+		responseContentDisposition?: string;
+	}): Promise<string>;
 	getPresignedUploadURL(params: {
 		bucket: string;
 		key: string;
@@ -85,6 +91,7 @@ export interface IStorageService {
 		key: string;
 		uploadId: string;
 		partNumber: number;
+		contentLength?: number;
 		expiresIn?: number;
 	}): Promise<string>;
 	purgeBucket(bucket: string): Promise<void>;

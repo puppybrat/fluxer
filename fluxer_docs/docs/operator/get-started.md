@@ -2,6 +2,9 @@
 
 Run your own Fluxer instance with Docker Compose. This guide takes you from a fresh server to a working self-hosted instance with the web app, API, gateway, admin dashboard, media uploads, search, storage, and voice signaling behind one public hostname.
 
+!!! info "Desktop client support is coming very soon"
+    The desktop client cannot connect to self-hosted instances yet, so reach your instance through the web app in the meantime. Support is actively being worked on and lands very soon. You can track the progress in [issue #1088](https://github.com/fluxerapp/fluxer/issues/1088#issuecomment-4951728735).
+
 ## Requirements
 
 - A Linux server or VM that can run Docker Engine.
@@ -105,6 +108,10 @@ Keep these defaults unless you know you need to change them:
 - `LIVEKIT_API_KEY=fluxer`; the secret is `LIVEKIT_API_SECRET`.
 - `FLUXER_S3_ACCESS_KEY=fluxer`; the secret is `FLUXER_S3_SECRET_KEY`.
 - Email starts disabled. Enable SMTP later from `.env` and the admin dashboard.
+- Passkeys follow `FLUXER_DOMAIN`. Override `FLUXER_PASSKEY_RP_ID`, `FLUXER_PASSKEY_RP_NAME`, and `FLUXER_PASSKEY_ADDITIONAL_ALLOWED_ORIGINS` only when browsers reach the instance on a different host.
+
+!!! warning "Changing the passkey relying party invalidates passkeys"
+    Browsers bind each passkey to the `FLUXER_PASSKEY_RP_ID` it was registered under. Changing that value later leaves every existing passkey unusable, so members have to enrol again.
 
 !!! warning "Keep `.env` private"
     `.env` contains every secret for the instance. Do not commit it, paste it into support tickets, or put it in screenshots.
@@ -269,6 +276,14 @@ docker compose up -d
 The `fluxer-static` image is part of the default stack, so static asset updates are picked up by the same pull-and-restart flow.
 
 To pin a specific release, set `FLUXER_IMAGE_TAG` in `.env` to the release tag you want, then pull and restart.
+
+Each upgrade leaves the previous images behind, which adds up to a few gigabytes over time. To reclaim that space:
+
+```bash
+docker image prune -f
+```
+
+This removes only the untagged images the upgrade replaced. `docker system prune -a` reclaims more, but it also deletes every image not currently used by a running container, including ones unrelated to Fluxer.
 
 ## Getting help
 

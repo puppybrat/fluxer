@@ -39,7 +39,7 @@ export interface PendingJumpDispatch {
 	messageId: string;
 	flash?: boolean;
 	offset?: number;
-	returnTargetId?: string;
+	returnToMessageId?: string;
 	returnChannelId?: string | null;
 	returnGuildId?: string | null;
 	jumpType?: JumpType;
@@ -207,6 +207,10 @@ class Messages {
 		return ChannelMessages.get(channelId);
 	}
 
+	private hasLoadedPage(messages: ChannelMessages): boolean {
+		return messages.ready && messages.length > 0;
+	}
+
 	shouldPreloadLatestPage(channelId: string): boolean {
 		if (!GatewayConnection.isConnected || !Channels.getChannel(channelId)) {
 			return false;
@@ -231,19 +235,19 @@ class Messages {
 	}
 
 	getLastEditableMessage(channelId: string): Message | undefined {
-		return this.getMessages(channelId).findNewest((message) => {
+		return this.getMessages(channelId).searchFromNewest((message) => {
 			return message.isCurrentUserAuthor() && message.state === MessageStates.SENT && message.isUserMessage();
 		});
 	}
 
 	jumpedMessageId(channelId: string): string | null | undefined {
 		const channel = ChannelMessages.get(channelId);
-		return channel?.jumpTargetId;
+		return channel?.jumpDestinationId;
 	}
 
-	hasPresent(channelId: string): boolean {
+	hasNewestMessages(channelId: string): boolean {
 		const channel = ChannelMessages.get(channelId);
-		return channel?.hasPresent() ?? false;
+		return channel?.hasNewestMessages() ?? false;
 	}
 
 	@action
@@ -263,7 +267,7 @@ class Messages {
 		let didUpdate = false;
 		ChannelMessages.forEach((messages) => {
 			if (messages.loadingMore) {
-				this.commitMessages(messages.mutate({loadingMore: false}));
+				this.commitMessages(messages.withPatch({loadingMore: false}));
 				didUpdate = true;
 			}
 		});
@@ -279,7 +283,7 @@ class Messages {
 		ChannelMessages.forEach((messages) => channelIds.push(messages.channelId));
 		for (const channelId of channelIds) {
 			this.clearMessages(channelId);
-			Dimension.clearChannelDimensions(channelId);
+			Dimension.forgetChannelDimensions(channelId);
 		}
 		this.messageRefsByAuthor.clear();
 		this.indexedAuthorsByChannel.clear();
@@ -292,14 +296,14 @@ class Messages {
 	@action
 	handleResumed(): boolean {
 		ChannelMessages.forEach((messages) => {
-			this.commitMessages(messages.mutate({ready: true}));
+			this.commitMessages(messages.withPatch({ready: true}));
 		});
 		this.notifyChange();
 		return true;
 	}
 
 	@action
-	handleConnectionOpen(): boolean {
+	handleGatewayReady(): boolean {
 		const selectedChannelId = SelectedChannel.currentChannelId;
 		let didHydrateSelectedChannel = false;
 		if (selectedChannelId) {
@@ -316,8 +320,7 @@ class Messages {
 				this.startChannelHydration(messages.channelId, {forceScrollToBottom: this.pendingFullHydration});
 				didHydrateSelectedChannel = true;
 			} else {
-				this.clearMessages(messages.channelId);
-				Dimension.clearChannelDimensions(messages.channelId);
+				this.commitMessages(messages.withPatch({ready: false, loadingMore: false}));
 			}
 		});
 		if (this.pendingFullHydration && !didHydrateSelectedChannel && selectedChannelId) {
@@ -328,7 +331,7 @@ class Messages {
 		if (!didHydrateSelectedChannel && selectedChannelId && Channels.getChannel(selectedChannelId)) {
 			const messages = ChannelMessages.getOrCreate(selectedChannelId);
 			if (!messages.ready && !messages.loadingMore && messages.length === 0) {
-				this.commitMessages(messages.mutate({loadingMore: true}));
+				this.commitMessages(messages.withPatch({loadingMore: true}));
 				MessageCommands.fetchMessages(selectedChannelId, null, null, MAX_MESSAGES_PER_CHANNEL);
 				didHydrateSelectedChannel = true;
 			}
@@ -337,18 +340,13 @@ class Messages {
 		return didHydrateSelectedChannel;
 	}
 
-	private startChannelHydration(
-		channelId: string,
-		options: {
-			forceScrollToBottom?: boolean;
-		} = {},
-	): void {
+	private startChannelHydration(channelId: string, options: {forceScrollToBottom?: boolean} = {}): void {
 		if (!Channels.getChannel(channelId)) return;
 		const {forceScrollToBottom = false} = options;
 		const messages = ChannelMessages.getOrCreate(channelId);
-		this.commitMessages(messages.mutate({loadingMore: true, ready: false, error: false}));
+		this.commitMessages(messages.withPatch({loadingMore: true, ready: false, error: false}));
 		if (forceScrollToBottom) {
-			Dimension.updateChannelDimensions(channelId, 1, 1, 0);
+			Dimension.recordChannelDimensions(channelId, 1, 1, 0);
 		}
 		MessageCommands.fetchMessages(channelId, null, null, MAX_MESSAGES_PER_CHANNEL);
 	}
@@ -375,9 +373,9 @@ class Messages {
 			MessageCommands.jumpToMessage({channelId, ...dispatch});
 			return false;
 		}
-		if (!GatewayConnection.isConnected || messages.loadingMore || messages.ready) {
-			if (messages.ready && Dimension.isAtBottom(channelId)) {
-				this.commitMessages(messages.truncateTop(MAX_MESSAGES_PER_CHANNEL));
+		if (!GatewayConnection.isConnected || messages.loadingMore || this.hasLoadedPage(messages)) {
+			if (this.hasLoadedPage(messages) && Dimension.channelPinnedToEnd(channelId)) {
+				this.commitMessages(messages.trimOldest(MAX_MESSAGES_PER_CHANNEL));
 				this.notifyChange();
 			}
 			return false;
@@ -395,7 +393,7 @@ class Messages {
 		if (!isNonGuildChannel && !guildExists) {
 			return false;
 		}
-		this.commitMessages(messages.mutate({loadingMore: true}));
+		this.commitMessages(messages.withPatch({loadingMore: true}));
 		this.notifyChange();
 		MessageCommands.fetchMessages(channelId, null, null, MAX_MESSAGES_PER_CHANNEL);
 		return false;
@@ -413,7 +411,7 @@ class Messages {
 			const channel = Channels.getChannel(channelId);
 			if (channel && channel.guildId === guildId) {
 				this.clearMessages(channelId);
-				Dimension.clearChannelDimensions(channelId);
+				Dimension.forgetChannelDimensions(channelId);
 				didUpdate = true;
 				if (channelId === selectedChannelId) {
 					selectedChannelAffected = true;
@@ -449,7 +447,7 @@ class Messages {
 			messageId: undefined,
 		});
 		if (!didChannelSelect && currentMessages && currentMessages.length === 0 && !currentMessages.ready) {
-			this.commitMessages(currentMessages.mutate({loadingMore: true}));
+			this.commitMessages(currentMessages.withPatch({loadingMore: true}));
 			MessageCommands.fetchMessages(selectedChannelId, null, null, MAX_MESSAGES_PER_CHANNEL);
 			this.notifyChange();
 			return true;
@@ -460,16 +458,16 @@ class Messages {
 	@action
 	handleLoadMessages(action: {channelId: string; jump?: JumpOptions}): boolean {
 		const messages = ChannelMessages.getOrCreate(action.channelId);
-		this.commitMessages(messages.loadStart(action.jump));
+		this.commitMessages(messages.beginLoad(action.jump));
 		this.notifyChange();
 		return false;
 	}
 
 	@action
-	handleTruncateMessages(action: {channelId: string; truncateBottom?: boolean; truncateTop?: boolean}): boolean {
-		const messages = ChannelMessages.getOrCreate(action.channelId).truncate(
-			action.truncateBottom ?? false,
-			action.truncateTop ?? false,
+	handleTruncateMessages(action: {channelId: string; trimNewest?: boolean; trimOldest?: boolean}): boolean {
+		const messages = ChannelMessages.getOrCreate(action.channelId).trimToWindow(
+			action.trimNewest ?? false,
+			action.trimOldest ?? false,
 		);
 		this.commitMessages(messages);
 		this.notifyChange();
@@ -486,19 +484,19 @@ class Messages {
 	}): boolean {
 		let messages = ChannelMessages.getOrCreate(action.channelId);
 		if (action.jump?.present) {
-			messages = messages.jumpToPresent(action.limit);
+			messages = messages.jumpToLiveEdge(action.limit);
 		} else if (action.jump?.messageId) {
 			messages = messages.jumpToMessage({
 				messageId: action.jump.messageId,
 				flash: action.jump.flash,
 				offset: action.jump.offset,
-				returnTargetId: action.jump.returnMessageId,
+				returnToMessageId: action.jump.returnToMessageId,
 				returnChannelId: action.jump.returnChannelId,
 				returnGuildId: action.jump.returnGuildId,
 				jumpType: action.jump.jumpType,
 			});
 		} else if (action.before || action.after) {
-			messages = messages.loadFromCache(action.before != null, action.limit);
+			messages = messages.drainBufferedSide(action.before != null, action.limit);
 		}
 		this.commitMessages(messages);
 		this.notifyChange();
@@ -538,7 +536,7 @@ class Messages {
 		const channel = ChannelMessages.getOrCreate(action.channelId);
 		const wasReady = channel.ready;
 
-		// Bug 2 guard: drop any relocated messages from the incoming wire page BEFORE loadComplete
+		// Bug 2 guard: drop any relocated messages from the incoming wire page BEFORE applyLoadedWindow
 		// hydrates them. Filtering here (not after) keeps hydrateMessage — and the MessageReactions
 		// store it writes to — from ever seeing a moved message. Scoped by channelId because the
 		// same message ID legitimately exists in the destination channel.
@@ -546,8 +544,8 @@ class Messages {
 		const incomingMessages =
 			moved && moved.size > 0 ? action.messages.filter((message) => !moved.has(message.id)) : action.messages;
 
-		const messages = channel.loadComplete({
-			newMessages: incomingMessages,
+		const messages = channel.applyLoadedWindow({
+			windowMessages: incomingMessages,
 			isBefore: action.isBefore,
 			isAfter: action.isAfter,
 			jump: action.jump,
@@ -558,7 +556,7 @@ class Messages {
 
 		// A 'replace' load rebuilds the whole visible window from authoritative server data, so the
 		// moved-id guard for this channel has served its purpose and is cleared. Mirrors the exact
-		// decision loadComplete makes internally by reusing resolveChannelMessagesLoadDecision.
+		// decision applyLoadedWindow makes internally by reusing resolveChannelMessagesLoadDecision.
 		const loadDecision = resolveChannelMessagesLoadDecision({
 			isBefore: action.isBefore ?? false,
 			isAfter: action.isAfter ?? false,
@@ -577,7 +575,7 @@ class Messages {
 	@action
 	handleLoadMessagesFailure(action: {channelId: string}): boolean {
 		const messages = ChannelMessages.getOrCreate(action.channelId);
-		this.commitMessages(messages.mutate({loadingMore: false, error: true}));
+		this.commitMessages(messages.withPatch({loadingMore: false, error: true}));
 		this.notifyChange();
 		return false;
 	}
@@ -588,7 +586,7 @@ class Messages {
 		if (!messages.loadingMore && !messages.error) {
 			return false;
 		}
-		this.commitMessages(messages.mutate({loadingMore: false, error: false}));
+		this.commitMessages(messages.withPatch({loadingMore: false, error: false}));
 		this.notifyChange();
 		return true;
 	}
@@ -600,7 +598,7 @@ class Messages {
 		if (!existing?.ready) {
 			return false;
 		}
-		const updated = existing.receiveMessage(action.message, Dimension.isAtBottom(action.channelId));
+		const updated = existing.applyIncomingMessage(action.message, Dimension.channelPinnedToEnd(action.channelId));
 		this.commitMessages(updated);
 		this.notifyChange();
 		return false;
@@ -633,9 +631,9 @@ class Messages {
 			return false;
 		}
 		let messages = existing;
-		if (messages.revealedMessageId === action.id) {
-			const messageAfter = messages.getAfter(action.id);
-			messages = messages.mutate({revealedMessageId: messageAfter?.id ?? null});
+		if (messages.unblurredMessageId === action.id) {
+			const messageAfter = messages.nextAfter(action.id);
+			messages = messages.withPatch({unblurredMessageId: messageAfter?.id ?? null});
 		}
 		messages = messages.remove(action.id);
 		this.commitMessages(messages);
@@ -647,11 +645,11 @@ class Messages {
 	handleMessageDeleteBulk(action: {ids: Array<string>; channelId: string}): boolean {
 		const existing = ChannelMessages.get(action.channelId);
 		if (!existing) return false;
-		let messages = existing.removeMany(action.ids);
+		let messages = existing.removeIds(action.ids);
 		if (messages === existing) return false;
-		if (messages.revealedMessageId != null && action.ids.includes(messages.revealedMessageId)) {
-			const after = messages.getAfter(messages.revealedMessageId);
-			messages = messages.mutate({revealedMessageId: after?.id ?? null});
+		if (messages.unblurredMessageId != null && action.ids.includes(messages.unblurredMessageId)) {
+			const after = messages.nextAfter(messages.unblurredMessageId);
+			messages = messages.withPatch({unblurredMessageId: after?.id ?? null});
 		}
 		this.commitMessages(messages);
 		this.notifyChange();
@@ -732,7 +730,7 @@ class Messages {
 		ChannelMessages.forEach(({channelId}) => {
 			if (Channels.getChannel(channelId) == null) {
 				this.clearMessages(channelId);
-				Dimension.clearChannelDimensions(channelId);
+				Dimension.forgetChannelDimensions(channelId);
 			}
 		});
 		this.notifyChange();
@@ -759,7 +757,7 @@ class Messages {
 	@action
 	handleMessageReveal(action: {channelId: string; messageId: string | null}): boolean {
 		const messages = ChannelMessages.getOrCreate(action.channelId);
-		this.commitMessages(messages.mutate({revealedMessageId: action.messageId}));
+		this.commitMessages(messages.withPatch({unblurredMessageId: action.messageId}));
 		this.notifyChange();
 		return true;
 	}
@@ -769,9 +767,9 @@ class Messages {
 		const messages = ChannelMessages.get(action.channelId);
 		if (
 			messages &&
-			(messages.jumpTargetId != null ||
-				messages.jumped ||
-				(action.clearReturnTarget === true && messages.jumpReturnTargetId != null))
+			(messages.jumpDestinationId != null ||
+				messages.hasJumped ||
+				(action.clearReturnTarget === true && messages.jumpReturnMessageId != null))
 		) {
 			this.commitMessages(messages.clearJumpTarget({clearReturnTarget: action.clearReturnTarget}));
 			this.notifyChange();
@@ -836,7 +834,7 @@ class Messages {
 			Channels.handleMessageCreate({message: messageData});
 			const channelMessages = ChannelMessages.getOrCreate(channelId);
 			if (!channelMessages.has(messageData.id)) {
-				this.commitMessages(channelMessages.receiveMessage(messageData, false));
+				this.commitMessages(channelMessages.applyIncomingMessage(messageData, false));
 				hasChanges = true;
 			}
 		}

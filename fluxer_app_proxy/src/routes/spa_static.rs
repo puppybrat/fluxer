@@ -240,10 +240,8 @@ pub fn is_font_mime(mime_type: &str) -> bool {
     )
 }
 
-pub fn is_static_asset(path: &str) -> bool {
-    let filename = path.rsplit('/').next().unwrap_or(path);
-    filename.contains('.')
-}
+pub const LONG_LIVED_ASSET_CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
+pub const REVALIDATED_ASSET_CACHE_CONTROL: &str = "public, max-age=3600, must-revalidate";
 
 pub fn is_hashed_asset(path: &str) -> bool {
     let filename = path.rsplit('/').next().unwrap_or(path);
@@ -251,13 +249,21 @@ pub fn is_hashed_asset(path: &str) -> bool {
         return false;
     };
     let stem = &filename[..last_dot];
-    if is_content_hash(stem) {
+    if stem.split('.').next().is_some_and(is_content_hash) {
         return true;
     }
     ['.', '-'].iter().any(|sep| {
         stem.rfind(*sep)
             .is_some_and(|sep_pos| is_content_hash(&stem[sep_pos + 1..]))
     })
+}
+
+pub fn asset_cache_control(path: &str) -> &'static str {
+    if is_hashed_asset(path) {
+        LONG_LIVED_ASSET_CACHE_CONTROL
+    } else {
+        REVALIDATED_ASSET_CACHE_CONTROL
+    }
 }
 
 fn is_content_hash(value: &str) -> bool {
@@ -338,18 +344,6 @@ mod tests {
     }
 
     #[test]
-    fn static_asset_with_ext() {
-        assert!(is_static_asset("/assets/app.js"));
-        assert!(is_static_asset("style.css"));
-    }
-
-    #[test]
-    fn static_asset_without_ext() {
-        assert!(!is_static_asset("/channels/me"));
-        assert!(!is_static_asset("/login"));
-    }
-
-    #[test]
     fn hashed_asset_positive() {
         assert!(is_hashed_asset("app.a1b2c3d4.js"));
         assert!(is_hashed_asset("style-abcdef01.css"));
@@ -363,9 +357,35 @@ mod tests {
     }
 
     #[test]
+    fn hashed_asset_accepts_the_contenthash_worker_bundle_name() {
+        assert!(
+            is_hashed_asset("assets/2d715e4730758083.worker.js"),
+            "rspack emits workers as assets/[contenthash:16].worker.js"
+        );
+    }
+
+    #[test]
     fn hashed_asset_negative() {
         assert!(!is_hashed_asset("app.js"));
         assert!(!is_hashed_asset("style.css"));
         assert!(!is_hashed_asset("a79f1c3119cd700d/app.js"));
+    }
+
+    #[test]
+    fn the_bundled_font_licences_are_not_treated_as_content_hashed() {
+        assert!(!is_hashed_asset("assets/fonts-NOTICE.txt"));
+        assert!(!is_hashed_asset("assets/fonts-LICENSE-IBM-PLEX.txt"));
+    }
+
+    #[test]
+    fn only_a_content_hashed_asset_is_promised_to_never_change() {
+        assert_eq!(
+            asset_cache_control("assets/469e0b8f10c496a1.css"),
+            LONG_LIVED_ASSET_CACHE_CONTROL
+        );
+        assert_eq!(
+            asset_cache_control("assets/fonts-NOTICE.txt"),
+            REVALIDATED_ASSET_CACHE_CONTROL
+        );
     }
 }

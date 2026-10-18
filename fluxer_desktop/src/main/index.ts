@@ -61,11 +61,13 @@ import {cleanupVirtmic, registerVirtmicHandlers} from '@electron/main/LinuxAudio
 import {initializeMainI18n} from '@electron/main/MainI18n';
 import {createApplicationMenu} from '@electron/main/Menu';
 import {cleanupNativeAudio, registerNativeAudioHandlers} from '@electron/main/NativeAudio';
+import {
+	cleanupNativeHardwareEncoderHandlers,
+	registerNativeHardwareEncoderHandlers,
+} from '@electron/main/NativeHardwareEncoder';
 import {runNativeModulePreflight} from '@electron/main/NativeModulePreflight';
 import {cleanupNativeScreenCapture, registerNativeScreenCaptureHandlers} from '@electron/main/NativeScreenCapture';
-import {cleanupNativeVoiceEngine, registerNativeVoiceEngineHandlers} from '@electron/main/NativeVoiceEngine';
 import {appendOpenH264Switches} from '@electron/main/OpenH264Manager';
-import {startRpcServer, stopRpcServer} from '@electron/main/RpcServer';
 import {cleanupLinuxChromiumSpellcheckDictionaries} from '@electron/main/Spellcheck';
 import {registerUpdater} from '@electron/main/Updater';
 import {
@@ -76,7 +78,7 @@ import {
 	setQuitting,
 	showWindow,
 } from '@electron/main/Window';
-import {initializeWindowsVulkanGameCaptureLayer} from '@electron/main/WindowsVulkanGameCaptureLayer';
+import {removeFluxerVulkanLayerRegistrations} from '@electron/main/WindowsVulkanLayerCleanup';
 import {app, dialog, netLog} from 'electron';
 import log from 'electron-log';
 
@@ -376,9 +378,9 @@ if (launchConfigurationError) {
 					log.error('[Init] Failed to register native audio handlers:', error);
 				}
 				try {
-					runStartupPhase('vulkan-game-capture-layer', initializeWindowsVulkanGameCaptureLayer);
+					runStartupPhase('vulkan-layer-cleanup', removeFluxerVulkanLayerRegistrations);
 				} catch (error: unknown) {
-					log.error('[Init] Failed to initialize Vulkan game capture layer:', error);
+					log.error('[Init] Failed to remove stale Vulkan layer registrations:', error);
 				}
 				try {
 					runStartupPhase('native-screen-capture-handlers', registerNativeScreenCaptureHandlers);
@@ -386,9 +388,9 @@ if (launchConfigurationError) {
 					log.error('[Init] Failed to register native screen capture handlers:', error);
 				}
 				try {
-					runStartupPhase('native-voice-engine-handlers', registerNativeVoiceEngineHandlers);
+					runStartupPhase('native-hardware-encoder-handlers', registerNativeHardwareEncoderHandlers);
 				} catch (error: unknown) {
-					log.error('[Init] Failed to register native voice engine handlers:', error);
+					log.error('[Init] Failed to register native hardware encoder handlers:', error);
 				}
 				try {
 					runStartupPhase('application-menu', createApplicationMenu);
@@ -426,9 +428,6 @@ if (launchConfigurationError) {
 					} else {
 						showWindow();
 					}
-				});
-				void startRpcServer().catch((error: unknown) => {
-					log.error('[RPC] Failed to start RPC server:', error);
 				});
 				log.info('App initialized successfully');
 			})
@@ -472,9 +471,10 @@ if (launchConfigurationError) {
 			cleanupGlobalKeyHook();
 			cleanupNativeAudio();
 			cleanupNativeScreenCapture();
+			cleanupNativeHardwareEncoderHandlers();
 			cleanupVirtmic();
 			destroyDesktopTray();
-			const asyncCleanups: Array<Promise<unknown>> = [cleanupNativeVoiceEngine(), stopRpcServer()];
+			const asyncCleanups: Array<Promise<unknown>> = [];
 			if (netLog.currentlyLogging) {
 				asyncCleanups.push(
 					netLog.stopLogging().catch((error) => {

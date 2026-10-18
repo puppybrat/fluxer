@@ -61,10 +61,7 @@ function getChannelRecency(channel: {id: string; lastMessageId: string | null}):
 }
 
 function getChannelSortWeight(channelId: string, baseWeight: number): number {
-	const unreadCount = ReadStates.getUnreadCount(channelId);
-	const mentionCount = ReadStates.getMentionCount(channelId);
-	const hasUnread = unreadCount > 0 || mentionCount > 0;
-	return hasUnread ? baseWeight + UNREAD_SORT_WEIGHT_BOOST : baseWeight;
+	return ReadStates.isUnreadOrMentioned(channelId) ? baseWeight + UNREAD_SORT_WEIGHT_BOOST : baseWeight;
 }
 
 export function buildChannelCandidate(
@@ -107,7 +104,7 @@ export function buildChannelCandidate(
 			const participantNames = channel.recipientIds
 				.map((recipientId) => {
 					const user = Users.getUser(recipientId);
-					return user ? NicknameUtils.getNickname(user) : null;
+					return user ? NicknameUtils.getNickname(user, null) : null;
 				})
 				.filter(Boolean) as Array<string>;
 			const subtitle = participantNames.length > 0 ? participantNames.join(', ') : i18n._(GROUP_MESSAGE_DESCRIPTOR);
@@ -233,7 +230,7 @@ export function buildCandidateSets(i18n: I18n): CandidateSets {
 			}
 			const user = relationship.user;
 			if (!userCandidates.has(user.id)) {
-				const title = NicknameUtils.getNickname(user);
+				const title = NicknameUtils.getNickname(user, null);
 				const subtitle = NicknameUtils.formatUserTagForStreamerMode(user);
 				const searchValues = [title, subtitle, user.username, user.id].filter(Boolean);
 				userCandidates.set(user.id, {
@@ -251,7 +248,7 @@ export function buildCandidateSets(i18n: I18n): CandidateSets {
 		for (const user of Users.getUsers()) {
 			if (user.id === currentUserId) continue;
 			if (!userCandidates.has(user.id)) {
-				const title = NicknameUtils.getNickname(user);
+				const title = NicknameUtils.getNickname(user, null);
 				const subtitle = NicknameUtils.formatUserTagForStreamerMode(user);
 				const searchValues = [title, subtitle, user.username, user.id].filter(Boolean);
 				userCandidates.set(user.id, {
@@ -272,7 +269,9 @@ export function buildCandidateSets(i18n: I18n): CandidateSets {
 			for (const member of guildMembers) {
 				if (member.user.id === currentUserId) continue;
 				if (!userCandidates.has(member.user.id)) {
-					const title = member.nick ?? NicknameUtils.getNickname(member.user);
+					const title = member.nick
+						? NicknameUtils.formatNicknameForStreamerMode(member.nick)
+						: NicknameUtils.getNickname(member.user, member.guildId);
 					const subtitle = NicknameUtils.formatUserTagForStreamerMode(member.user);
 					const searchValues = [title, subtitle, member.user.username, member.user.id, member.nick].filter(
 						Boolean,

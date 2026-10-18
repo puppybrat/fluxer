@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {openClaimAccountModal} from '@app/features/auth/components/modals/ClaimAccountModal';
 import Authentication from '@app/features/auth/state/Authentication';
 import {User} from '@app/features/user/models/User';
 import type {UserPrivate, User as WireUser} from '@fluxer/schema/src/domains/user/UserResponseSchemas';
@@ -55,6 +54,7 @@ function isPublicOnlyCurrentUserPayload(user: WireUser): boolean {
 
 class Users {
 	users: Record<string, User> = {};
+	userCount = 0;
 
 	constructor() {
 		makeAutoObservable(this, {}, {autoBind: true});
@@ -93,13 +93,15 @@ class Users {
 	}
 
 	@action
-	handleConnectionOpen(currentUser: UserPrivate): void {
+	handleGatewayReady(currentUser: UserPrivate): void {
 		const userRecord = new User(currentUser);
 		this.users = {
 			[currentUser.id]: userRecord,
 		};
+		this.userCount = 1;
 		if (!userRecord.isClaimed()) {
 			setTimeout(async () => {
+				const {openClaimAccountModal} = await import('@app/features/auth/components/modals/ClaimAccountModal');
 				openClaimAccountModal();
 			}, 1000);
 		}
@@ -121,7 +123,18 @@ class Users {
 		) {
 			return;
 		}
-		this.users[user.id] = existingUser ? existingUser.withUpdates(user, options) : new User(user);
+		this.storeUser(existingUser, existingUser ? existingUser.withUpdates(user, options) : new User(user));
+	}
+
+	private storeUser(existingUser: User | undefined, nextUser: User): void {
+		if (existingUser) {
+			if (existingUser.equals(nextUser)) {
+				return;
+			}
+		} else {
+			this.userCount += 1;
+		}
+		this.users[nextUser.id] = nextUser;
 	}
 
 	cacheUsers(
@@ -137,14 +150,14 @@ class Users {
 				if (user.id === this.currentUserId && existingUser && isPublicOnlyCurrentUserPayload(user)) {
 					continue;
 				}
-				this.users[user.id] = existingUser ? existingUser.withUpdates(user) : new User(user);
+				this.storeUser(existingUser, existingUser ? existingUser.withUpdates(user) : new User(user));
 			}
 		});
 	}
 
 	subscribe(callback: () => void): () => void {
 		return reaction(
-			() => Object.keys(this.users).length,
+			() => this.userCount,
 			() => callback(),
 			{fireImmediately: true},
 		);

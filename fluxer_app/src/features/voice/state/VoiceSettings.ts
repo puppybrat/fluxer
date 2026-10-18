@@ -51,6 +51,8 @@ const MAX_VOICE_PROCESSING_DEVICE_OVERRIDES = 16;
 const VIDEO_FRAME_RATE_MIN = 15;
 const VIDEO_FRAME_RATE_MAX = 120;
 const VIDEO_FRAME_RATE_DEFAULT = 30;
+const DEFAULT_BROWSER_NOISE_SUPPRESSION = true;
+const DEFAULT_DEEP_FILTER_NOISE_SUPPRESSION = false;
 export const CAMERA_EFFECT_STRENGTH_MIN = 0;
 export const CAMERA_EFFECT_STRENGTH_MAX = 100;
 export const CAMERA_EFFECT_STRENGTH_DEFAULT = 50;
@@ -216,6 +218,18 @@ function applyScreenShareAudioConsentMigrationV1(parsed: Record<string, unknown>
 	return true;
 }
 
+function applyScreenShareAudioDefaultOnMigrationV1(parsed: Record<string, unknown>): boolean {
+	if (parsed.screenShareAudioDefaultOnMigratedV1 === true) {
+		return false;
+	}
+	parsed.shareAppAudio = true;
+	parsed.shareDesktopAudio = true;
+	parsed.shareDeviceAudio = true;
+	parsed.muteStreamAudio = false;
+	parsed.screenShareAudioDefaultOnMigratedV1 = true;
+	return true;
+}
+
 function applyStreamingModeDefaultMigrationV1(parsed: Record<string, unknown>): boolean {
 	if (parsed.streamingModeDefaultMigratedV1 === true) {
 		return false;
@@ -231,6 +245,27 @@ function applyStreamingModeDefaultMigrationV1(parsed: Record<string, unknown>): 
 		parsed.streamingMode = 'screenshare';
 	}
 	parsed.streamingModeDefaultMigratedV1 = true;
+	return true;
+}
+
+function applyOutputVolumeRecalibrationMigrationV1(parsed: Record<string, unknown>): boolean {
+	if (parsed.outputVolumeRecalibratedV1 === true) {
+		return false;
+	}
+	if (typeof parsed.outputVolume === 'number' && parsed.outputVolume > 100) {
+		parsed.outputVolume = 100;
+	}
+	parsed.outputVolumeRecalibratedV1 = true;
+	return true;
+}
+
+function applyNoiseSuppressionStandardDefaultMigrationV1(parsed: Record<string, unknown>): boolean {
+	if (parsed.noiseSuppressionStandardDefaultMigratedV1 === true) {
+		return false;
+	}
+	parsed.noiseSuppression = DEFAULT_BROWSER_NOISE_SUPPRESSION;
+	parsed.deepFilterNoiseSuppressionPrefV2 = DEFAULT_DEEP_FILTER_NOISE_SUPPRESSION;
+	parsed.noiseSuppressionStandardDefaultMigratedV1 = true;
 	return true;
 }
 
@@ -260,10 +295,11 @@ class VoiceSettings {
 	inputVolume = 100;
 	outputVolume = 100;
 	echoCancellation = true;
-	noiseSuppression = true;
+	noiseSuppression = DEFAULT_BROWSER_NOISE_SUPPRESSION;
 	autoGainControl = true;
-	deepFilterNoiseSuppressionPrefV2 = true;
+	deepFilterNoiseSuppressionPrefV2 = DEFAULT_DEEP_FILTER_NOISE_SUPPRESSION;
 	deepFilterNoiseSuppressionLevelPrefV2 = 80;
+	noiseSuppressionStandardDefaultMigratedV1 = false;
 	voiceProcessingMode: VoiceProcessingMode = DEFAULT_VOICE_PROCESSING_MODE;
 	voiceProcessingModeByDeviceLabel: Record<string, VoiceProcessingMode> = {};
 	cameraResolution: CameraResolution = 'medium';
@@ -273,12 +309,14 @@ class VoiceSettings {
 	streamingMode: StreamingMode = 'screenshare';
 	streamingModeDefaultMigratedV1 = false;
 	hideStreamPreview = false;
-	muteStreamAudio = true;
-	shareAppAudio = false;
-	shareDesktopAudio = false;
-	shareDeviceAudio = false;
+	muteStreamAudio = false;
+	shareAppAudio = true;
+	shareDesktopAudio = true;
+	shareDeviceAudio = true;
 	screenShareAudioDeviceId = 'default';
 	screenShareAudioConsentMigratedV1 = false;
+	screenShareAudioDefaultOnMigratedV1 = false;
+	outputVolumeRecalibratedV1 = false;
 	backgroundImageId = NONE_BACKGROUND_ID;
 	backgroundImages: Array<BackgroundImage> = [];
 	backgroundBlurStrength = CAMERA_EFFECT_STRENGTH_DEFAULT;
@@ -412,10 +450,14 @@ class VoiceSettings {
 			changed = applyPiPPopoutDefaultsMigration(parsed) || changed;
 			changed = applyAdaptiveScreenShareQualityMigrationV2(parsed) || changed;
 			changed = applyScreenShareAudioConsentMigrationV1(parsed) || changed;
+			changed = applyScreenShareAudioDefaultOnMigrationV1(parsed) || changed;
 			changed = applyStreamingModeDefaultMigrationV1(parsed) || changed;
+			changed = applyOutputVolumeRecalibrationMigrationV1(parsed) || changed;
+			changed = applyNoiseSuppressionStandardDefaultMigrationV1(parsed) || changed;
 			if (changed) {
 				AppStorage.setItem('VoiceSettings', JSON.stringify(parsed));
 			}
+			this.outputVolumeRecalibratedV1 = parsed.outputVolumeRecalibratedV1 === true;
 		} catch (error) {
 			logger.warn('Failed to migrate persisted voice settings:', error);
 		}
@@ -434,6 +476,7 @@ class VoiceSettings {
 			'autoGainControl',
 			'deepFilterNoiseSuppressionPrefV2',
 			'deepFilterNoiseSuppressionLevelPrefV2',
+			'noiseSuppressionStandardDefaultMigratedV1',
 			'voiceProcessingMode',
 			'voiceProcessingModeByDeviceLabel',
 			'cameraResolution',
@@ -449,6 +492,8 @@ class VoiceSettings {
 			'shareDeviceAudio',
 			'screenShareAudioDeviceId',
 			'screenShareAudioConsentMigratedV1',
+			'screenShareAudioDefaultOnMigratedV1',
+			'outputVolumeRecalibratedV1',
 			'backgroundImageId',
 			'backgroundImages',
 			'backgroundBlurStrength',
@@ -580,7 +625,7 @@ class VoiceSettings {
 		this.adaptiveScreenShareQualityPrefV2 = value;
 	}
 
-	handleConnectionOpen(user: UserPrivate): void {
+	handleGatewayReady(user: UserPrivate): void {
 		if (this.isUserPremium(user.premium_type)) {
 			return;
 		}
