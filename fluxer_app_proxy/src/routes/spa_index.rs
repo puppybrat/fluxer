@@ -20,6 +20,7 @@ use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use super::assets_proxy::serve_local_asset;
+use super::file_stream::stream_file;
 use super::spa_static::{CORS_ALLOW_ANY_VALUE, guess_mime, is_font_mime};
 
 const ACCEPT_CH_VALUE: &str = "DPR, Sec-CH-DPR, Sec-CH-Width, Save-Data, ECT, Downlink";
@@ -34,7 +35,13 @@ pub async fn spa_catch_all(
     let request_path = request.uri().path();
 
     if let Some(cache_control) = static_root_file_cache_control(request_path) {
-        return serve_static_file(&state.config.static_dir, request_path, cache_control).await;
+        return serve_static_file(
+            &state.config.static_dir,
+            request_path,
+            cache_control,
+            &headers,
+        )
+        .await;
     }
     if is_static_asset_path(request_path) {
         return serve_local_asset(
@@ -79,6 +86,7 @@ async fn serve_static_file(
     static_dir: &str,
     request_path: &str,
     cache_control: &'static str,
+    request_headers: &HeaderMap,
 ) -> Response {
     let file_path = Path::new(static_dir).join(request_path.trim_start_matches('/'));
 
@@ -95,8 +103,8 @@ async fn serve_static_file(
         return StatusCode::NOT_FOUND.into_response();
     }
 
-    let content = match tokio::fs::read(&resolved).await {
-        Ok(bytes) => bytes,
+    let mut response = match stream_file(&resolved, request_headers, None).await {
+        Ok(response) => response,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
             return StatusCode::NOT_FOUND.into_response();
         }
@@ -107,8 +115,6 @@ async fn serve_static_file(
     };
 
     let mime_type = guess_mime(request_path);
-
-    let mut response = content.into_response();
     if let Ok(ct) = HeaderValue::from_str(mime_type) {
         response.headers_mut().insert(header::CONTENT_TYPE, ct);
     }
@@ -216,7 +222,7 @@ async fn resolve_invite_meta(
     runtime_csp_sources: &RuntimeCspSources,
 ) -> Option<InvitePageMeta> {
     let code = invite_code_from_path(request_path)?;
-    let resolver = state.invite_meta.as_ref()?;
+    let resolver = state.invite_meta.get()?;
     let endpoints = InviteMetaEndpoints {
         media_endpoint: runtime_csp_sources.media_endpoint.clone(),
         static_cdn_endpoint: runtime_csp_sources.static_cdn_endpoint.clone(),
@@ -533,7 +539,7 @@ mod tests {
     use axum::body::Body;
     use fluxer_common::config::GeoipSourceConfig;
     use fluxer_common::geoip::{GeoipConfig, GeoipResolver};
-    use std::sync::Arc;
+    use std::sync::{Arc, OnceLock};
 
     #[test]
     fn dev_asset_cache_buster_rewrites_script_and_link_assets() {
@@ -855,7 +861,7 @@ mod tests {
                 trust_client_ip_header: false,
                 client_ip_header_name: "x-forwarded-for".to_owned(),
             })),
-            invite_meta: None,
+            invite_meta: Arc::new(OnceLock::new()),
             index_html: cached_shell.map(Arc::from),
         }
     }
@@ -1105,7 +1111,8 @@ mod tests {
             "an application route was mistaken for a static root file"
         );
 
-        let response = serve_static_file(static_dir, "/robots.txt", policy).await;
+        let response =
+            serve_static_file(static_dir, "/robots.txt", policy, &HeaderMap::new()).await;
         assert_eq!(response.status(), StatusCode::OK);
         let cache_control = response
             .headers()

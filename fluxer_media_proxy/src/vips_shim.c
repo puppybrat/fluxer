@@ -532,9 +532,14 @@ static int fluxer_gif_setup_filter_graph(
         goto fail;
     sink_ctx = avfilter_graph_alloc_filter(graph, avfilter_get_by_name("buffersink"), "out");
     if (sink_ctx == NULL) goto fail;
-    enum AVPixelFormat sink_fmts[] = { AV_PIX_FMT_PAL8, AV_PIX_FMT_NONE };
-    if (av_opt_set_int_list(sink_ctx, "pix_fmts", sink_fmts, AV_PIX_FMT_NONE,
-                            AV_OPT_SEARCH_CHILDREN) < 0)
+    enum AVPixelFormat sink_fmt = AV_PIX_FMT_PAL8;
+#if LIBAVFILTER_VERSION_INT >= AV_VERSION_INT(10, 6, 100)
+    if (av_opt_set_array(sink_ctx, "pixel_formats", AV_OPT_SEARCH_CHILDREN,
+                         0, 1, AV_OPT_TYPE_PIXEL_FMT, &sink_fmt) < 0)
+#else
+    if (av_opt_set_bin(sink_ctx, "pix_fmts", (const uint8_t *)&sink_fmt,
+                       sizeof(sink_fmt), AV_OPT_SEARCH_CHILDREN) < 0)
+#endif
         goto fail;
     if (avfilter_init_dict(sink_ctx, NULL) < 0) goto fail;
 
@@ -1939,17 +1944,6 @@ static inline float fluxer_pq_oetf(float l) {
     float num = c1 + c2 * lm1;
     float den = 1.0f + c3 * lm1;
     return powf(num / den, m2);
-}
-
-static inline float fluxer_hlg_oetf_display(float dl) {
-    if (dl <= 0.0f) return 0.0f;
-    if (dl >= 1.0f) dl = 1.0f;
-    float scene = powf(dl, 1.0f / 1.2f);
-    if (scene <= 1.0f / 12.0f) return sqrtf(3.0f * scene);
-    const float a = 0.17883277f;
-    const float b = 0.28466892f;
-    const float c = 0.55991073f;
-    return a * logf(12.0f * scene - b) + c;
 }
 
 static inline float fluxer_srgb_oetf(float e) {

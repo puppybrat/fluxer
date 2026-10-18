@@ -113,7 +113,7 @@ export class MessageRequestService {
 		) {
 			throw new UnclaimedAccountCannotSendMessagesError();
 		}
-		const message = await this.channelService.messages.send.sendMessage({
+		const {message, authChannel} = await this.channelService.messages.send.sendMessage({
 			user: params.user,
 			channelId: params.channelId,
 			data: params.data,
@@ -122,6 +122,7 @@ export class MessageRequestService {
 		const access = await this.channelService.messages.retrieval.getResponseAccessContext({
 			userId: params.user.id,
 			channelId: params.channelId,
+			authChannel,
 		});
 		return this.responseDataService.buildMessage({
 			userId: params.user.id,
@@ -139,7 +140,7 @@ export class MessageRequestService {
 		data: MessageUpdateRequest;
 		requestCache: RequestCache;
 	}): Promise<MessageResponse> {
-		const message = await this.channelService.messages.edit.editMessage({
+		const {message, authChannel} = await this.channelService.messages.edit.editMessage({
 			userId: params.userId,
 			channelId: params.channelId,
 			messageId: params.messageId,
@@ -150,6 +151,7 @@ export class MessageRequestService {
 			userId: params.userId,
 			channelId: params.channelId,
 			messageId: message.id,
+			authChannel,
 		});
 		return this.responseDataService.buildMessage({
 			userId: params.userId,

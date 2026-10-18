@@ -34,6 +34,9 @@ export type APIGeoipConfig = APIGeoipFilesystemConfig | APIGeoipS3Config;
 export interface APIConfig {
 	nodeEnv: 'development' | 'production';
 	port: number;
+	headersTimeoutMs: number;
+	requestTimeoutMs: number;
+	maxInflightRequests: number;
 	ipBanExemptIps: Array<string>;
 	desktopGitHubRedirectCountries: ReadonlySet<string>;
 	cassandra: {
@@ -55,6 +58,7 @@ export interface APIConfig {
 		sslCa: string;
 		maxConnections: number;
 		kvTable: string;
+		preparedStatements: boolean;
 	};
 	database: {
 		backend: 'cassandra' | 'postgres';
@@ -334,6 +338,7 @@ export interface APIConfig {
 		disableRateLimits: boolean;
 		testModeEnabled: boolean;
 		testHarnessToken?: string;
+		validateResponses: boolean;
 	};
 	presignedAttachmentUploadsEnabled: boolean;
 	presignedDownloadsEnabled: boolean;

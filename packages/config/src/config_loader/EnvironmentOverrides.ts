@@ -47,6 +47,7 @@ const NAMED_FLUXER_ENV_OVERRIDES: Record<string, NamedEnvOverride> = {
 	FLUXER_POSTGRES_SSL_CA: {path: ['database', 'postgres', 'ssl_ca']},
 	FLUXER_POSTGRES_MAX_CONNECTIONS: {path: ['database', 'postgres', 'max_connections'], parse: parseEnvValue},
 	FLUXER_POSTGRES_KV_TABLE: {path: ['database', 'postgres', 'kv_table']},
+	FLUXER_POSTGRES_PREPARED_STATEMENTS: {path: ['database', 'postgres', 'prepared_statements'], parse: parseEnvValue},
 	FLUXER_DATABASE_BACKEND: {path: ['database', 'backend']},
 	FLUXER_KV_URL: {path: ['internal', 'kv']},
 	FLUXER_INTERNAL_API_ENDPOINT: {path: ['internal', 'api']},
@@ -76,6 +77,9 @@ const NAMED_FLUXER_ENV_OVERRIDES: Record<string, NamedEnvOverride> = {
 	FLUXER_NATS_JETSTREAM_URL: {path: ['services', 'nats', 'jetstream_url']},
 	FLUXER_NATS_AUTH_TOKEN: {path: ['services', 'nats', 'auth_token']},
 	FLUXER_API_PORT: {path: ['services', 'api', 'port'], parse: parseEnvValue},
+	FLUXER_API_HEADERS_TIMEOUT_MS: {path: ['services', 'api', 'headers_timeout_ms'], parse: parseEnvValue},
+	FLUXER_API_REQUEST_TIMEOUT_MS: {path: ['services', 'api', 'request_timeout_ms'], parse: parseEnvValue},
+	FLUXER_API_MAX_INFLIGHT_REQUESTS: {path: ['services', 'api', 'max_inflight_requests'], parse: parseEnvValue},
 	FLUXER_API_IP_BAN_EXEMPT_IPS: {path: ['services', 'api', 'ip_ban_exempt_ips'], parse: parseCsv},
 	FLUXER_API_DESKTOP_GITHUB_REDIRECT_COUNTRIES: {
 		path: ['services', 'api', 'desktop_github_redirect_countries'],
@@ -209,6 +213,10 @@ const NAMED_FLUXER_ENV_OVERRIDES: Record<string, NamedEnvOverride> = {
 	},
 	FLUXER_GATEWAY_HTTP_RPC_MAX_CONCURRENCY: {
 		path: ['services', 'gateway', 'gateway_http_rpc_max_concurrency'],
+		parse: parseEnvValue,
+	},
+	FLUXER_GATEWAY_NATS_RPC_MAX_HANDLERS: {
+		path: ['services', 'gateway', 'gateway_nats_rpc_max_handlers'],
 		parse: parseEnvValue,
 	},
 	FLUXER_GATEWAY_SHUTDOWN_DRAIN_WAIT_MS: {
@@ -413,6 +421,7 @@ const NAMED_FLUXER_ENV_OVERRIDES: Record<string, NamedEnvOverride> = {
 	FLUXER_DISABLE_RATE_LIMITS: {path: ['dev', 'disable_rate_limits'], parse: parseEnvValue},
 	FLUXER_TEST_MODE_ENABLED: {path: ['dev', 'test_mode_enabled'], parse: parseEnvValue},
 	FLUXER_TEST_HARNESS_TOKEN: {path: ['dev', 'test_harness_token']},
+	FLUXER_VALIDATE_RESPONSES: {path: ['dev', 'validate_responses'], parse: parseEnvValue},
 	FLUXER_GEOIP_DB_PATH: {path: ['geoip', 'maxmind_db_path']},
 };
 

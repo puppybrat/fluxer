@@ -108,6 +108,34 @@ serialize_transfer_state_strips_socket_pid_test() ->
     TransferState = session_lifecycle:serialize_transfer_state(State),
     ?assertEqual(undefined, maps:get(socket_pid, TransferState)).
 
+serialize_transfer_state_preserves_deque_replay_buffer_test() ->
+    Deque = lists:foldl(
+        fun(Seq, Acc) ->
+            limited_deque:push(#{event => message_create, data => #{}, seq => Seq}, Acc)
+        end,
+        limited_deque:new(4096, 16777216),
+        [1000, 1001]
+    ),
+    State = #{
+        id => <<"session-deque-transfer">>,
+        user_id => 42,
+        user_data => #{},
+        version => 9,
+        token_hash => <<"token_hash">>,
+        auth_session_id_hash => <<"auth_hash">>,
+        properties => #{},
+        status => online,
+        afk => false,
+        mobile => false,
+        ready => undefined,
+        seq => 1001,
+        ack_seq => 999,
+        buffer => Deque
+    },
+    TransferState = session_lifecycle:serialize_transfer_state(State),
+    Restored = session_init:normalize_buffer(maps:get(buffer, TransferState)),
+    ?assertEqual([1000, 1001], [maps:get(seq, Event) || Event <- Restored]).
+
 heartbeat_ack_recalculates_buffer_bytes_test() ->
     Event1 = #{seq => 1, event => message_create, data => #{<<"content">> => <<"one">>}},
     Event2 = #{seq => 2, event => message_create, data => #{<<"content">> => <<"two">>}},
@@ -122,6 +150,18 @@ heartbeat_ack_tolerates_backwards_ack_without_trimming_test() ->
     {reply, true, State1} = session_lifecycle:handle_heartbeat_ack(3, State0),
     ?assertEqual(5, maps:get(ack_seq, State1)),
     ?assertEqual([Event], maps:get(buffer, State1)).
+
+heartbeat_ack_clamps_ack_seq_to_current_seq_test() ->
+    State0 = resume_test_state(#{
+        seq => 5,
+        ack_seq => 0,
+        buffer => [#{seq => 5, event => message_create, data => #{}}]
+    }),
+    {reply, true, State1} = session_lifecycle:handle_heartbeat_ack(1000000, State0),
+    ?assertEqual(5, maps:get(ack_seq, State1)),
+    ?assertMatch(
+        {reply, {ok, [], 5}, _}, session_lifecycle:handle_resume(5, self(), State1)
+    ).
 
 handle_resume_clamps_truncated_gap_in_replay_buffer_test() ->
     State0 = resume_test_state(#{
@@ -404,6 +444,16 @@ resume_test_state(Overrides) ->
         },
         Overrides
     ).
+
+fenced_terminate_releases_the_user_session_count_test() ->
+    ok = session_abuse_protection:ensure_tables(),
+    UserId = 900201,
+    _ = ets:delete(session_user_counts, UserId),
+    ok = session_abuse_protection:increment_user_sessions(UserId),
+    ok = session_lifecycle:terminate(normal, #{
+        fenced => true, user_id => UserId, guilds => #{}, calls => #{}
+    }),
+    ?assertEqual([], ets:lookup(session_user_counts, UserId)).
 
 terminate_cleans_up_guild_monitors_test() ->
     GuildPid1 = spawn(fun test_wait_for_stop/0),

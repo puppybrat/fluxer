@@ -348,10 +348,6 @@ export class UserRepository implements IUserRepositoryAggregate {
 		return this.authRepo.deletePhoneToken(token);
 	}
 
-	async updateUserActivity(userId: UserID, clientIp: string): Promise<void> {
-		return this.authRepo.updateUserActivity(userId, clientIp);
-	}
-
 	async checkIpAuthorized(userId: UserID, ip: string): Promise<boolean> {
 		return this.authRepo.checkIpAuthorized(userId, ip);
 	}
@@ -428,6 +424,10 @@ export class UserRepository implements IUserRepositoryAggregate {
 
 	async listRelationships(sourceUserId: UserID): Promise<Array<Relationship>> {
 		return this.relationshipRepo.listRelationships(sourceUserId);
+	}
+
+	async listBlockedUserIds(sourceUserId: UserID): Promise<Array<UserID>> {
+		return this.relationshipRepo.listBlockedUserIds(sourceUserId);
 	}
 
 	async hasReachedRelationshipLimit(sourceUserId: UserID, limit: number): Promise<boolean> {

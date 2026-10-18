@@ -56,6 +56,7 @@ pub struct AppProxyConfig {
     pub postgres_ssl_ca: Option<String>,
     pub postgres_max_connections: usize,
     pub postgres_kv_table: String,
+    pub postgres_prepared_statements: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -199,9 +200,7 @@ impl AppProxyConfig {
                 env!("CARGO_PKG_VERSION"),
             ),
             bootstrap_api_endpoint: cfg::read_env("PUBLIC_BOOTSTRAP_API_ENDPOINT", "/api"),
-            bootstrap_api_public_endpoint: cfg::non_empty_env(
-                "PUBLIC_BOOTSTRAP_API_PUBLIC_ENDPOINT",
-            ),
+            bootstrap_api_public_endpoint: resolve_bootstrap_api_public_endpoint_from_env(),
             csp: CspConfig::from_env(),
             geoip_source,
             geoip_s3_config,
@@ -250,6 +249,7 @@ impl AppProxyConfig {
             postgres_ssl_ca: cfg::non_empty_env("FLUXER_POSTGRES_SSL_CA"),
             postgres_max_connections,
             postgres_kv_table: cfg::read_env("FLUXER_POSTGRES_KV_TABLE", "fluxer_kv"),
+            postgres_prepared_statements: resolve_postgres_prepared_statements_from_env(),
         }
     }
 }
@@ -269,6 +269,31 @@ fn resolve_time_freeze_enabled_from_env() -> bool {
     resolve_time_freeze_enabled(|name| env::var(name).ok())
 }
 
+fn resolve_postgres_prepared_statements_from_env() -> bool {
+    resolve_postgres_prepared_statements(|name| env::var(name).ok())
+}
+
+fn resolve_bootstrap_api_public_endpoint_from_env() -> Option<String> {
+    resolve_bootstrap_api_public_endpoint(|name| env::var(name).ok())
+}
+
+fn resolve_bootstrap_api_public_endpoint<F>(mut read_var: F) -> Option<String>
+where
+    F: FnMut(&str) -> Option<String>,
+{
+    let endpoint = read_var("PUBLIC_BOOTSTRAP_API_PUBLIC_ENDPOINT")
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())?;
+    let base_domain = read_var("FLUXER_BASE_DOMAIN").unwrap_or_default();
+    let public_port = read_var("FLUXER_PUBLIC_PORT").and_then(|port| port.trim().parse().ok());
+
+    Some(cfg::normalize_public_endpoint(
+        &endpoint,
+        &base_domain,
+        public_port,
+    ))
+}
+
 fn resolve_time_freeze_enabled<F>(mut read_var: F) -> bool
 where
     F: FnMut(&str) -> Option<String>,
@@ -285,6 +310,31 @@ fn parse_boolish(value: &str) -> bool {
         value.trim().to_ascii_lowercase().as_str(),
         "1" | "true" | "yes" | "on"
     )
+}
+
+fn resolve_postgres_prepared_statements<F>(mut read_var: F) -> bool
+where
+    F: FnMut(&str) -> Option<String>,
+{
+    let Some(value) = read_var("FLUXER_POSTGRES_PREPARED_STATEMENTS")
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty())
+    else {
+        return true;
+    };
+
+    match value.as_str() {
+        "1" | "true" | "yes" | "y" | "on" => true,
+        "0" | "false" | "no" | "n" | "off" => false,
+        other => {
+            tracing::warn!(
+                env = "FLUXER_POSTGRES_PREPARED_STATEMENTS",
+                value = other,
+                "invalid value; falling back to default"
+            );
+            true
+        }
+    }
 }
 
 fn resolve_discovery_upstream_url<F>(mut read_var: F) -> String
@@ -335,6 +385,73 @@ mod tests {
     fn resolve_time_freeze_from_pairs(pairs: &[(&str, &str)]) -> bool {
         let env: HashMap<&str, &str> = pairs.iter().copied().collect();
         resolve_time_freeze_enabled(|name| env.get(name).map(|value| value.to_string()))
+    }
+
+    fn resolve_prepared_statements_from_pairs(pairs: &[(&str, &str)]) -> bool {
+        let env: HashMap<&str, &str> = pairs.iter().copied().collect();
+        resolve_postgres_prepared_statements(|name| env.get(name).map(|value| value.to_string()))
+    }
+
+    fn resolve_bootstrap_endpoint_from_pairs(pairs: &[(&str, &str)]) -> Option<String> {
+        let env: HashMap<&str, &str> = pairs.iter().copied().collect();
+        resolve_bootstrap_api_public_endpoint(|name| env.get(name).map(|value| value.to_string()))
+    }
+
+    #[test]
+    fn a_non_default_public_port_reaches_the_boot_html_api_endpoint() {
+        assert_eq!(
+            resolve_bootstrap_endpoint_from_pairs(&[
+                (
+                    "PUBLIC_BOOTSTRAP_API_PUBLIC_ENDPOINT",
+                    "http://fluxer.example/api",
+                ),
+                ("FLUXER_BASE_DOMAIN", "fluxer.example"),
+                ("FLUXER_PUBLIC_PORT", "19080"),
+            ]),
+            Some("http://fluxer.example:19080/api".to_owned())
+        );
+    }
+
+    #[test]
+    fn a_default_public_port_leaves_the_boot_html_api_endpoint_alone() {
+        assert_eq!(
+            resolve_bootstrap_endpoint_from_pairs(&[
+                (
+                    "PUBLIC_BOOTSTRAP_API_PUBLIC_ENDPOINT",
+                    "https://fluxer.example/api",
+                ),
+                ("FLUXER_BASE_DOMAIN", "fluxer.example"),
+                ("FLUXER_PUBLIC_PORT", "443"),
+            ]),
+            Some("https://fluxer.example/api".to_owned())
+        );
+    }
+
+    #[test]
+    fn the_boot_html_api_endpoint_keeps_a_port_it_already_carries() {
+        assert_eq!(
+            resolve_bootstrap_endpoint_from_pairs(&[
+                (
+                    "PUBLIC_BOOTSTRAP_API_PUBLIC_ENDPOINT",
+                    "http://fluxer.example:19080/api",
+                ),
+                ("FLUXER_BASE_DOMAIN", "fluxer.example"),
+                ("FLUXER_PUBLIC_PORT", "19080"),
+            ]),
+            Some("http://fluxer.example:19080/api".to_owned())
+        );
+    }
+
+    #[test]
+    fn the_boot_html_api_endpoint_is_untouched_without_a_base_domain_and_port() {
+        assert_eq!(
+            resolve_bootstrap_endpoint_from_pairs(&[(
+                "PUBLIC_BOOTSTRAP_API_PUBLIC_ENDPOINT",
+                "http://fluxer.example/api",
+            )]),
+            Some("http://fluxer.example/api".to_owned())
+        );
+        assert_eq!(resolve_bootstrap_endpoint_from_pairs(&[]), None);
     }
 
     #[test]
@@ -422,6 +539,43 @@ mod tests {
             resolve_discovery_from_pairs(&[("PUBLIC_BOOTSTRAP_API_ENDPOINT", "/api")]),
             DEFAULT_DISCOVERY_UPSTREAM_URL
         );
+    }
+
+    #[test]
+    fn a_set_but_empty_prepared_statements_value_keeps_the_shared_default() {
+        assert!(resolve_prepared_statements_from_pairs(&[]));
+        assert!(
+            resolve_prepared_statements_from_pairs(&[("FLUXER_POSTGRES_PREPARED_STATEMENTS", "")]),
+            "an empty value disabled named statements here while every other service kept them"
+        );
+        assert!(resolve_prepared_statements_from_pairs(&[(
+            "FLUXER_POSTGRES_PREPARED_STATEMENTS",
+            "   ",
+        )]));
+    }
+
+    #[test]
+    fn an_explicit_prepared_statements_value_is_honoured() {
+        assert!(!resolve_prepared_statements_from_pairs(&[(
+            "FLUXER_POSTGRES_PREPARED_STATEMENTS",
+            "false",
+        )]));
+        assert!(!resolve_prepared_statements_from_pairs(&[(
+            "FLUXER_POSTGRES_PREPARED_STATEMENTS",
+            "OFF",
+        )]));
+        assert!(resolve_prepared_statements_from_pairs(&[(
+            "FLUXER_POSTGRES_PREPARED_STATEMENTS",
+            "yes",
+        )]));
+    }
+
+    #[test]
+    fn a_non_boolean_prepared_statements_value_keeps_the_shared_default() {
+        assert!(resolve_prepared_statements_from_pairs(&[(
+            "FLUXER_POSTGRES_PREPARED_STATEMENTS",
+            "maybe",
+        )]));
     }
 
     #[test]
