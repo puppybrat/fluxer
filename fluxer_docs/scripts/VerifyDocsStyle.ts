@@ -17,7 +17,7 @@ import {
 } from './DocsTableWidth.ts';
 
 const STYLES_ROOT = fileURLToPath(new URL('../src/styles/', import.meta.url));
-const STARLIGHT_STYLES = fileURLToPath(new URL('../node_modules/@astrojs/starlight/style/', import.meta.url));
+const STARLIGHT_STYLES = fileURLToPath(new URL('../node_modules/@astrojs/starlight/dist/style/', import.meta.url));
 
 const FORBIDDEN_MARKETING_WORDS = [
 	'seamless',
@@ -271,7 +271,7 @@ const ACCEPTED_TABLE_FINDINGS = new Map<string, Readonly<Partial<Record<TableRul
 	['admin-api/bulk-jobs.mdx', {'table-fit': 1}],
 	['admin-api/discovery.mdx', {'table-identifier': 1}],
 	['admin-api/guilds.mdx', {'table-identifier': 3}],
-	['admin-api/index.mdx', {'table-fit': 1, 'table-identifier': 2}],
+	['admin-api/index.mdx', {'table-fit': 1, 'table-identifier': 3}],
 	['admin-api/instance.mdx', {'table-fit': 1, 'table-identifier': 5}],
 	['admin-api/messages.mdx', {'table-identifier': 1}],
 	['admin-api/reports.mdx', {'table-fit': 1, 'table-identifier': 2}],

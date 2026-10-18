@@ -2,7 +2,7 @@
 
 import * as ChannelCommands from '@app/features/channel/commands/ChannelCommands';
 import {HttpError} from '@app/features/platform/types/EndpointError';
-import {action, makeAutoObservable, runInAction} from 'mobx';
+import {makeAutoObservable, runInAction} from 'mobx';
 
 /** A named theme from the shared library. `updatedAt` is the ISO string the API serializes. */
 export interface ChannelThemeLibraryEntry {
@@ -103,7 +103,6 @@ class ChannelThemes {
 	 * it writes a raw blob, matching what `save-and-apply` produces, and clears any theme reference so
 	 * the local state cannot hold both.
 	 */
-	@action
 	setThemeCss(channelId: string, css: string | null): void {
 		if (css == null) {
 			this.activeByChannelId.delete(channelId);

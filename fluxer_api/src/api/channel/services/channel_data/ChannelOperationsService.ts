@@ -630,7 +630,7 @@ export class ChannelOperationsService {
 		auditLogReason: string | null;
 	}): Promise<void> {
 		const channel = await this.channelRepository.channelData.findUnique(params.channelId);
-		if (!channel || !channel.guildId) throw new UnknownChannelError();
+		if (!channel?.guildId) throw new UnknownChannelError();
 		const canManageRoles = await this.gatewayService.checkPermission({
 			guildId: channel.guildId,
 			userId: params.userId,
@@ -703,7 +703,7 @@ export class ChannelOperationsService {
 		auditLogReason: string | null;
 	}): Promise<void> {
 		const channel = await this.channelRepository.channelData.findUnique(params.channelId);
-		if (!channel || !channel.guildId) throw new UnknownChannelError();
+		if (!channel?.guildId) throw new UnknownChannelError();
 		const canManageRoles = await this.gatewayService.checkPermission({
 			guildId: channel.guildId,
 			userId: params.userId,

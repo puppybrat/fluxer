@@ -22,7 +22,7 @@ import {MAX_MESSAGES_PER_CHANNEL} from '@fluxer/constants/src/LimitConstants';
 import type {ChannelId} from '@fluxer/schema/src/branded/WireIds';
 import type {GuildMemberData} from '@fluxer/schema/src/domains/guild/GuildMemberSchemas';
 import type {Message as WireMessage} from '@fluxer/schema/src/domains/message/MessageResponseSchemas';
-import {action, makeAutoObservable, reaction} from 'mobx';
+import {makeAutoObservable, reaction} from 'mobx';
 
 const STALE_WINDOW_REFETCH_INTERVAL_MS = 10_000;
 const staleWindowRefetchedAt = new Map<string, number>();
@@ -75,7 +75,6 @@ class Messages {
 		return this.updateCounter;
 	}
 
-	@action
 	private notifyChange(): void {
 		this.updateCounter += 1;
 	}
@@ -224,7 +223,6 @@ class Messages {
 		return messages.length === 0 ? !messages.ready : messages.cached;
 	}
 
-	@action
 	preloadLatestPage(channelId: string, guildId?: string | null): boolean {
 		if (!this.shouldPreloadLatestPage(channelId)) {
 			return false;
@@ -255,7 +253,6 @@ class Messages {
 		return channel?.hasNewestMessages() ?? false;
 	}
 
-	@action
 	setPendingJumpDispatch(channelId: string, dispatch: PendingJumpDispatch): void {
 		this.pendingJumpDispatches.set(channelId, dispatch);
 	}
@@ -267,7 +264,6 @@ class Messages {
 		return dispatch.messageId === messageId ? dispatch : null;
 	}
 
-	@action
 	handleConnectionClosed(): boolean {
 		let didUpdate = false;
 		ChannelMessages.forEach((messages) => {
@@ -282,7 +278,6 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleSessionInvalidated(): boolean {
 		const channelIds: Array<string> = [];
 		ChannelMessages.forEach((messages) => channelIds.push(messages.channelId));
@@ -298,7 +293,6 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleGatewayReady(): boolean {
 		const selectedChannelId = SelectedChannel.currentChannelId;
 		let didHydrateSelectedChannel = false;
@@ -347,7 +341,6 @@ class Messages {
 		MessageCommands.fetchMessages(channelId, null, null, MAX_MESSAGES_PER_CHANNEL);
 	}
 
-	@action
 	handleChannelSelect(action: {guildId?: string; channelId?: string | null; messageId?: string}): boolean {
 		const channelId = action.channelId ?? action.guildId;
 		if (channelId == null || channelId === ME) {
@@ -395,7 +388,6 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleGuildUnavailable(guildId: string, unavailable: boolean): boolean {
 		if (!unavailable) {
 			return false;
@@ -423,7 +415,6 @@ class Messages {
 		return didUpdate;
 	}
 
-	@action
 	handleGuildCreate(action: {
 		guild: {
 			id: string;
@@ -451,7 +442,6 @@ class Messages {
 		return didChannelSelect;
 	}
 
-	@action
 	handleLoadMessages(action: {channelId: string; jump?: JumpOptions}): boolean {
 		const messages = ChannelMessages.getOrCreate(action.channelId);
 		this.commitMessages(messages.beginLoad(action.jump));
@@ -459,7 +449,6 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleTruncateMessages(action: {channelId: string; trimNewest?: boolean; trimOldest?: boolean}): boolean {
 		const messages = ChannelMessages.getOrCreate(action.channelId).trimToWindow(
 			action.trimNewest ?? false,
@@ -470,7 +459,6 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleLoadMessagesSuccessCached(action: {
 		channelId: string;
 		jump?: JumpOptions;
@@ -503,7 +491,6 @@ class Messages {
 	// that channel drops them in handleLoadMessagesSuccess before hydration. Called by SelectMode
 	// (which owns the relocation flow); MessagingMessages must not import SelectMode — that would be
 	// a circular dependency — so the direction is SelectMode -> markMovedIds, never the reverse.
-	@action
 	markMovedIds(channelId: string, ids: Array<string>): void {
 		if (ids.length === 0) {
 			return;
@@ -518,7 +505,6 @@ class Messages {
 		}
 	}
 
-	@action
 	handleLoadMessagesSuccess(action: {
 		channelId: string;
 		isBefore?: boolean;
@@ -582,7 +568,6 @@ class Messages {
 		MessageCommands.fetchMessages(channelId, null, null, MAX_MESSAGES_PER_CHANNEL, jump, {staleRefetch: true});
 	}
 
-	@action
 	handleLoadMessagesFailure(action: {channelId: string}): boolean {
 		const messages = ChannelMessages.getOrCreate(action.channelId);
 		this.commitMessages(messages.withPatch({loadingMore: false, error: true}));
@@ -590,7 +575,6 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleLoadMessagesBlocked(action: {channelId: string}): boolean {
 		const messages = ChannelMessages.getOrCreate(action.channelId);
 		if (!messages.loadingMore && !messages.error) {
@@ -601,7 +585,6 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleIncomingMessage(action: {channelId: string; message: WireMessage}): boolean {
 		Channels.handleMessageCreate({message: action.message});
 		const existing = ChannelMessages.get(action.channelId);
@@ -614,30 +597,27 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleSendFailed(action: {channelId: string; nonce: string}): boolean {
 		const existing = ChannelMessages.get(action.channelId);
-		if (!existing || !existing.has(action.nonce)) return false;
+		if (!existing?.has(action.nonce)) return false;
 		const updated = existing.update(action.nonce, (message) => message.withUpdates({state: MessageStates.FAILED}));
 		this.commitMessages(updated);
 		this.notifyChange();
 		return true;
 	}
 
-	@action
 	handleSendRetry(action: {channelId: string; messageId: string}): boolean {
 		const existing = ChannelMessages.get(action.channelId);
-		if (!existing || !existing.has(action.messageId)) return false;
+		if (!existing?.has(action.messageId)) return false;
 		const updated = existing.update(action.messageId, (message) => message.withUpdates({state: MessageStates.SENDING}));
 		this.commitMessages(updated);
 		this.notifyChange();
 		return true;
 	}
 
-	@action
 	handleMessageDelete(action: {id: string; channelId: string}): boolean {
 		const existing = ChannelMessages.get(action.channelId);
-		if (!existing || !existing.has(action.id)) {
+		if (!existing?.has(action.id)) {
 			return false;
 		}
 		let messages = existing;
@@ -651,7 +631,6 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleMessageDeleteBulk(action: {ids: Array<string>; channelId: string}): boolean {
 		const existing = ChannelMessages.get(action.channelId);
 		if (!existing) return false;
@@ -666,12 +645,11 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleMessageUpdate(action: {message: WireMessage}): boolean {
 		const messageId = action.message.id;
 		const channelId = action.message.channel_id;
 		const existing = ChannelMessages.get(channelId);
-		if (!existing || !existing.has(messageId)) return false;
+		if (!existing?.has(messageId)) return false;
 		const updated = existing.update(messageId, (message) => {
 			if (message.isEditing && action.message.state === undefined) {
 				return message.withUpdates({...action.message, state: MessageStates.SENT});
@@ -683,7 +661,6 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleUserUpdate(action: {
 		user: {
 			id: string;
@@ -700,7 +677,6 @@ class Messages {
 		return hasChanges;
 	}
 
-	@action
 	handleGuildMemberUpdate(action: GuildMemberUpdateAction): boolean {
 		const userId = action.member.user.id;
 		const updatedAuthor = Users.getUser(userId);
@@ -715,7 +691,6 @@ class Messages {
 		return hasChanges;
 	}
 
-	@action
 	handlePresenceUpdate(action: PresenceUpdateAction): boolean {
 		if (!action.presence.user.username && !action.presence.user.avatar && !action.presence.user.discriminator) {
 			return false;
@@ -735,7 +710,6 @@ class Messages {
 		return hasChanges;
 	}
 
-	@action
 	handleCleanup(): boolean {
 		ChannelMessages.forEach(({channelId}) => {
 			if (Channels.getChannel(channelId) == null) {
@@ -747,7 +721,6 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleRelationshipUpdate(): boolean {
 		let hasChanges = false;
 		ChannelMessages.forEach((messages) => {
@@ -764,7 +737,6 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleMessageReveal(action: {channelId: string; messageId: string | null}): boolean {
 		const messages = ChannelMessages.getOrCreate(action.channelId);
 		this.commitMessages(messages.withPatch({unblurredMessageId: action.messageId}));
@@ -772,7 +744,6 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleClearJumpTarget(action: {channelId: string; clearReturnTarget?: boolean}): boolean {
 		const messages = ChannelMessages.get(action.channelId);
 		if (
@@ -788,7 +759,6 @@ class Messages {
 		return false;
 	}
 
-	@action
 	handleReaction(action: {
 		type: 'MESSAGE_REACTION_ADD' | 'MESSAGE_REACTION_REMOVE';
 		channelId: string;
@@ -816,7 +786,6 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleRemoveAllReactions(action: {channelId: string; messageId: string}): boolean {
 		const existing = ChannelMessages.get(action.channelId);
 		if (!existing) return false;
@@ -826,7 +795,6 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleRemoveReactionEmoji(action: {channelId: string; messageId: string; emoji: ReactionEmoji}): boolean {
 		const existing = ChannelMessages.get(action.channelId);
 		if (!existing) return false;
@@ -836,7 +804,6 @@ class Messages {
 		return true;
 	}
 
-	@action
 	handleMessagePreload(action: {messages: Record<ChannelId, WireMessage>}): boolean {
 		let hasChanges = false;
 		for (const [channelId, messageData] of Object.entries(action.messages)) {
@@ -854,7 +821,6 @@ class Messages {
 		return hasChanges;
 	}
 
-	@action
 	handleOptimisticEdit(action: {channelId: string; messageId: string; content: string}): {
 		originalContent: string;
 		originalEditedTimestamp: string | null;
@@ -879,7 +845,6 @@ class Messages {
 		return rollbackData;
 	}
 
-	@action
 	handleEditRollback(action: {
 		channelId: string;
 		messageId: string;
@@ -888,7 +853,7 @@ class Messages {
 	}): void {
 		const {channelId, messageId, originalContent, originalEditedTimestamp} = action;
 		const existing = ChannelMessages.get(channelId);
-		if (!existing || !existing.has(messageId)) return;
+		if (!existing?.has(messageId)) return;
 		const updated = existing.update(messageId, (msg) =>
 			msg.withUpdates({
 				content: originalContent,

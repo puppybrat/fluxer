@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-module.exports = {
+import {formatter} from '@lingui/format-po';
+
+export default {
 	// This fork is deliberately English-only, so en-US is the only catalog extract/compile process.
 	// Keep this list in sync with `supportedLocales` in src/app/I18n.ts.
 	locales: ['en-US'],
@@ -12,6 +14,6 @@ module.exports = {
 			exclude: ['**/node_modules/**', '**/*.d.ts', '**/*.test.*', '**/*.spec.*', '**/testing/**'],
 		},
 	],
-	format: 'po',
+	format: formatter(),
 	compileNamespace: 'es',
 };
