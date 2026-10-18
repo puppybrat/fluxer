@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type {ILogger} from '@app/api/ILogger';
-import {ClientErrorAbuseSignalMiddleware} from '@app/api/middleware/AbusiveIpAutoBanner';
+import {ActivityContextMiddleware} from '@app/api/infrastructure/activity/ActivityMeta';
 import {AuditLogMiddleware} from '@app/api/middleware/AuditLogMiddleware';
 import {ConcurrencyLimitMiddleware} from '@app/api/middleware/ConcurrencyLimitMiddleware';
 import ContentFilterMiddleware from '@app/api/middleware/ContentFilterMiddleware';
@@ -9,9 +9,9 @@ import {GuildAvailabilityMiddleware} from '@app/api/middleware/GuildAvailability
 import {IpBanMiddleware} from '@app/api/middleware/IpBanMiddleware';
 import {LocaleMiddleware} from '@app/api/middleware/LocaleMiddleware';
 import {RequestCacheMiddleware} from '@app/api/middleware/RequestCacheMiddleware';
+import {RequestErrorTelemetry} from '@app/api/middleware/RequestErrorTelemetry';
 import {RequireClientIpMiddleware} from '@app/api/middleware/RequireClientIpMiddleware';
 import {ServiceMiddleware} from '@app/api/middleware/ServiceMiddleware';
-import {TorExitMiddleware} from '@app/api/middleware/TorExitMiddleware';
 import {TrustedClientIpHeaderMiddleware} from '@app/api/middleware/TrustedClientIpHeaderMiddleware';
 import {UserMiddleware} from '@app/api/middleware/UserMiddleware';
 import type {HonoApp} from '@app/api/types/HonoEnv';
@@ -81,7 +81,7 @@ export function configureMiddleware(routes: HonoApp, options: MiddlewarePipeline
 			skip: ['/_health'],
 		}),
 	);
-	routes.use(ClientErrorAbuseSignalMiddleware);
+	routes.use(RequestErrorTelemetry);
 	routes.use(RequestCacheMiddleware);
 	if (nodeEnv === 'production') {
 		routes.use('*', async (ctx, next) => {
@@ -105,9 +105,9 @@ export function configureMiddleware(routes: HonoApp, options: MiddlewarePipeline
 			}),
 		);
 	}
-	routes.use(TorExitMiddleware);
 	routes.use(AuditLogMiddleware);
 	routes.use(RequireClientIpMiddleware());
+	routes.use(ActivityContextMiddleware);
 	routes.use(ServiceMiddleware);
 	routes.use(UserMiddleware);
 	routes.use(ContentFilterMiddleware);

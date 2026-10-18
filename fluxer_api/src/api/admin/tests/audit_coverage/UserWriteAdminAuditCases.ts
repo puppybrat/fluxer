@@ -20,7 +20,7 @@ import {
 } from '@app/api/auth/tests/WebAuthnTestUtils';
 import {createUserID} from '@app/api/BrandedTypes';
 import {createFriendship} from '@app/api/channel/tests/ChannelTestUtils';
-import {getUserRepository} from '@app/api/middleware/ServiceSingletons';
+import {getAdminRepository, getUserRepository} from '@app/api/middleware/ServiceSingletons';
 import type {User} from '@app/api/models/User';
 import {createBuilder} from '@app/api/test/TestRequestBuilder';
 import {AdminACLs} from '@fluxer/constants/src/AdminACLs';
@@ -318,7 +318,13 @@ export const UserWriteAdminAuditCases: ReadonlyArray<AdminAuditCoverageCase> = [
 					action: 'temp_ban',
 					targetType: 'user',
 					targetId: target.userId,
-					metadata: {duration_hours: '24', reason: 'Coverage ban', banned_until: expect.any(String)},
+					metadata: {
+						duration_hours: '24',
+						reason: 'Coverage ban',
+						banned_until: expect.any(String),
+						notify_user: 'true',
+						notification_sent: 'true',
+					},
 				},
 			};
 		},
@@ -335,7 +341,35 @@ export const UserWriteAdminAuditCases: ReadonlyArray<AdminAuditCoverageCase> = [
 					action: 'unban',
 					targetType: 'user',
 					targetId: target.userId,
-					metadata: {},
+					metadata: {notify_user: 'true', notification_sent: 'true', public_reason: 'null'},
+				},
+			};
+		},
+	},
+	{
+		method: 'POST',
+		route: '/admin/users/:user_id/ban/notes',
+		auditLogReason: 'Coverage ban note',
+		async prepare(context) {
+			const target = await createTestAccount(context.harness);
+			await adminBuilder(context)
+				.put(`/admin/users/${target.userId}/ban`)
+				.body({duration_hours: 24, reason: 'Coverage ban'})
+				.execute();
+			const banLog = (await getAdminRepository().listAllAuditLogsPaginated(1000)).find(
+				(log) => log.action === 'temp_ban' && log.targetId.toString() === target.userId,
+			);
+			return {
+				request: {
+					path: `/admin/users/${target.userId}/ban/notes`,
+					body: {ban_audit_log_id: banLog!.logId.toString(), note: 'Coverage ban note'},
+					expectStatus: 204,
+				},
+				expected: {
+					action: 'annotate_ban',
+					targetType: 'user',
+					targetId: target.userId,
+					metadata: {ban_audit_log_id: banLog!.logId.toString()},
 				},
 			};
 		},
@@ -354,7 +388,14 @@ export const UserWriteAdminAuditCases: ReadonlyArray<AdminAuditCoverageCase> = [
 					action: 'schedule_deletion',
 					targetType: 'user',
 					targetId: target.userId,
-					metadata: {days: '30', reason_code: DeletionReasons.USER_REQUESTED.toString()},
+					metadata: {
+						days: '30',
+						reason_code: DeletionReasons.USER_REQUESTED.toString(),
+						pending_deletion_at: expect.any(String),
+						notify_user: 'true',
+						notification_sent: 'true',
+						notification_template: 'account_deletion_scheduled_requested',
+					},
 				},
 			};
 		},
@@ -368,13 +409,24 @@ export const UserWriteAdminAuditCases: ReadonlyArray<AdminAuditCoverageCase> = [
 				.put(`/admin/users/${target.userId}/deletion`)
 				.body({reason_code: DeletionReasons.USER_REQUESTED, days_until_deletion: 30})
 				.execute();
+			const pendingDeletionAt = (await loadUser(target)).pendingDeletionAt!.toISOString();
 			return {
-				request: {path: `/admin/users/${target.userId}/deletion`},
+				request: {
+					path: `/admin/users/${target.userId}/deletion`,
+					body: {expected_pending_deletion_at: pendingDeletionAt},
+				},
 				expected: {
 					action: 'cancel_deletion',
 					targetType: 'user',
 					targetId: target.userId,
-					metadata: {},
+					metadata: {
+						cancelled_pending_deletion_at: pendingDeletionAt,
+						cancelled_scheduled_by: context.admin.userId,
+						cancelled_scheduled_at: expect.any(String),
+						cancelled_reason_code: DeletionReasons.USER_REQUESTED.toString(),
+						notify_user: 'false',
+						notification_sent: 'false',
+					},
 				},
 			};
 		},
@@ -554,7 +606,7 @@ export const UserWriteAdminAuditCases: ReadonlyArray<AdminAuditCoverageCase> = [
 					action: 'disable_suspicious_activity',
 					targetType: 'user',
 					targetId: target.userId,
-					metadata: {flags: flags.toString()},
+					metadata: {flags: flags.toString(), notify_user: 'true', notification_sent: 'true'},
 				},
 			};
 		},

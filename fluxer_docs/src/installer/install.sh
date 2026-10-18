@@ -58,12 +58,13 @@ FLUXER_MIN_ENGINE='24.0.0'
 # as written, healthcheck conditions and all.
 FLUXER_MIN_PODMAN='5.0.0'
 FLUXER_MIN_COMPOSE='2.20.2'
-# Both overlays this script downloads use the !override tag, which Compose learned
-# in 2.24.4. A stack that loads neither runs on the lower minimum, so the higher
-# one is required only once COMPOSE_FILE names more than one file.
+# Every overlay this script downloads uses the !override or !reset tag, which
+# Compose 2.24.4 reads. A stack that loads none runs on the lower minimum, so the
+# higher one is required only once COMPOSE_FILE names more than one file.
 FLUXER_MIN_COMPOSE_OVERLAY='2.24.4'
 FLUXER_READY_TIMEOUT=600
 FLUXER_READY_INTERVAL=5
+FLUXER_READY_REPORT=30
 FLUXER_VAPID_ATTEMPTS=8
 FLUXER_SEC1_HEADER='30770201010420'
 FLUXER_INSPECT_FORMAT='{{index .Config.Labels "com.docker.compose.service"}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} {{.State.ExitCode}}'
@@ -81,8 +82,8 @@ FLUXER_TAG_FILE='image-tag'
 FLUXER_DUMP_FILE='fluxer.dump'
 
 # Free space demanded before a volume copy, as a percentage of the measured
-# volume size. The tarball compresses, so this is generous on purpose. A backup
-# that fills the disk it writes to takes the instance down with it.
+# volume size. A backup that fills the disk it writes to takes the instance down
+# with it.
 FLUXER_VOLUME_HEADROOM=110
 
 # The keys .env carries, in the order they are written. The installer iterates
@@ -126,6 +127,7 @@ fluxer_stack_files() {
 docker-compose.yml
 docker-compose.proxy.yml
 tunnel.compose.yml
+external-object-store.compose.yml
 Caddyfile
 .env.example
 FILES
@@ -225,6 +227,7 @@ Options:
   --rollback               Restore the images and stack files of the last record.
   --backup-dir <path>      Where records go. Default <dir>/backups.
   --no-volume-backup       Take the database dump and skip the uploads copy.
+  --no-volume-compression  Copy the uploads as a plain .tar. Faster, larger.
   --skip-backup-accept-data-loss
                            Upgrade with no backup at all. Losable data is lost.
   --allow-root             Permit running as root.
@@ -297,6 +300,7 @@ opt_update=0
 opt_rollback=0
 opt_backup_dir=''
 opt_no_volume_backup=0
+opt_no_volume_compression=0
 opt_skip_backup=0
 opt_allow_root=0
 
@@ -369,6 +373,10 @@ while [ $# -gt 0 ]; do
 			;;
 		--no-volume-backup)
 			opt_no_volume_backup=1
+			shift
+			;;
+		--no-volume-compression)
+			opt_no_volume_compression=1
 			shift
 			;;
 		--skip-backup-accept-data-loss)
@@ -686,6 +694,12 @@ fluxer_validate_options() {
 	if [ "$opt_skip_backup" -eq 1 ] && [ "$opt_no_volume_backup" -eq 1 ]; then
 		fluxer_bad_usage '--skip-backup-accept-data-loss already skips the volume copy.'
 	fi
+	if [ "$opt_no_volume_compression" -eq 1 ] && [ "$opt_update" -eq 0 ]; then
+		fluxer_bad_usage '--no-volume-compression belongs to --update.'
+	fi
+	if [ "$opt_no_volume_compression" -eq 1 ] && { [ "$opt_skip_backup" -eq 1 ] || [ "$opt_no_volume_backup" -eq 1 ]; }; then
+		fluxer_bad_usage '--no-volume-compression changes the volume copy, which this run skips.'
+	fi
 }
 
 fluxer_ref_for_tag() {
@@ -697,8 +711,8 @@ fluxer_ref_for_tag() {
 
 # The images come from FLUXER_IMAGE_TAG and the stack files come from a git ref.
 # A release tags its images and its commit with the same CalVer string, so a
-# pinned tag names the commit that carries its compose files. The moving tags v1
-# and latest track main.
+# pinned tag names the commit that holds its compose files. The moving tags v1
+# and latest map to main, which can run ahead of the v1 images.
 fluxer_resolve_ref() {
 	[ -z "$opt_ref" ] || return 0
 	if [ "$opt_update" -eq 1 ] || [ "$opt_rollback" -eq 1 ]; then
@@ -749,9 +763,11 @@ fluxer_open_scratch() {
 #   curl -fsSL https://raw.githubusercontent.com/fluxerapp/fluxer/main/deploy/self-hosting/docker-compose.yml -o docker-compose.yml
 #
 # The files come from a git ref and the images come from FLUXER_IMAGE_TAG. The
-# ref is derived from the tag unless --ref names one, which is the pairing rule
-# that stops a compose file from asking for a variable the running images do not
-# read, or from pinning a service image the release never built.
+# ref is derived from the tag unless --ref names one. A pinned CalVer tag names
+# the commit its images were built from, so its compose file asks only for
+# variables those images read and pins only images the release built. The moving
+# tags v1 and latest map to main, and main's compose file can run ahead of the v1
+# images until the image builds are dispatched again.
 fluxer_fetch_stack() {
 	fluxer_say "Downloading the stack files from ref $opt_ref."
 	fluxer_stack_files > "$fluxer_scratch/files"
@@ -787,6 +803,7 @@ fluxer_place_stack() {
 		[ -n "$fluxer_file" ] || continue
 		mv "$fluxer_scratch/$fluxer_file.part" "$opt_dir/$(fluxer_placed_name "$fluxer_file")"
 	done < "$fluxer_scratch/files"
+	rm -f "$fluxer_scratch/all-services"
 	fluxer_say "Stack files in $opt_dir are at ref $opt_ref."
 }
 
@@ -925,32 +942,63 @@ fluxer_write_env() {
 }
 
 fluxer_stack_ready() {
+	: > "$fluxer_scratch/not-ready"
 	$fluxer_engine compose ps -aq > "$fluxer_scratch/ids" 2>/dev/null || return 1
 	[ -s "$fluxer_scratch/ids" ] || return 1
 	xargs $fluxer_engine inspect --format "$FLUXER_INSPECT_FORMAT" < "$fluxer_scratch/ids" > "$fluxer_scratch/state" 2>/dev/null || return 1
 	fluxer_ready=1
 	fluxer_init_done=0
+	fluxer_ready_count=0
+	fluxer_service_count=0
 	while read -r fluxer_service fluxer_status fluxer_health fluxer_code; do
+		[ -n "$fluxer_service" ] || continue
+		fluxer_stack_defines_service "$fluxer_service" || continue
+		fluxer_service_count=$((fluxer_service_count + 1))
 		case $fluxer_status in
 			running)
 				case $fluxer_health in
-					healthy|none) ;;
-					*) fluxer_ready=0 ;;
+					healthy|none) fluxer_ready_count=$((fluxer_ready_count + 1)) ;;
+					*)
+						printf '%s running (%s)\n' "$fluxer_service" "$fluxer_health" >> "$fluxer_scratch/not-ready"
+						fluxer_ready=0
+						;;
 				esac
 				;;
 			exited)
 				if [ "$fluxer_service" = 'seaweedfs-init' ] && [ "$fluxer_code" = '0' ]; then
 					fluxer_init_done=1
+					fluxer_ready_count=$((fluxer_ready_count + 1))
 				else
+					printf '%s exited (%s)\n' "$fluxer_service" "$fluxer_code" >> "$fluxer_scratch/not-ready"
 					fluxer_ready=0
 				fi
 				;;
 			*)
+				printf '%s %s\n' "$fluxer_service" "$fluxer_status" >> "$fluxer_scratch/not-ready"
 				fluxer_ready=0
 				;;
 		esac
 	done < "$fluxer_scratch/state"
-	[ "$fluxer_ready" -eq 1 ] && [ "$fluxer_init_done" -eq 1 ]
+	if [ "$fluxer_ready" -eq 0 ]; then
+		return 1
+	fi
+	if [ "$fluxer_init_done" -eq 1 ]; then
+		return 0
+	fi
+	if fluxer_stack_defines_service 'seaweedfs-init'; then
+		printf 'seaweedfs-init has not completed\n' >> "$fluxer_scratch/not-ready"
+		fluxer_service_count=$((fluxer_service_count + 1))
+		return 1
+	fi
+	return 0
+}
+
+fluxer_not_ready_detail() {
+	if [ -s "$fluxer_scratch/not-ready" ]; then
+		printf 'These services are not ready:\n%s' "$(sed 's/^/  /' "$fluxer_scratch/not-ready")"
+	else
+		printf '%s' "$fluxer_engine compose reports no container state for this project."
+	fi
 }
 
 # Readiness comes from Compose state, which is local and authoritative.
@@ -962,12 +1010,19 @@ fluxer_stack_ready() {
 # exited (0) because it is a one-shot bucket initialiser.
 fluxer_wait_ready() {
 	fluxer_waited=0
+	fluxer_reported=0
+	fluxer_ready_count=0
+	fluxer_service_count=0
 	while [ "$fluxer_waited" -lt "$FLUXER_READY_TIMEOUT" ]; do
 		if fluxer_stack_ready; then
 			return 0
 		fi
 		sleep "$FLUXER_READY_INTERVAL"
 		fluxer_waited=$((fluxer_waited + FLUXER_READY_INTERVAL))
+		if [ "$((fluxer_waited - fluxer_reported))" -ge "$FLUXER_READY_REPORT" ]; then
+			fluxer_reported=$fluxer_waited
+			fluxer_say "$fluxer_ready_count of $fluxer_service_count services are ready."
+		fi
 	done
 	return 1
 }
@@ -1184,6 +1239,14 @@ fluxer_env_scalar() {
 	printf '%s' "$fluxer_scalar"
 }
 
+fluxer_compose_value() {
+	eval "fluxer_cv=\${$1:-}"
+	if [ -z "$fluxer_cv" ]; then
+		fluxer_cv=$(fluxer_env_scalar "$1")
+	fi
+	printf '%s' "$fluxer_cv"
+}
+
 fluxer_read_compose_setting() {
 	fluxer_compose_file=${COMPOSE_FILE:-}
 	fluxer_compose_from="the environment"
@@ -1225,6 +1288,13 @@ fluxer_resolve_compose_base() {
 	esac
 }
 
+fluxer_overlay_absence() {
+	case $1 in
+		external-object-store.compose.yml) printf '%s' 'Without it the bundled seaweedfs starts again and api, worker and media-proxy wait for it.' ;;
+		*) printf '%s' "Without $1 the edge container binds 80 and 443 and requests its own certificate." ;;
+	esac
+}
+
 fluxer_require_compose_files() {
 	fluxer_read_compose_setting
 	[ -n "$fluxer_compose_file" ] || return 0
@@ -1251,13 +1321,13 @@ fluxer_require_compose_files() {
 		if fluxer_stack_files | grep -qxF "$fluxer_name"; then
 			fluxer_fail 2 "COMPOSE_FILE from $fluxer_compose_from names $fluxer_name and $fluxer_path is not there, so every $fluxer_engine compose command in $opt_dir fails and this run stops before it changes anything. This script downloads $fluxer_name, and an instance set up before it existed does not hold that file yet. Put it in place and run this again:
   curl -fsSL --proto '=https' --tlsv1.2 -o $fluxer_path $FLUXER_RAW_BASE/$opt_ref/$FLUXER_STACK_PATH/$fluxer_name
-Leave the COMPOSE_FILE line as it is. Without $fluxer_name the edge container binds 80 and 443 and requests its own certificate."
+Leave the COMPOSE_FILE line as it is. $(fluxer_overlay_absence "$fluxer_name")"
 		fi
 		fluxer_fail 2 "COMPOSE_FILE from $fluxer_compose_from names $fluxer_name and $fluxer_path is not there, so every $fluxer_engine compose command in $opt_dir fails. This script does not download $fluxer_name. Put that file back, or take it out of the COMPOSE_FILE line."
 	done
 	if [ "$fluxer_compose_count" -gt 1 ] &&
 		! fluxer_version_ge "$fluxer_compose_version" "$FLUXER_MIN_COMPOSE_OVERLAY"; then
-		fluxer_fail 2 "COMPOSE_FILE from $fluxer_compose_from loads $fluxer_compose_count files and this host runs Compose $fluxer_compose_version. Every overlay this script downloads uses the !override tag, which needs Compose $FLUXER_MIN_COMPOSE_OVERLAY or newer. Upgrade Compose, or load only $fluxer_compose_base."
+		fluxer_fail 2 "COMPOSE_FILE from $fluxer_compose_from loads $fluxer_compose_count files and this host runs Compose $fluxer_compose_version. Every overlay this script downloads uses the !override or !reset tag, which needs Compose $FLUXER_MIN_COMPOSE_OVERLAY or newer. Upgrade Compose, or load only $fluxer_compose_base."
 	fi
 }
 
@@ -1409,12 +1479,13 @@ fluxer_postgres_running() {
 # the pull is the only way back across a schema change.
 #
 # By hand:
-#   docker compose exec -T postgres pg_dump -U fluxer -d fluxer --format=custom > backups/fluxer.dump
+#   docker compose exec -T postgres sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > backups/fluxer.dump
 #
-# The database and the role are both named fluxer and are fixed in
-# docker-compose.yml. Keep -T. Without it Docker attaches a terminal to the
-# command and the dump arrives corrupted, which is why the first five bytes are
-# checked against the custom-format magic below rather than only the size.
+# The postgres container's POSTGRES_USER and POSTGRES_DB follow
+# FLUXER_POSTGRES_USERNAME and FLUXER_POSTGRES_DATABASE, so the command needs no
+# names. Keep -T. Without it Docker attaches a terminal to the command and the
+# dump arrives corrupted, which is why the first five bytes are checked against
+# the custom-format magic below rather than only the size.
 #
 # The dump runs against the live stack. pg_dump reads inside one transaction, so
 # it sees a consistent database without stopping anything. The volume copy below
@@ -1441,9 +1512,37 @@ $(fluxer_compose_error '  ')"
 	grep -qxF "$1" "$fluxer_scratch/all-services"
 }
 
+# The bundled postgres container takes POSTGRES_USER and POSTGRES_DB from
+# FLUXER_POSTGRES_USERNAME and FLUXER_POSTGRES_DATABASE, and the image applies
+# them only to an empty data directory. When those names point the apps at a
+# database outside the stack, the bundled directory still holds the role and
+# database it was first started with, so a dump that reads the container env asks
+# for a role that is not there. The bundled service is idle in that shape and the
+# dump skips it.
+#
+# By hand:
+#   grep -E '^FLUXER_POSTGRES_(HOST|URL)=' .env
+fluxer_postgres_external() {
+	fluxer_pg_host=$(fluxer_compose_value FLUXER_POSTGRES_HOST)
+	if [ -n "$fluxer_pg_host" ] && [ "$fluxer_pg_host" != postgres ]; then
+		return 0
+	fi
+	fluxer_pg_url=$(fluxer_compose_value FLUXER_POSTGRES_URL)
+	[ -n "$fluxer_pg_url" ] || return 1
+	fluxer_pg_url_host=${fluxer_pg_url#*://}
+	fluxer_pg_url_host=${fluxer_pg_url_host%%[/?]*}
+	fluxer_pg_url_host=${fluxer_pg_url_host##*@}
+	fluxer_pg_url_host=${fluxer_pg_url_host%%:*}
+	[ "$fluxer_pg_url_host" != postgres ]
+}
+
 fluxer_dump_postgres() {
 	if ! fluxer_stack_defines_service postgres; then
 		fluxer_say 'Skipping the database dump. This stack defines no postgres service, so its database runs outside the stack and only the operator of that database can dump it.'
+		return 0
+	fi
+	if fluxer_postgres_external; then
+		fluxer_say 'Skipping the database dump. FLUXER_POSTGRES_HOST or FLUXER_POSTGRES_URL points the stack at a database outside it, so the bundled postgres service is idle and only the operator of that database can dump it.'
 		return 0
 	fi
 	if ! fluxer_postgres_running; then
@@ -1454,7 +1553,7 @@ fluxer_dump_postgres() {
 	fi
 	fluxer_dump_path="$fluxer_record/$FLUXER_DUMP_FILE"
 	fluxer_say 'Dumping the database.'
-	if ! $fluxer_engine compose exec -T postgres pg_dump -U fluxer -d fluxer --format=custom > "$fluxer_dump_path"; then
+	if ! $fluxer_engine compose exec -T postgres sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > "$fluxer_dump_path"; then
 		rm -f "$fluxer_dump_path"
 		fluxer_fail 7 'pg_dump failed. The instance is untouched.'
 	fi
@@ -1527,6 +1626,13 @@ $(fluxer_volume_error '  ')" ;;
 	if [ "$fluxer_copy_any" -eq 0 ]; then
 		return 0
 	fi
+	if [ "$opt_no_volume_compression" -eq 1 ]; then
+		fluxer_tar_flags='cf'
+		fluxer_tar_ext='tar'
+	else
+		fluxer_tar_flags='czf'
+		fluxer_tar_ext='tgz'
+	fi
 	fluxer_say 'Stopping the stack for a consistent copy of the uploads.'
 	if ! $fluxer_engine compose stop; then
 		fluxer_fail 7 "$fluxer_engine compose stop failed in $opt_dir."
@@ -1535,7 +1641,7 @@ $(fluxer_volume_error '  ')" ;;
 		[ -n "$fluxer_volume" ] || continue
 		fluxer_full="${fluxer_project}_${fluxer_volume}"
 		fluxer_say "Copying $fluxer_full."
-		if ! $fluxer_engine run --rm -v "$fluxer_full:/data:ro" -v "$fluxer_record:/backup" "$FLUXER_HELPER_IMAGE" tar czf "/backup/$fluxer_volume.tgz" -C /data .; then
+		if ! $fluxer_engine run --rm -v "$fluxer_full:/data:ro" -v "$fluxer_record:/backup" "$FLUXER_HELPER_IMAGE" tar "$fluxer_tar_flags" "/backup/$fluxer_volume.$fluxer_tar_ext" -C /data .; then
 			$fluxer_engine compose up -d --remove-orphans || true
 			fluxer_fail 7 "Copying $fluxer_full failed. The stack is started again on the images it was running."
 		fi
@@ -1560,7 +1666,17 @@ fluxer_backup() {
 }
 
 fluxer_postgres_major() {
-	sed -n 's/^[[:space:]]*image:[[:space:]]*postgres:\([0-9][0-9]*\).*/\1/p' "$1" | head -n 1
+	fluxer_pg_image=$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(postgres:[^[:space:]]*\).*/\1/p' "$1" | head -n 1)
+	if [ -z "$fluxer_pg_image" ]; then
+		fluxer_pg_image=$(sed -n 's/^[[:space:]]*image:[[:space:]]*${FLUXER_POSTGRES_IMAGE:-\([^}]*\)}.*/\1/p' "$1" | head -n 1)
+		if [ -n "$fluxer_pg_image" ] && [ -n "$(fluxer_compose_value FLUXER_POSTGRES_IMAGE)" ]; then
+			fluxer_pg_image=$(fluxer_compose_value FLUXER_POSTGRES_IMAGE)
+		fi
+	fi
+	fluxer_pg_image=${fluxer_pg_image%%@*}
+	case ${fluxer_pg_image##*/} in
+		*:*) printf '%s\n' "${fluxer_pg_image##*:}" | sed -n 's/^\([0-9][0-9]*\).*/\1/p' ;;
+	esac
 }
 
 # A newer Postgres major does not read the data directory an older major wrote,
@@ -1661,7 +1777,8 @@ fluxer_newest_record() {
 fluxer_verify_stack() {
 	fluxer_say 'Waiting for every service to report ready.'
 	if ! fluxer_wait_ready; then
-		fluxer_fail 6 "The stack is not ready after $FLUXER_READY_TIMEOUT seconds. Read $fluxer_engine compose logs in $opt_dir."
+		fluxer_fail 6 "The stack is not ready after $FLUXER_READY_TIMEOUT seconds. $(fluxer_not_ready_detail)
+Read $fluxer_engine compose logs in $opt_dir."
 	fi
 	fluxer_origin_value=$(fluxer_public_origin)
 	if [ -n "$fluxer_origin_value" ]; then
@@ -1721,7 +1838,11 @@ fluxer_plan_update() {
 	elif [ "$opt_no_volume_backup" -eq 1 ]; then
 		fluxer_say '  backup        the database dump, .env, and the stack files'
 	else
-		fluxer_say '  backup        the database dump, the uploads volume, .env, and the stack files'
+		if [ "$opt_no_volume_compression" -eq 1 ]; then
+			fluxer_say '  backup        the database dump, the uploads volume uncompressed, .env, and the stack files'
+		else
+			fluxer_say '  backup        the database dump, the uploads volume, .env, and the stack files'
+		fi
 		fluxer_say '  downtime      the stack stops for the uploads copy, then again for the recreate'
 	fi
 	fluxer_fetch_stack
@@ -2031,7 +2152,8 @@ if ! $fluxer_engine compose up -d; then
 fi
 fluxer_say 'Waiting for every service to report ready. This takes several minutes on the first start, which pulls eighteen images.'
 if ! fluxer_wait_ready; then
-	fluxer_fail 6 "The stack is not ready after $FLUXER_READY_TIMEOUT seconds. Read $fluxer_engine compose logs in $opt_dir."
+	fluxer_fail 6 "The stack is not ready after $FLUXER_READY_TIMEOUT seconds. $(fluxer_not_ready_detail)
+Read $fluxer_engine compose logs in $opt_dir."
 fi
 fluxer_ready_origin=$(fluxer_public_origin)
 if [ -z "$fluxer_ready_origin" ]; then

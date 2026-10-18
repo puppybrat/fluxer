@@ -32,6 +32,7 @@ import {
 	getNativeAudioBridgeStats,
 	getNativeAudioCaptureDiagnosticState,
 } from '@app/features/voice/utils/NativeAudioCaptureBridge';
+import {readNoiseSuppressionBackend} from '@app/features/voice/utils/noise_suppression/NoiseSuppressionRuntime';
 import {getDisplayShareEnvironment} from '@app/features/voice/utils/ScreenShareEnvironment';
 import {getRecentScreenShares} from '@app/features/voice/utils/ScreenShareLifecycleLog';
 import {getScreenShareBitrateBps, resolveStreamingModeSettings} from '@app/features/voice/utils/ScreenShareOptions';
@@ -277,10 +278,8 @@ async function collectVoiceSettingsMetadata(): Promise<Record<string, unknown>> 
 		inputVolume: VoiceSettings.getInputVolume(),
 		outputVolume: VoiceSettings.getOutputVolume(),
 		echoCancellation: VoiceSettings.getEchoCancellation(),
-		noiseSuppression: VoiceSettings.getNoiseSuppression(),
 		autoGainControl: VoiceSettings.getAutoGainControl(),
-		deepFilterNoiseSuppression: VoiceSettings.getDeepFilterNoiseSuppression(),
-		deepFilterNoiseSuppressionLevel: VoiceSettings.getDeepFilterNoiseSuppressionLevel(),
+		noiseSuppressionBackend: readNoiseSuppressionBackend(),
 		voiceProcessingMode: VoiceSettings.getVoiceProcessingMode(),
 		vadThreshold: VoiceSettings.getVadThreshold(),
 		vadAutoSensitivity: VoiceSettings.getVadAutoSensitivity(),
@@ -301,12 +300,9 @@ async function collectVoiceSettingsMetadata(): Promise<Record<string, unknown>> 
 		preferredScreenShareCodec: VoiceSettings.getPreferredScreenShareCodec(),
 		screenShareContentHint: VoiceSettings.getScreenShareContentHint(),
 		screenShareEncoderMode: VoiceSettings.getScreenShareEncoderMode(),
-		screenShareSoftwareQuality: VoiceSettings.getScreenShareSoftwareQuality(),
 		screenShareScalabilityMode: VoiceSettings.getScreenShareScalabilityMode(),
-		screenShareBackupCodecMode: VoiceSettings.getScreenShareBackupCodecMode(),
 		screenShareMaxBitrateMbps:
 			getScreenShareBitrateBps(configuredScreenShare.resolution, configuredScreenShare.frameRate) / 1000000,
-		openH264Enabled: VoiceSettings.getOpenH264Enabled(),
 		linuxAudioCapture: {
 			workaround: VoiceSettings.getLinuxAudioCaptureWorkaround(),
 			onlySpeakers: VoiceSettings.getLinuxAudioCaptureOnlySpeakers(),
@@ -500,10 +496,8 @@ export function collectStatsForNerdsSnapshot(): StatsForNerdsData {
 		},
 		audio: {
 			echoCancellation: VoiceSettings.echoCancellation,
-			noiseSuppression: VoiceSettings.noiseSuppression,
 			autoGainControl: VoiceSettings.autoGainControl,
-			deepFilterNoiseSuppression: VoiceSettings.deepFilterNoiseSuppression,
-			deepFilterNoiseSuppressionLevel: VoiceSettings.deepFilterNoiseSuppressionLevel,
+			noiseSuppressionBackend: readNoiseSuppressionBackend(),
 			processingMode: VoiceSettings.voiceProcessingMode,
 		},
 		screenShareSettings: {
@@ -515,9 +509,7 @@ export function collectStatsForNerdsSnapshot(): StatsForNerdsData {
 			codecPreferenceOrder: [...getScreenShareCodecPreferenceOrder()],
 			contentHint: VoiceSettings.getScreenShareContentHint(),
 			encoderMode: VoiceSettings.getScreenShareEncoderMode(),
-			softwareQuality: VoiceSettings.getScreenShareSoftwareQuality(),
 			scalabilityMode: VoiceSettings.getScreenShareScalabilityMode(),
-			backupCodecMode: VoiceSettings.getScreenShareBackupCodecMode(),
 			maxBitrateMbps:
 				(getPublishedScreenShareMaxBitrateBps(localParticipant) ??
 					getScreenShareBitrateBps(effectiveScreenShareSettings.resolution, effectiveScreenShareSettings.frameRate)) /
@@ -528,7 +520,6 @@ export function collectStatsForNerdsSnapshot(): StatsForNerdsData {
 			shareDesktopAudio: VoiceSettings.getShareDesktopAudio(),
 			shareAppAudio: VoiceSettings.getShareAppAudio(),
 			muteStreamAudio: VoiceSettings.getMuteStreamAudio(),
-			openH264Enabled: VoiceSettings.getOpenH264Enabled(),
 		},
 		screenShareAudioCapture: {
 			nativeCapture: getNativeAudioCaptureDiagnosticState(),

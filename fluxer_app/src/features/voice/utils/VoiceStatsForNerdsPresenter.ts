@@ -6,6 +6,7 @@ import {
 	type VoiceTrackPublicationSourceLike,
 	VoiceTrackSource,
 } from '@app/features/voice/engine/VoiceTrackSource';
+import type {VoiceNoiseSuppressionBackend} from '@app/features/voice/utils/noise_suppression/NoiseSuppressionBackends';
 import {
 	classifyVoiceEngineV2TrackStats,
 	selectVoiceEngineV2StatsPresentationProjection,
@@ -68,10 +69,8 @@ export interface StatsForNerdsData {
 	};
 	audio: {
 		echoCancellation: boolean;
-		noiseSuppression: boolean;
 		autoGainControl: boolean;
-		deepFilterNoiseSuppression: boolean;
-		deepFilterNoiseSuppressionLevel: number;
+		noiseSuppressionBackend: VoiceNoiseSuppressionBackend;
 		processingMode: string;
 	};
 	screenShareSettings: {
@@ -83,9 +82,7 @@ export interface StatsForNerdsData {
 		codecPreferenceOrder: Array<string>;
 		contentHint: string;
 		encoderMode: string;
-		softwareQuality: string;
 		scalabilityMode: string;
-		backupCodecMode: string;
 		maxBitrateMbps: number;
 		audioSourceMode: string;
 		audioIncludeSources: Array<Record<string, string>>;
@@ -93,7 +90,6 @@ export interface StatsForNerdsData {
 		shareDesktopAudio: boolean;
 		shareAppAudio: boolean;
 		muteStreamAudio: boolean;
-		openH264Enabled: boolean;
 	};
 	screenShareAudioCapture: {
 		nativeCapture: Record<string, unknown>;

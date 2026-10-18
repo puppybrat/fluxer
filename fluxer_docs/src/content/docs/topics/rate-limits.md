@@ -18,7 +18,7 @@ A request also counts against the global bucket, unless its route bucket is decl
 
 These buckets are exempt, and each is the only bucket its route declares: `webhook:execute::webhook_id`, `webhook:message_get::webhook_id`, `webhook:message_edit::webhook_id`, `webhook:message_delete::webhook_id`, `webhook:github::webhook_id`, `webhook:instatus::webhook_id`, and `stripe:webhook`. Those routes draw on no global allowance. The `user:group_dm:create` and `user:group_dm:recipient:add` buckets are exempt as well. Each is a second bucket on a route whose first bucket is not exempt, so both routes still draw on the global allowance.
 
-Every HTTP API and Admin API operation declares a bucket, apart from the [desktop download](/http-api/downloads/) routes, which declare none. A caller that sends no credential on a [Bluesky client document](/http-api/connections/#get-bluesky-client-metadata) is keyed by the client IP address.
+Every HTTP API and Admin API operation declares a bucket. A caller that sends no credential on a [Bluesky client document](/http-api/connections/#get-bluesky-client-metadata) is keyed by the client IP address.
 
 The global window is one second. The default allowance is 50 requests per second, and an account holding the [`HIGH_GLOBAL_RATE_LIMIT`](/admin-api/users/#account-flags) flag receives 1,200 requests per second instead. The [`RATE_LIMIT_BYPASS`](/admin-api/users/#account-flags) flag exempts an account from the global bucket and from every route bucket. A successful response to that account has no rate limit header.
 
@@ -181,13 +181,13 @@ The Resend IP authorisation cooldown has no `X-RateLimit-*` header. It has a `Re
 | [Modify current guild member](/http-api/guild-members/#modify-current-guild-member) | 25 per 30 minutes on the guild pronouns, when the submitted value differs | `PRONOUNS_CHANGED_TOO_MANY_TIMES` |
 | [Modify current guild member](/http-api/guild-members/#modify-current-guild-member) | 25 per 30 minutes on the guild accent colour, when the submitted value differs | `ACCENT_COLOR_CHANGED_TOO_MANY_TIMES` |
 | [Modify voice activity sharing](/http-api/users/settings/#modify-voice-activity-sharing) | 1 per 24 hours on the sharing default | `VOICE_ACTIVITY_SHARING_ON_COOLDOWN` |
-| [Complete login with TOTP](/http-api/authentication/#complete-login-with-totp) and [Complete login with WebAuthn MFA](/http-api/authentication/#complete-login-with-webauthn-mfa) | 10 multi-factor attempts per 15 minutes | `INVALID_CODE` |
-| [Complete login with TOTP](/http-api/authentication/#complete-login-with-totp) and [Complete login with WebAuthn MFA](/http-api/authentication/#complete-login-with-webauthn-mfa) | 5 multi-factor attempts per 5 minutes on one MFA ticket | `INVALID_CODE` |
-| [Sudo mode](/http-api/users/mfa/#sudo-mode) with the `totp` method | 10 multi-factor attempts per 15 minutes | `INVALID_MFA_CODE` |
+| [Complete login with TOTP](/http-api/authentication/#complete-login-with-totp), [Complete login with WebAuthn MFA](/http-api/authentication/#complete-login-with-webauthn-mfa), and [Complete passkey bridge](/http-api/authentication/#complete-passkey-bridge) for `login_mfa` | 10 multi-factor attempts per 15 minutes | `INVALID_CODE` |
+| [Complete login with TOTP](/http-api/authentication/#complete-login-with-totp), [Complete login with WebAuthn MFA](/http-api/authentication/#complete-login-with-webauthn-mfa), and [Complete passkey bridge](/http-api/authentication/#complete-passkey-bridge) for `login_mfa` | 5 multi-factor attempts per 5 minutes on one MFA ticket | `INVALID_CODE` |
+| [Sudo mode](/http-api/users/mfa/#sudo-mode) with the `totp` method, and [Complete passkey bridge](/http-api/authentication/#complete-passkey-bridge) for `sudo` | 10 multi-factor attempts per 15 minutes | `INVALID_MFA_CODE` |
 
 Every Modify current user allowance is keyed by the authenticated account, and the bot tag allowance by the bot account, so an owner changing a bot's tag draws on the bot's allowance. The guild member allowances are keyed by the guild and the member together, and one account holds a separate allowance in each guild. The login allowances are keyed by the account and by the MFA ticket respectively, and the sudo allowance by the account.
 
-Fluxer consumes every multi-factor allowance before it checks the code, so a correct code drawn against an exhausted allowance is reported exactly like a wrong one. A correct code clears the counter. The ticket allowance also destroys the MFA ticket as it denies, and the client restarts from [Log in with a password](/http-api/authentication/#log-in-with-a-password).
+Fluxer consumes every multi-factor allowance before it checks the code, so a correct code drawn against an exhausted allowance is reported exactly like a wrong one. A correct code clears the counter. A completed passkey bridge ceremony clears nothing, and redeeming a `login_mfa` ceremony clears the login counters. The ticket allowance also destroys the MFA ticket as it denies, and the client restarts from [Log in with a password](/http-api/authentication/#log-in-with-a-password).
 
 ### Allowances answering neither shape
 

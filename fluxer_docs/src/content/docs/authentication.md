@@ -111,6 +111,7 @@ An instance can enforce single sign-on once it is configured and enabled. While 
 - [Register an account](/http-api/authentication/#register-an-account) and [Log in with a password](/http-api/authentication/#log-in-with-a-password).
 - [Get discoverable WebAuthn options](/http-api/authentication/#get-discoverable-webauthn-options) and [Authenticate with WebAuthn](/http-api/authentication/#authenticate-with-webauthn).
 - [Complete login with TOTP](/http-api/authentication/#complete-login-with-totp), [Get WebAuthn MFA options](/http-api/authentication/#get-webauthn-mfa-options), and [Complete login with WebAuthn MFA](/http-api/authentication/#complete-login-with-webauthn-mfa).
+- [Start passkey bridge sign-in](/http-api/authentication/#start-passkey-bridge-sign-in) and [Redeem passkey bridge sign-in](/http-api/authentication/#redeem-passkey-bridge-sign-in).
 - [Verify an email address](/http-api/authentication/#verify-an-email-address) and [Resend email verification](/http-api/authentication/#resend-email-verification).
 - [Request password recovery](/http-api/authentication/#request-password-recovery), [Validate a password reset token](/http-api/authentication/#validate-a-password-reset-token), and [Reset a password](/http-api/authentication/#reset-a-password).
 - [Revert an email change](/http-api/authentication/#revert-an-email-change).
@@ -156,7 +157,7 @@ Sudo mode is a short-lived proof that the account holder recently re-verified a 
 
 A sudo proof lasts five minutes. Present it in the `X-Fluxer-Sudo-Mode-JWT` request header. An invalid, expired, or account-mismatched token produces the same response as a missing one.
 
-Fluxer issues a token only for an account holding a multi-factor authenticator, so a password-only account re-verifies for each operation that requires sudo mode. [Create WebAuthn registration options](/http-api/users/mfa/#create-webauthn-registration-options) and [Disable current account](/http-api/users/current-user/#disable-current-account) issue no sudo token and return no `X-Fluxer-Sudo-Mode-JWT` response header, even for a multi-factor account. A bot account satisfies sudo mode immediately. So does an account that has neither a password nor a multi-factor authenticator.
+Fluxer issues a token only for an account holding a TOTP secret or a registered WebAuthn credential, so a password-only account re-verifies for each operation that requires sudo mode. A passkey counts here whether or not the account enabled passkeys as a second factor. The `methods` object reports `totp`, `webauthn`, and `backup_codes`, and an account holding no TOTP secret presents an unconsumed backup code under `mfa_method` of `totp`. [Create WebAuthn registration options](/http-api/users/mfa/#create-webauthn-registration-options) and [Disable current account](/http-api/users/current-user/#disable-current-account) issue no sudo token and return no `X-Fluxer-Sudo-Mode-JWT` response header, even for an account that can prove a credential. A bot account satisfies sudo mode immediately. So does an account that has no password, no TOTP secret, and no registered WebAuthn credential.
 
 :::note[A sudo proof covers every account session]
 Revoking the session that obtained a proof leaves that proof valid until it expires.

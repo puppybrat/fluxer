@@ -10,7 +10,7 @@ import log, {getLogger, LoggerNames} from '../logger.ts';
 import {debounce} from './debounce.ts';
 import {NegotiationError, UnexpectedConnectionState} from './errors.ts';
 import type {LoggerOptions} from './types.ts';
-import {ddExtensionURI, isFireFox, isSafari, isSVCCodec} from './utils.ts';
+import {ddExtensionURI, isChromiumBased, isFireFox, isSafari, isSVCCodec} from './utils.ts';
 
 export interface TrackBitrateInfo {
 	cid?: string;
@@ -24,6 +24,12 @@ export interface TrackBitrateInfo {
 const startBitrateMultiplier = 0.9;
 
 const maxStartBitrateKbps = 1000;
+
+const maxScreenShareStartBitrateKbps = 1500;
+
+const minScreenShareStartBitrateKbps = 600;
+
+const startBitrateParameter = 'x-google-start-bitrate';
 
 const debounceInterval = 20;
 
@@ -48,27 +54,28 @@ export function applyVideoStartBitrate(
 		return undefined;
 	}
 
-	const codecPayload = media.rtp.find((rtp) => rtp.codec.toUpperCase() === codec.toUpperCase())?.payload ?? 0;
-	if (codecPayload === 0) {
+	const codecPayloads = media.rtp
+		.filter((rtp) => rtp.codec.toUpperCase() === codec.toUpperCase())
+		.map((rtp) => rtp.payload);
+	if (codecPayloads.length === 0 || codecPayloads[0] === 0) {
 		return 0;
 	}
 
 	const calculatedStartBitrate = Math.round(maxbr * startBitrateMultiplier);
-	const startBitrate = isScreenShare ? calculatedStartBitrate : Math.min(calculatedStartBitrate, maxStartBitrateKbps);
-
-	const fmtp = media.fmtp.find((entry) => entry.payload === codecPayload);
-	if (fmtp) {
-		if (!fmtp.config.includes('x-google-start-bitrate')) {
-			fmtp.config += `;x-google-start-bitrate=${startBitrate}`;
-		}
-	} else {
-		media.fmtp.push({
-			payload: codecPayload,
-			config: `x-google-start-bitrate=${startBitrate}`,
-		});
+	let startBitrate = Math.min(calculatedStartBitrate, maxStartBitrateKbps);
+	if (isScreenShare) {
+		startBitrate = Math.max(
+			minScreenShareStartBitrateKbps,
+			Math.min(calculatedStartBitrate, maxScreenShareStartBitrateKbps),
+		);
 	}
 
-	return codecPayload;
+	for (const payload of codecPayloads) {
+		const fmtp = ensureFmtp(media, payload);
+		fmtp.config = setFmtpParameter(fmtp.config, startBitrateParameter, String(startBitrate));
+	}
+
+	return codecPayloads[0];
 }
 
 export const PCEvents = {
@@ -372,6 +379,9 @@ export default class PCTransport extends (EventEmitter as new () => TypedEmitter
 				if (media.type === 'audio') {
 					ensureAudioNackAndStereo(media, stereoMids, []);
 				} else if (media.type === 'video') {
+					if (isChromiumBased() && videoSectionCanReceiveAV1(media)) {
+						this.ddExtID = ensureVideoDDExtension(media, sdpParsed, this.ddExtID);
+					}
 					this.trackBitrates.some((trackbr): boolean => {
 						if (!trackbr.cid) {
 							return false;
@@ -441,7 +451,7 @@ export default class PCTransport extends (EventEmitter as new () => TypedEmitter
 		for (const transceiver of this.getTransceivers()) {
 			if (transceiver.receiver.track?.kind !== 'video') continue;
 			if ((transceiver as {stopped?: boolean}).stopped) continue;
-			if (transceiver.direction !== 'recvonly' && transceiver.direction !== 'sendrecv') continue;
+			if (transceiver.direction !== 'recvonly') continue;
 			if (typeof transceiver.setCodecPreferences !== 'function') continue;
 			try {
 				transceiver.setCodecPreferences(allowed);
@@ -677,6 +687,11 @@ export function ensureVideoDDExtension(
 	return id;
 }
 
+export function videoSectionCanReceiveAV1(media: MediaDescription): boolean {
+	if (media.direction !== 'recvonly' && media.direction !== 'sendrecv') return false;
+	return media.rtp.some((rtp) => rtp.codec.toLowerCase() === 'av1');
+}
+
 function ddExtensionIDFor(sdp: SessionDescription, cachedID: number): number | undefined {
 	const mapped = mappedExtensionID(sdp, ddExtensionURI);
 	if (mapped !== undefined) {
@@ -841,6 +856,9 @@ export function collectStereoMids(
 export function placeholderMidsFromTransceivers(transceivers: ReadonlyArray<RTCRtpTransceiver>): Set<string> {
 	const mids = new Set<string>();
 	for (const transceiver of transceivers) {
+		if (transceiver.currentDirection === 'stopped') {
+			continue;
+		}
 		if (transceiver.mid && !transceiver.sender.track) {
 			mids.add(transceiver.mid);
 		}

@@ -265,6 +265,11 @@ export const SUPPORT_LINK_LABEL_DESCRIPTOR = msg({
 	message: 'Contact support',
 	comment: 'Link label in the required-action modal. Opens an email to Fluxer support.',
 });
+export const INSTANCE_ADMIN_CONTACT_DESCRIPTOR = msg({
+	message: 'Contact the administrators of this instance for help.',
+	comment:
+		'Shown in the required-action modal on a self-hosted instance in place of the Contact support link. The instance is run by its own administrators, not by the app maker.',
+});
 export const ALT_ROUTES_TITLE_DESCRIPTOR = msg({
 	message: "If you can't verify by SMS",
 	comment:
@@ -275,6 +280,12 @@ export const ALT_ROUTES_HUMAN_REVIEW_DESCRIPTOR = msg({
 		'Email us and a person will review your account. Tell us you cannot verify by SMS and we will take it from there. Replies come by email, so this is not instant.',
 	comment:
 		'Body of the human-review option in the required-action modal, rendered directly above the Contact support link. Sets the expectation that a reply takes time.',
+});
+export const ALT_ROUTES_HUMAN_REVIEW_SELF_HOSTED_DESCRIPTOR = msg({
+	message:
+		'Ask the administrators of this instance to review your account. This instance is run independently, and only its administrators can change your account.',
+	comment:
+		'Body of the human-review option in the required-action modal on a self-hosted instance. The instance is run by its own administrators, not by the app maker.',
 });
 export const ESCAPE_BUTTON_DESCRIPTOR = msg({
 	message: 'Set this check aside',
@@ -304,9 +315,9 @@ export const ESCAPE_CONFIRM_TITLE_WITH_GUILDS_DESCRIPTOR = msg({
 });
 export const ESCAPE_CONFIRM_OUTCOME_DESCRIPTOR = msg({
 	message:
-		'Your account goes back to normal right away and you will not need a phone number now. This is not a permanent exemption. Joining a large or public community can bring this check back.',
+		'Your account goes back to normal right away and you will not need a phone number now. This is not a permanent exemption, and we can ask for this check again later.',
 	comment:
-		'First line of the set-aside confirmation in the required-action modal. Always shown. Says can rather than will, because whether the check returns depends on account age and instance settings the user cannot see.',
+		'First line of the set-aside confirmation in the required-action modal. Always shown. Says can rather than will, because the check may or may not come back.',
 });
 export const ESCAPE_CONFIRM_LEAVE_DESCRIPTOR = msg({
 	message: 'You will leave {guildNames}. Nothing you posted is deleted, and you can join again later.',
@@ -327,6 +338,11 @@ export const ESCAPE_CONFIRM_SUPPORT_DESCRIPTOR = msg({
 	message: 'You can still email {supportEmail} for a human review at any time.',
 	comment:
 		'Last line of the set-aside confirmation in the required-action modal. supportEmail is inserted by code. The self-serve route never closes the support route.',
+});
+export const ESCAPE_CONFIRM_SUPPORT_SELF_HOSTED_DESCRIPTOR = msg({
+	message: 'You can still ask the administrators of this instance for a human review at any time.',
+	comment:
+		'Last line of the set-aside confirmation in the required-action modal on a self-hosted instance. The instance is run by its own administrators, not by the app maker.',
 });
 export const ESCAPE_CONFIRM_PRIMARY_NO_GUILDS_DESCRIPTOR = msg({
 	message: 'Set this check aside',
@@ -352,6 +368,11 @@ export const ESCAPE_UNAVAILABLE_DESCRIPTOR = msg({
 	message: 'This is not available on your account right now. Email {supportEmail} and a person will review it.',
 	comment:
 		'Shown in the required-action modal when setting the check aside is refused, and when it reported success but the phone requirement is still in force. supportEmail is inserted by code, and the address is named in full because the support link may have scrolled out of view.',
+});
+export const ESCAPE_UNAVAILABLE_SELF_HOSTED_DESCRIPTOR = msg({
+	message: 'This is not available on your account right now. Ask the administrators of this instance to review it.',
+	comment:
+		'Shown in the required-action modal on a self-hosted instance when setting the check aside is refused, and when it reported success but the phone requirement is still in force.',
 });
 export const ESCAPE_FAILED_NOTHING_CHANGED_DESCRIPTOR = msg({
 	message: 'That did not go through. Nothing changed. Try again.',
@@ -399,8 +420,8 @@ export const PHONE_NUMBER_DESCRIPTION_DESCRIPTOR = msg({
 });
 export const PHONE_PRIVACY_DESCRIPTOR = msg({
 	message:
-		'Your number is not linked to your account. We keep only an encrypted marker, with no user ID, for at most {limit} verifications in about {duration} days.',
-	comment: 'Required-action modal privacy note for phone verification. limit and duration are inserted by code.',
+		'Your number is not linked to your account. We keep only an encrypted marker, with no user ID, for a limited time.',
+	comment: 'Required-action modal privacy note for phone verification.',
 });
 export const ENTER_PHONE_CODE_TITLE_DESCRIPTOR = msg({
 	message: 'Enter the SMS code',
@@ -417,10 +438,6 @@ export const INBOUND_PHONE_START_TITLE_DESCRIPTOR = msg({
 export const INBOUND_PHONE_START_DESCRIPTION_DESCRIPTOR = msg({
 	message: 'For this check, you send us a text message instead of receiving one from us.',
 	comment: 'Required-action modal body for starting an inbound phone verification challenge.',
-});
-export const INBOUND_PHONE_EXPENSIVE_REASON_DESCRIPTOR = msg({
-	message: 'Sending an SMS to this number is expensive, so we need you to text us instead.',
-	comment: 'Required-action modal explanation for an inbound phone verification challenge due to SMS cost.',
 });
 export const INBOUND_PHONE_DEFAULT_REASON_DESCRIPTOR = msg({
 	message: 'This number needs text-in verification instead of an SMS from us.',
@@ -549,17 +566,12 @@ export const PHONE_NOT_IN_SERVICE_DESCRIPTOR = msg({
 export const PHONE_NOT_MOBILE_DESCRIPTOR = msg({
 	message:
 		"This isn't a mobile number, so it can't receive our text. Try a mobile number, or contact support if you think that's wrong.",
-	comment:
-		'Required-action form error for landline, toll-free, premium, shared-cost, UAN, voicemail and pager lines. Do not name which line type the provider returned.',
+	comment: 'Required-action form error when the number is not a mobile line. Do not name the line type.',
 });
 export const PHONE_NEEDS_REVIEW_DESCRIPTOR = msg({
 	message: "We couldn't verify this number automatically. Contact support and a person will review your account.",
 	comment:
-		'Required-action form error for phone attempts blocked by a fraud signal. Deliberately non-specific. Never name the signal, the score or the threshold.',
-});
-export const CAPTCHA_REQUIRED_DESCRIPTOR = msg({
-	message: 'A browser check is required before phone verification. Try again from the sign-in page or contact support.',
-	comment: 'Required-action error when the API requires a captcha for phone verification.',
+		'Required-action form error when a phone attempt cannot be verified automatically and needs a support review. Keep it non-specific.',
 });
 export const SOMETHING_WENT_WRONG_TRY_AGAIN_DESCRIPTOR = msg({
 	message: 'Something went wrong. Try again.',

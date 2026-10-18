@@ -6,9 +6,6 @@ import {AdminArchiveRepository} from '@app/api/admin/repositories/AdminArchiveRe
 import {AdminApiKeyService} from '@app/api/admin/services/AdminApiKeyService';
 import {AdminArchiveService} from '@app/api/admin/services/AdminArchiveService';
 import {AdminAuditService} from '@app/api/admin/services/AdminAuditService';
-import {PhoneAttemptRiskService} from '@app/api/auth/services/PhoneAttemptRiskService';
-import {PhoneFraudGraphService} from '@app/api/auth/services/PhoneFraudGraphService';
-import type {UserID} from '@app/api/BrandedTypes';
 import {Config} from '@app/api/Config';
 import {ChannelRepository} from '@app/api/channel/ChannelRepository';
 import {AttachmentUploadTraceRepository} from '@app/api/channel/repositories/message/AttachmentUploadTraceRepository';
@@ -19,7 +16,6 @@ import {createNcmecApiConfig, NcmecReporter} from '@app/api/csam/NcmecReporter';
 import {NcmecRepository} from '@app/api/csam/NcmecRepository';
 import {NcmecSubmissionService} from '@app/api/csam/NcmecSubmissionService';
 import {DonationRepository} from '@app/api/donation/DonationRepository';
-import {DownloadService} from '@app/api/download/DownloadService';
 import {createEmailProvider} from '@app/api/email/EmailProviderFactory';
 import {FavoriteMemeRepository} from '@app/api/favorite_meme/FavoriteMemeRepository';
 import {GatewayRequestService} from '@app/api/gateway/GatewayRequestService';
@@ -46,12 +42,13 @@ import {KVActivityTracker} from '@app/api/infrastructure/KVActivityTracker';
 import {KVBulkMessageDeletionQueueService} from '@app/api/infrastructure/KVBulkMessageDeletionQueueService';
 import {NatsUnfurlerService} from '@app/api/infrastructure/NatsUnfurlerService';
 import {PremiumStateReconciliationQueueService} from '@app/api/infrastructure/PremiumStateReconciliationQueueService';
-import {createDownloadsStorageService, createStorageService} from '@app/api/infrastructure/StorageServiceFactory';
+import {createStorageService} from '@app/api/infrastructure/StorageServiceFactory';
 import {UserCacheService} from '@app/api/infrastructure/UserCacheService';
 import {createUsersServiceClient} from '@app/api/infrastructure/UsersServiceClient';
 import {VirusScanService} from '@app/api/infrastructure/VirusScanService';
 import {GatewayRolloutConfigPublisher} from '@app/api/instance/GatewayRolloutConfigPublisher';
 import {InstanceConfigRepository} from '@app/api/instance/InstanceConfigRepository';
+import {PushRelayConfigPublisher} from '@app/api/instance/PushRelayConfigPublisher';
 import {InviteRepository} from '@app/api/invite/InviteRepository';
 import {Logger} from '@app/api/Logger';
 import {LimitConfigService} from '@app/api/limits/LimitConfigService';
@@ -91,7 +88,6 @@ import {UserPermissionUtils} from '@app/api/utils/UserPermissionUtils';
 import {VoiceRepository} from '@app/api/voice/VoiceRepository';
 import {SweegoWebhookService} from '@app/api/webhook/SweegoWebhookService';
 import {WebhookRepository} from '@app/api/webhook/WebhookRepository';
-import {createMockLogger} from '@fluxer/logger/src/mock';
 import type {ICacheService} from '@pkgs/cache/src/ICacheService';
 import {KVCacheProvider} from '@pkgs/cache/src/providers/KVCacheProvider';
 import {EmailI18nService} from '@pkgs/email/src/EmailI18nService';
@@ -102,9 +98,6 @@ import {TestEmailService} from '@pkgs/email/src/TestEmailService';
 import type {IKVProvider} from '@pkgs/kv_client/src/IKVProvider';
 import {NatsConnectionManager} from '@pkgs/nats/src/NatsConnectionManager';
 import {RateLimitService} from '@pkgs/rate_limit/src/RateLimitService';
-import type {ISmsProvider} from '@pkgs/sms/src/providers/ISmsProvider';
-import {createSmsProvider} from '@pkgs/sms/src/providers/SmsProviderFactory';
-import {SmsService} from '@pkgs/sms/src/SmsService';
 import type {IVirusScanService} from '@pkgs/virus_scan/src/IVirusScanService';
 
 export const getUserRepository = singleton(() => new UserRepository(getKVClient()));
@@ -156,20 +149,21 @@ export const getGatewayRolloutConfigPublisher = singleton(
 			}),
 		),
 );
+
+export const getPushRelayConfigPublisher = singleton(
+	() =>
+		new PushRelayConfigPublisher(
+			new NatsConnectionManager({
+				url: Config.nats.coreUrl,
+				token: Config.nats.authToken || undefined,
+				name: 'fluxer-api-push-relay-config',
+			}),
+		),
+);
+
 export const getVisionarySlotRepository = singleton(() => new VisionarySlotRepository());
 export const getCacheService: () => ICacheService = singleton(() => new KVCacheProvider({client: getKVClient()}));
 export const getRateLimitService = singleton(() => new RateLimitService(getKVClient()));
-export const getPhoneFraudGraphService = singleton(
-	() => new PhoneFraudGraphService(getKVClient(), getUserRepository()),
-);
-export const getPhoneAttemptRiskService = singleton(() => {
-	const service = new PhoneAttemptRiskService(getCacheService(), getKVClient());
-	const graph = getPhoneFraudGraphService();
-	service.onHardBlock(({userId, clientIp}) => {
-		void graph.propagateHardBlock(userId ? (BigInt(userId) as UserID) : null, clientIp);
-	});
-	return service;
-});
 export const getEmailDnsValidationService = singleton(() => new EmailDnsValidationService());
 
 function createEmailServiceForConfig(
@@ -216,10 +210,6 @@ export function setInjectedStorageService(service: IStorageService | undefined):
 export const getStorageService: () => IStorageService = (() => {
 	const fallback = singleton(() => createStorageService());
 	return () => _injectedStorageService ?? fallback();
-})();
-const getDownloadsStorageService: () => IStorageService = (() => {
-	const override = singleton(() => createDownloadsStorageService());
-	return () => override() ?? getStorageService();
 })();
 export const getErrorI18nService = singleton(() => new ErrorI18nService());
 let limitConfigServiceInstance: LimitConfigService | null = null;
@@ -304,7 +294,6 @@ export function getKVAccountDeletionQueue(): KVAccountDeletionQueueService {
 	return accountDeletionQueue;
 }
 
-export const getDownloadService = singleton(() => new DownloadService(getDownloadsStorageService()));
 export const getThemeService = singleton(() => new ThemeService(getStorageService()));
 const getNcmecReporter = singleton(() => new NcmecReporter({config: createNcmecApiConfig(), fetch}));
 const getNcmecRepository = singleton(() => new NcmecRepository());
@@ -355,23 +344,6 @@ export async function ensureVirusScanInitialized(): Promise<void> {
 	await _virusScanInitPromise;
 }
 
-const getSmsProvider: () => ISmsProvider = singleton(() => {
-	if (Config.dev.testModeEnabled) {
-		return createSmsProvider({mode: 'test', logger: createMockLogger()});
-	}
-	if (Config.sms.enabled && Config.sms.accountSid && Config.sms.authToken && Config.sms.verifyServiceSid) {
-		return createSmsProvider({
-			mode: 'twilio',
-			config: {
-				accountSid: Config.sms.accountSid,
-				authToken: Config.sms.authToken,
-				verifyServiceSid: Config.sms.verifyServiceSid,
-			},
-		});
-	}
-	return createSmsProvider({mode: 'unavailable'});
-});
-export const getSmsService = singleton(() => new SmsService(getSmsProvider()));
 export const getEmailService: () => IEmailService = singleton(() => {
 	if (Config.dev.testModeEnabled) return new TestEmailService();
 	const userRepository = getUserRepository();
@@ -417,7 +389,7 @@ export const getReadStateService = singleton(() => new ReadStateService(getReadS
 export const getDiscriminatorService = singleton(
 	() => new DiscriminatorService(getUserRepository(), getCacheService(), getLimitConfigService()),
 );
-export const getBotAuthService = singleton(() => new BotAuthService(getApplicationRepository()));
+export const getBotAuthService = singleton(() => new BotAuthService(getApplicationRepository(), getUserRepository()));
 export const getBotMfaMirrorService = singleton(
 	() => new BotMfaMirrorService(getApplicationRepository(), getUserRepository(), getGatewayService()),
 );

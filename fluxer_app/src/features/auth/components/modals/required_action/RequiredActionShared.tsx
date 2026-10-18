@@ -4,12 +4,13 @@ import {showGenericErrorModal} from '@app/features/app/components/alerts/Generic
 import * as Modal from '@app/features/app/components/dialogs/Modal';
 import {ExternalLink} from '@app/features/app/components/shared/ExternalLink';
 import {EXAMPLE_EMAIL, SUPPORT_EMAIL, SUPPORT_EMAIL_MAILTO} from '@app/features/app/config/I18nDisplayConstants';
+import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import styles from '@app/features/auth/components/modals/RequiredActionModal.module.css';
 import {
 	A_NEW_VERIFICATION_CODE_HAS_BEEN_SENT_DESCRIPTOR,
 	ALT_ROUTES_HUMAN_REVIEW_DESCRIPTOR,
+	ALT_ROUTES_HUMAN_REVIEW_SELF_HOSTED_DESCRIPTOR,
 	ALT_ROUTES_TITLE_DESCRIPTOR,
-	CAPTCHA_REQUIRED_DESCRIPTOR,
 	CODE_DID_NOT_WORK_DESCRIPTOR,
 	CODE_EXPIRED_DESCRIPTOR,
 	CODE_NOT_REQUESTED_DESCRIPTOR,
@@ -20,6 +21,7 @@ import {
 	ENTER_VALID_PHONE_DESCRIPTOR,
 	ESCAPE_BUTTON_DESCRIPTOR,
 	FAILED_TO_RESEND_VERIFICATION_CODE_PLEASE_TRY_AGAIN_DESCRIPTOR,
+	INSTANCE_ADMIN_CONTACT_DESCRIPTOR,
 	NEW_EMAIL_DESCRIPTOR,
 	PHONE_ALREADY_USED_DESCRIPTOR,
 	PHONE_CANNOT_BE_USED_DESCRIPTOR,
@@ -189,9 +191,6 @@ export function resolveRequiredActionErrorMessage(
 		case APIErrorCodes.BOT_USER_AUTH_ENDPOINT_ACCESS_DENIED:
 		case APIErrorCodes.PHONE_VERIFICATION_REQUIRED:
 			return i18n._(PHONE_NOT_ELIGIBLE_DESCRIPTOR);
-		case APIErrorCodes.CAPTCHA_REQUIRED:
-		case APIErrorCodes.INVALID_CAPTCHA:
-			return i18n._(CAPTCHA_REQUIRED_DESCRIPTOR);
 		case APIErrorCodes.ACCESS_DENIED:
 		case APIErrorCodes.FORBIDDEN:
 			return i18n._(EMAIL_CHANGE_UNAVAILABLE_DESCRIPTOR);
@@ -290,6 +289,13 @@ export const ValueBlock: React.FC<ValueBlockProps> = ({label, value}) => (
 );
 export const SupportLinkLine: React.FC = () => {
 	const {i18n} = useLingui();
+	if (RuntimeConfig.isSelfHosted()) {
+		return (
+			<span className={styles.supportLink} data-flx="auth.required-action-modal.support-link-line.instance-admin">
+				{i18n._(INSTANCE_ADMIN_CONTACT_DESCRIPTOR)}
+			</span>
+		);
+	}
 	return (
 		<ExternalLink
 			href={SUPPORT_EMAIL_MAILTO}
@@ -311,6 +317,7 @@ interface RequiredActionAltRoutesProps {
 
 export const RequiredActionAltRoutes: React.FC<RequiredActionAltRoutesProps> = ({escapeAction}) => {
 	const {i18n} = useLingui();
+	const selfHosted = RuntimeConfig.isSelfHosted();
 	return (
 		<div data-flx="auth.required-action-modal.alt-routes">
 			<p
@@ -322,11 +329,13 @@ export const RequiredActionAltRoutes: React.FC<RequiredActionAltRoutesProps> = (
 				{i18n._(ALT_ROUTES_TITLE_DESCRIPTOR)}
 			</p>
 			<p className={styles.altRoutesBody} data-flx="auth.required-action-modal.alt-routes.body">
-				{i18n._(ALT_ROUTES_HUMAN_REVIEW_DESCRIPTOR)}
+				{i18n._(selfHosted ? ALT_ROUTES_HUMAN_REVIEW_SELF_HOSTED_DESCRIPTOR : ALT_ROUTES_HUMAN_REVIEW_DESCRIPTOR)}
 			</p>
-			<div className={styles.supportBlock} data-flx="auth.required-action-modal.alt-routes.support-block">
-				<SupportLinkLine data-flx="auth.required-action.required-action-shared.required-action-alt-routes.support-link-line" />
-			</div>
+			{selfHosted ? null : (
+				<div className={styles.supportBlock} data-flx="auth.required-action-modal.alt-routes.support-block">
+					<SupportLinkLine data-flx="auth.required-action.required-action-shared.required-action-alt-routes.support-link-line" />
+				</div>
+			)}
 			{escapeAction ? (
 				<>
 					<div className={styles.altRoutesDivider} data-flx="auth.required-action-modal.alt-routes.divider" />

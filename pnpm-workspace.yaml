@@ -7,6 +7,7 @@ packages:
   - fluxer_api/pkgs/*
   - fluxer_app/pkgs/*
   - '!fluxer_app/pkgs/libfluxcore'
+  - '!fluxer_app/pkgs/libfluxwebp'
   - fluxer_desktop
   - fluxer_admin
   - fluxer_docs
@@ -49,7 +50,6 @@ catalog:
   '@elastic/elasticsearch': 9.5.1
   '@floating-ui/react': 0.27.20
   '@floating-ui/react-dom': 2.1.9
-  '@hcaptcha/react-hcaptcha': 2.2.0
   '@hono/node-server': 2.1.1
   '@lexical/history': 0.50.0
   '@lexical/react': 0.50.0
@@ -60,7 +60,6 @@ catalog:
   '@lingui/react': 6.7.0
   '@lingui/swc-plugin': 6.7.0
   '@livekit/components-react': 2.9.24
-  '@marsidev/react-turnstile': 1.6.1
   '@mdx-js/mdx': 3.1.1
   '@messageformat/core': 3.4.0
   '@messageformat/parser': 5.1.1
@@ -96,6 +95,7 @@ catalog:
   '@vvo/tzdb': 6.198.0
   '@webgpu/types': 0.1.72
   ajv: 8.20.0
+  altcha-lib: 2.5.0
   archiver: 8.0.0
   argon2: 0.44.0
   astro: 7.3.2
@@ -207,7 +207,9 @@ patchedDependencies:
   '@phosphor-icons/react@2.1.10': patches/@phosphor-icons__react@2.1.10.patch
   emscripten-wasm-loader@3.0.3: patches/emscripten-wasm-loader@3.0.3.patch
   eslint-plugin-react-google-translate@1.0.4: patches/eslint-plugin-react-google-translate@1.0.4.patch
+  gifuct-js@2.1.2: patches/gifuct-js@2.1.2.patch
   hunspell-asm@4.0.2: patches/hunspell-asm@4.0.2.patch
+  upng-js@2.1.0: patches/upng-js@2.1.0.patch
 
 peerDependencyRules:
   allowedVersions:

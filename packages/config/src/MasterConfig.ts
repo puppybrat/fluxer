@@ -26,9 +26,7 @@ export interface MasterConfig {
 		base_domain: string;
 		public_origin: string;
 		public_scheme: PublicScheme;
-		internal_scheme: PublicScheme;
 		public_port: number;
-		internal_port: number;
 		static_cdn_domain: string;
 		invite_domain: string;
 		gift_domain: string;
@@ -37,12 +35,7 @@ export interface MasterConfig {
 	endpoints: DerivedEndpoints;
 	internal: {
 		kv: string;
-		kv_provider: 'redis';
 		kv_mode: 'standalone' | 'cluster';
-		kv_cluster_nodes: Array<{host: string; port: number}>;
-		kv_cluster_nat_map: Record<string, {host: string; port: number}>;
-		api: string;
-		gateway?: string;
 		media_proxy: string;
 	};
 	database: {
@@ -79,18 +72,9 @@ export interface MasterConfig {
 		buckets: {
 			cdn: string;
 			uploads: string;
-			downloads: string;
 			reports: string;
 			harvests: string;
 		};
-	};
-	s3_downloads?: {
-		endpoint: string;
-		presigned_url_base?: string;
-		force_path_style?: boolean;
-		region?: string;
-		access_key_id?: string;
-		secret_access_key?: string;
 	};
 	services: {
 		api: {
@@ -100,23 +84,10 @@ export interface MasterConfig {
 			max_inflight_requests: number;
 			ip_ban_exempt_ips: Array<string>;
 			donation_proxy_key: string;
-			desktop_github_redirect_countries: Array<string>;
 			presigned_attachment_uploads_enabled: boolean;
-			presigned_downloads_enabled: boolean;
 			presigned_harvest_downloads_enabled: boolean;
 			unfurl_ignored_hosts: Array<string>;
-			embeds: {
-				oembed_html_enabled: boolean;
-				oembed_html_allow_untrusted_on_self_hosted: boolean;
-				oembed_html_allowed_hosts: Array<string>;
-				cache_default_ttl_seconds: number;
-				cache_max_ttl_seconds: number;
-				cache_min_ttl_seconds: number;
-				cache_respect_remote_ttl: boolean;
-			};
-			content_moderation?: {
-				nsfw_threshold?: number;
-			};
+			app_origin_aliases: Array<string>;
 			worker?: {
 				mode?: 'all_lanes' | 'single_lane' | 'single_task';
 				lane?: 'realtime' | 'unfurl' | 'lifecycle' | 'batch';
@@ -141,10 +112,7 @@ export interface MasterConfig {
 			auth_token?: string;
 		};
 		media_proxy: {
-			host: string;
-			port: number;
 			secret_key: string;
-			mode: string;
 			upload_relay: {
 				endpoint: string;
 				secret_base64: string;
@@ -152,22 +120,16 @@ export interface MasterConfig {
 				token_ttl_secs: number;
 				keep_direct_countries: Array<string>;
 			};
+			attachment_urls: {
+				secrets_base64: Array<string>;
+			};
 		};
 		gateway: {
-			port: number;
 			rpc_auth_token?: string;
-			media_proxy_endpoint?: string;
-			api_rpc_endpoint?: string;
 		};
 		admin: {
-			port: number;
-			base_path: string;
 			secret_key_base: string;
 			oauth_client_secret: string;
-		};
-		app_proxy: {
-			port: number;
-			assets_dir: string;
 		};
 	};
 	auth: {
@@ -214,34 +176,12 @@ export interface MasterConfig {
 				secure: boolean;
 			};
 		};
-		sms: {
-			enabled: boolean;
-			account_sid?: string;
-			auth_token?: string;
-			verify_service_sid?: string;
-			inbound_challenge_number?: string;
-			inbound_webhook_auth_token?: string;
-			inbound_webhook_public_url?: string;
-		};
-		captcha: {
-			enabled: boolean;
-			provider: 'hcaptcha' | 'turnstile' | 'none';
-			hcaptcha?: {
-				site_key: string;
-				secret_key: string;
-			};
-			turnstile?: {
-				site_key: string;
-				secret_key: string;
-			};
-		};
 		voice: {
 			enabled: boolean;
 			api_key: string;
 			api_secret: string;
 			url: string;
 			internal_url: string;
-			webhook_url: string;
 			default_region?: {
 				id: string;
 				name: string;
@@ -299,15 +239,11 @@ export interface MasterConfig {
 		blocklist_feeds: {
 			enabled?: boolean;
 		};
-		risk_integration: {
-			enabled: boolean;
-			ipinfo_api_key: string;
-			account_policy_dsl?: unknown;
-			tor: {
-				block_all_relays: boolean;
-				reverse_dns_heuristic: boolean;
-				reverse_dns_timeout_ms: number;
-			};
+		breached_password_check: {
+			enabled?: boolean;
+		};
+		ipinfo: {
+			api_key: string;
 		};
 		push: {
 			apns: {
@@ -316,27 +252,10 @@ export interface MasterConfig {
 				key_id?: string;
 				private_key?: string;
 				private_key_path?: string;
-				default_environment?: 'production' | 'development';
 				apps?: Array<{
 					app_id?: string;
 					topic?: string;
 					environment?: 'production' | 'development';
-					project_id?: string;
-				}>;
-			};
-			fcm: {
-				enabled: boolean;
-				project_id?: string;
-				client_email?: string;
-				private_key?: string;
-				private_key_path?: string;
-				service_account_json_path?: string;
-				token_uri?: string;
-				apps?: Array<{
-					app_id?: string;
-					topic?: string;
-					environment?: 'production' | 'development';
-					project_id?: string;
 				}>;
 			};
 		};
@@ -349,19 +268,6 @@ export interface MasterConfig {
 		branding: InstanceBrandingConfig;
 		setup: {
 			configured: boolean;
-		};
-		abuse_policy: {
-			inbound_phone_country_codes: Array<string>;
-			phone_verification: {
-				inbound_required_prefixes: Array<string>;
-			};
-			direct_contact_spam: {
-				enabled: boolean;
-				country_codes: Array<string>;
-				distinct_target_threshold: number;
-				target_window_ms: number;
-				action: 'flag_spammer' | 'suppress_delivery';
-			};
 		};
 	};
 	dev: {

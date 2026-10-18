@@ -8,7 +8,8 @@ use crate::{
         components::{
             form::{
                 FORM_SELECT_CLASS, checkbox, csrf_input, danger_button, form_actions,
-                form_field_group, select_chevron, submit_button, text_input, textarea_input,
+                form_field_group, opt_out_checkbox, select_chevron, submit_button, text_input,
+                textarea_input,
             },
             page_container::page_header,
             section_card::section_card_simple,
@@ -410,6 +411,9 @@ fn bulk_schedule_deletion_section(base: &str, csrf_token: &str) -> Markup {
                             }
                         },
                     ))
+                    p class="text-neutral-500 text-sm" {
+                        "Users that already have a pending deletion are skipped and listed as failed with the reason already scheduled. Cancel those from the user page first to schedule them again."
+                    }
                     (text_input("public_reason", "Public Reason (optional)", "", "Terms of service violation"))
                     (form_field_group("Days Until Deletion", "days_until_deletion", true, None,
                         Some("Moderation reasons are held for at least 60 days. Only User requested allows 14."),
@@ -423,6 +427,7 @@ fn bulk_schedule_deletion_section(base: &str, csrf_token: &str) -> Markup {
                         },
                     ))
                     (text_input("audit_log_reason", "Audit Log Reason (optional)", "", "Reason for this bulk operation"))
+                    (opt_out_checkbox("notify_user", "Email each user about the scheduled deletion"))
                     (form_actions(html! {
                         (danger_button("Schedule Deletion"))
                     }))
@@ -479,6 +484,13 @@ mod tests {
     fn deletion_form_defaults_to_the_moderation_retention_floor() {
         let markup = bulk_schedule_deletion_section("/admin", "csrf").into_string();
         assert!(markup.contains(r#"name="days_until_deletion" value="60" min="14" max="365""#));
+    }
+
+    #[test]
+    fn deletion_form_emails_each_user_by_default() {
+        let markup = bulk_schedule_deletion_section("/admin", "csrf").into_string();
+        assert!(markup.contains(r#"name="notify_user" value="true" checked"#));
+        assert!(markup.contains(r#"name="notify_user_present" value="1""#));
     }
 
     #[test]

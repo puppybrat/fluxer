@@ -433,6 +433,7 @@ export default () => {
 			staticFilesPlugin({
 				staticCdnEndpoint: normalizedStaticCdnEndpoint,
 				fontsDir: path.join(MONOREPO_ROOT, 'packages', 'fonts'),
+				wasmCratesDir: path.join(ROOT_DIR, 'rust'),
 			}),
 			new DefinePlugin({
 				__FLUXER_PRECACHE_MANIFEST__: JSON.stringify([]),
@@ -506,6 +507,13 @@ export default () => {
 								name: 'mobx',
 								priority: 43,
 								reuseExistingChunk: true,
+							},
+							i18n: {
+								test: /[\\/]node_modules[\\/]@lingui[\\/]/,
+								name: 'i18n',
+								priority: 42,
+								reuseExistingChunk: true,
+								enforce: true,
 							},
 							reactAria: {
 								test: /[\\/]node_modules[\\/]react-aria-components[\\/]/,

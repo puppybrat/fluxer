@@ -161,11 +161,11 @@ The private representation of the current account, returned by [Get current user
 
 <sup>6</sup> Always null
 
-<sup>7</sup> The pair is present only while the account has the staff flag, and it is absent for every other account
+<sup>7</sup> This server version writes the pair for every account
 
 <sup>8</sup> The banner hash is not returned at all while the account lacks the animated banner entitlement, which every profile banner requires
 
-<sup>9</sup> `mfa_enabled` is true exactly when at least one authenticator is configured. An account with no authenticator omits `authenticator_types`
+<sup>9</sup> `mfa_enabled` is true exactly when at least one authenticator is configured. An account with no authenticator reports `authenticator_types` as an empty array, and only a bearer read drops the field
 
 <sup>10</sup> The value is forced to `0` and `premium_since` is forced to `null` while premium entitlements are not active
 
@@ -179,7 +179,7 @@ The private representation of the current account, returned by [Get current user
 
 <sup>15</sup> The value drives the 24-hour cooldown on changing the default voice activity sharing state
 
-<sup>16</sup> The array is empty when the account has no stored suspicious activity flag, when it has no email address, or when the account policy exempts its email address from required actions
+<sup>16</sup> The array is empty when the account has no stored suspicious activity flag, when it has no email address, or when its email address is on an exempt domain
 
 <sup>17</sup> A bot account is always permitted, and a user account is permitted only when its recorded date of birth places it at 18 years or older
 
@@ -221,6 +221,8 @@ A scheduled deletion of every message the account has sent. The field is this ob
 | 2 | WEBAUTHN | WebAuthn authenticator |
 
 The value `1` is unassigned. Any stored authenticator value outside this registry is excluded from `authenticator_types`.
+
+`WEBAUTHN` is present only while the account chose passkeys as a second factor through [Set WebAuthn two-factor authentication](/http-api/users/mfa/#set-webauthn-two-factor-authentication). Registering a credential does not add it, so an account can hold passkeys without the type.
 
 ## Premium types
 
@@ -563,7 +565,7 @@ The profile read returned by [Get user profile](#get-user-profile) for one targe
 
 <sup>4</sup> The array is empty when the profile is restricted. It otherwise holds only verified connections whose [profile field privacy flags](#profile-field-privacy-flags) admit the caller
 
-<sup>5</sup> The value is null unless the profile is unrestricted, the target has the staff flag, the target has stored a timezone, and its [profile field privacy flags](#profile-field-privacy-flags) admit the caller
+<sup>5</sup> The value is null unless the profile is unrestricted, the target has stored a timezone, and its [profile field privacy flags](#profile-field-privacy-flags) admit the caller
 
 <sup>6</sup> The field is present only on a restricted read
 

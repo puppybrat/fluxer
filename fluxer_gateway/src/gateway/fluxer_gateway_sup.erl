@@ -98,7 +98,7 @@ role_specs(calls, Role) ->
     [child_spec(call_manager, call_manager)] ++ calls_voice_state_counts_sync_children(Role);
 role_specs(push, _Role) ->
     [
-        child_spec(push_dispatcher, push_dispatcher),
+        child_spec(push_outbox, push_outbox),
         child_spec(push, push)
     ].
 

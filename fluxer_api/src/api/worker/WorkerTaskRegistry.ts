@@ -13,7 +13,9 @@ import bulkDeleteSelfMessagesImmediate from '@app/api/worker/tasks/BulkDeleteSel
 import bulkDeleteUserMessages from '@app/api/worker/tasks/BulkDeleteUserMessages';
 import bulkDeleteUserMessagesScoped from '@app/api/worker/tasks/BulkDeleteUserMessagesScoped';
 import deleteUserMessagesInGuildByTime from '@app/api/worker/tasks/DeleteUserMessagesInGuildByTime';
+import drainActivitySpool from '@app/api/worker/tasks/DrainActivitySpool';
 import expireAttachments from '@app/api/worker/tasks/ExpireAttachments';
+import expireStaleJobs from '@app/api/worker/tasks/ExpireStaleJobs';
 import extractEmbeds from '@app/api/worker/tasks/ExtractEmbeds';
 import finalizeNcmecAttachmentReport from '@app/api/worker/tasks/FinalizeNcmecAttachmentReport';
 import flushUserActivityBuffer from '@app/api/worker/tasks/FlushUserActivityBuffer';
@@ -36,7 +38,6 @@ import reconcileUserPayments from '@app/api/worker/tasks/ReconcileUserPayments';
 import refreshSearchIndex from '@app/api/worker/tasks/RefreshSearchIndex';
 import {sendSystemDm} from '@app/api/worker/tasks/SendSystemDm';
 import syncDiscoveryIndex from '@app/api/worker/tasks/SyncDiscoveryIndex';
-import syncDisposableEmailDomains from '@app/api/worker/tasks/SyncDisposableEmailDomains';
 import syncFileShaBlocklists from '@app/api/worker/tasks/SyncFileShaBlocklists';
 import syncUrlBlocklists from '@app/api/worker/tasks/SyncUrlBlocklists';
 import userProcessPendingDeletion from '@app/api/worker/tasks/UserProcessPendingDeletion';
@@ -58,7 +59,9 @@ export const workerTasks: Record<WorkerTaskName, WorkerTaskHandler> = {
 	bulkUpdateSuspiciousActivityFlags: bulkUpdateSuspiciousActivityFlags,
 	bulkUpdateUserFlags: bulkUpdateUserFlags,
 	deleteUserMessagesInGuildByTime,
+	drainActivitySpool,
 	expireAttachments,
+	expireStaleJobs,
 	extractEmbeds,
 	finalizeNcmecAttachmentReport,
 	handleMentions,
@@ -82,7 +85,6 @@ export const workerTasks: Record<WorkerTaskName, WorkerTaskHandler> = {
 	syncFileShaBlocklists,
 	syncUrlBlocklists,
 	syncDiscoveryIndex,
-	syncDisposableEmailDomains,
 	flushUserActivityBuffer,
 	userProcessPendingDeletion,
 	userProcessPendingDeletions,

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {ChannelID, GuildID, MessageID, PhoneVerificationToken, UserID} from '@app/api/BrandedTypes';
+import type {ChannelID, GuildID, MessageID, UserID} from '@app/api/BrandedTypes';
 import type {
 	AuthSessionRow,
 	EmailRevertTokenRow,
 	EmailVerificationTokenRow,
 	PasswordResetTokenRow,
-	PhoneTokenRow,
 } from '@app/api/database/types/AuthTypes';
 import type {GiftCodeRow, PaymentBySubscriptionRow, PaymentRow} from '@app/api/database/types/PaymentTypes';
 import type {
@@ -82,6 +81,10 @@ export class UserRepository implements IUserRepositoryAggregate {
 
 	async patchUpsert(userId: UserID, patchData: Partial<UserRow>, oldData?: UserRow | null): Promise<User> {
 		return this.accountRepo.patchUpsert(userId, patchData, oldData);
+	}
+
+	async compareAndSetSuspiciousFlags(user: User, suspiciousFlags: number): Promise<User | null> {
+		return this.accountRepo.compareAndSetSuspiciousFlags(user, suspiciousFlags);
 	}
 
 	async updateDeletionSchedule(user: User, patch: UserDeletionScheduleUpdate): Promise<User> {
@@ -281,14 +284,6 @@ export class UserRepository implements IUserRepositoryAggregate {
 		return this.authRepo.deleteAllAuthSessions(userId);
 	}
 
-	async recordCountrySighting(userId: UserID, country: string): Promise<void> {
-		return this.authRepo.recordCountrySighting(userId, country);
-	}
-
-	async hasCountrySightingOutsideSet(userId: UserID, countryCodes: Iterable<string>): Promise<boolean> {
-		return this.authRepo.hasCountrySightingOutsideSet(userId, countryCodes);
-	}
-
 	async listMfaBackupCodes(userId: UserID): Promise<Array<MfaBackupCode>> {
 		return this.authRepo.listMfaBackupCodes(userId);
 	}
@@ -349,18 +344,6 @@ export class UserRepository implements IUserRepositoryAggregate {
 		return this.authRepo.deleteEmailRevertToken(token);
 	}
 
-	async createPhoneToken(token: PhoneVerificationToken, phone: string, userId: UserID | null): Promise<void> {
-		return this.authRepo.createPhoneToken(token, phone, userId);
-	}
-
-	async getPhoneToken(token: PhoneVerificationToken): Promise<PhoneTokenRow | null> {
-		return this.authRepo.getPhoneToken(token);
-	}
-
-	async deletePhoneToken(token: PhoneVerificationToken): Promise<void> {
-		return this.authRepo.deletePhoneToken(token);
-	}
-
 	async checkIpAuthorized(userId: UserID, ip: string): Promise<boolean> {
 		return this.authRepo.checkIpAuthorized(userId, ip);
 	}
@@ -407,8 +390,9 @@ export class UserRepository implements IUserRepositoryAggregate {
 		counter: bigint,
 		transports: Set<string> | null,
 		name: string,
+		rpId: string | null,
 	): Promise<void> {
-		return this.authRepo.createWebAuthnCredential(userId, credentialId, publicKey, counter, transports, name);
+		return this.authRepo.createWebAuthnCredential(userId, credentialId, publicKey, counter, transports, name, rpId);
 	}
 
 	async updateWebAuthnCredentialCounter(userId: UserID, credentialId: string, counter: bigint): Promise<void> {
@@ -421,6 +405,10 @@ export class UserRepository implements IUserRepositoryAggregate {
 
 	async updateWebAuthnCredentialName(userId: UserID, credentialId: string, name: string): Promise<void> {
 		return this.authRepo.updateWebAuthnCredentialName(userId, credentialId, name);
+	}
+
+	async setWebAuthnCredentialSupersededBy(userId: UserID, credentialId: string, supersededBy: string): Promise<void> {
+		return this.authRepo.setWebAuthnCredentialSupersededBy(userId, credentialId, supersededBy);
 	}
 
 	async deleteWebAuthnCredential(userId: UserID, credentialId: string): Promise<void> {

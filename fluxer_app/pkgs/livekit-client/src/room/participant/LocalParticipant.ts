@@ -108,6 +108,7 @@ import {
 	isWeb,
 	selectPreferredVideoCodec,
 	sleep,
+	stopTransceiversForSender,
 	supportsVideoCodec,
 	usesLegacySVCEncodings,
 } from '../utils.ts';
@@ -121,6 +122,11 @@ import {
 	getDefaultDegradationPreference,
 } from './publishUtils.ts';
 import type RemoteParticipant from './RemoteParticipant.ts';
+
+function hasSingleRidlessEncoding(track: LocalVideoTrack): boolean {
+	const encodings = track.sender?.getParameters().encodings;
+	return encodings?.length === 1 && !encodings[0].rid;
+}
 
 export default class LocalParticipant extends Participant {
 	override audioTrackPublications: Map<string, LocalTrackPublication>;
@@ -436,8 +442,9 @@ export default class LocalParticipant extends Participant {
 		enabled: boolean,
 		options?: ScreenShareCaptureOptions,
 		publishOptions?: TrackPublishOptions,
+		audioPublishOptions?: TrackPublishOptions,
 	): Promise<LocalTrackPublication | undefined> {
-		return this.setTrackEnabled(Track.Source.ScreenShare, enabled, options, publishOptions);
+		return this.setTrackEnabled(Track.Source.ScreenShare, enabled, options, publishOptions, audioPublishOptions);
 	}
 
 	async setE2EEEnabled(enabled: boolean) {
@@ -474,12 +481,14 @@ export default class LocalParticipant extends Participant {
 		enabled: boolean,
 		options?: ScreenShareCaptureOptions,
 		publishOptions?: TrackPublishOptions,
+		audioPublishOptions?: TrackPublishOptions,
 	): Promise<LocalTrackPublication | undefined>;
 	private async setTrackEnabled(
 		source: Track.Source,
 		enabled: true,
 		options?: VideoCaptureOptions | AudioCaptureOptions | ScreenShareCaptureOptions,
 		publishOptions?: TrackPublishOptions,
+		audioPublishOptions?: TrackPublishOptions,
 	) {
 		this.log.debug('setTrackEnabled', {source, enabled});
 		if (this.republishPromise) {
@@ -548,7 +557,12 @@ export default class LocalParticipant extends Participant {
 					for (const localTrack of localTracks) {
 						this.log.info('publishing track', getLogContextFromTrack(localTrack));
 
-						publishPromises.push(this.publishTrack(localTrack, publishOptions));
+						publishPromises.push(
+							this.publishTrack(
+								localTrack,
+								audioPublishOptions && isAudioTrack(localTrack) ? audioPublishOptions : publishOptions,
+							),
+						);
 					}
 					const publishedTracks = await Promise.all(publishPromises);
 
@@ -1421,17 +1435,15 @@ export default class LocalParticipant extends Participant {
 		const trackSender = track.sender;
 		track.sender = undefined;
 		if (this.engine.pcManager && this.engine.pcManager.currentState < PCTransportState.FAILED && trackSender) {
+			const publisher = this.engine.pcManager.publisher;
 			try {
-				for (const transceiver of this.engine.pcManager.publisher.getTransceivers()) {
-					if (transceiver.sender === trackSender) {
-						transceiver.direction = 'inactive';
-						negotiationNeeded = true;
-					}
-				}
 				try {
 					negotiationNeeded = this.engine.removeTrack(trackSender);
 				} catch (e) {
 					this.log.warn(e);
+					negotiationNeeded = true;
+				}
+				if (stopTransceiversForSender(publisher.getTransceivers(), trackSender)) {
 					negotiationNeeded = true;
 				}
 
@@ -1439,9 +1451,12 @@ export default class LocalParticipant extends Participant {
 					for (const [, trackInfo] of track.simulcastCodecs) {
 						if (trackInfo.sender) {
 							try {
-								negotiationNeeded = this.engine.removeTrack(trackInfo.sender);
+								negotiationNeeded = this.engine.removeTrack(trackInfo.sender) || negotiationNeeded;
 							} catch (e) {
 								this.log.warn(e);
+								negotiationNeeded = true;
+							}
+							if (stopTransceiversForSender(publisher.getTransceivers(), trackInfo.sender)) {
 								negotiationNeeded = true;
 							}
 							trackInfo.sender = undefined;
@@ -1771,7 +1786,14 @@ export default class LocalParticipant extends Participant {
 		if (!pub.videoTrack) {
 			return;
 		}
-		const newCodecs = await pub.videoTrack.setPublishingCodecs(update.subscribedCodecs);
+		let subscribedCodecs = update.subscribedCodecs;
+		if (hasSingleRidlessEncoding(pub.videoTrack)) {
+			subscribedCodecs = subscribedCodecs.filter((codec) => codec.qualities.some((quality) => quality.enabled));
+			if (subscribedCodecs.length === 0) {
+				return;
+			}
+		}
+		const newCodecs = await pub.videoTrack.setPublishingCodecs(subscribedCodecs);
 		for await (const codec of newCodecs) {
 			if (isBackupCodec(codec)) {
 				this.log.debug(`publish ${codec} for ${pub.videoTrack.sid}`, getLogContextFromTrack(pub));

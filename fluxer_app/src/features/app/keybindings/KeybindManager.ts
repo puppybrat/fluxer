@@ -1163,6 +1163,11 @@ class KeybindManager {
 			return false;
 		}
 		this.globalKeyHookStarted = true;
+		if (NativePermission.isLinuxWaylandDesktop) {
+			void NativePermission.recheckLinuxInputAccess().then((status) => {
+				if (status === 'blocked') NativePermission.requestLinuxInputAccessNagbar(reason);
+			});
+		}
 		const keyEventUnsub = electronApi.onGlobalKeyEvent?.((event) => {
 			this.handleGlobalKeyEvent(
 				event as {

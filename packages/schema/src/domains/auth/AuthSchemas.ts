@@ -6,7 +6,7 @@ import {
 	WebAuthnAuthenticationResponse,
 	WebAuthnRegistrationResponse,
 } from '@fluxer/schema/src/domains/auth/WebAuthnSchemas';
-import {UserPartialResponse} from '@fluxer/schema/src/domains/user/UserResponseSchemas';
+import {UserPartialResponse, UserPrivateResponse} from '@fluxer/schema/src/domains/user/UserResponseSchemas';
 import {
 	createNamedStringLiteralUnion,
 	createStringType,
@@ -170,6 +170,7 @@ const AuthMfaRequiredResponse = z.object({
 	allowed_methods: z.array(z.string()).max(10).describe('List of allowed MFA methods'),
 	totp: z.boolean().describe('Whether TOTP authenticator MFA is available'),
 	webauthn: z.boolean().describe('Whether WebAuthn security key MFA is available'),
+	backup_codes: z.boolean().describe('Whether the account has at least one unconsumed backup code'),
 });
 
 export const AuthLoginResponse = z.union([AuthTokenWithUserIdResponse, AuthMfaRequiredResponse]);
@@ -440,9 +441,7 @@ const PhoneSendVerificationInboundChallengeResponse = z.object({
 	challenge_code: createStringType(4, 12).describe('The numeric code the user must text to our number'),
 	our_number: createStringType(4, 32).describe('The Twilio number the user must text the code to (E.164)'),
 	expires_at: z.iso.datetime().describe('ISO 8601 timestamp when this inbound challenge expires'),
-	reason: z
-		.enum(['voip', 'canadian', 'unknown_line_type', 'expensive_destination', 'account_forced', 'behavioural_risk'])
-		.describe('Why inbound verification is required'),
+	reason: z.enum(['verification_required']).describe('Always verification_required'),
 });
 
 export const PhoneSendVerificationResponse = z.union([
@@ -470,6 +469,7 @@ export const WebAuthnCredentialResponse = z.object({
 	name: z.string().describe('User-assigned name for the credential'),
 	created_at: z.string().describe('When the credential was registered'),
 	last_used_at: z.string().nullable().describe('When the credential was last used'),
+	rp_id: z.string().describe('Relying party ID the passkey belongs to'),
 });
 
 export type WebAuthnCredentialResponse = z.infer<typeof WebAuthnCredentialResponse>;
@@ -500,10 +500,29 @@ export const WebAuthnCredentialUpdateRequest = z
 
 export type WebAuthnCredentialUpdateRequest = z.infer<typeof WebAuthnCredentialUpdateRequest>;
 
+export const WebAuthnTwoFactorRequest = z
+	.object({
+		enabled: z.boolean().describe('Whether registered passkeys count as a second factor when logging in'),
+	})
+	.extend(SudoVerificationSchema.shape);
+
+export type WebAuthnTwoFactorRequest = z.infer<typeof WebAuthnTwoFactorRequest>;
+
+export const WebAuthnTwoFactorResponse = z.object({
+	user: UserPrivateResponse.describe('The updated account'),
+	backup_codes: z
+		.array(MfaBackupCodeResponse)
+		.nullable()
+		.describe('Backup codes minted by this call, or null when none were minted'),
+});
+
+export type WebAuthnTwoFactorResponse = z.infer<typeof WebAuthnTwoFactorResponse>;
+
 export const SudoMfaMethodsResponse = z.object({
 	totp: z.boolean().describe('Whether TOTP is enabled'),
-	webauthn: z.boolean().describe('Whether WebAuthn is enabled'),
-	has_mfa: z.boolean().describe('Whether any MFA method is enabled'),
+	webauthn: z.boolean().describe('Whether the account has at least one registered WebAuthn credential'),
+	backup_codes: z.boolean().describe('Whether the account has at least one unconsumed backup code'),
+	has_mfa: z.boolean().describe('Whether the account can satisfy a sudo mode challenge'),
 });
 
 export type SudoMfaMethodsResponse = z.infer<typeof SudoMfaMethodsResponse>;

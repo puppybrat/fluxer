@@ -561,6 +561,10 @@ export default abstract class LocalTrack<TrackKind extends Track.Kind = Track.Ki
 		);
 
 	private debouncedTrackMuteHandler = debounce(async () => {
+		if (this.source === Track.Source.ScreenShare) {
+			this.log.debug('screen share capture went idle, keeping upstream published', this.logContext);
+			return;
+		}
 		await this.pauseUpstream();
 	}, 5000);
 

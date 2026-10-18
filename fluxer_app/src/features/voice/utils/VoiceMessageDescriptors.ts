@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+	resolveEffectiveScreenShareDimensions,
+	type ScreenShareTarget,
+} from '@app/features/voice/utils/ScreenShareOptions';
+import {
 	getVoiceAudioDeviceMetadata,
 	type VoiceAudioDefaultDevicePlatform,
 } from '@app/features/voice/utils/VoiceDeviceManager';
@@ -328,3 +332,34 @@ export const VOICE_CALL_E2EE_BROKEN_DESCRIPTOR = msg({
 	comment:
 		'Pre-join indicator shown beneath the Join button on a DM or group DM call where at least one connected participant (typically an outdated bot) does not support E2EE.',
 });
+
+export const SCREEN_SHARE_STATUS_SOURCE_RESOLUTION_DESCRIPTOR = msg({
+	message: 'Source',
+	comment:
+		'Screen share resolution token in the stream info pill on the sharing tile, used when the person asked for the original source resolution and the app does not know the source size. Matches the Source option in the stream settings menu.',
+});
+
+const RESOLUTION_LABEL_HEIGHTS = [480, 720, 1080, 1440, 2160];
+const RESOLUTION_LABEL_ASPECT = 16 / 9;
+const RESOLUTION_LABEL_ASPECT_TOLERANCE = 0.01;
+
+export function formatScreenShareResolutionLabel(width: number, height: number): string {
+	const matchesAspect = Math.abs(width / height / RESOLUTION_LABEL_ASPECT - 1) <= RESOLUTION_LABEL_ASPECT_TOLERANCE;
+	if (matchesAspect && RESOLUTION_LABEL_HEIGHTS.includes(height)) {
+		return `${height}p`;
+	}
+	return `${width}×${height}`;
+}
+
+const SCREEN_SHARE_SOURCE_BOX = resolveEffectiveScreenShareDimensions('source', null);
+
+export function formatScreenShareTargetLabel(i18n: I18n, target: ScreenShareTarget): string {
+	if (
+		target.resolution === 'source' &&
+		target.width === SCREEN_SHARE_SOURCE_BOX.width &&
+		target.height === SCREEN_SHARE_SOURCE_BOX.height
+	) {
+		return i18n._(SCREEN_SHARE_STATUS_SOURCE_RESOLUTION_DESCRIPTOR);
+	}
+	return formatScreenShareResolutionLabel(target.width, target.height);
+}

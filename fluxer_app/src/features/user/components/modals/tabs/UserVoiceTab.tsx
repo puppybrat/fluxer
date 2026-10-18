@@ -33,7 +33,7 @@ import {useMediaPermission} from '@app/features/user/components/modals/tabs/hook
 import styles from '@app/features/user/components/modals/tabs/UserVoiceTab.module.css';
 import * as VoiceSettingsCommands from '@app/features/voice/commands/VoiceSettingsCommands';
 import MediaEngine from '@app/features/voice/engine/MediaEngineFacade';
-import VoiceSettings from '@app/features/voice/state/VoiceSettings';
+import type VoiceSettings from '@app/features/voice/state/VoiceSettings';
 import {
 	type ExternalAudioProcessorMatch,
 	findExternalProcessorForDevice,
@@ -209,10 +209,7 @@ export const VoiceTab: React.FC<VoiceTabProps> = observer(({voiceSettings, autoR
 		inputVolume,
 		outputVolume,
 		echoCancellation,
-		noiseSuppression,
 		autoGainControl,
-		deepFilterNoiseSuppression,
-		deepFilterNoiseSuppressionLevel,
 		vadThreshold,
 		vadAutoSensitivity,
 	} = voiceSettings;
@@ -445,6 +442,17 @@ export const VoiceTab: React.FC<VoiceTabProps> = observer(({voiceSettings, autoR
 			data-flx="user.voice-tab.render-auto-gain-control-switch.switch.update-auto-gain-control"
 		/>
 	);
+	const renderStereoMicrophoneSwitch = (dataFlx: string) =>
+		stereoMicrophoneAvailable && (
+			<Switch
+				label={i18n._(STEREO_MICROPHONE_DESCRIPTOR)}
+				description={i18n._(STEREO_MICROPHONE_DESCRIPTION_DESCRIPTOR)}
+				value={isStereoMicrophoneEnabled()}
+				onChange={(value) => VoiceSettingsCommands.update({stereoMicrophone: value})}
+				ariaLabel={i18n._(STEREO_MICROPHONE_DESCRIPTOR)}
+				data-flx={dataFlx}
+			/>
+		);
 	const renderCustomProfile = () => (
 		<div className={styles.profileSubSection} data-flx="user.voice-tab.render-custom-profile.profile-sub-section">
 			{renderPttControls()}
@@ -496,18 +504,7 @@ export const VoiceTab: React.FC<VoiceTabProps> = observer(({voiceSettings, autoR
 				dataFlx="user.voice-tab.render-custom-profile.select.set-noise-suppression-method"
 				data-flx="user.user-voice-tab.render-custom-profile.compact-combobox-row.set-noise-suppression-method"
 			/>
-			{stereoMicrophoneAvailable && (
-				<Switch
-					label={i18n._(STEREO_MICROPHONE_DESCRIPTOR)}
-					description={i18n._(STEREO_MICROPHONE_DESCRIPTION_DESCRIPTOR)}
-					value={isStereoMicrophoneEnabled()}
-					onChange={(value) => {
-						VoiceSettings.stereoMicrophone = value;
-					}}
-					ariaLabel={i18n._(STEREO_MICROPHONE_DESCRIPTOR)}
-					data-flx="user.voice-tab.render-custom-profile.switch.set-stereo-microphone"
-				/>
-			)}
+			{renderStereoMicrophoneSwitch('user.voice-tab.render-custom-profile.switch.set-stereo-microphone')}
 			<Switch
 				label={i18n._(VOICE_ECHO_CANCELLATION_DESCRIPTOR)}
 				value={echoCancellation}
@@ -669,6 +666,11 @@ export const VoiceTab: React.FC<VoiceTabProps> = observer(({voiceSettings, autoR
 								{renderAutoGainControlSwitch()}
 							</div>
 						)}
+						{voiceProcessingMode === 'studio' && stereoMicrophoneAvailable && (
+							<div className={styles.profileSubSection} data-flx="user.voice-tab.studio-profile-sub-section">
+								{renderStereoMicrophoneSwitch('user.voice-tab.studio-profile.switch.set-stereo-microphone')}
+							</div>
+						)}
 						{voiceProcessingMode === 'studio' && pttCombo?.key && isPushToTalk && (
 							<WarningAlert data-flx="user.voice-tab.warning-alert--2">
 								<Trans>Push-to-talk is ignored in direct input. Switch to focused voice or custom to use it.</Trans>
@@ -686,10 +688,7 @@ export const VoiceTab: React.FC<VoiceTabProps> = observer(({voiceSettings, autoR
 						inputVolume,
 						outputVolume,
 						echoCancellation,
-						noiseSuppression,
 						autoGainControl,
-						deepFilterNoiseSuppression,
-						deepFilterNoiseSuppressionLevel,
 						voiceProcessingMode,
 					}}
 					data-flx="user.voice-tab.mic-test-section"

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+#![recursion_limit = "256"]
+
 use axum::{
     Json, Router,
     body::{Body, to_bytes},
@@ -464,7 +466,7 @@ async fn mutating_admin_pages_render_usable_csrf_tokens() {
             &[
                 "/instance-config?action=update_gateway_rollout",
                 "/instance-config?action=update_sso",
-                "/instance-config?action=update_voice_noise_suppression",
+                "/instance-config?action=update_domain_migration",
                 "/instance-config?action=update_experiment_delivery",
             ][..],
         ),
@@ -816,6 +818,9 @@ async fn spawn_mock_api() -> String {
 
 async fn mock_api(method: Method, uri: Uri) -> Response {
     let path = uri.path().to_owned();
+    if method == Method::PATCH && path == "/admin/instance/config" {
+        return json_response(instance_config());
+    }
     match (method, path.as_str()) {
         (Method::GET, "/admin/users/@me") => json_response(json!({ "user": admin_user() })),
         (Method::GET, "/admin/api-keys") => json_response(json!([])),
@@ -951,6 +956,9 @@ fn user(id: &str, username: &str) -> Value {
         "pending_bulk_message_deletion_at": null,
         "deletion_reason_code": null,
         "deletion_public_reason": null,
+        "deletion_audit_log_reason": null,
+        "deletion_scheduled_by": null,
+        "deletion_scheduled_at": null,
         "last_active_at": null,
         "last_active_ip": null,
         "last_active_ip_reverse": null,
@@ -1175,27 +1183,15 @@ fn instance_config() -> Value {
             "max_concurrent_guild_starts": 16,
             "voice_e2ee_scope": "guild_feature_only"
         },
-        "voice_noise_suppression": {
+        "domain_migration": {
             "enabled": false,
             "config_version": 0,
-            "default_backend": "standard",
-            "enabled_backends": [
-                "none",
-                "standard",
-                "gate",
-                "speex",
-                "rnnoise",
-                "gtcrn",
-                "deep_filter"
-            ],
-            "allow_user_override": true,
             "rollout_basis_points": 0,
-            "rollout_salt": "voice-ns-v1",
+            "rollout_salt": "domain-migration-v1",
             "included_user_ids": [],
             "excluded_user_ids": [],
-            "guild_overrides": [],
-            "stereo_enabled": false,
-            "suppression_strength": 80
+            "anonymous_rollout_basis_points": 0,
+            "standalone_forwarding": false
         },
         "experiment_delivery": {
             "poll_interval_seconds": 300,
@@ -1302,12 +1298,10 @@ fn test_config(api_endpoint: String) -> AdminConfig {
         static_cdn_endpoint: "https://static.example.test".to_owned(),
         admin_endpoint: "https://admin.example.test".to_owned(),
         web_app_endpoint: "https://app.example.test".to_owned(),
-        kv_url: String::new(),
         oauth_client_id: "admin-client".to_owned(),
         oauth_client_secret: "admin-secret".to_owned(),
         oauth_redirect_uri: "https://admin.example.test/callback".to_owned(),
         build_version: "test".to_owned(),
-        release_channel: "test".to_owned(),
         self_hosted: false,
         proxy: ProxyConfig {
             trust_client_ip_header: false,

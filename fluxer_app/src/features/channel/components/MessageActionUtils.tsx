@@ -18,8 +18,10 @@ import * as ReactionCommands from '@app/features/messaging/commands/ReactionComm
 import * as SavedMessageCommands from '@app/features/messaging/commands/SavedMessageCommands';
 import {ForwardModal, type ForwardModalSuccess} from '@app/features/messaging/components/modals/ForwardModal';
 import type {Message} from '@app/features/messaging/models/MessagingMessage';
+import MessageEdit from '@app/features/messaging/state/MessageEdit';
+import MessageReply from '@app/features/messaging/state/MessageReply';
+import Messages from '@app/features/messaging/state/MessagingMessages';
 import SavedMessages from '@app/features/messaging/state/SavedMessages';
-import {buildRawMessageContentCopyText} from '@app/features/messaging/utils/MessageCopyTextUtils';
 import {buildMessageJumpLink} from '@app/features/messaging/utils/MessageLinkUtils';
 import {retryFailedMessage} from '@app/features/messaging/utils/MessageRetryUtils';
 import {type ReactionEmoji, toReactionEmoji} from '@app/features/messaging/utils/ReactionUtils';
@@ -93,10 +95,6 @@ export function getEffectiveContent(message: Message): string {
 		return message.messageSnapshots[0].content ?? '';
 	}
 	return '';
-}
-
-export function getCopyableMessageText(message: Message, _i18n: I18n): string {
-	return buildRawMessageContentCopyText(message);
 }
 
 export function isEmbedsSuppressed(message: Message): boolean {
@@ -327,7 +325,7 @@ export function createMessageActionHandlers(
 		onClose?.();
 	};
 	const handleCopyMessage = () => {
-		const content = getCopyableMessageText(message, i18n);
+		const content = getEffectiveContent(message);
 		if (content) {
 			TextCopyCommands.copy(i18n, content);
 			onClose?.();
@@ -531,6 +529,67 @@ export function requestMessageReply(message: Message, options?: RequestMessageRe
 	startReply(shouldMention);
 }
 
+type MessageStepDirection = -1 | 1;
+
+function findAdjacentMessage(
+	channelId: string,
+	currentMessageId: string | null,
+	direction: MessageStepDirection,
+	predicate: (message: Message) => boolean,
+): Message | null {
+	const candidates = Messages.getMessages(channelId).toArray().filter(predicate);
+	const index = currentMessageId ? candidates.findIndex((message) => message.id === currentMessageId) : -1;
+	if (index === -1) return candidates[candidates.length - 1] ?? null;
+	if (direction < 0) return candidates[Math.max(index - 1, 0)];
+	return candidates[index + 1] ?? null;
+}
+
+function isReplyCandidate(message: Message): boolean {
+	return (
+		message.state === MessageStates.SENT &&
+		message.isUserMessage() &&
+		!isClientSystemMessage(message) &&
+		!Relationships.isBlocked(message.author.id)
+	);
+}
+
+function isEditCandidate(message: Message): boolean {
+	return (
+		message.state === MessageStates.SENT &&
+		message.isUserMessage() &&
+		!isClientSystemMessage(message) &&
+		message.isCurrentUserAuthor() &&
+		!message.messageSnapshots
+	);
+}
+
+export function requestAdjacentMessageReply(channelId: string, direction: MessageStepDirection): void {
+	const current = MessageReply.getReplyingMessage(channelId)?.messageId ?? null;
+	const message = findAdjacentMessage(channelId, current, direction, isReplyCandidate);
+	if (!message) {
+		MessageCommands.stopReply(channelId);
+		return;
+	}
+	if (!getMessagePermissions(message)?.canSendMessages) return;
+	requestMessageReply(message);
+	ComponentBus.dispatch('MESSAGE_REVEAL', {channelId, messageId: message.id});
+}
+
+export function startAdjacentMessageEdit(channelId: string, direction: MessageStepDirection): void {
+	const current = MessageEdit.getEditingMessageId(channelId);
+	const message = findAdjacentMessage(channelId, current, direction, isEditCandidate);
+	if (!message) {
+		if (current) {
+			MessageCommands.stopEdit(channelId);
+			ComponentBus.dispatch('FOCUS_TEXTAREA', {channelId});
+		}
+		return;
+	}
+	if (!getMessagePermissions(message)?.canEditMessage) return;
+	MessageCommands.startEdit(channelId, message.id, message.content);
+	ComponentBus.dispatch('MESSAGE_REVEAL', {channelId, messageId: message.id});
+}
+
 interface RequestMessageForwardOptions {
 	mediaSelection?: MessageCommands.ForwardMediaSelection;
 	onForwardSuccess?: (result: ForwardModalSuccess) => void;
@@ -563,7 +622,7 @@ export function requestMessageForward(
 }
 
 export function requestCopyMessageText(message: Message, i18n: I18n): void {
-	const content = getCopyableMessageText(message, i18n);
+	const content = getEffectiveContent(message);
 	if (!content) return;
 	void TextCopyCommands.copy(i18n, content);
 }

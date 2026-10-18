@@ -65,6 +65,7 @@ interface ProcessedAttachment {
 	hasVirusDetected: boolean;
 	applyFinalObjectMetadata: boolean;
 	sourceLocalPath: string | null;
+	sniffedContentType: string | null;
 }
 
 export class AttachmentProcessingService {
@@ -213,7 +214,31 @@ export class AttachmentProcessingService {
 		let applyFinalObjectMetadata = false;
 		const clientDuration: number | null = attachment.duration ?? null;
 		const waveform: string | null = attachment.waveform ?? null;
-		const isMedia = isMediaFile(contentType);
+		const sniffedContentType = isMediaFile(contentType)
+			? null
+			: await this.sniffAttachmentMediaType({
+					index,
+					uploadFilename: attachment.upload_filename,
+					filename: attachment.filename,
+				});
+		if (sniffedContentType !== null) {
+			Logger.warn(
+				{
+					surface: 'message_attachment',
+					userId: params.uploadUserId.toString(),
+					guildId: params.guild?.id ?? null,
+					channelId: message.channelId.toString(),
+					messageId: message.id.toString(),
+					attachmentId: attachmentId.toString(),
+					uploadKey: attachment.upload_filename,
+					filename: attachment.filename,
+					filenameContentType: contentType,
+					sniffedContentType,
+				},
+				'content_moderation.attachment_type_mismatch',
+			);
+		}
+		const isMedia = isMediaFile(contentType) || sniffedContentType !== null;
 		let metadata: MediaProxyMetadataResponse | null = null;
 		if (isMedia) {
 			metadata = await this.getAttachmentMediaMetadata({
@@ -303,6 +328,7 @@ export class AttachmentProcessingService {
 					hasVirusDetected,
 					applyFinalObjectMetadata,
 					sourceLocalPath: null,
+					sniffedContentType,
 				};
 			}
 			const isAudio = contentType.startsWith('audio/');
@@ -341,6 +367,7 @@ export class AttachmentProcessingService {
 				hasVirusDetected,
 				applyFinalObjectMetadata,
 				sourceLocalPath: retainedLocalPath,
+				sniffedContentType,
 			};
 		} catch (error) {
 			if (sourceLocalPath) {
@@ -348,6 +375,27 @@ export class AttachmentProcessingService {
 			}
 			throw error;
 		}
+	}
+
+	private async sniffAttachmentMediaType(params: {
+		index: number;
+		uploadFilename: string;
+		filename: string;
+	}): Promise<string | null> {
+		const sniff = await this.mediaService.sniffUpload(params.uploadFilename);
+		if (sniff) {
+			return sniff.content_type;
+		}
+		Logger.warn(
+			{
+				context: METADATA_PROBE_DEGRADED_CONTEXT,
+				attachmentIndex: params.index,
+				uploadFilename: params.uploadFilename,
+				filename: params.filename,
+			},
+			'Attachment content sniff unavailable, storing attachment with its filename type',
+		);
+		return null;
 	}
 
 	private async getAttachmentMediaMetadata(params: {

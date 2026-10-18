@@ -34,7 +34,6 @@ const FORBIDDEN_MARKETING_WORDS = [
 ];
 
 const FORBIDDEN_TOPICS = [
-	{pattern: /mobile[- ]device/iu, reason: 'mobile notifications API does not exist in the live era'},
 	{pattern: /push subscription/iu, reason: 'push API does not exist in the live era'},
 	{pattern: /\/push\/events/u, reason: 'push events API does not exist in the live era'},
 	{pattern: /voice[- ]public[- ]key/iu, reason: 'voice connection API does not exist in the live era'},
@@ -271,11 +270,11 @@ const ACCEPTED_TABLE_FINDINGS = new Map<string, Readonly<Partial<Record<TableRul
 	['admin-api/bulk-jobs.mdx', {'table-fit': 1}],
 	['admin-api/discovery.mdx', {'table-identifier': 1}],
 	['admin-api/guilds.mdx', {'table-identifier': 3}],
-	['admin-api/index.mdx', {'table-fit': 1, 'table-identifier': 3}],
-	['admin-api/instance.mdx', {'table-fit': 1, 'table-identifier': 5}],
+	['admin-api/index.mdx', {'table-identifier': 3}],
+	['admin-api/instance.mdx', {'table-identifier': 8}],
 	['admin-api/messages.mdx', {'table-identifier': 1}],
 	['admin-api/reports.mdx', {'table-fit': 1, 'table-identifier': 2}],
-	['admin-api/users.mdx', {'table-fit': 1, 'table-identifier': 1}],
+	['admin-api/users.mdx', {'table-fit': 1, 'table-identifier': 3}],
 	['admin-api/voice.mdx', {'table-identifier': 3}],
 	['gateway/event-filtering.md', {'table-cell': 2}],
 	['gateway/events.md', {'table-identifier': 1}],
@@ -299,7 +298,7 @@ const ACCEPTED_TABLE_FINDINGS = new Map<string, Readonly<Partial<Record<TableRul
 	['http-api/guild-moderation.mdx', {'table-cell': 1}],
 	['http-api/guild-stickers.mdx', {'table-cell': 3}],
 	['http-api/guilds.mdx', {'table-fit': 1, 'table-identifier': 4}],
-	['http-api/instance.mdx', {'table-identifier': 5}],
+	['http-api/instance.mdx', {'table-identifier': 6}],
 	['http-api/invites.mdx', {'table-cell': 6}],
 	['http-api/messages.mdx', {'table-fit': 1, 'table-cell': 20}],
 	['http-api/permissions.mdx', {'table-cell': 8}],

@@ -19,10 +19,13 @@ import {
 	getBadgeCount,
 	getPushNotificationClientState,
 	isNotificationClearPayload,
+	isPushNotificationReadThrough,
 	matchesPushChannelNotification,
 	normalizePushPayload,
 	resolvePushChannelId,
+	resolvePushMessageId,
 	resolvePushNotificationTag,
+	shouldRenotifyPushNotification,
 	shouldSilenceNonMobilePushNotification,
 } from '@app/features/platform/service_worker/WorkerPushPayload';
 
@@ -214,7 +217,21 @@ const closePushNotifications = async (tag: string | undefined): Promise<number> 
 		return 0;
 	}
 };
-const closePushNotificationsForChannel = async (channelId: string): Promise<number> => {
+const getShownPushNotifications = async (tag: string): Promise<ReadonlyArray<Notification>> => {
+	if (typeof self.registration.getNotifications !== 'function') {
+		return [];
+	}
+	try {
+		return await self.registration.getNotifications({tag});
+	} catch (error) {
+		await log('error', 'push: failed to read shown notifications', {tag, error: describeError(error)});
+		return [];
+	}
+};
+const closePushNotificationsForChannel = async (
+	channelId: string,
+	readThroughMessageId: string | undefined,
+): Promise<number> => {
 	if (typeof self.registration.getNotifications !== 'function') {
 		return 0;
 	}
@@ -222,7 +239,10 @@ const closePushNotificationsForChannel = async (channelId: string): Promise<numb
 		const notifications = await self.registration.getNotifications();
 		let closedCount = 0;
 		for (const notification of notifications) {
-			if (matchesPushChannelNotification(notification, channelId)) {
+			if (
+				matchesPushChannelNotification(notification, channelId) &&
+				isPushNotificationReadThrough(notification, readThroughMessageId)
+			) {
 				notification.close();
 				closedCount++;
 			}
@@ -327,7 +347,7 @@ self.addEventListener('push', (event: PushEvent) => {
 			if (isNotificationClearPayload(payload)) {
 				const channelId = resolvePushChannelId(payload);
 				const closedCount = channelId
-					? await closePushNotificationsForChannel(channelId)
+					? await closePushNotificationsForChannel(channelId, resolvePushMessageId(payload))
 					: await closePushNotifications(tag);
 				await updateAppBadge(badgeCount);
 				await log('info', 'push clear received', {tag, channelId, closedCount, badgeCount});
@@ -347,6 +367,9 @@ self.addEventListener('push', (event: PushEvent) => {
 				})) as ReadonlyArray<WindowClient>;
 				clientState = getPushNotificationClientState(clientList);
 			} catch {}
+			const renotify =
+				tag !== undefined &&
+				shouldRenotifyPushNotification(resolvePushMessageId(payload), await getShownPushNotifications(tag));
 			const options: NotificationOptions & {
 				renotify?: boolean;
 			} = {
@@ -355,7 +378,7 @@ self.addEventListener('push', (event: PushEvent) => {
 				badge: payload.badge ?? undefined,
 				data: payload.data ?? undefined,
 				tag,
-				renotify: tag !== undefined,
+				renotify,
 				...getNotificationAlertOptions({
 					mobileOrTablet: isMobileOrTabletUserAgent(workerNavigator.userAgent, workerNavigator.maxTouchPoints ?? 0),
 					silentOnNonMobile: shouldSilenceNonMobilePushNotification(clientState),
@@ -365,6 +388,7 @@ self.addEventListener('push', (event: PushEvent) => {
 				title,
 				hasBody: Boolean(payload.body),
 				tag,
+				renotify,
 				hasData: payload.data !== undefined,
 				badgeCount,
 				hasWindowClient: clientState.hasWindowClient,
@@ -433,7 +457,7 @@ const fetchInstanceConfig = async (): Promise<{
 	vapidKey: string | null;
 } | null> => {
 	try {
-		const res = await fetch('/.well-known/fluxer', {credentials: 'include'});
+		const res = await fetch('/api/.well-known/fluxer', {credentials: 'include'});
 		if (!res.ok) return null;
 		const data = (await res.json()) as {
 			endpoints?: {

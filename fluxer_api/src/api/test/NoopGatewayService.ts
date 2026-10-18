@@ -19,6 +19,7 @@ import {GuildMemberRepository} from '@app/api/guild/repositories/GuildMemberRepo
 import {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import {GuildRoleRepository} from '@app/api/guild/repositories/GuildRoleRepository';
 import {
+	type CallCaller,
 	type CallData,
 	type GatewayChannelMention,
 	type GatewayGuildMemoryStats,
@@ -794,12 +795,6 @@ export class NoopGatewayService extends IGatewayService {
 
 	async dispatchPresence(_params: {userId: UserID; event: GatewayDispatchEvent; data: unknown}): Promise<void> {}
 
-	async invalidatePushBadgeCount(_params: {userId: UserID}): Promise<void> {}
-
-	async invalidatePushBadgeCounts(_params: {userIds: Array<UserID>}): Promise<void> {}
-
-	async invalidatePushSubscriptions(_params: {userId: UserID}): Promise<void> {}
-
 	async clearPushChannelNotifications(_params: {
 		userId: UserID;
 		channelId: ChannelID;
@@ -925,6 +920,7 @@ export class NoopGatewayService extends IGatewayService {
 		_region: string,
 		_ringing: Array<string>,
 		_recipients: Array<string>,
+		_caller?: CallCaller,
 	): Promise<CallData> {
 		return {
 			channel_id: _channelId.toString(),
@@ -940,7 +936,7 @@ export class NoopGatewayService extends IGatewayService {
 		return true;
 	}
 
-	async ringCallRecipients(_channelId: ChannelID, _recipients: Array<string>): Promise<boolean> {
+	async ringCallRecipients(_channelId: ChannelID, _recipients: Array<string>, _caller?: CallCaller): Promise<boolean> {
 		return true;
 	}
 

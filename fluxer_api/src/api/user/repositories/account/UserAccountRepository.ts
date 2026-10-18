@@ -3,6 +3,7 @@
 import type {UserID} from '@app/api/BrandedTypes';
 import {Db, type DbOp} from '@app/api/database/CassandraTypes';
 import type {UserRow} from '@app/api/database/types/UserTypes';
+import {Logger} from '@app/api/Logger';
 import {User} from '@app/api/models/User';
 import {
 	UserDataRepository,
@@ -96,7 +97,12 @@ export class UserAccountRepository {
 			return updatedUser;
 		} catch (error) {
 			if (!dataCommitted && emailClaim) {
-				await this.emailOwnershipRepo.abortEmailClaim(emailClaim);
+				await this.emailOwnershipRepo.abortEmailClaim(emailClaim).catch((abortError: unknown) => {
+					Logger.warn(
+						{userId: userId.toString(), abortError},
+						'Failed to abort the email claim of a user write that did not commit',
+					);
+				});
 			}
 			throw error;
 		}
@@ -106,8 +112,25 @@ export class UserAccountRepository {
 		return this.patchAccount(userId, patchData, oldData);
 	}
 
+	async compareAndSetSuspiciousFlags(user: User, suspiciousFlags: number): Promise<User | null> {
+		const result = await this.dataRepo.compareAndSetSuspiciousFlags(user, suspiciousFlags);
+		if (!result) return null;
+		const updatedUser = new User(result.updatedData);
+		await this.searchRepo.updateUser(updatedUser);
+		return updatedUser;
+	}
+
 	async updateDeletionSchedule(user: User, patch: UserDeletionScheduleUpdate): Promise<User> {
-		return this.patchAccount(user.id, patch, user.toRow(), 'schedule');
+		return this.patchAccount(
+			user.id,
+			{
+				...patch,
+				deletion_scheduled_by: patch.deletion_scheduled_by ?? null,
+				deletion_scheduled_at: patch.deletion_scheduled_at ?? null,
+			},
+			user.toRow(),
+			'schedule',
+		);
 	}
 
 	async startDeletion(userId: UserID, pendingDeletionAt: Date): Promise<User | null> {

@@ -122,8 +122,17 @@ const videoCodecMimeTypes: Record<VideoCodec, Array<string>> = {
 	vp9: ['video/vp9'],
 	vp8: ['video/vp8'],
 };
-const h264OpenH264ProfileLevelId = '42e01f';
-const h264PreferredHardwareProfileLevelIds = new Set(['42001f']);
+const h264ProfileRanks = new Map([
+	['6400', 0],
+	['640c', 1],
+	['42e0', 2],
+	['4d00', 3],
+	['4200', 4],
+]);
+const h264UnrankedProfileScore = 5;
+const h264MissingProfileScore = 6;
+const h264NonHardwareProfilePenalty = 8;
+const h264PacketizationMode0Score = 20;
 type RtpCodecCapability = RTCRtpCapabilities['codecs'][number] & {sdpFmtpLine?: string};
 
 enum PCState {
@@ -242,6 +251,8 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 
 	private transportConnectingSince?: number;
 
+	private pendingNegotiationAborts = new Set<() => void>();
+
 	constructor(private options: InternalRoomOptions) {
 		super();
 		this.log = getLogger(options.loggerName ?? LoggerNames.Engine, () => this.logContext);
@@ -278,6 +289,14 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 		this.client.onRequestResponse = (response) => this.emit(EngineEvent.SignalRequestResponse, response);
 		this.client.onParticipantUpdate = (updates) => this.emit(EngineEvent.ParticipantUpdate, updates);
 		this.client.onJoined = (joinResponse) => this.emit(EngineEvent.Joined, joinResponse);
+
+		const abortPendingNegotiations = () => {
+			for (const abort of Array.from(this.pendingNegotiationAborts)) {
+				abort();
+			}
+		};
+		this.on(EngineEvent.Closing, abortPendingNegotiations);
+		this.on(EngineEvent.Restarting, abortPendingNegotiations);
 	}
 
 	get logContext() {
@@ -1033,8 +1052,14 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 		if (typeof RTCRtpSender === 'undefined' || typeof RTCRtpSender.getCapabilities !== 'function') return;
 		const capabilities = RTCRtpSender.getCapabilities('video');
 		if (!capabilities) return;
-		const preferences = selectPublisherCodecPreferences(codec, capabilities.codecs);
-		if (preferences.length === 0) return;
+		const preferences = selectPublisherCodecPreferences(codec, capabilities.codecs, this.options.h264HardwareProfiles);
+		if (preferences.length === 0) {
+			this.log.warn('sender cannot encode the requested codec, leaving the browser order in place', {
+				...this.logContext,
+				codec,
+			});
+			return;
+		}
 		try {
 			transceiver.setCodecPreferences(preferences);
 		} catch (error) {
@@ -1553,7 +1578,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 			}
 
 			this.pcManager.requirePublisher();
-			if (this.pcManager.publisher.getTransceivers().length === 0 && !this.dataChannels.hasPublisherChannels) {
+			if (!this.dataChannels.hasPublisherChannels) {
 				this.createDataChannels();
 			}
 
@@ -1569,8 +1594,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 			if (this.isClosed) {
 				reject(new NegotiationError('cannot negotiate on closed engine'));
 			}
-			this.on(EngineEvent.Closing, handleClosed);
-			this.on(EngineEvent.Restarting, handleClosed);
+			this.pendingNegotiationAborts.add(handleClosed);
 			this.pcManager.publisher.off(PCEvents.RTPVideoPayloadTypes, this.onRtpMapAvailable);
 			this.pcManager.publisher.once(PCEvents.RTPVideoPayloadTypes, this.onRtpMapAvailable);
 
@@ -1592,8 +1616,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 					reject(new Error(String(e)));
 				}
 			} finally {
-				this.off(EngineEvent.Closing, handleClosed);
-				this.off(EngineEvent.Restarting, handleClosed);
+				this.pendingNegotiationAborts.delete(handleClosed);
 			}
 		});
 	}
@@ -1803,19 +1826,30 @@ function getFmtpParameter(sdpFmtpLine: string | undefined, key: string): string 
 	return null;
 }
 
-function getH264PublisherCodecScore(codec: RtpCodecCapability): number {
+function getH264PublisherCodecScore(
+	codec: RtpCodecCapability,
+	hardwareProfiles: ReadonlySet<string> | undefined,
+): number {
 	const profileLevelId = getFmtpParameter(codec.sdpFmtpLine, 'profile-level-id');
 	const packetizationMode = getFmtpParameter(codec.sdpFmtpLine, 'packetization-mode');
-	const packetizationScore = packetizationMode === '1' ? 0 : 1;
-	if (profileLevelId && h264PreferredHardwareProfileLevelIds.has(profileLevelId)) return packetizationScore;
-	if (profileLevelId === h264OpenH264ProfileLevelId) return 10 + packetizationScore;
-	if (profileLevelId) return 20 + packetizationScore;
-	return 30 + packetizationScore;
+	const packetizationScore = packetizationMode === '1' ? 0 : h264PacketizationMode0Score;
+	if (!profileLevelId) return packetizationScore + h264MissingProfileScore;
+	const profile = profileLevelId.slice(0, 4);
+	const isSoftwareOnly = hardwareProfiles !== undefined && hardwareProfiles.size > 0 && !hardwareProfiles.has(profile);
+	const hardwareScore = isSoftwareOnly ? h264NonHardwareProfilePenalty : 0;
+	return packetizationScore + hardwareScore + (h264ProfileRanks.get(profile) ?? h264UnrankedProfileScore);
 }
 
-function preferHardwareH264Codecs(codecs: ReadonlyArray<RtpCodecCapability>): Array<RtpCodecCapability> {
+function preferHardwareH264Codecs(
+	codecs: ReadonlyArray<RtpCodecCapability>,
+	hardwareProfiles: ReadonlySet<string> | undefined,
+): Array<RtpCodecCapability> {
 	return codecs
-		.map((codec, index) => ({codec, index, score: getH264PublisherCodecScore(codec)}))
+		.map((codec, index) => ({
+			codec,
+			index,
+			score: getH264PublisherCodecScore(codec, hardwareProfiles),
+		}))
 		.sort((a, b) => a.score - b.score || a.index - b.index)
 		.map((entry) => entry.codec);
 }
@@ -1823,13 +1857,18 @@ function preferHardwareH264Codecs(codecs: ReadonlyArray<RtpCodecCapability>): Ar
 export function selectPublisherCodecPreferences(
 	codec: VideoCodec,
 	codecs: ReadonlyArray<RtpCodecCapability>,
+	h264HardwareProfiles?: ReadonlySet<string>,
 ): Array<RtpCodecCapability> {
 	const mimeTypes = new Set(videoCodecMimeTypes[codec]);
 	const selected = codecs.filter((entry) => mimeTypes.has(entry.mimeType.toLowerCase()));
 	if (selected.length === 0) return [];
-	const preferred = codec === 'h264' ? preferHardwareH264Codecs(selected) : selected;
-	const rtx = codecs.filter((entry) => entry.mimeType.toLowerCase() === 'video/rtx');
-	return [...preferred, ...rtx];
+	const preferred = codec === 'h264' ? preferHardwareH264Codecs(selected, h264HardwareProfiles) : selected;
+	const isH264 = (entry: RtpCodecCapability): boolean => entry.mimeType.toLowerCase() === 'video/h264';
+	const remaining = codecs.filter((entry) => !mimeTypes.has(entry.mimeType.toLowerCase()));
+	const rankedH264 = preferHardwareH264Codecs(remaining.filter(isH264), h264HardwareProfiles);
+	let nextH264 = 0;
+	const rest = remaining.map((entry) => (isH264(entry) ? rankedH264[nextH264++] : entry));
+	return [...preferred, ...rest];
 }
 
 export type EngineEventCallbacks = {

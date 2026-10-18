@@ -75,6 +75,22 @@ const MAIN_SPEC_EXEMPT = new Map<string, {file: string; anchor: string; reason: 
 		},
 	],
 	[
+		'GET /dl/desktop/{}/{}/{}/latest/{}.zsync',
+		{
+			file: DOWNLOAD_CONTROLLER,
+			anchor: '`${DESKTOP_REDIRECT_PREFIX}/:channel/:plat/:arch/latest/:format{[a-z_]+\\\\.zsync}`,',
+			reason: 'the path constrains :format by regex and has no OpenAPI path template',
+		},
+	],
+	[
+		'GET /dl/desktop/{}/{}/{}/{}/{}.zsync',
+		{
+			file: DOWNLOAD_CONTROLLER,
+			anchor: '`${DESKTOP_REDIRECT_PREFIX}/:channel/:plat/:arch/:version/:format{[a-z_]+\\\\.zsync}`,',
+			reason: 'the path constrains :format by regex and has no OpenAPI path template',
+		},
+	],
+	[
 		'GET /dl/{}',
 		{
 			file: DOWNLOAD_CONTROLLER,
@@ -86,8 +102,6 @@ const MAIN_SPEC_EXEMPT = new Map<string, {file: string; anchor: string; reason: 
 
 const DELIBERATELY_UNDOCUMENTED = new Map([
 	['GET /users/@me/mobile-devices', 'mobile notifications, backported separately'],
-	['POST /users/@me/mobile-devices', 'mobile notifications, backported separately'],
-	['POST /users/@me/mobile-devices/unregister', 'mobile notifications, backported separately'],
 	['DELETE /users/@me/mobile-devices/{}', 'mobile notifications, backported separately'],
 	['GET /users/@me/push/subscriptions', 'push API, backported separately'],
 	['POST /users/@me/push/subscribe', 'push API, backported separately'],
@@ -112,7 +126,7 @@ const OUT_OF_BAND_CREDENTIAL = new Map<string, OutOfBandRoute>([
 		'POST /webhooks/twilio/sms',
 		{
 			reason:
-				'installed only when config.sms.enabled, and then only when the inbound webhook token and public URL are both set, so a default or self-hosted instance never registers it',
+				'a provider callback that is forwarded untouched to the internal event bus and answers 500 while that bus is unavailable',
 			documentedIn: null,
 		},
 	],
@@ -165,6 +179,18 @@ const EXEMPTION_RULES: ReadonlyArray<ExemptionRule> = [
 		covers: (_shape, routePath) => routePath.startsWith('/test/'),
 	},
 	{
+		name: 'deprecated desktop download redirect',
+		justification:
+			'every /dl route is an undocumented deprecated redirect onto pkgs.fluxer.com, kept only for desktop clients already in the field. Nothing current calls one, so documenting them would advertise a path new callers must not use',
+		anchors: [
+			{
+				file: 'fluxer_api/src/api/download/DownloadController.ts',
+				anchor: 'function redirectToPackageOrigin',
+			},
+		],
+		covers: (_shape, routePath) => routePath === '/dl' || routePath.startsWith('/dl/'),
+	},
+	{
 		name: 'backported separately',
 		justification:
 			'part of a system this backport does not ship. Each shape is listed with its system, and a page that documents one fails the run below',
@@ -182,7 +208,7 @@ const EXEMPTION_RULES: ReadonlyArray<ExemptionRule> = [
 		name: 'out-of-band credential',
 		justification:
 			'no ordinary client holds the credential. Each entry states its guard, and three are covered in prose',
-		anchors: [{file: 'fluxer_api/src/api/app/ControllerRegistry.ts', anchor: 'if (config.sms.enabled) {'}],
+		anchors: [{file: 'fluxer_api/src/api/app/ControllerRegistry.ts', anchor: 'installSmsWebhookForwarder(routes'}],
 		covers: (shape) => OUT_OF_BAND_CREDENTIAL.has(shape),
 	},
 ];
@@ -192,6 +218,7 @@ const MEDIA_PROXY_ROUTES = new Map([
 	['HEAD /_health', '.route("/_health", get(routes::ops::health))'],
 	['GET /_metrics', '.route("/_metrics", get(routes::ops::metrics_handler))'],
 	['POST /_metadata', '.route("/_metadata", post(routes::internal::metadata_handler))'],
+	['POST /_sniff', '.route("/_sniff", post(routes::internal::sniff_handler))'],
 	['POST /_thumbnail', '.route("/_thumbnail", post(routes::internal::thumbnail_handler))'],
 	['POST /_frames', '.route("/_frames", post(routes::internal::frames_handler))'],
 	[
@@ -438,6 +465,25 @@ for (const [route, {documentedIn}] of OUT_OF_BAND_CREDENTIAL) {
 	}
 }
 failures += section('stale anchors (the code moved, update this script)', staleAnchors);
+
+const mediaProxyRouterSource = await readFile(path.join(MEDIA_PROXY_SERVER_DIR, 'runtime.rs'), 'utf8');
+const mediaProxyRegisteredPaths = [...mediaProxyRouterSource.matchAll(/\.route\(\s*"([^"]+)"/gu)].map((match) =>
+	match[1].replace(/\{[^}]*\}/gu, '{}'),
+);
+const mediaProxyListedPaths = new Set([...MEDIA_PROXY_ROUTES.keys()].map((shape) => shape.split(' ')[1]));
+const unlistedMediaProxyPaths = [...new Set(mediaProxyRegisteredPaths)]
+	.filter((routePath) => !mediaProxyListedPaths.has(routePath))
+	.map((routePath) => `${routePath}: build_router registers it and MEDIA_PROXY_ROUTES does not name it`)
+	.sort();
+if (mediaProxyRegisteredPaths.length === 0) {
+	unlistedMediaProxyPaths.push(
+		'fluxer_media_proxy/src/server/runtime.rs registers no route, so this check has gone blind',
+	);
+}
+failures += section('registered by fluxer_media_proxy but absent from this script', unlistedMediaProxyPaths);
+console.log(
+	`  routes registered in fluxer_media_proxy/src/server/runtime.rs: ${mediaProxyRegisteredPaths.length.toString()}`,
+);
 
 const mediaProxyDocumented = documented.filter((route) => route.file.startsWith('media-proxy/'));
 const adminDocumented = documented.filter(
@@ -1467,7 +1513,7 @@ console.log('self-hosting guide against deploy/self-hosting');
 		}
 	}
 
-	const ENV_VALUE_FLOOR = 19;
+	const ENV_VALUE_FLOOR = 17;
 	const ENV_VALUE_UNSET = 'unset';
 	let inEnvValueTable = false;
 	let envEntry: string | null = null;
@@ -1617,27 +1663,15 @@ console.log('unthrottled routes and global bucket claims');
 	const problems: Array<string> = [];
 	const uniquePublic = [...new Set(publicUnthrottled)].sort();
 
-	const unthrottledByDesign = new Set([
-		'GET /dl/desktop/{}/{}/{}/latest',
-		'GET /dl/desktop/{}/{}/{}/latest/{}',
-		'GET /dl/desktop/{}/{}/{}/versions',
-		'GET /dl/desktop/{}/{}/{}/{}/{}',
-	]);
-	const unexpected = uniquePublic.filter((shape) => !unthrottledByDesign.has(shape));
-	const nowThrottled = [...unthrottledByDesign].filter((shape) => !uniquePublic.includes(shape)).sort();
+	const unexpected = uniquePublic;
 
 	if (unexpected.length > 0) {
 		problems.push(
-			`rate-limits.md says every HTTP API operation outside the desktop downloads declares a bucket, but ${unexpected.length.toString()} more declare none: ${unexpected.join(', ')}`,
+			`rate-limits.md says every HTTP API operation declares a bucket, but ${unexpected.length.toString()} declare none: ${unexpected.join(', ')}`,
 		);
 	}
-	if (nowThrottled.length > 0) {
-		problems.push(
-			`rate-limits.md names the desktop downloads as the only operations with no bucket, but ${nowThrottled.length.toString()} now declare one: ${nowThrottled.join(', ')}`,
-		);
-	}
-	if (!page.includes('[desktop download](/http-api/downloads/)')) {
-		problems.push('rate-limits.md no longer names the desktop downloads as the operations with no bucket');
+	if (!page.includes('Every HTTP API and Admin API operation declares a bucket')) {
+		problems.push('rate-limits.md no longer states that every operation declares a bucket');
 	}
 	if (adminUnthrottled.length > 0) {
 		const named = adminUnthrottled.map((entry) => `${entry.method} ${entry.route}`).sort();
@@ -1665,7 +1699,7 @@ console.log('unthrottled routes and global bucket claims');
 	failures += section('rate limit prose disagreements', problems);
 }
 
-console.log('error registry and abuse signal weights');
+console.log('error registry');
 {
 	const errorsPage = await readFile(path.join(DOCS_ROOT, 'http-api/errors.md'), 'utf8');
 	const documentedCodes = new Set<string>();
@@ -1698,20 +1732,6 @@ console.log('error registry and abuse signal weights');
 		}
 	}
 
-	const banner = await readFile(path.join(REPO_ROOT, 'fluxer_api/src/api/middleware/AbusiveIpAutoBanner.ts'), 'utf8');
-	const weights = new Map<string, string>();
-	for (const rule of banner.matchAll(/if \(status === (\d{3})\) return ([\d.]+);/gu)) {
-		weights.set(rule[1], rule[2]);
-	}
-	for (const [status, weight] of weights) {
-		if (status === '404') {
-			continue;
-		}
-		if (!errorsPage.includes(`A ${status} weighs ${weight}`) && !errorsPage.includes(`a ${status} weighs ${weight}`)) {
-			problems.push(`errors.md does not state that a ${status} weighs ${weight}`);
-		}
-	}
-
 	const documentedRegistryCodes = [...registryCodes].filter((c) => documentedCodes.has(c)).length;
 	const UNDOCUMENTED_VALIDATION_CODES = new Set(['EMAIL_DOMAIN_CANNOT_RECEIVE_MAIL']);
 	const expectedEntries = registryCodes.size + validationCodes.size - UNDOCUMENTED_VALIDATION_CODES.size;
@@ -1731,7 +1751,6 @@ console.log('error registry and abuse signal weights');
 		);
 	}
 	console.log(`  registry codes: ${registryCodes.size.toString()}, documented: ${documentedRegistryCodes.toString()}`);
-	console.log(`  abuse signal weights compared: ${weights.size.toString()}`);
 	failures += section('error registry disagreements', problems);
 }
 

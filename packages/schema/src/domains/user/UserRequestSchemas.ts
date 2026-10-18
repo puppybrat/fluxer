@@ -75,15 +75,13 @@ export const UserUpdateRequest = z
 		bio: createStringType(1, 320).nullish().describe('User biography text (max 320 characters)'),
 		pronouns: createStringType(1, 40).nullish().describe('User pronouns (max 40 characters)'),
 		accent_color: ColorType.nullish().describe('Profile accent color as integer'),
-		timezone: createStringType(1, 128)
-			.nullish()
-			.describe('Staff-only IANA timezone identifier saved for profile local time. Ignored for non-staff users.'),
+		timezone: createStringType(1, 128).nullish().describe('IANA timezone identifier saved for profile local time'),
 		timezone_privacy_flags: createBitflagInt32Type(
 			ProfileFieldPrivacyFlags,
 			ProfileFieldPrivacyFlagsDescriptions,
 			'Bitfield controlling who can see the profile timezone',
 			'ProfileFieldPrivacyFlags',
-		).describe('Staff-only bitfield controlling who can see the profile timezone. Ignored for non-staff users.'),
+		).describe('Bitfield controlling who can see the profile timezone'),
 		premium_badge_hidden: z.boolean().describe('Whether to hide the premium badge'),
 		premium_badge_masked: z.boolean().describe('Whether to mask the premium badge'),
 		premium_badge_timestamp_hidden: z.boolean().describe('Whether to hide premium badge timestamp'),
@@ -467,6 +465,7 @@ const MobilePushPlatformSchema = createNamedStringLiteralUnion(
 	[
 		['android_fcm', 'ANDROID_FCM', 'Firebase Cloud Messaging (Android)'],
 		['ios_apns', 'IOS_APNS', 'Apple Push Notification Service (iOS)'],
+		['ios_apns_voip', 'IOS_APNS_VOIP', 'Apple PushKit VoIP push, used only to ring an incoming call (iOS)'],
 		['android_unified_push', 'ANDROID_UNIFIED_PUSH', 'UnifiedPush (Android without Google services)'],
 	],
 	'The mobile push notification platform',
@@ -481,7 +480,9 @@ const MobilePushProviderEnvironmentSchema = createNamedStringLiteralUnion(
 export const RegisterMobileDeviceRequest = z
 	.object({
 		platform: MobilePushPlatformSchema.describe('The mobile push notification platform'),
-		token: createStringType(1, 4096).describe('The platform-specific push notification token or endpoint URL'),
+		token: createStringType(1, 4096).describe(
+			'The Web Push endpoint URL when encryption keys are supplied, otherwise the raw platform push token',
+		),
 		user_agent: createStringType(1, 1024).optional().describe('The user agent string identifying the device'),
 		app_id: createStringType(1, 128)
 			.optional()
@@ -491,32 +492,47 @@ export const RegisterMobileDeviceRequest = z
 		),
 		encryption_key: createStringType(1, 1024)
 			.optional()
-			.describe('The P-256 ECDH public key for UnifiedPush encryption (base64url)'),
+			.describe('The P-256 ECDH public key for Web Push encryption (base64url)'),
 		auth_secret: createStringType(1, 1024)
 			.optional()
-			.describe('The authentication secret for UnifiedPush encryption (base64url)'),
+			.describe('The authentication secret for Web Push encryption (base64url)'),
 	})
 	.superRefine((value, ctx) => {
-		if (value.platform !== 'android_unified_push') return;
-		if (!URLType.safeParse(value.token).success) {
+		const tokenIsUrl = URLType.safeParse(value.token).success;
+		const isWebPushRegistration =
+			value.platform === 'android_unified_push' ||
+			value.platform === 'ios_apns_voip' ||
+			value.encryption_key != null ||
+			value.auth_secret != null;
+		if (!isWebPushRegistration) {
+			if (tokenIsUrl) {
+				ctx.addIssue({
+					code: 'custom',
+					path: ['token'],
+					message: 'Endpoint URL registrations require encryption_key and auth_secret',
+				});
+			}
+			return;
+		}
+		if (!tokenIsUrl) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['token'],
-				message: 'UnifiedPush registrations require a valid endpoint URL',
+				message: 'Web Push registrations require a valid endpoint URL',
 			});
 		}
 		if (!value.encryption_key) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['encryption_key'],
-				message: 'UnifiedPush registrations require encryption_key',
+				message: 'Web Push registrations require encryption_key',
 			});
 		}
 		if (!value.auth_secret) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['auth_secret'],
-				message: 'UnifiedPush registrations require auth_secret',
+				message: 'Web Push registrations require auth_secret',
 			});
 		}
 	});
@@ -525,7 +541,9 @@ export type RegisterMobileDeviceRequest = z.infer<typeof RegisterMobileDeviceReq
 
 export const UnregisterMobileDeviceRequest = z.object({
 	platform: MobilePushPlatformSchema.describe('The mobile push notification platform'),
-	token: createStringType(1, 4096).describe('The platform-specific push notification token to unregister'),
+	token: createStringType(1, 4096).describe(
+		'The Web Push endpoint URL or raw platform push token used at registration',
+	),
 	app_id: createStringType(1, 128)
 		.optional()
 		.describe('Client app channel or bundle mapping identifier, such as stable, beta, or canary'),
@@ -595,6 +613,7 @@ export const PushSubscribeRequest = z.object({
 		})
 		.describe('Encryption keys for the push subscription'),
 	user_agent: createStringType(1, 1024).optional().describe('The user agent string identifying the client'),
+	installed_app: z.boolean().optional().describe('Whether the client runs in an installed web app window'),
 });
 
 export type PushSubscribeRequest = z.infer<typeof PushSubscribeRequest>;
@@ -609,6 +628,7 @@ export const PushRotateRequest = z.object({
 		})
 		.describe('Encryption keys for the new push subscription'),
 	user_agent: createStringType(1, 1024).optional().describe('The user agent string identifying the client'),
+	installed_app: z.boolean().optional().describe('Whether the client runs in an installed web app window'),
 });
 
 export type PushRotateRequest = z.infer<typeof PushRotateRequest>;

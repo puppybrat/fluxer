@@ -13,11 +13,16 @@ import {deriveSsoRedirectUri, normalizeAndValidateSsoConfig} from '@app/api/inst
 import {requireAdminACL} from '@app/api/middleware/AdminMiddleware';
 import {RateLimitMiddleware} from '@app/api/middleware/RateLimitMiddleware';
 import {OpenAPI} from '@app/api/middleware/ResponseTypeMiddleware';
-import {getGatewayRolloutConfigPublisher, getInstanceConfigRepository} from '@app/api/middleware/ServiceSingletons';
+import {
+	getGatewayRolloutConfigPublisher,
+	getInstanceConfigRepository,
+	getPushRelayConfigPublisher,
+} from '@app/api/middleware/ServiceSingletons';
 import {RateLimitConfigs} from '@app/api/RateLimitConfig';
 import type {HonoApp, HonoEnv} from '@app/api/types/HonoEnv';
 import {Validator} from '@app/api/Validator';
 import {AdminACLs} from '@fluxer/constants/src/AdminACLs';
+import {InputValidationError} from '@fluxer/errors/src/domains/core/InputValidationError';
 import {InstancePolicyTransitionNotAllowedError} from '@fluxer/errors/src/domains/core/InstancePolicyTransitionNotAllowedError';
 import {
 	BrandingAssetUploadRequest,
@@ -30,8 +35,9 @@ import {
 	PendingRegistrationActionRequest,
 	RegistrationUrlIdParam,
 } from '@fluxer/schema/src/domains/admin/AdminSchemas';
+import {DomainMigrationConfigSchema} from '@fluxer/schema/src/domains/admin/DomainMigrationSchemas';
 import {GatewayRolloutConfigSchema} from '@fluxer/schema/src/domains/admin/GatewayRolloutSchemas';
-import {VoiceNoiseSuppressionConfigSchema} from '@fluxer/schema/src/domains/admin/VoiceNoiseSuppressionSchemas';
+import type {PushRelayConfig, PushRelayConfigUpdateRequest} from '@fluxer/schema/src/domains/admin/PushRelaySchemas';
 import {UserIdParam} from '@fluxer/schema/src/domains/common/CommonParamSchemas';
 import {ExperimentDeliveryConfigSchema} from '@fluxer/schema/src/domains/experiment/ExperimentSchemas';
 import type {InstanceBranding} from '@fluxer/schema/src/domains/instance/InstanceSchemas';
@@ -58,7 +64,9 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 	const [
 		ssoConfig,
 		gatewayRollout,
-		voiceNoiseSuppression,
+		pushRelay,
+		domainMigration,
+		captcha,
 		experimentDelivery,
 		registrationConfig,
 		registrationUrls,
@@ -66,18 +74,21 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 	] = await Promise.all([
 		instanceConfigRepository.getSsoConfig(),
 		instanceConfigRepository.getGatewayRolloutConfig(),
-		instanceConfigRepository.getVoiceNoiseSuppressionConfig(),
+		instanceConfigRepository.getPushRelayConfig(),
+		instanceConfigRepository.getDomainMigrationConfig(),
+		instanceConfigRepository.getCaptchaConfig(),
 		instanceConfigRepository.getExperimentDeliveryConfig(),
 		instanceConfigRepository.getRegistrationConfig(),
 		instanceConfigRepository.getRegistrationUrlsForAdmin(),
 		instanceConfigRepository.getPendingRegistrations(),
 	]);
-	const [appPublic, policy, resolvedServices, integrations, media] = await Promise.all([
+	const [appPublic, policy, resolvedServices, integrations, media, billing] = await Promise.all([
 		instanceConfigRepository.getAppPublicConfig(),
 		instanceConfigRepository.getInstancePolicyConfig(),
 		instanceConfigRepository.getResolvedServicesConfig(),
 		instanceConfigRepository.getInstanceIntegrationsAdminConfig(),
 		instanceConfigRepository.getInstanceMediaAdminConfig(),
+		instanceConfigRepository.getInstanceBillingAdminConfig(),
 	]);
 	return {
 		sso: {
@@ -97,7 +108,9 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 			redirect_uri: deriveSsoRedirectUri(Config.endpoints.webApp),
 		},
 		gateway_rollout: gatewayRollout,
-		voice_noise_suppression: voiceNoiseSuppression,
+		push_relay: pushRelay,
+		domain_migration: domainMigration,
+		captcha,
 		experiment_delivery: experimentDelivery,
 		registration: {
 			...registrationConfig,
@@ -117,11 +130,6 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 				youtube_enabled: policy.youtube_enabled,
 				bluesky_enabled: policy.bluesky_enabled,
 			},
-			deferred_phone_gate: {
-				enabled: policy.deferred_phone_gate_enabled,
-				window_hours: policy.deferred_phone_gate_window_hours,
-				member_threshold: policy.deferred_phone_gate_member_threshold,
-			},
 			services_resolved: resolvedServices,
 			services_available: {
 				gif: integrations.gif.effective_available,
@@ -131,6 +139,7 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 		},
 		integrations,
 		media,
+		billing,
 	};
 }
 
@@ -180,6 +189,109 @@ async function grantSetupCompleterAdminACL(ctx: Context<HonoEnv>): Promise<boole
 	ctx.set('user', updatedUser);
 	ctx.set('adminUserAcls', updatedUser.acls);
 	return true;
+}
+
+function relayConsentStamp(
+	current: PushRelayConfig,
+	patch: PushRelayConfigUpdateRequest,
+	adminUserId: string,
+): Partial<PushRelayConfig> {
+	const accepted = patch.relay_consent_accepted;
+	if (accepted === undefined || accepted === current.relay_consent_accepted) {
+		return {};
+	}
+	return accepted
+		? {relay_consent_accepted_at: new Date().toISOString(), relay_consent_accepted_by: adminUserId}
+		: {relay_consent_accepted_at: null, relay_consent_accepted_by: null};
+}
+
+function assertSelfHostedBillingSections(data: InstanceConfigUpdateRequest): void {
+	if (Config.instance.selfHosted) {
+		return;
+	}
+	if (data.billing) {
+		throw InputValidationError.create('billing', 'Billing is configured through the environment on this instance');
+	}
+	const branding = data.app_public?.branding;
+	if (!branding) {
+		return;
+	}
+	for (const field of ['premium_product_name', 'premium_info_url'] as const) {
+		if (readOptionalField(branding, field) !== undefined) {
+			throw InputValidationError.create(
+				`app_public.branding.${field}`,
+				'This setting is only available on self-hosted instances',
+			);
+		}
+	}
+}
+
+async function assertBillingCompatibleWithStoredPremiumMode(
+	billing: NonNullable<InstanceConfigUpdateRequest['billing']>,
+): Promise<void> {
+	const requestedEnabled = readOptionalField(billing, 'enabled');
+	if (requestedEnabled !== true) {
+		return;
+	}
+	const policy = await getInstanceConfigRepository().readStoredInstancePolicyConfig();
+	if (policy.premium_mode === 'everyone') {
+		throw InputValidationError.create('billing.enabled', 'Billing can only be enabled when the premium mode is mirror');
+	}
+}
+
+async function assertPremiumModeCompatibleWithStoredBilling(
+	requestedBillingEnabled: boolean | null | undefined,
+): Promise<void> {
+	if (!Config.instance.selfHosted) {
+		return;
+	}
+	const repository = getInstanceConfigRepository();
+	const [policy, billing] = await Promise.all([
+		repository.readStoredInstancePolicyConfig(),
+		repository.readStoredInstanceBillingConfig(),
+	]);
+	if (policy.premium_mode === 'everyone') {
+		return;
+	}
+	const nextEnabled = requestedBillingEnabled === undefined ? billing.enabled : requestedBillingEnabled;
+	if (nextEnabled === true) {
+		throw InputValidationError.create(
+			'policy.premium_mode',
+			'Disable billing before switching the premium mode to everyone',
+		);
+	}
+}
+
+async function assertBillingCompatibleWithPremiumMode(data: InstanceConfigUpdateRequest): Promise<void> {
+	if (!Config.instance.selfHosted) {
+		return;
+	}
+	const requestedEnabled = data.billing ? readOptionalField(data.billing, 'enabled') : undefined;
+	const requestedPremiumMode = data.policy ? readOptionalField(data.policy, 'premium_mode') : undefined;
+	if (requestedEnabled === undefined && requestedPremiumMode === undefined) {
+		return;
+	}
+	const currentPremiumMode = (await getInstanceConfigRepository().getInstancePolicyConfig()).premium_mode;
+	const nextPremiumMode = requestedPremiumMode ?? currentPremiumMode;
+	if (nextPremiumMode !== 'everyone') {
+		return;
+	}
+	const nextEnabled =
+		requestedEnabled === undefined
+			? (await getInstanceConfigRepository().readStoredInstanceBillingConfig()).enabled
+			: requestedEnabled;
+	if (nextEnabled !== true) {
+		return;
+	}
+	if (requestedEnabled !== undefined) {
+		throw InputValidationError.create('billing.enabled', 'Billing can only be enabled when the premium mode is mirror');
+	}
+	if (currentPremiumMode !== 'everyone') {
+		throw InputValidationError.create(
+			'policy.premium_mode',
+			'Disable billing before switching the premium mode to everyone',
+		);
+	}
 }
 
 function listSuppliedSections(data: InstanceConfigUpdateRequest): string | undefined {
@@ -237,37 +349,55 @@ export function InstanceConfigAdminController(app: HonoApp) {
 		}),
 		async (ctx) => {
 			const data = ctx.req.valid('json');
+			assertSelfHostedBillingSections(data);
+			await assertBillingCompatibleWithPremiumMode(data);
 			const appPublicBeforeUpdate = completesInitialSetup(data, false)
 				? await instanceConfigRepository.getAppPublicConfig()
 				: null;
 			const shouldGrantSetupCompleterAdmin =
 				appPublicBeforeUpdate !== null && completesInitialSetup(data, appPublicBeforeUpdate.setup.configured);
 			if (data.gateway_rollout) {
-				const currentRollout = await instanceConfigRepository.getGatewayRolloutConfig();
-				const merged = {...currentRollout, ...data.gateway_rollout};
-				const validated = GatewayRolloutConfigSchema.parse(merged);
-				await instanceConfigRepository.setGatewayRolloutConfig(validated);
-				await getGatewayRolloutConfigPublisher().publish(validated);
+				const patch = data.gateway_rollout;
+				const landed = await instanceConfigRepository.updateGatewayRolloutConfig((current) =>
+					GatewayRolloutConfigSchema.parse({...current, ...patch}),
+				);
+				await getGatewayRolloutConfigPublisher().publish(landed);
 			}
-			if (data.voice_noise_suppression) {
-				const patch = omitUndefinedFields(data.voice_noise_suppression);
+			if (data.push_relay) {
+				const patch = omitUndefinedFields(data.push_relay);
 				if (Object.keys(patch).length > 0) {
-					const currentNoiseSuppression = await instanceConfigRepository.getVoiceNoiseSuppressionConfig();
-					const validated = VoiceNoiseSuppressionConfigSchema.parse({
-						...currentNoiseSuppression,
+					const adminUserId = ctx.get('adminUserId').toString();
+					const landed = await instanceConfigRepository.updatePushRelayConfig((current) => ({
+						...current,
 						...patch,
-						config_version: currentNoiseSuppression.config_version + 1,
-					});
-					await instanceConfigRepository.setVoiceNoiseSuppressionConfig(validated);
+						...relayConsentStamp(current, patch, adminUserId),
+					}));
+					await getPushRelayConfigPublisher().publish(landed);
+				}
+			}
+			if (data.domain_migration) {
+				const patch = omitUndefinedFields(data.domain_migration);
+				if (Object.keys(patch).length > 0) {
+					await instanceConfigRepository.updateDomainMigrationConfig((current) =>
+						DomainMigrationConfigSchema.parse({
+							...current,
+							...patch,
+							config_version: current.config_version + 1,
+						}),
+					);
+				}
+			}
+			if (data.captcha) {
+				const patch = omitUndefinedFields(data.captcha);
+				if (Object.keys(patch).length > 0) {
+					await instanceConfigRepository.updateCaptchaConfig(patch);
 				}
 			}
 			if (data.experiment_delivery) {
-				const currentExperimentDelivery = await instanceConfigRepository.getExperimentDeliveryConfig();
-				const validated = ExperimentDeliveryConfigSchema.parse({
-					...currentExperimentDelivery,
-					...data.experiment_delivery,
-				});
-				await instanceConfigRepository.setExperimentDeliveryConfig(validated);
+				const patch = data.experiment_delivery;
+				await instanceConfigRepository.updateExperimentDeliveryConfig((current) =>
+					ExperimentDeliveryConfigSchema.parse({...current, ...patch}),
+				);
 			}
 			if (data.sso) {
 				const sso = data.sso;
@@ -292,21 +422,22 @@ export function InstanceConfigAdminController(app: HonoApp) {
 				const validated = await normalizeAndValidateSsoConfig(next, {
 					testModeEnabled: Config.dev.testModeEnabled,
 				});
+				const supplied = <T>(field: keyof typeof sso, value: T): T | undefined =>
+					readOptionalField(sso, field) === undefined ? undefined : value;
 				await instanceConfigRepository.setSsoConfig({
-					enabled: validated.enabled,
-					enforced: validated.enforced,
-					displayName: next.displayName,
-					issuer: validated.issuer,
-					authorizationUrl: validated.authorizationUrl,
-					tokenUrl: validated.tokenUrl,
-					userInfoUrl: validated.userInfoUrl,
-					jwksUrl: validated.jwksUrl,
-					clientId: validated.clientId,
+					enabled: supplied('enabled', validated.enabled),
+					enforced: supplied('enforced', validated.enforced),
+					displayName: supplied('display_name', next.displayName),
+					issuer: supplied('issuer', validated.issuer),
+					authorizationUrl: supplied('authorization_url', validated.authorizationUrl),
+					tokenUrl: supplied('token_url', validated.tokenUrl),
+					userInfoUrl: supplied('userinfo_url', validated.userInfoUrl),
+					jwksUrl: supplied('jwks_url', validated.jwksUrl),
+					clientId: supplied('client_id', validated.clientId),
 					clientSecret: readOptionalField(sso, 'client_secret'),
-					scope: next.scope,
-					allowedEmailDomains: validated.allowedEmailDomains,
-					autoProvision: next.autoProvision,
-					redirectUri: null,
+					scope: supplied('scope', next.scope),
+					allowedEmailDomains: supplied('allowed_domains', validated.allowedEmailDomains),
+					autoProvision: supplied('auto_provision', next.autoProvision),
 				});
 			}
 			if (data.registration) {
@@ -331,6 +462,8 @@ export function InstanceConfigAdminController(app: HonoApp) {
 									data.app_public.branding,
 									'status_page_incident_history_url',
 								),
+								premium_product_name: readOptionalField(data.app_public.branding, 'premium_product_name'),
+								premium_info_url: readOptionalField(data.app_public.branding, 'premium_info_url'),
 							})
 						: undefined,
 					legal: data.app_public.legal
@@ -356,15 +489,6 @@ export function InstanceConfigAdminController(app: HonoApp) {
 					youtube: data.integrations.youtube
 						? omitUndefinedFields({
 								api_key: readOptionalField(data.integrations.youtube, 'api_key'),
-							})
-						: undefined,
-					captcha: data.integrations.captcha
-						? omitUndefinedFields({
-								provider: readOptionalField(data.integrations.captcha, 'provider'),
-								hcaptcha_site_key: readOptionalField(data.integrations.captcha, 'hcaptcha_site_key'),
-								hcaptcha_secret_key: readOptionalField(data.integrations.captcha, 'hcaptcha_secret_key'),
-								turnstile_site_key: readOptionalField(data.integrations.captcha, 'turnstile_site_key'),
-								turnstile_secret_key: readOptionalField(data.integrations.captcha, 'turnstile_secret_key'),
 							})
 						: undefined,
 					email: data.integrations.email
@@ -423,7 +547,28 @@ export function InstanceConfigAdminController(app: HonoApp) {
 				});
 			}
 			if (data.policy) {
-				await applyInstancePolicyUpdate(ctx, data.policy);
+				await applyInstancePolicyUpdate(
+					ctx,
+					data.policy,
+					data.billing ? readOptionalField(data.billing, 'enabled') : undefined,
+				);
+			}
+			if (data.billing) {
+				await assertBillingCompatibleWithStoredPremiumMode(data.billing);
+				await instanceConfigRepository.setInstanceBillingConfig(
+					omitUndefinedFields({
+						enabled: readOptionalField(data.billing, 'enabled'),
+						stripe_secret_key: readOptionalField(data.billing, 'stripe_secret_key'),
+						stripe_webhook_secret: readOptionalField(data.billing, 'stripe_webhook_secret'),
+						default_currency: readOptionalField(data.billing, 'default_currency'),
+						prices: readOptionalField(data.billing, 'prices'),
+						country_currencies: readOptionalField(data.billing, 'country_currencies'),
+						legacy_prices: readOptionalField(data.billing, 'legacy_prices'),
+						automatic_tax: readOptionalField(data.billing, 'automatic_tax'),
+						tax_id_collection: readOptionalField(data.billing, 'tax_id_collection'),
+						terms_consent_required: readOptionalField(data.billing, 'terms_consent_required'),
+					}),
+				);
 			}
 			if (data.app_public?.setup) {
 				await instanceConfigRepository.setAppPublicConfig({
@@ -609,7 +754,6 @@ export function InstanceConfigAdminController(app: HonoApp) {
 		async (ctx) => {
 			const userId = ctx.req.valid('param').user_id.toString();
 			const decision = ctx.req.valid('json').status === 'approved' ? 'approve' : 'reject';
-			await instanceConfigRepository.getPendingRegistrations();
 			await updatePendingRegistrationUser(ctx, userId, decision);
 			await instanceConfigRepository.removePendingRegistration(userId);
 			return ctx.json(await buildInstanceConfigResponse());
@@ -620,29 +764,53 @@ export function InstanceConfigAdminController(app: HonoApp) {
 async function applyInstancePolicyUpdate(
 	ctx: Context<HonoEnv>,
 	policy: NonNullable<InstanceConfigUpdateRequest['policy']>,
+	requestedBillingEnabled: boolean | null | undefined,
 ): Promise<void> {
 	const instanceConfigRepository = getInstanceConfigRepository();
-	const [current, appPublic] = await Promise.all([
-		instanceConfigRepository.getInstancePolicyConfig(),
-		instanceConfigRepository.getAppPublicConfig(),
-	]);
+	const appPublic = await instanceConfigRepository.getAppPublicConfig();
+	const adminUser =
+		policy.single_community_enabled === true
+			? await ctx.get('userRepository').findUnique(ctx.get('adminUserId'))
+			: null;
+	if (policy.premium_mode === 'everyone') {
+		await assertPremiumModeCompatibleWithStoredBilling(requestedBillingEnabled);
+	}
+	let enablesSingleCommunity = false;
+	await instanceConfigRepository.updateInstancePolicyConfig((current) => {
+		const planned = planInstancePolicyPatch(policy, current, {
+			setupConfigured: appPublic.setup.configured,
+			adminUserFound: adminUser !== null,
+		});
+		enablesSingleCommunity = planned.enablesSingleCommunity;
+		return planned.patch;
+	});
+	if (enablesSingleCommunity && adminUser) {
+		await ctx.get('singleCommunityService').ensureStockCommunity({
+			owner: adminUser,
+			name: policy.single_community_name?.trim() || appPublic.branding.product_name,
+		});
+	}
+	if (policy.premium_mode !== undefined) {
+		await ctx.get('limitConfigService').updatePolicyConfig({premium_mode: policy.premium_mode});
+	}
+}
+
+function planInstancePolicyPatch(
+	policy: NonNullable<InstanceConfigUpdateRequest['policy']>,
+	current: InstancePolicyConfig,
+	context: {setupConfigured: boolean; adminUserFound: boolean},
+): {patch: Partial<InstancePolicyConfig>; enablesSingleCommunity: boolean} {
 	const patch: Partial<InstancePolicyConfig> = {};
+	let enablesSingleCommunity = false;
 	if (
 		policy.single_community_enabled !== undefined &&
 		policy.single_community_enabled !== current.single_community_enabled
 	) {
 		if (policy.single_community_enabled) {
-			if (appPublic.setup.configured && current.single_community_guild_id == null) {
+			if ((context.setupConfigured && current.single_community_guild_id == null) || !context.adminUserFound) {
 				throw new InstancePolicyTransitionNotAllowedError();
 			}
-			const adminUser = await ctx.get('userRepository').findUnique(ctx.get('adminUserId'));
-			if (!adminUser) {
-				throw new InstancePolicyTransitionNotAllowedError();
-			}
-			await ctx.get('singleCommunityService').ensureStockCommunity({
-				owner: adminUser,
-				name: policy.single_community_name?.trim() || appPublic.branding.product_name,
-			});
+			enablesSingleCommunity = true;
 		} else {
 			patch.single_community_enabled = false;
 		}
@@ -663,9 +831,6 @@ async function applyInstancePolicyUpdate(
 			patch.direct_messages_locked = true;
 		}
 	}
-	if (policy.premium_mode !== undefined) {
-		patch.premium_mode = policy.premium_mode;
-	}
 	if (policy.services) {
 		if (policy.services.gif_enabled !== undefined) {
 			patch.gif_enabled = policy.services.gif_enabled ?? null;
@@ -677,22 +842,7 @@ async function applyInstancePolicyUpdate(
 			patch.bluesky_enabled = policy.services.bluesky_enabled ?? null;
 		}
 	}
-	if (policy.deferred_phone_gate) {
-		if (policy.deferred_phone_gate.enabled !== undefined) {
-			patch.deferred_phone_gate_enabled = policy.deferred_phone_gate.enabled;
-		}
-		if (policy.deferred_phone_gate.window_hours !== undefined) {
-			patch.deferred_phone_gate_window_hours = policy.deferred_phone_gate.window_hours;
-		}
-		if (policy.deferred_phone_gate.member_threshold !== undefined) {
-			patch.deferred_phone_gate_member_threshold = policy.deferred_phone_gate.member_threshold;
-		}
-	}
-	if (patch.premium_mode !== undefined) {
-		await ctx.get('limitConfigService').updatePolicyConfig(patch);
-	} else if (Object.keys(patch).length > 0) {
-		await instanceConfigRepository.setInstancePolicyConfig(patch);
-	}
+	return {patch, enablesSingleCommunity};
 }
 
 async function updatePendingRegistrationUser(

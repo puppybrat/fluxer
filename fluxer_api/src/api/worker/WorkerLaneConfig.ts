@@ -56,6 +56,7 @@ const LANE_CONFIG = {
 			'bulkAddGuildMembers',
 			'bulkBanFileShas',
 			'bulkDeleteMessagesForUsers',
+			'drainActivitySpool',
 		] as const,
 		retiredTasks: ['sendScheduledMessage'],
 		concurrency: 8,
@@ -67,6 +68,7 @@ const LANE_CONFIG = {
 		consumerName: 'workers_batch',
 		tasks: [
 			'expireAttachments',
+			'expireStaleJobs',
 			'indexChannelMessages',
 			'indexGuildMembers',
 			'processAssetDeletionQueue',
@@ -78,7 +80,6 @@ const LANE_CONFIG = {
 			'prunePostgresKvTtl',
 			'refreshSearchIndex',
 			'syncDiscoveryIndex',
-			'syncDisposableEmailDomains',
 			'syncUrlBlocklists',
 			'syncFileShaBlocklists',
 			'flushUserActivityBuffer',

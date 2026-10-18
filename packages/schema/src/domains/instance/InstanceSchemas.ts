@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {DomainMigrationDiscoveryResponse} from '@fluxer/schema/src/domains/admin/DomainMigrationSchemas';
 import {SsoStatusResponse} from '@fluxer/schema/src/domains/auth/AuthSchemas';
 import {createNamedStringLiteralUnion} from '@fluxer/schema/src/primitives/SchemaPrimitives';
 import {z} from 'zod';
@@ -38,6 +39,8 @@ export const InstanceBrandingSchema = z
 			.string()
 			.nullable()
 			.describe('Optional public status page incident history URL'),
+		premium_product_name: z.string().describe('Name of the premium tier shown by client applications'),
+		premium_info_url: z.string().nullable().describe('Optional absolute URL of a page describing the premium tier'),
 	})
 	.describe('Branding values safe to expose to clients');
 export type InstanceBranding = z.infer<typeof InstanceBrandingSchema>;
@@ -71,8 +74,7 @@ export const InstanceAppPublicSchema = z.object({
 });
 export type InstanceAppPublic = z.infer<typeof InstanceAppPublicSchema>;
 
-export const InstanceCaptchaProviderSchema = z.enum(['hcaptcha', 'turnstile', 'none']);
-export type InstanceCaptchaProvider = z.infer<typeof InstanceCaptchaProviderSchema>;
+export const InstanceCaptchaProviderSchema = z.enum(['altcha', 'none']);
 
 export const InstanceEndpointsSchema = z
 	.object({
@@ -93,9 +95,7 @@ export type InstanceEndpoints = z.infer<typeof InstanceEndpointsSchema>;
 
 export const InstanceCaptchaSchema = z
 	.object({
-		provider: InstanceCaptchaProviderSchema.describe('Captcha provider name (hcaptcha, turnstile, none)'),
-		hcaptcha_site_key: z.string().nullable().describe('hCaptcha site key if using hCaptcha'),
-		turnstile_site_key: z.string().nullable().describe('Cloudflare Turnstile site key if using Turnstile'),
+		provider: InstanceCaptchaProviderSchema.describe('Captcha provider (altcha or none)'),
 	})
 	.describe('Captcha configuration');
 export type InstanceCaptcha = z.infer<typeof InstanceCaptchaSchema>;
@@ -103,7 +103,13 @@ export type InstanceCaptcha = z.infer<typeof InstanceCaptchaSchema>;
 export const InstanceFeaturesSchema = z
 	.object({
 		voice_enabled: z.boolean().describe('Whether voice/video calling is enabled'),
-		stripe_enabled: z.boolean().describe('Whether Stripe payments are enabled'),
+		stripe_enabled: z.boolean().describe('Whether premium purchases through Stripe are available'),
+		premium_enabled: z
+			.boolean()
+			.describe('Whether this instance has a premium tier, so premium status, gifts and perks apply'),
+		stripe_serviceable: z
+			.boolean()
+			.describe('Whether existing Stripe subscriptions can be managed, cancelled and billed on this instance'),
 		self_hosted: z.boolean().describe('Whether this is a self-hosted instance'),
 		presigned_attachment_uploads: z.boolean().describe('Whether clients can request presigned attachment upload URLs'),
 		emails_enabled: z.boolean().describe('Whether the instance sends emails (verification, password reset, etc.)'),
@@ -187,6 +193,9 @@ export const WellKnownFluxerResponse = z.object({
 	limits: LimitConfigResponse.describe('Limit configuration with rules and trait definitions'),
 	push: InstancePushSchema,
 	app_public: InstanceAppPublicSchema.describe('Public application configuration for client-side features'),
+	domain_migration: DomainMigrationDiscoveryResponse.optional().describe(
+		'Web domain migration switch and anonymous rollout, only acted on by official instance clients',
+	),
 });
 
 export type WellKnownFluxerResponse = z.infer<typeof WellKnownFluxerResponse>;

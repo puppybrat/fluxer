@@ -109,8 +109,8 @@ export function AuthController(app: HonoApp) {
 	app.post(
 		'/auth/register',
 		LocalAuthMiddleware,
-		CaptchaMiddleware,
 		RateLimitMiddleware(RateLimitConfigs.AUTH_REGISTER),
+		CaptchaMiddleware,
 		Validator('json', RegisterRequest),
 		OpenAPI({
 			operationId: 'register_account',
@@ -120,7 +120,7 @@ export function AuthController(app: HonoApp) {
 			security: [],
 			tags: ['Auth'],
 			description:
-				'Create a new user account with email and password. Requires CAPTCHA verification. User account is created but must verify email before logging in.',
+				'Create a new user account with email and password. Requires a solved captcha challenge (X-Captcha-Token). User account is created but must verify email before logging in.',
 		}),
 		async (ctx) => {
 			const result = await ctx.get('authRequestService').register({
@@ -134,8 +134,8 @@ export function AuthController(app: HonoApp) {
 	app.post(
 		'/auth/login',
 		LocalAuthMiddleware,
-		CaptchaMiddleware,
 		RateLimitMiddleware(RateLimitConfigs.AUTH_LOGIN),
+		CaptchaMiddleware,
 		Validator('json', LoginRequest),
 		OpenAPI({
 			operationId: 'login_user',
@@ -145,7 +145,7 @@ export function AuthController(app: HonoApp) {
 			security: [],
 			tags: ['Auth'],
 			description:
-				'Authenticate with email and password. Returns authentication token if credentials are valid and MFA is not required. If MFA is enabled, returns a ticket for MFA verification.',
+				'Authenticate with email and password. Returns authentication token if credentials are valid and MFA is not required. If MFA is enabled, returns a ticket for MFA verification. Requires a solved captcha challenge (X-Captcha-Token).',
 		}),
 		async (ctx) => {
 			const result = await ctx.get('authRequestService').login({
@@ -240,8 +240,8 @@ export function AuthController(app: HonoApp) {
 	app.post(
 		'/auth/forgot',
 		LocalAuthMiddleware,
-		CaptchaMiddleware,
 		RateLimitMiddleware(RateLimitConfigs.AUTH_FORGOT_PASSWORD),
+		CaptchaMiddleware,
 		Validator('json', ForgotPasswordRequest),
 		OpenAPI({
 			operationId: 'forgot_password',
@@ -251,7 +251,7 @@ export function AuthController(app: HonoApp) {
 			security: [],
 			tags: ['Auth'],
 			description:
-				"Initiate password reset process by email. A password reset link will be sent to the user's email address. Requires CAPTCHA verification.",
+				"Initiate password reset process by email. A password reset link will be sent to the user's email address. Requires a solved captcha challenge (X-Captcha-Token).",
 		}),
 		async (ctx) => {
 			await ctx.get('authRequestService').forgotPassword({
@@ -447,7 +447,7 @@ export function AuthController(app: HonoApp) {
 				'Retrieve WebAuthn authentication challenge and options for passwordless login with biometrics or security keys.',
 		}),
 		async (ctx) => {
-			return ctx.json(await ctx.get('authRequestService').getWebAuthnAuthenticationOptions());
+			return ctx.json(await ctx.get('authRequestService').getWebAuthnAuthenticationOptions(ctx.req.header('origin')));
 		},
 	);
 	app.post(
@@ -490,7 +490,9 @@ export function AuthController(app: HonoApp) {
 				'Retrieve WebAuthn challenge and options for multi-factor authentication. Requires the MFA ticket from initial login.',
 		}),
 		async (ctx) => {
-			return ctx.json(await ctx.get('authRequestService').getWebAuthnMfaOptions(ctx.req.valid('json')));
+			return ctx.json(
+				await ctx.get('authRequestService').getWebAuthnMfaOptions(ctx.req.valid('json'), ctx.req.header('origin')),
+			);
 		},
 	);
 	app.post(
@@ -602,6 +604,7 @@ export function AuthController(app: HonoApp) {
 				data: ctx.req.valid('json'),
 				clientIp,
 				authToken: ctx.get('authToken') ?? undefined,
+				approverOrigin: ctx.req.header('origin'),
 			});
 			return ctx.body(null, 204);
 		},

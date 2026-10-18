@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type {ApiContext} from '@app/api/ApiContext';
+import * as AuthMfa from '@app/api/auth/AuthMfa';
 import * as AuthPassword from '@app/api/auth/AuthPassword';
 import * as AuthSession from '@app/api/auth/AuthSession';
-import {deriveSudoMethods, userHasMfa} from '@app/api/auth/services/SudoMethods';
+import {assertEmailNotBlocklisted} from '@app/api/auth/EmailBlocklist';
+import {deriveSudoMethods, userHasSudoCapability} from '@app/api/auth/services/SudoMethods';
 import type {SudoVerificationResult} from '@app/api/auth/services/SudoVerificationService';
 import {Config} from '@app/api/Config';
 import type {UserRow} from '@app/api/database/types/UserTypes';
@@ -64,7 +66,6 @@ export class UserAccountSecurityService {
 		const isUnclaimedAccount = user.isUnclaimedAccount();
 		const identityVerifiedViaSudo = sudoContext?.method === 'mfa' || sudoContext?.method === 'sudo_token';
 		const identityVerifiedViaPassword = sudoContext?.method === 'password';
-		const hasMfa = userHasMfa(user);
 		const rawEmail = data.email?.trim();
 		const normalizedEmail = rawEmail?.toLowerCase();
 		const hasPasswordRequiredChanges =
@@ -74,7 +75,7 @@ export class UserAccountSecurityService {
 			data.new_password !== undefined;
 		const requiresVerification = hasPasswordRequiredChanges && !isUnclaimedAccount;
 		if (requiresVerification && !identityVerifiedViaSudo && !identityVerifiedViaPassword) {
-			throw new SudoModeRequiredError(hasMfa, deriveSudoMethods(user));
+			throw await this.createSudoModeRequiredError(user);
 		}
 		if (isUnclaimedAccount && data.new_password) {
 			updates.password_hash = await this.hashNewPassword(data.new_password);
@@ -85,7 +86,7 @@ export class UserAccountSecurityService {
 				throw InputValidationError.fromCode('password', ValidationErrorCodes.PASSWORD_NOT_SET);
 			}
 			if (!identityVerifiedViaSudo && !identityVerifiedViaPassword) {
-				throw new SudoModeRequiredError(hasMfa, deriveSudoMethods(user));
+				throw await this.createSudoModeRequiredError(user);
 			}
 			updates.password_hash = await this.hashNewPassword(data.new_password);
 			updates.password_last_changed_at = new Date();
@@ -138,6 +139,7 @@ export class UserAccountSecurityService {
 		}
 		if (rawEmail) {
 			if (normalizedEmail && normalizedEmail !== user.email?.toLowerCase()) {
+				await assertEmailNotBlocklisted(normalizedEmail, 'email');
 				const existing = await this.deps.userAccountRepository.findByEmail(normalizedEmail);
 				if (existing && existing.id !== user.id) {
 					throw InputValidationError.fromCode('email', ValidationErrorCodes.EMAIL_ALREADY_IN_USE);
@@ -162,6 +164,16 @@ export class UserAccountSecurityService {
 			currentAuthSession: oldAuthSession,
 			request,
 		});
+	}
+
+	private async createSudoModeRequiredError(user: User): Promise<SudoModeRequiredError> {
+		const credentials = await this.deps.apiContext.services.users.listWebAuthnCredentials(user.id);
+		const hasPasskeyCredentials = credentials.length > 0;
+		const hasBackupCodes = await AuthMfa.hasUnconsumedBackupCodes(this.deps.apiContext, user.id);
+		return new SudoModeRequiredError(
+			userHasSudoCapability(user, hasPasskeyCredentials),
+			deriveSudoMethods(user, hasPasskeyCredentials, hasBackupCodes),
+		);
 	}
 
 	private async hashNewPassword(newPassword: string): Promise<string> {

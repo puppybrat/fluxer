@@ -36,13 +36,6 @@ export const VerificationResult = {
 
 export type VerificationResult = ValueOf<typeof VerificationResult>;
 
-type CaptchaType = 'turnstile' | 'hcaptcha';
-
-type RegisterData = RegisterRequest & {
-	captchaToken?: string;
-	captchaType?: CaptchaType;
-};
-
 export type AuthResponseUser = UserPartial & {
 	email?: string | null;
 };
@@ -64,6 +57,7 @@ interface MfaLoginResponse {
 	ticket: string;
 	totp: boolean;
 	webauthn: boolean;
+	backup_codes?: boolean;
 	allowed_methods?: Array<string>;
 }
 
@@ -141,24 +135,7 @@ export interface DesktopHandoffInfoResponse {
 interface LoginParams {
 	email: string;
 	password: string;
-	captchaToken?: string;
 	inviteCode?: string;
-	captchaType?: CaptchaType;
-}
-
-interface CaptchaParams {
-	captchaToken?: string;
-	captchaType?: CaptchaType;
-}
-
-function captchaHeaders({captchaToken, captchaType}: CaptchaParams): Record<string, string> {
-	if (!captchaToken) {
-		return {};
-	}
-	return {
-		'X-Captcha-Token': captchaToken,
-		'X-Captcha-Type': captchaType || 'hcaptcha',
-	};
 }
 
 function withInviteCode<T extends object>(body: T, inviteCode?: string): T & {invite_code?: string} {
@@ -196,11 +173,6 @@ function webAuthnBody(
 	inviteCode?: string,
 ): {response: AuthenticationResponseJSON; challenge: string; invite_code?: string} {
 	return withInviteCode({response, challenge}, inviteCode);
-}
-
-function registerBody(data: RegisterData): RegisterRequest {
-	const {captchaToken: _, captchaType: __, ...bodyData} = data;
-	return bodyData;
 }
 
 function ticketBody(ticket: string): {ticket: string} {
@@ -249,14 +221,12 @@ function verificationResultFromError(
 export async function login({
 	email,
 	password,
-	captchaToken,
 	inviteCode,
-	captchaType,
 }: LoginParams): Promise<LoginResponse | IpAuthorizationRequiredResponse> {
 	try {
 		const response = await http.post<LoginResponse>(Endpoints.AUTH_LOGIN, {
 			body: loginBody({email, password, inviteCode}),
-			headers: withAuthLocaleHeader(captchaHeaders({captchaToken, captchaType})),
+			headers: withAuthLocaleHeader(),
 		});
 		logger.debug('Login successful', {mfa: response.body?.mfa});
 		return response.body;
@@ -356,11 +326,11 @@ export async function authenticateWithWebAuthn(
 	}
 }
 
-export async function register(data: RegisterData): Promise<RegisterResponse> {
+export async function register(data: RegisterRequest): Promise<RegisterResponse> {
 	try {
 		const response = await http.post<RegisterResponse>(Endpoints.AUTH_REGISTER, {
-			body: registerBody(data),
-			headers: withAuthLocaleHeader(captchaHeaders(data)),
+			body: data,
+			headers: withAuthLocaleHeader(),
 		});
 		const responseBody = response.body;
 		logger.info('Registration successful');
@@ -390,15 +360,11 @@ export async function getUsernameSuggestions(globalName: string): Promise<Array<
 	}
 }
 
-export async function forgotPassword(
-	email: string,
-	captchaToken?: string,
-	captchaType?: 'turnstile' | 'hcaptcha',
-): Promise<void> {
+export async function forgotPassword(email: string): Promise<void> {
 	try {
 		await http.post(Endpoints.AUTH_FORGOT_PASSWORD, {
 			body: {email},
-			headers: withAuthLocaleHeader(captchaHeaders({captchaToken, captchaType})),
+			headers: withAuthLocaleHeader(),
 		});
 		logger.debug('Password reset email sent');
 	} catch (error) {
@@ -679,11 +645,12 @@ interface SetMfaTicketPayload {
 	ticket: string;
 	totp: boolean;
 	webauthn: boolean;
+	backupCodes: boolean;
 }
 
-export function setMfaTicket({ticket, totp, webauthn}: SetMfaTicketPayload): void {
+export function setMfaTicket({ticket, totp, webauthn, backupCodes}: SetMfaTicketPayload): void {
 	logger.debug('Setting MFA ticket');
-	Authentication.handleMfaTicketSet({ticket, totp, webauthn});
+	Authentication.handleMfaTicketSet({ticket, totp, webauthn, backupCodes});
 }
 
 export function clearMfaTicket(): void {

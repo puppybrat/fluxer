@@ -166,3 +166,48 @@ describe('buildAPIConfigFromMaster stripe legacy prices', () => {
 		expect(buildAPIConfigFromMaster(withStripeLegacyPrices(master, undefined)).stripe.legacyPrices).toBeUndefined();
 	});
 });
+
+function withOptionalOutboundLookups(
+	master: MasterConfig,
+	selfHosted: boolean,
+	overrides: {breachedPasswordCheck?: boolean} = {},
+): MasterConfig {
+	return {
+		...master,
+		integrations: {
+			...master.integrations,
+			breached_password_check: {enabled: overrides.breachedPasswordCheck},
+		},
+		instance: {
+			...master.instance,
+			self_hosted: selfHosted,
+		},
+	};
+}
+
+describe('buildAPIConfigFromMaster optional outbound lookups', () => {
+	let master: MasterConfig;
+	beforeAll(async () => {
+		master = await loadConfig();
+	});
+
+	it('keeps the lookup on when the instance is not self-hosted', () => {
+		const config = buildAPIConfigFromMaster(withOptionalOutboundLookups(master, false));
+		expect(config.breachedPasswordCheck.enabled).toBe(true);
+	});
+
+	it('leaves the lookup off on a self-hosted instance', () => {
+		const config = buildAPIConfigFromMaster(withOptionalOutboundLookups(master, true));
+		expect(config.breachedPasswordCheck.enabled).toBe(false);
+	});
+
+	it('lets a self-hosted operator switch the lookup on', () => {
+		const config = buildAPIConfigFromMaster(withOptionalOutboundLookups(master, true, {breachedPasswordCheck: true}));
+		expect(config.breachedPasswordCheck.enabled).toBe(true);
+	});
+
+	it('lets an operator switch the lookup off when the instance is not self-hosted', () => {
+		const config = buildAPIConfigFromMaster(withOptionalOutboundLookups(master, false, {breachedPasswordCheck: false}));
+		expect(config.breachedPasswordCheck.enabled).toBe(false);
+	});
+});

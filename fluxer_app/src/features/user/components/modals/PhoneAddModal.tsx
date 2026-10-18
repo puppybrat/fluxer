@@ -4,13 +4,12 @@ import * as Modal from '@app/features/app/components/dialogs/Modal';
 import {ExternalLink} from '@app/features/app/components/shared/ExternalLink';
 import {
 	MFA_CODE_DIGIT_COUNT,
-	PHONE_VERIFICATION_LIMIT,
-	PHONE_VERIFICATION_WINDOW_DAYS,
 	PRODUCT_NAME,
 	SUPPORT_EMAIL,
 	SUPPORT_EMAIL_MAILTO,
 } from '@app/features/app/config/I18nDisplayConstants';
 import {useFormSubmit} from '@app/features/app/hooks/useFormSubmit';
+import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import * as EmojiUtils from '@app/features/expressions/utils/EmojiUtils';
 import {VERIFICATION_CODE_DESCRIPTOR, VERIFY_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {Button} from '@app/features/ui/button/Button';
@@ -284,8 +283,7 @@ export const PhoneAddModal = observer(() => {
 						<p className={styles.footerText} data-flx="user.phone-add-modal.footer-text">
 							<Trans>
 								We'll send an SMS code when available. Your number is not linked to your account. We keep only an
-								encrypted marker, with no user ID, to allow at most {PHONE_VERIFICATION_LIMIT} verifications in about{' '}
-								{PHONE_VERIFICATION_WINDOW_DAYS} days.
+								encrypted marker, with no user ID, for a limited time.
 							</Trans>
 						</p>
 					}
@@ -299,14 +297,22 @@ export const PhoneAddModal = observer(() => {
 			<>
 				<div className={styles.notice} data-flx="user.phone-add-modal.notice">
 					<p className={styles.footerText} data-flx="user.phone-add-modal.footer-text--2">
-						<Trans>
-							Sending an SMS to this phone number is too expensive for {PRODUCT_NAME}, so we need you to send us an SMS
-							instead. We know this isn't ideal. You can also contact{' '}
-							<ExternalLink href={SUPPORT_EMAIL_MAILTO} data-flx="user.phone-add-modal.external-link">
-								{SUPPORT_EMAIL}
-							</ExternalLink>{' '}
-							to have us lift this requirement from your account.
-						</Trans>
+						{RuntimeConfig.isSelfHosted() ? (
+							<Trans>
+								Sending an SMS to this phone number is too expensive for {PRODUCT_NAME}, so we need you to send us an
+								SMS instead. We know this isn't ideal. You can also ask the administrators of this instance to lift this
+								requirement from your account.
+							</Trans>
+						) : (
+							<Trans>
+								Sending an SMS to this phone number is too expensive for {PRODUCT_NAME}, so we need you to send us an
+								SMS instead. We know this isn't ideal. You can also contact{' '}
+								<ExternalLink href={SUPPORT_EMAIL_MAILTO} data-flx="user.phone-add-modal.external-link">
+									{SUPPORT_EMAIL}
+								</ExternalLink>{' '}
+								to have us lift this requirement from your account.
+							</Trans>
+						)}
 					</p>
 				</div>
 				<div className={styles.stepsContainer} data-flx="user.phone-add-modal.steps-container">

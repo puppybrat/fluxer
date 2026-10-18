@@ -3,6 +3,7 @@
 import {createHash} from 'node:crypto';
 import type {ApiContext} from '@app/api/ApiContext';
 import * as AuthSession from '@app/api/auth/AuthSession';
+import {visibleWebAuthnCredentials} from '@app/api/auth/services/PasskeyRelyingParty';
 import type {ChannelID, GuildID, UserID} from '@app/api/BrandedTypes';
 import {
 	createChannelID,
@@ -67,16 +68,17 @@ import {
 	timeRpcStepSync,
 } from '@app/api/rpc/RpcTimings';
 import type {IUserRepository} from '@app/api/user/IUserRepository';
-import {PaymentRepository} from '@app/api/user/repositories/PaymentRepository';
 import {CustomStatusValidator} from '@app/api/user/services/CustomStatusValidator';
 import {getCachedUserPartialResponse} from '@app/api/user/UserCacheHelpers';
+import {isSignInRefused} from '@app/api/user/UserHelpers';
 import {
 	mapRelationshipToResponse,
 	mapUserGuildSettingsToResponse,
 	mapUserSettingsToResponse,
 	mapUserToPrivateResponse,
+	mapWebAuthnCredentialToResponse,
 } from '@app/api/user/UserMappers';
-import {isUserAdult} from '@app/api/utils/AgeUtils';
+import {canUserAccessNsfwContent} from '@app/api/utils/AgeUtils';
 import {deriveDominantAvatarColor} from '@app/api/utils/AvatarColorUtils';
 import {calculateDistance, parseCoordinate} from '@app/api/utils/GeoUtils';
 import {lookupGeoip} from '@app/api/utils/IpUtils';
@@ -268,7 +270,6 @@ export class RpcService {
 			userCacheService: this.userCacheService,
 			gatewayService: this.gatewayService,
 			discriminatorService: this.discriminatorService,
-			paymentRepository: new PaymentRepository(),
 		});
 	}
 
@@ -628,11 +629,28 @@ export class RpcService {
 					data: {channel},
 				};
 			}
+			case 'get_read_state': {
+				const readState = await this.readStateService.getReadState(
+					createUserID(request.user_id),
+					createChannelID(request.channel_id),
+				);
+				return {
+					type: 'get_read_state',
+					data: {last_message_id: readState?.lastMessageId?.toString() ?? null},
+				};
+			}
 			case 'get_gateway_rollout_config': {
 				const rolloutConfig = await this.instanceConfigRepository.getGatewayRolloutConfig();
 				return {
 					type: 'get_gateway_rollout_config',
 					data: {config: rolloutConfig},
+				};
+			}
+			case 'get_push_service_delivery_config': {
+				const config = await this.instanceConfigRepository.getLegacyPushServiceDeliveryWire();
+				return {
+					type: 'get_push_service_delivery_config',
+					data: {config},
 				};
 			}
 			default: {
@@ -864,7 +882,7 @@ export class RpcService {
 				if (!queueAllowed) {
 					return;
 				}
-				await this.workerService.addJob('reconcileUserPayments', {userId: userIdString});
+				await this.workerService.addJob('reconcileUserPayments', {userId: userIdString}, {skipLedger: true});
 			})
 			.catch((error) => {
 				Logger.warn(
@@ -967,6 +985,10 @@ export class RpcService {
 				},
 				'RPC session user lookup failed',
 			);
+			throw new UnauthorizedError();
+		}
+		if (tokenType === 'user' && isSignInRefused(userData.user)) {
+			Logger.warn({tokenType, tokenHashPrefix, userId: userId.toString()}, 'RPC session rejected by account standing');
 			throw new UnauthorizedError();
 		}
 		let user = userData.user;
@@ -1184,12 +1206,9 @@ export class RpcService {
 			longitude: geoipLongitude,
 			rtc_regions: rtcRegions,
 			webauthn_credentials: timeRpcStepSync(responseBuildSteps, 'map_webauthn_credentials', () =>
-				userData.webAuthnCredentials.map((cred) => ({
-					id: cred.credentialId,
-					name: cred.name,
-					created_at: cred.createdAt.toISOString(),
-					last_used_at: cred.lastUsedAt?.toISOString() ?? null,
-				})),
+				visibleWebAuthnCredentials(userData.webAuthnCredentials).map((cred) =>
+					mapWebAuthnCredentialToResponse(cred, Config.auth.passkeys.rpId),
+				),
 			),
 			version,
 		};
@@ -1545,7 +1564,7 @@ export class RpcService {
 			const needsIncomingCallRepair = settings.incomingCallFlags === 0;
 			const needsGroupDmRepair = settings.groupDmAddPermissionFlags === 0;
 			if (needsIncomingCallRepair || needsGroupDmRepair) {
-				const isAdult = isUserAdult(user.dateOfBirth);
+				const isAdult = canUserAccessNsfwContent({isBot: false, dateOfBirth: user.dateOfBirth});
 				const updatedRow = {
 					...settings.toRow(),
 					...(needsIncomingCallRepair && {
@@ -1969,7 +1988,7 @@ export class RpcService {
 							channelId,
 							messageId: createMessageID(messageId),
 							mentionCount: 0,
-							silent: true,
+							implicit: {unreadThrough: createMessageID(messageId)},
 						})
 						.catch((error) => {
 							Logger.error(

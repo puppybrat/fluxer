@@ -15,7 +15,12 @@ import type {GuildFolderIcon, MentionReplyPreference} from '@fluxer/constants/sr
 import type {types} from 'cassandra-driver';
 
 type Nullish<T> = T | null;
-export type PushSubscriptionPlatform = 'web_push' | 'android_fcm' | 'ios_apns' | 'android_unified_push';
+export type PushSubscriptionPlatform =
+	| 'web_push'
+	| 'android_fcm'
+	| 'ios_apns'
+	| 'ios_apns_voip'
+	| 'android_unified_push';
 
 export interface UserRow {
 	user_id: UserID;
@@ -70,6 +75,8 @@ export interface UserRow {
 	deletion_reason_code: Nullish<number>;
 	deletion_public_reason: Nullish<string>;
 	deletion_audit_log_reason: Nullish<string>;
+	deletion_scheduled_by?: Nullish<UserID>;
+	deletion_scheduled_at?: Nullish<Date>;
 	acls: Nullish<Set<string>>;
 	traits: Nullish<Set<string>>;
 	first_refund_at: Nullish<Date>;
@@ -134,6 +141,8 @@ export const USER_COLUMNS = [
 	'deletion_reason_code',
 	'deletion_public_reason',
 	'deletion_audit_log_reason',
+	'deletion_scheduled_by',
+	'deletion_scheduled_at',
 	'acls',
 	'traits',
 	'first_refund_at',
@@ -197,6 +206,8 @@ export const EMPTY_USER_ROW: UserRow = {
 	deletion_reason_code: null,
 	deletion_public_reason: null,
 	deletion_audit_log_reason: null,
+	deletion_scheduled_by: null,
+	deletion_scheduled_at: null,
 	acls: null,
 	traits: null,
 	first_refund_at: null,

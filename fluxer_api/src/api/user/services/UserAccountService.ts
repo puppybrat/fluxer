@@ -87,6 +87,7 @@ export class UserAccountService {
 			gatewayService,
 			mediaService,
 			userRepository: userAccountRepository,
+			guildRepository,
 		});
 		this.lookupService = new UserAccountLookupService({
 			userAccountRepository,
@@ -131,7 +132,6 @@ export class UserAccountService {
 			apiContext: this.apiContext,
 			userAccountRepository,
 			guildRepository,
-			guildService,
 			emailService,
 			updatePropagator: this.updatePropagator,
 			kvDeletionQueue,
@@ -193,7 +193,7 @@ export class UserAccountService {
 			() => this.updatePropagator.dispatchUserUpdate(updatedUser),
 			async () => {
 				if (hasPartialUserFieldsChanged(user, updatedUser)) {
-					await this.updatePropagator.updateUserCache(updatedUser);
+					await this.updatePropagator.propagatePartialUserChange(updatedUser);
 				}
 			},
 			async () => {
@@ -240,7 +240,7 @@ export class UserAccountService {
 		const updatedUser = await this.userAccountRepository.patchUpsert(user.id, updates, user.toRow());
 		await this.updatePropagator.dispatchUserUpdate(updatedUser);
 		if (hasPartialUserFieldsChanged(user, updatedUser)) {
-			await this.updatePropagator.updateUserCache(updatedUser);
+			await this.updatePropagator.propagatePartialUserChange(updatedUser);
 		}
 	}
 }

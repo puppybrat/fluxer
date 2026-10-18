@@ -106,19 +106,9 @@ export class PCTransportManager {
 		this.isPublisherConnectionRequired = mode !== 'subscriber-primary';
 		this.isSubscriberConnectionRequired = mode === 'subscriber-primary';
 		this.publisher = new PCTransport(rtcConfig, loggerOptions);
-		if (subscriberVideoCodecExclusions?.length) {
-			for (const codec of subscriberVideoCodecExclusions) {
-				this.publisher.excludedVideoDecoderMimeTypes.add(`video/${codec}`);
-			}
-		}
 		this._mode = mode;
 		if (mode !== 'publisher-only') {
 			this.subscriber = new PCTransport(rtcConfig, loggerOptions);
-			if (subscriberVideoCodecExclusions?.length) {
-				for (const codec of subscriberVideoCodecExclusions) {
-					this.subscriber.excludedVideoDecoderMimeTypes.add(`video/${codec}`);
-				}
-			}
 			this.subscriber.onConnectionStateChange = this.updateState;
 			this.subscriber.onIceConnectionStateChange = this.updateState;
 			this.subscriber.onSignalingStatechange = this.updateState;
@@ -134,6 +124,13 @@ export class PCTransportManager {
 			this.subscriber.onTrack = (ev) => {
 				this.onTrack?.(ev);
 			};
+		}
+
+		const receivingTransport = this.subscriber ?? this.publisher;
+		if (receivingTransport) {
+			for (const codec of subscriberVideoCodecExclusions ?? []) {
+				receivingTransport.excludedVideoDecoderMimeTypes.add(`video/${codec}`);
+			}
 		}
 
 		this.publisher.onConnectionStateChange = this.updateState;
