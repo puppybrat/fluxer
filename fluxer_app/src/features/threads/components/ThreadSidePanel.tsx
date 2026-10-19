@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {useChannelCastDisplay} from '@app/features/cast/hooks/useChannelCastDisplay';
 import {ChannelChatLayout} from '@app/features/channel/components/ChannelChatLayout';
 import headerStyles from '@app/features/channel/components/ChannelHeader.module.css';
 import {Messages} from '@app/features/channel/components/ChannelMessages';
@@ -163,13 +164,18 @@ const PanelHeader = observer(({thread, title}: {thread?: Channel; title: string}
 	);
 });
 
-export const ThreadChat = observer(({thread}: {thread: Channel}) => (
-	<ChannelChatLayout
-		messages={<Messages key={thread.id} channel={thread} data-flx="threads.thread-chat.messages" />}
-		textarea={<ThreadComposerArea thread={thread} data-flx="threads.thread-chat.thread-composer-area" />}
-		data-flx="threads.thread-chat.channel-chat-layout"
-	/>
-));
+export const ThreadChat = observer(({thread}: {thread: Channel}) => {
+	// Fork (step 5a, D4): the thread's own resolved cast, so in-character messages here show the
+	// character identity rather than falling back to the guild-wide one.
+	useChannelCastDisplay(thread.guildId, thread.id);
+	return (
+		<ChannelChatLayout
+			messages={<Messages key={thread.id} channel={thread} data-flx="threads.thread-chat.messages" />}
+			textarea={<ThreadComposerArea thread={thread} data-flx="threads.thread-chat.thread-composer-area" />}
+			data-flx="threads.thread-chat.channel-chat-layout"
+		/>
+	);
+});
 
 export function useThreadPanelState(parent: Channel | undefined): {
 	thread: Channel | undefined;
