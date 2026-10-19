@@ -478,6 +478,8 @@ export const ERROR_I18N_MESSAGES = {
 		"You've changed your username too often recently. Please try again in {minutes, plural, one {# minute} other {# minutes}}.",
 	'rate_limits.voice_activity_sharing_on_cooldown':
 		'You can only update your voice activity sharing default once every 24 hours. Please try again in {retry_after, plural, one {# second} other {# seconds}}.',
+	'relocation.message_not_movable':
+		"Thread starters, forum posts and published announcements can't be relocated.",
 	'roles.cannot_reorder_everyone_role': "You can't reorder the @everyone role.",
 	'roles.cannot_set_everyone_hoist': "You can't set hoist position for the @everyone role.",
 	'roles.invalid_role_id': 'Invalid role ID: {roleId}.',

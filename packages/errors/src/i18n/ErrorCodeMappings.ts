@@ -240,6 +240,7 @@ export const ErrorCodeToI18nKey = {
 	[APIErrorCodes.REGISTRATION_PENDING_APPROVAL]: 'auth_and_oauth.registration_pending_approval',
 	[APIErrorCodes.REGISTRATION_REJECTED]: 'auth_and_oauth.registration_rejected',
 	[APIErrorCodes.REGISTRATION_URL_INVALID]: 'auth_and_oauth.registration_url_invalid',
+	[APIErrorCodes.RELOCATION_MESSAGE_NOT_MOVABLE]: 'relocation.message_not_movable',
 	[APIErrorCodes.REPORT_ALREADY_RESOLVED]: 'moderation_and_reports.report_already_resolved',
 	[APIErrorCodes.REPORT_BANNED]: 'moderation_and_reports.report_banned',
 	[APIErrorCodes.REPORT_FLOW_OUTDATED]: 'moderation_and_reports.report_flow_outdated',

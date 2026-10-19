@@ -16,12 +16,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
+import {MessageFlags, MessageTypes} from '@fluxer/constants/src/ChannelConstants';
+import {ServerMessageFlags, THREAD_FEATURE_CHANNEL_TYPES} from '@fluxer/constants/src/ThreadConstants';
+import {InvalidChannelTypeError} from '@fluxer/errors/src/domains/channel/InvalidChannelTypeError';
 import {BadRequestError} from '@fluxer/errors/src/domains/core/BadRequestError';
 import * as BucketUtils from '@fluxer/snowflake/src/SnowflakeBuckets';
 import type {ChannelID, MessageID, UserID} from '../../../BrandedTypes';
 import {Config} from '../../../Config';
 import {BatchBuilder, fetchMany, fetchOne, upsertOne} from '../../../database/CassandraQueryExecution';
 import {Db} from '../../../database/CassandraTypes';
+import type {ChannelRow} from '../../../database/types/ChannelTypes';
 import type {
 	ChannelMessageBucketRow,
 	ChannelStateRow,
@@ -37,6 +41,7 @@ import {
 	ChannelMessageBuckets,
 	ChannelPins,
 	ChannelState,
+	Channels,
 	Messages,
 	MessagesByAuthorV2,
 	MessageReactions,
@@ -97,6 +102,36 @@ function bucketRange(startId: bigint, endId: bigint): Array<number> {
 		range.push(bucket);
 	}
 	return range;
+}
+
+/*
+ * Thread guard (step 5a, D6). Threads keep their parent, membership and stats in their own tables
+ * (ThreadState, ThreadsByParent, ThreadMembers, ThreadStats) and a published announcement is tracked
+ * by CrosspostSourcesByChannel; none of that follows a relocated message. So relocation refuses:
+ *  - a thread (a forum post is one), forum or media channel as either end;
+ *  - a message a thread was started from (HAS_THREAD), a thread's starter message, or a published
+ *    announcement (CROSSPOSTED).
+ * Nothing else is restricted: DM -> server and server -> server moves work as before.
+ */
+const FETCH_CHANNEL_TYPE = Channels.select({
+	columns: ['type'],
+	where: [Channels.where.eq('channel_id'), Channels.where.eq('soft_deleted')],
+	limit: 1,
+});
+
+async function isThreadFeatureChannel(channelId: ChannelID): Promise<boolean> {
+	const channel = await fetchOne<Pick<ChannelRow, 'type'>>(
+		FETCH_CHANNEL_TYPE.bind({channel_id: channelId, soft_deleted: false}),
+	);
+	return channel != null && THREAD_FEATURE_CHANNEL_TYPES.has(channel.type);
+}
+
+function isThreadBoundMessage(row: MessageRow): boolean {
+	return (
+		(row.flags & ServerMessageFlags.HAS_THREAD) !== 0 ||
+		(row.flags & MessageFlags.CROSSPOSTED) !== 0 ||
+		row.type === MessageTypes.THREAD_STARTER_MESSAGE
+	);
 }
 
 const FETCH_MESSAGES_IN_BUCKET_RANGE = Messages.select({
@@ -165,6 +200,10 @@ export class MessageRelocationRepository {
 			return {movedCount: 0};
 		}
 
+		if ((await isThreadFeatureChannel(sourceChannelId)) || (await isThreadFeatureChannel(destChannelId))) {
+			throw new InvalidChannelTypeError();
+		}
+
 		const buckets = bucketRange(startMessageId, endMessageId);
 
 		// Phase 1 — discovery. Every in-range row is collected before anything is mutated so the
@@ -182,6 +221,10 @@ export class MessageRelocationRepository {
 				}),
 			);
 			if (inRange.length === 0) continue;
+			// Checked during discovery, so a refused range moves nothing.
+			if (inRange.some(isThreadBoundMessage)) {
+				throw new BadRequestError({code: APIErrorCodes.RELOCATION_MESSAGE_NOT_MOVABLE});
+			}
 
 			totalInRange += inRange.length;
 			if (totalInRange > MAX_RELOCATION_MESSAGES) {
