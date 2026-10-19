@@ -53,6 +53,17 @@ function resolveThemeCss(
 }
 
 /**
+ * The channel a channel's theme falls back to when it has none of its own: a thread's parent (step
+ * 5a, D1). Threads have no Appearance UI, so without this a thread opened in full or mobile view would
+ * render unthemed under a themed parent. Every other channel has no fallback.
+ */
+export function themeFallbackChannelId(
+	channel: {isThread(): boolean; parentId: string | null} | null | undefined,
+): string | null {
+	return channel?.isThread() ? channel.parentId : null;
+}
+
+/**
  * Channel theme state: the named theme library, and which theme (or raw CSS blob) each channel has
  * active.
  *
@@ -81,6 +92,15 @@ class ChannelThemes {
 
 	getThemeCss(channelId: string): string | null {
 		return resolveThemeCss(this.activeByChannelId.get(channelId), this.library);
+	}
+
+	/** `getThemeCss`, or the fallback channel's when this channel has no theme of its own. */
+	getThemeCssWithFallback(channelId: string, fallbackChannelId: string | null): string | null {
+		const own = this.getThemeCss(channelId);
+		if (own != null || fallbackChannelId == null) {
+			return own;
+		}
+		return this.getThemeCss(fallbackChannelId);
 	}
 
 	getChannelState(channelId: string): ChannelThemeActiveState | null {

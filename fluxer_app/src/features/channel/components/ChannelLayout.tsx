@@ -3,7 +3,7 @@
 import styles from '@app/features/channel/components/ChannelLayout.module.css';
 import {useChannelThemeStyle} from '@app/features/channel/hooks/useChannelThemeStyle';
 import Channels from '@app/features/channel/state/Channels';
-import ChannelThemes from '@app/features/channel/state/ChannelThemes';
+import ChannelThemes, {themeFallbackChannelId} from '@app/features/channel/state/ChannelThemes';
 import Guilds from '@app/features/guild/state/Guilds';
 import {useParams} from '@app/features/platform/components/router/RouterReact';
 import {useThreadFetchOnMiss} from '@app/features/threads/hooks/useThreadFetchOnMiss';
@@ -29,8 +29,10 @@ interface ChannelLayoutProps {
 export const ChannelLayout = observer(({children}: ChannelLayoutProps) => {
 	const {i18n} = useLingui();
 	const {guildId: routeGuildId, channelId} = useParams() as {guildId?: string; channelId: string};
-	useChannelThemeStyle(ChannelThemes.getThemeCss(channelId));
 	const channel = Channels.getChannel(channelId);
+	// A thread opened in full or mobile view routes to the thread itself; it shows its parent's theme
+	// unless it has its own. The desktop side panel routes to the parent, which this covers already.
+	useChannelThemeStyle(ChannelThemes.getThemeCssWithFallback(channelId, themeFallbackChannelId(channel)));
 	const guildId = routeGuildId || channel?.guildId;
 	const guild = guildId ? Guilds.getGuild(guildId) : null;
 	const threadLookupPending = useThreadFetchOnMiss(guild ? guildId : undefined, channel ? undefined : channelId);

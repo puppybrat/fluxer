@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 // Every command the store calls, not just the ones a given test exercises: an absent export makes the
 // store's call throw, and because loads and writes both swallow into writeError/libraryError, the
@@ -17,7 +17,7 @@ vi.mock('@app/features/channel/commands/ChannelCommands', () => ({
 }));
 
 import * as ChannelCommands from '@app/features/channel/commands/ChannelCommands';
-import ChannelThemes from '@app/features/channel/state/ChannelThemes';
+import ChannelThemes, {themeFallbackChannelId} from '@app/features/channel/state/ChannelThemes';
 import {HttpError} from '@app/features/platform/types/EndpointError';
 
 /** The real DM channel this instance writes in, and a guild channel, for the two-channel cases. */
@@ -222,6 +222,51 @@ describe('ChannelThemes — theme resolution and library state', () => {
 
 			expect(ChannelThemes.getChannelState(CH)).toBeNull();
 			expect(ChannelThemes.getThemeCss(CH)).toBeNull();
+		});
+	});
+
+	/**
+	 * Step 5a, D1: a thread has no Appearance UI, so in full and mobile view (where the route names the
+	 * thread itself) it shows its parent's theme unless it has one of its own.
+	 */
+	describe('thread theme fallback', () => {
+		const THREAD = '1517785346346057999';
+		const PARENT_CSS = ':root { --background-primary: #102030; }';
+		// The two Channel members the fallback reads. The real model drags in the lingui macro chain.
+		const thread = {isThread: () => true, parentId: CH_B};
+		const textChannel = {isThread: () => false, parentId: CH_B};
+
+		afterEach(() => {
+			ChannelThemes.setThemeCss(THREAD, null);
+		});
+
+		it('names the parent as the fallback for a thread and nothing for any other channel', () => {
+			expect(themeFallbackChannelId(thread)).toBe(CH_B);
+			// A text channel's parent is a category; categories carry no theme to inherit.
+			expect(themeFallbackChannelId(textChannel)).toBeNull();
+			expect(themeFallbackChannelId(undefined)).toBeNull();
+		});
+
+		it("resolves a thread with no theme of its own to its parent's theme", () => {
+			ChannelThemes.setThemeCss(CH_B, PARENT_CSS);
+			expect(ChannelThemes.getThemeCss(THREAD)).toBeNull();
+			expect(ChannelThemes.getThemeCssWithFallback(THREAD, themeFallbackChannelId(thread))).toBe(PARENT_CSS);
+		});
+
+		it("keeps a thread's own theme over its parent's", () => {
+			const ownCss = ':root { --background-primary: #405060; }';
+			ChannelThemes.setThemeCss(CH_B, PARENT_CSS);
+			ChannelThemes.setThemeCss(THREAD, ownCss);
+			expect(ChannelThemes.getThemeCssWithFallback(THREAD, themeFallbackChannelId(thread))).toBe(ownCss);
+		});
+
+		it('leaves a non-thread channel unaffected', () => {
+			ChannelThemes.setThemeCss(CH_B, PARENT_CSS);
+			// Unthemed stays unthemed: no fallback is offered, so the category's id is never consulted.
+			expect(ChannelThemes.getThemeCssWithFallback(CH, themeFallbackChannelId(textChannel))).toBeNull();
+			const ownCss = ':root { --background-primary: #708090; }';
+			ChannelThemes.setThemeCss(CH, ownCss);
+			expect(ChannelThemes.getThemeCssWithFallback(CH, themeFallbackChannelId(textChannel))).toBe(ownCss);
 		});
 	});
 

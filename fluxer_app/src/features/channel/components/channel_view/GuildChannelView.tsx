@@ -33,7 +33,7 @@ import {useChannelPanelVisibility} from '@app/features/channel/hooks/useChannelP
 import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
 // LOCAL-ONLY: ChannelThemes is a local-only addition — exclude from upstream sync.
-import ChannelThemes from '@app/features/channel/state/ChannelThemes';
+import ChannelThemes, {themeFallbackChannelId} from '@app/features/channel/state/ChannelThemes';
 // LOCAL-ONLY: SelectMode is a local-only addition — exclude from upstream sync.
 import SelectMode from '@app/features/channel/state/SelectMode';
 import * as ChannelUtils from '@app/features/channel/utils/ChannelUtils';
@@ -200,10 +200,15 @@ export const GuildChannelView = observer(({channelId, guildId}: GuildChannelView
 	// resolved CSS synchronously, so fetching on mount rather than lazily keeps a channel from
 	// rendering unstyled and then visibly restyling. Both loads are deduped, so repeat mounts cost
 	// nothing.
+	// A thread falls back to its parent's theme (see ChannelLayout), so the parent's state loads too.
+	const themeFallbackId = themeFallbackChannelId(channel);
 	useEffect(() => {
 		void ChannelThemes.ensureLibraryLoaded();
 		void ChannelThemes.ensureChannelStateLoaded(channelId);
-	}, [channelId]);
+		if (themeFallbackId) {
+			void ChannelThemes.ensureChannelStateLoaded(themeFallbackId);
+		}
+	}, [channelId, themeFallbackId]);
 	const isVoiceChannel = channel?.type === ChannelTypes.GUILD_VOICE;
 	const memberListDefaultHiddenForChannel = Boolean(isVoiceChannel);
 	const isMemberListVisible = useMemberListVisible({
