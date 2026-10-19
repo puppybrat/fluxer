@@ -9,6 +9,8 @@ import {
 	PREMIUM_PAYMENT_RECOVERY_GRACE_DAYS,
 	PremiumFlags,
 	UserFlags,
+	type UserPremiumType,
+	UserPremiumTypes,
 } from '@fluxer/constants/src/UserConstants';
 import {MS_PER_DAY} from '@fluxer/date_utils/src/DateConstants';
 import {snowflakeToDate} from '@fluxer/snowflake/src/Snowflake';
@@ -32,6 +34,12 @@ function isAccountDisabled(user: Pick<User, 'flags' | 'tempBannedUntil'>, now = 
 	return user.tempBannedUntil == null || user.tempBannedUntil.getTime() > now;
 }
 
+export function isHeldByDecision(
+	user: Pick<User, 'flags' | 'deletionStartedAt' | 'tempBannedUntil' | 'enforcementDecisionId'>,
+): boolean {
+	return user.enforcementDecisionId !== null && isSignInRefused(user);
+}
+
 export function isSignInRefused(user: Pick<User, 'flags' | 'deletionStartedAt' | 'tempBannedUntil'>): boolean {
 	return isAccountClosed(user) || isTemporarilyBanned(user);
 }
@@ -53,7 +61,7 @@ interface PremiumCheckable {
 	premiumType: number | null;
 	premiumUntil: Date | null;
 	premiumGiftExtensionEndsAt: Date | null;
-	premiumWillCancel: boolean;
+
 	premiumGraceEndsAt: Date | null;
 	flags: bigint;
 	premiumFlags: number;
@@ -119,6 +127,21 @@ export function checkIsPremium(user: PremiumCheckable): boolean {
 		return true;
 	}
 	return false;
+}
+
+export function getBadgePremiumType(
+	user: Pick<PremiumCheckable, 'premiumType' | 'premiumFlags'>,
+): UserPremiumType | undefined {
+	if (user.premiumType != null && user.premiumType !== UserPremiumTypes.NONE) {
+		return user.premiumType as UserPremiumType;
+	}
+	if (
+		(user.premiumFlags & (PremiumFlags.ENABLED_OVERRIDE | PremiumFlags.PERKS_DISABLED)) ===
+		PremiumFlags.ENABLED_OVERRIDE
+	) {
+		return UserPremiumTypes.SUBSCRIPTION;
+	}
+	return undefined;
 }
 
 const PREMIUM_CLEAR_FIELDS = [

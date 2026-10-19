@@ -3,6 +3,7 @@
 import type {WorkerTaskName} from '@app/api/worker/WorkerLaneConfig';
 import type {CachePurgeAdapterName, StoreProductSlotName} from '@fluxer/config/src/MasterConfig';
 import type {AccountIdentityMode, TagStyle} from '@fluxer/constants/src/AccountIdentityConstants';
+import type {SmtpTlsMode} from '@fluxer/constants/src/SmtpConstants';
 
 export type APIWorkerMode = 'all_lanes' | 'single_lane' | 'single_task';
 export type APIWorkerLaneName = 'realtime' | 'unfurl' | 'lifecycle' | 'batch' | 'crosspost';
@@ -18,13 +19,16 @@ export interface TrustedCallerConfig {
 	buckets: Array<string>;
 }
 
+interface APICachePurgeTarget {
+	endpoint: string;
+	token: string;
+	timeoutMs: number;
+}
+
 export interface APICachePurgeConfig {
 	adapter: CachePurgeAdapterName;
-	http: {
-		endpoint: string;
-		token: string;
-		timeoutMs: number;
-	};
+	http: APICachePurgeTarget;
+	controller: APICachePurgeTarget;
 }
 
 interface APIGeoipFilesystemConfig {
@@ -163,7 +167,7 @@ export interface APIConfig {
 			port: number;
 			username: string;
 			password: string;
-			secure: boolean;
+			tlsMode: SmtpTlsMode | null;
 		};
 	};
 	blocklistFeeds: {
@@ -286,6 +290,7 @@ export interface APIConfig {
 		};
 		setup: {
 			configured: boolean;
+			token: string | null;
 		};
 		accountIdentity: AccountIdentityMode | null;
 		tagStyle: TagStyle | null;
@@ -307,7 +312,6 @@ export interface APIConfig {
 	deletionGracePeriodHours: number;
 	reportRetention: {
 		days: number;
-		resolvedDays: number | null;
 		dryRun: boolean;
 	};
 	inactivityDeletionThresholdDays?: number;

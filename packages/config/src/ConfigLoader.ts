@@ -222,6 +222,11 @@ function defaultConfig(): MasterConfig {
 					token: '',
 					timeout_ms: 10_000,
 				},
+				controller: {
+					endpoint: '',
+					token: '',
+					timeout_ms: 10_000,
+				},
 			},
 			blocklist_feeds: {},
 			breached_password_check: {},
@@ -279,7 +284,6 @@ function defaultConfig(): MasterConfig {
 		inactivity_deletion_threshold_days: 365,
 		report_retention: {
 			days: 365,
-			resolved_days: null,
 			dry_run: false,
 		},
 	};
@@ -450,14 +454,6 @@ function validateApiWorkerConfig(config: MasterConfig): void {
 function validateReportRetentionConfig(config: MasterConfig): void {
 	const retention = config.report_retention;
 	assertIntegerInRange(retention.days, 'FLUXER_REPORT_RETENTION_DAYS', 1, MAX_REPORT_RETENTION_DAYS);
-	if (retention.resolved_days !== null) {
-		assertIntegerInRange(
-			retention.resolved_days,
-			'FLUXER_RESOLVED_REPORT_RETENTION_DAYS',
-			1,
-			MAX_REPORT_RETENTION_DAYS,
-		);
-	}
 	assertBoolean(retention.dry_run, 'FLUXER_REPORT_RETENTION_DRY_RUN');
 }
 
@@ -488,26 +484,37 @@ function normalizeAppOriginAliases(config: MasterConfig): void {
 	];
 }
 
-function validateCachePurgeConfig(config: MasterConfig): void {
-	const cachePurge = config.integrations.cache_purge;
-	if (cachePurge.adapter !== 'http') {
-		return;
-	}
-	requireString(cachePurge.http.endpoint, 'FLUXER_CACHE_PURGE_HTTP_ENDPOINT');
-	const endpoint = URL.parse(cachePurge.http.endpoint);
+function validateCachePurgeTarget(
+	target: {endpoint: string; token: string; timeout_ms: number},
+	envPrefix: string,
+	protocols: ReadonlyArray<string>,
+): void {
+	requireString(target.endpoint, `${envPrefix}_ENDPOINT`);
+	const endpoint = URL.parse(target.endpoint);
 	if (
 		endpoint === null ||
-		(endpoint.protocol !== 'http:' && endpoint.protocol !== 'https:') ||
+		!protocols.includes(endpoint.protocol) ||
 		endpoint.username !== '' ||
 		endpoint.password !== ''
 	) {
-		throw new Error('FLUXER_CACHE_PURGE_HTTP_ENDPOINT must be an absolute http or https URL without credentials');
+		const schemes = protocols.map((protocol) => protocol.slice(0, -1)).join(' or ');
+		throw new Error(`${envPrefix}_ENDPOINT must be an absolute ${schemes} URL without credentials`);
 	}
-	requireString(cachePurge.http.token, 'FLUXER_CACHE_PURGE_HTTP_TOKEN');
-	if (!/^[\x21-\x7e]+$/u.test(cachePurge.http.token)) {
-		throw new Error('FLUXER_CACHE_PURGE_HTTP_TOKEN must contain only visible ASCII characters');
+	requireString(target.token, `${envPrefix}_TOKEN`);
+	if (!/^[\x21-\x7e]+$/u.test(target.token)) {
+		throw new Error(`${envPrefix}_TOKEN must contain only visible ASCII characters`);
 	}
-	assertIntegerInRange(cachePurge.http.timeout_ms, 'FLUXER_CACHE_PURGE_HTTP_TIMEOUT_MS', 1_000, 10_000);
+	assertIntegerInRange(target.timeout_ms, `${envPrefix}_TIMEOUT_MS`, 1_000, 10_000);
+}
+
+function validateCachePurgeConfig(config: MasterConfig): void {
+	const cachePurge = config.integrations.cache_purge;
+	if (cachePurge.adapter === 'http') {
+		validateCachePurgeTarget(cachePurge.http, 'FLUXER_CACHE_PURGE_HTTP', ['http:', 'https:']);
+	}
+	if (cachePurge.adapter === 'controller') {
+		validateCachePurgeTarget(cachePurge.controller, 'FLUXER_CACHE_PURGE_CONTROLLER', ['https:']);
+	}
 }
 
 function validateStoreProductSlots(
@@ -653,6 +660,13 @@ function normalizeConfig(config: MasterConfig): MasterConfig {
 	return config;
 }
 
+function applySelfHostedEnvDefault(config: MasterConfig, explicitEnv: string | undefined): MasterConfig {
+	if (explicitEnv !== undefined || !config.instance.self_hosted) {
+		return config;
+	}
+	return {...config, env: 'production'};
+}
+
 function applyPublicOrigin(config: MasterConfig): MasterConfig {
 	const raw = config.domain.public_origin;
 	if (raw.trim().length === 0 && !/\p{Cc}/u.test(raw)) {
@@ -775,7 +789,10 @@ export async function loadConfig(): Promise<MasterConfig> {
 		return cachedConfig;
 	}
 	const overrides = buildNamedFluxerEnvOverrides(process.env);
-	const merged = applyPublicOrigin(mergeConfig(defaultConfig(), overrides));
+	const merged = applySelfHostedEnvDefault(
+		applyPublicOrigin(mergeConfig(defaultConfig(), overrides)),
+		readEnvValue(process.env, 'FLUXER_ENV'),
+	);
 	const normalized = normalizeConfig(merged);
 	const derived = deriveEndpointsFromDomain(normalized.domain);
 	const endpoints = {...derived, ...(normalized.endpoint_overrides ?? {})};

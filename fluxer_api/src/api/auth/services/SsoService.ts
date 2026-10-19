@@ -2,7 +2,9 @@
 
 import {createHash, randomBytes} from 'node:crypto';
 import type {ApiContext} from '@app/api/ApiContext';
+import {maybeAutoJoinInvite} from '@app/api/auth/AuthRegistration';
 import * as AuthSession from '@app/api/auth/AuthSession';
+import * as AuthUtility from '@app/api/auth/AuthUtility';
 import {assertEmailNotBlocklisted} from '@app/api/auth/EmailBlocklist';
 import {SsoIdentityRepository} from '@app/api/auth/services/SsoIdentityRepository';
 import {
@@ -11,9 +13,9 @@ import {
 	tryDiscoverOidcProviderMetadata,
 } from '@app/api/auth/services/SsoUtils';
 import type {UserID} from '@app/api/BrandedTypes';
-import type {ILogger} from '@app/api/ILogger';
+import {EMPTY_USER_ROW, type UserRow} from '@app/api/database/types/UserTypes';
 import {emitActivity} from '@app/api/infrastructure/activity/ActivityEvents';
-import type {IDiscriminatorService} from '@app/api/infrastructure/DiscriminatorService';
+import type {DiscriminatorService} from '@app/api/infrastructure/DiscriminatorService';
 import type {KVActivityTracker} from '@app/api/infrastructure/KVActivityTracker';
 import {usesUsernameSignIn} from '@app/api/instance/AccountIdentityModeCache';
 import {
@@ -28,6 +30,7 @@ import {
 	isTestSsoProvider,
 	validateSsoPublicOutboundUrl,
 } from '@app/api/instance/SsoConfigValidation';
+import type {InviteService} from '@app/api/invite/InviteService';
 import {Logger} from '@app/api/Logger';
 import {profileSubstringBlocklistCache} from '@app/api/middleware/ProfileSubstringBlocklistCache';
 import type {RequestCache} from '@app/api/middleware/RequestCacheMiddleware';
@@ -38,6 +41,7 @@ import {USERNAME_MODE_DISCRIMINATOR} from '@app/api/user/UserTag';
 import {EXTERNAL_RESPONSE_LIMITS} from '@app/api/utils/ExternalResponseLimits';
 import * as FetchUtils from '@app/api/utils/FetchUtils';
 import {isJsonRecord, parseJsonRecord, parseJsonWithGuard} from '@app/api/utils/JsonBoundaryUtils';
+import {randomBase64Url} from '@app/api/utils/SecretHash';
 import {generateRandomUsername} from '@app/api/utils/UsernameGenerator';
 import {deriveUsernameFromDisplayName} from '@app/api/utils/UsernameSuggestionUtils';
 import {AccountIdentityModes, TagStyles} from '@fluxer/constants/src/AccountIdentityConstants';
@@ -50,6 +54,7 @@ import {SsoRequiredError} from '@fluxer/errors/src/domains/auth/SsoRequiredError
 import {ContentBlockedError} from '@fluxer/errors/src/domains/content/ContentBlockedError';
 import {FeatureTemporarilyDisabledError} from '@fluxer/errors/src/domains/core/FeatureTemporarilyDisabledError';
 import {InputValidationError} from '@fluxer/errors/src/domains/core/InputValidationError';
+import type {LoggerInterface} from '@fluxer/logger/src/LoggerInterface';
 import {EmailType} from '@fluxer/schema/src/primitives/UserValidators';
 import {formatUrlForDiagnostics} from '@pkgs/http_client/src/HttpClientDiagnostics';
 import {ms, seconds} from 'itty-time';
@@ -114,15 +119,11 @@ const CODE_VERIFIER_BYTE_LENGTH = 32;
 const STATE_BYTE_LENGTH = 16;
 const NONCE_BYTE_LENGTH = 16;
 
-let ssoLogger: ILogger | undefined;
+let ssoLogger: LoggerInterface | undefined;
 
-function getLogger(): ILogger {
+function getLogger(): LoggerInterface {
 	ssoLogger ??= Logger.child({logger: 'SsoService'});
 	return ssoLogger;
-}
-
-function randomBase64UrlToken(byteLength: number): string {
-	return randomBytes(byteLength).toString('base64url');
 }
 
 function randomHexToken(byteLength: number): string {
@@ -264,9 +265,10 @@ export class SsoService {
 	constructor(
 		private readonly apiContext: ApiContext,
 		private readonly instanceConfigRepository: InstanceConfigRepository,
-		private readonly discriminatorService: IDiscriminatorService,
+		private readonly discriminatorService: DiscriminatorService,
 		private readonly kvActivityTracker: KVActivityTracker,
 		private readonly singleCommunityService: SingleCommunityService,
+		private readonly inviteService: InviteService,
 	) {}
 
 	async getPublicStatus(): Promise<PublicSsoStatus> {
@@ -293,9 +295,9 @@ export class SsoService {
 		const config = await this.requireReadyConfig();
 		const isMobile = isMobileSsoRedirectUri(redirectUri, config.redirectUri);
 		const state = `${isMobile ? SSO_MOBILE_STATE_PREFIX : ''}${randomHexToken(STATE_BYTE_LENGTH)}`;
-		const codeVerifier = randomBase64UrlToken(CODE_VERIFIER_BYTE_LENGTH);
+		const codeVerifier = randomBase64Url(CODE_VERIFIER_BYTE_LENGTH);
 		const codeChallenge = buildCodeChallenge(codeVerifier);
-		const nonce = randomBase64UrlToken(NONCE_BYTE_LENGTH);
+		const nonce = randomBase64Url(NONCE_BYTE_LENGTH);
 		const statePayload: SsoStatePayload = {
 			codeVerifier,
 			nonce,
@@ -399,6 +401,7 @@ export class SsoService {
 		if (existingUser) {
 			return this.bindSsoIdentity(existingUser, claims.sub, config);
 		}
+		AuthUtility.assertNetworkAllowed(this.apiContext);
 		if (!config.autoProvision) {
 			throw new SsoRequiredError();
 		}
@@ -408,10 +411,16 @@ export class SsoService {
 		}
 		await assertEmailNotBlocklisted(emailLower, 'email');
 		const pendingApproval = registrationConfig.mode === 'approval';
-		const user = await this.provisionUserFromClaims(claims, config, {pendingApproval});
+		const autoJoinInviteCode = this.apiContext.services.config.instance.autoJoinInviteCode?.trim() || null;
+		const user = await this.provisionUserFromClaims(claims, config, {pendingApproval, autoJoinInviteCode});
 		if (pendingApproval) {
 			throw new RegistrationPendingApprovalError();
 		}
+		await maybeAutoJoinInvite(this.inviteService, {
+			userId: user.id,
+			inviteCode: autoJoinInviteCode,
+			requestCache,
+		});
 		await this.singleCommunityService.joinStockCommunity(user.id, requestCache);
 		return user;
 	}
@@ -470,6 +479,7 @@ export class SsoService {
 		config: ResolvedSsoConfig,
 		options?: {
 			pendingApproval?: boolean;
+			autoJoinInviteCode?: string | null;
 		},
 	): Promise<User> {
 		const {users, snowflake, cache} = this.apiContext.services;
@@ -498,7 +508,8 @@ export class SsoService {
 		) {
 			throw new ContentBlockedError();
 		}
-		const userRow = {
+		const userRow: UserRow = {
+			...EMPTY_USER_ROW,
 			user_id: userId,
 			username,
 			discriminator,
@@ -508,55 +519,16 @@ export class SsoService {
 			email: usernameMode ? null : claims.email.toLowerCase(),
 			email_verified: claims.emailVerified,
 			email_bounced: false,
-			password_hash: null,
-			password_last_changed_at: null,
-			totp_secret: null,
-			authenticator_types: null,
-			avatar_hash: null,
-			avatar_color: null,
-			banner_hash: null,
-			banner_color: null,
-			bio: null,
-			pronouns: null,
-			accent_color: null,
-			timezone: null,
 			timezone_privacy_flags: ProfileFieldPrivacyFlags.EVERYONE,
-			date_of_birth: null,
-			locale: null,
 			flags: 0n,
-			premium_type: null,
-			premium_since: null,
-			premium_until: null,
-			premium_gift_extension_ends_at: null,
-			premium_will_cancel: null,
-			premium_billing_cycle: null,
-			premium_lifetime_sequence: null,
-			premium_grace_ends_at: null,
-			stripe_subscription_id: null,
-			stripe_customer_id: null,
 			has_ever_purchased: false,
 			terms_agreed_at: now,
 			privacy_agreed_at: now,
 			last_active_at: now,
-			last_active_ip: null,
-			temp_banned_until: null,
-			pending_bulk_message_deletion_at: null,
-			pending_bulk_message_deletion_channel_count: null,
-			pending_bulk_message_deletion_message_count: null,
-			pending_deletion_at: null,
-			deletion_reason_code: null,
-			deletion_public_reason: null,
-			deletion_audit_log_reason: null,
 			acls: new Set<string>(),
 			traits,
-			first_refund_at: null,
-			gift_inventory_server_seq: null,
-			gift_inventory_client_seq: null,
-			premium_onboarding_dismissed_at: null,
-			mention_flags: null,
-			last_voice_activity_sharing_change_at: null,
 			version: 1,
-		} as const;
+		};
 		await this.claimSsoIdentity(userId, claims.sub, config);
 		let createAttempted = false;
 		let userCreated = false;
@@ -575,6 +547,7 @@ export class SsoService {
 					requested_at: now.toISOString(),
 					registration_url_id: null,
 					client_ip: null,
+					invite_code: options.autoJoinInviteCode ?? null,
 				});
 			}
 			createAttempted = true;
@@ -604,6 +577,7 @@ export class SsoService {
 					timezone: null,
 					invite_code: null,
 					flags: user.flags.toString(),
+					date_of_birth: user.dateOfBirth,
 				},
 				null,
 				user.id.toString(),

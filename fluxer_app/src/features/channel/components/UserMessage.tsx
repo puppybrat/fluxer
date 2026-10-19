@@ -170,7 +170,7 @@ export const UserMessage = observer(() => {
 		[astNodes, message.id, message.channelId, message.mentionChannels, i18n.locale],
 	);
 	const shouldHideContent =
-		UserSettings.getRenderEmbeds() &&
+		UserSettings.renderEmbeds &&
 		message.embeds.length > 0 &&
 		message.embeds.every(isMediaOnlyEmbed) &&
 		astNodes.length === 1 &&
@@ -198,7 +198,6 @@ export const UserMessage = observer(() => {
 				inCharacterOverride.avatarUrl ??
 				AvatarUtils.getUserAvatarURL({id: author.id, avatar: null}))
 			: undefined;
-	const shouldAppearAuthorless = false;
 	const mobileLayout = MobileLayout;
 	const shouldShowFailedFooter =
 		message.state === MessageStates.FAILED && (mobileLayout.enabled || shouldHideContent || !hasStyleableTextContent);
@@ -514,6 +513,71 @@ export const UserMessage = observer(() => {
 			</SpoilerSyncProvider>
 		);
 	}
+	const authorHeading = (
+		<AuthorHeading className={styles.messageAuthorInfo} data-flx="channel.user-message.message-author-info--2">
+			<span className={styles.messageAuthorRow} data-flx="channel.user-message.message-author-row--2">
+				<span className={styles.messageAuthorPart} data-flx="channel.user-message.message-author-part--2">
+					<MessageTimeoutIndicator
+						guildId={message.guildId}
+						userId={author.id}
+						data-flx="channel.user-message.message-timeout-indicator"
+					/>
+					<MessageUsername
+						user={author}
+						message={message}
+						guild={guild}
+						member={member ?? undefined}
+						className={styles.messageUsername}
+						isPreview={!!previewContext}
+						previewColor={headOverrides?.usernameColor}
+						previewName={headOverrides?.displayName}
+						data-flx="channel.user-message.message-username--2"
+					/>
+					{(author.bot || message.isCrosspostCopy) && (
+						<UserTag
+							className={styles.userTagOffset}
+							system={author.system}
+							variant={message.isCrosspostCopy ? 'community' : undefined}
+							data-flx="channel.user-message.user-tag-offset--2"
+						/>
+					)}
+					{isOriginalPoster(message.channelId, author.id) && (
+						<UserTag
+							className={styles.userTagOffset}
+							variant="op"
+							data-flx="channel.user-message.user-tag-offset--op1"
+						/>
+					)}
+				</span>
+				<TimestampWithTooltip
+					date={message.timestamp}
+					className={styles.messageTimestamp}
+					data-flx="channel.user-message.message-timestamp--2"
+				>
+					<span
+						className={styles.authorDashSeparator}
+						aria-hidden="true"
+						data-flx="channel.user-message.author-dash-separator--2"
+					>
+						{' \u2014 '}
+					</span>
+					{formattedDate}
+				</TimestampWithTooltip>
+			</span>
+			{(message.flags & MessageFlags.SUPPRESS_NOTIFICATIONS) !== 0 && (
+				<Tooltip
+					text={i18n._(THIS_WAS_A_MESSAGE_DESCRIPTOR, {silentMention: SILENT_MENTION})}
+					data-flx="channel.user-message.tooltip"
+				>
+					<BellSlashIcon
+						weight="fill"
+						className={styles.silentMessageIcon}
+						data-flx="channel.user-message.silent-message-icon"
+					/>
+				</Tooltip>
+			)}
+		</AuthorHeading>
+	);
 	if (messageDisplayCompact) {
 		return (
 			<SpoilerSyncProvider data-flx="channel.user-message.spoiler-sync-provider--2">
@@ -634,71 +698,7 @@ export const UserMessage = observer(() => {
 							/>
 						</AuthorHeading>
 					)}
-					{!shouldGroup && !multiHeads && (
-						<AuthorHeading className={styles.messageAuthorInfo} data-flx="channel.user-message.message-author-info--2">
-							<span className={styles.messageAuthorRow} data-flx="channel.user-message.message-author-row--2">
-								<span className={styles.messageAuthorPart} data-flx="channel.user-message.message-author-part--2">
-									<MessageTimeoutIndicator
-										guildId={message.guildId}
-										userId={author.id}
-										data-flx="channel.user-message.message-timeout-indicator"
-									/>
-									<MessageUsername
-										user={author}
-										message={message}
-										guild={guild}
-										member={member ?? undefined}
-										className={styles.messageUsername}
-										isPreview={!!previewContext}
-										previewColor={headOverrides?.usernameColor}
-										previewName={headOverrides?.displayName}
-										data-flx="channel.user-message.message-username--2"
-									/>
-									{(author.bot || message.isCrosspostCopy) && (
-										<UserTag
-											className={styles.userTagOffset}
-											system={author.system}
-											variant={message.isCrosspostCopy ? 'community' : undefined}
-											data-flx="channel.user-message.user-tag-offset--2"
-										/>
-									)}
-									{isOriginalPoster(message.channelId, author.id) && (
-										<UserTag
-											className={styles.userTagOffset}
-											variant="op"
-											data-flx="channel.user-message.user-tag-offset--op1"
-										/>
-									)}
-								</span>
-								<TimestampWithTooltip
-									date={message.timestamp}
-									className={styles.messageTimestamp}
-									data-flx="channel.user-message.message-timestamp--2"
-								>
-									<span
-										className={styles.authorDashSeparator}
-										aria-hidden="true"
-										data-flx="channel.user-message.author-dash-separator--2"
-									>
-										{' \u2014 '}
-									</span>
-									{formattedDate}
-								</TimestampWithTooltip>
-							</span>
-							{(message.flags & MessageFlags.SUPPRESS_NOTIFICATIONS) !== 0 && (
-								<Tooltip
-									text={i18n._(THIS_WAS_A_MESSAGE_DESCRIPTOR, {silentMention: SILENT_MENTION})}
-									data-flx="channel.user-message.tooltip"
-								>
-									<BellSlashIcon
-										weight="fill"
-										className={styles.silentMessageIcon}
-										data-flx="channel.user-message.silent-message-icon"
-									/>
-								</Tooltip>
-							)}
-						</AuthorHeading>
-					)}
+					{!shouldGroup && !multiHeads && authorHeading}
 					<div
 						className={clsx(styles.messageText, messageStateClassName)}
 						data-flx="channel.user-message.message-text--2"
@@ -710,16 +710,7 @@ export const UserMessage = observer(() => {
 			{shouldGroup && (
 				<MessageAuthorInfo
 					message={message}
-					author={author}
-					guild={guild}
-					member={member ?? undefined}
-					shouldGroup={shouldGroup}
-					shouldAppearAuthorless={shouldAppearAuthorless}
 					mobileLayoutEnabled={mobileLayout.enabled}
-					isHovering={isHovering}
-					formattedDate={formattedDate}
-					previewContext={previewContext}
-					previewOverrides={headOverrides}
 					data-flx="channel.user-message.message-author-info--3"
 				/>
 			)}
@@ -764,71 +755,7 @@ export const UserMessage = observer(() => {
 						/>
 					</AuthorHeading>
 				)}
-				{((!message.content && !isEditing) || (shouldHideContent && !isEditing)) && !shouldGroup && !multiHeads && (
-					<AuthorHeading className={styles.messageAuthorInfo} data-flx="channel.user-message.message-author-info--4">
-						<span className={styles.messageAuthorRow} data-flx="channel.user-message.message-author-row--3">
-							<span className={styles.messageAuthorPart} data-flx="channel.user-message.message-author-part--3">
-								<MessageTimeoutIndicator
-									guildId={message.guildId}
-									userId={author.id}
-									data-flx="channel.user-message.message-timeout-indicator--2"
-								/>
-								<MessageUsername
-									user={author}
-									message={message}
-									guild={guild}
-									member={member ?? undefined}
-									className={styles.messageUsername}
-									isPreview={!!previewContext}
-									previewColor={headOverrides?.usernameColor}
-									previewName={headOverrides?.displayName}
-									data-flx="channel.user-message.message-username--3"
-								/>
-								{(author.bot || message.isCrosspostCopy) && (
-									<UserTag
-										className={styles.userTagOffset}
-										system={author.system}
-										variant={message.isCrosspostCopy ? 'community' : undefined}
-										data-flx="channel.user-message.user-tag-offset--3"
-									/>
-								)}
-								{isOriginalPoster(message.channelId, author.id) && (
-									<UserTag
-										className={styles.userTagOffset}
-										variant="op"
-										data-flx="channel.user-message.user-tag-offset--op2"
-									/>
-								)}
-							</span>
-							<TimestampWithTooltip
-								date={message.timestamp}
-								className={styles.messageTimestamp}
-								data-flx="channel.user-message.message-timestamp--3"
-							>
-								<span
-									className={styles.authorDashSeparator}
-									aria-hidden="true"
-									data-flx="channel.user-message.author-dash-separator--3"
-								>
-									{' \u2014 '}
-								</span>
-								{formattedDate}
-							</TimestampWithTooltip>
-						</span>
-						{(message.flags & MessageFlags.SUPPRESS_NOTIFICATIONS) !== 0 && (
-							<Tooltip
-								text={i18n._(THIS_WAS_A_MESSAGE_DESCRIPTOR, {silentMention: SILENT_MENTION})}
-								data-flx="channel.user-message.tooltip--2"
-							>
-								<BellSlashIcon
-									weight="fill"
-									className={styles.silentMessageIcon}
-									data-flx="channel.user-message.silent-message-icon--2"
-								/>
-							</Tooltip>
-						)}
-					</AuthorHeading>
-				)}
+				{((!message.content && !isEditing) || (shouldHideContent && !isEditing)) && !shouldGroup && !multiHeads && authorHeading}
 				{shouldHideContent &&
 					!isEditing &&
 					message.content.length > 0 &&

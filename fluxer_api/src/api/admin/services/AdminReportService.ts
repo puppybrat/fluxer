@@ -18,10 +18,8 @@ import {Config} from '@app/api/Config';
 import type {ChannelRepository} from '@app/api/channel/ChannelRepository';
 import {makeAttachmentCdnKey} from '@app/api/channel/services/message/MessageHelpers';
 import {
+	adminMessageResponseAccess,
 	createMessageResponseDataService,
-	type MessageResponseAccessContext,
-	messageResponseAccessForChannel,
-	messageResponseAccessForGuild,
 } from '@app/api/channel/services/message/MessageResponseDataService';
 import {resolveNsfwScopeChannel} from '@app/api/channel/utils/ThreadNsfwScope';
 import type {MessageAttachment} from '@app/api/database/types/MessageTypes';
@@ -41,11 +39,14 @@ import {formatUserTag} from '@app/api/user/UserTag';
 import {assertSafeByteSize} from '@app/api/utils/ByteSizeUtils';
 import {AdminACLs} from '@fluxer/constants/src/AdminACLs';
 import {DELETED_USER_DISCRIMINATOR, DELETED_USER_USERNAME} from '@fluxer/constants/src/UserConstants';
+import {ValidationErrorCodes} from '@fluxer/constants/src/ValidationErrorCodes';
 import {FeatureTemporarilyDisabledError} from '@fluxer/errors/src/domains/core/FeatureTemporarilyDisabledError';
+import {InputValidationError} from '@fluxer/errors/src/domains/core/InputValidationError';
 import {UnknownReportError} from '@fluxer/errors/src/domains/moderation/UnknownReportError';
 import type {ReportSearchFilters} from '@fluxer/schema/src/contracts/search/SearchDocumentTypes';
 import type {
 	AdminReportReasonsResponse,
+	ReportItemOutcome,
 	SearchReportsRequest,
 	UpdateReportRequest,
 } from '@fluxer/schema/src/domains/admin/AdminSchemas';
@@ -65,7 +66,39 @@ interface AdminReportServiceDeps {
 	reporterResolutionNotifier: ReporterResolutionNotifier;
 }
 
-type StaffReportResolution = NonNullable<UpdateReportRequest['resolution']>;
+interface StaffReportResolution {
+	adminUserId: UserID;
+	publicComment: string | null;
+	auditLogReason: string | null;
+	notifyReporter: boolean;
+	resolution: UpdateReportRequest['resolution'];
+	outcome?: ReportItemOutcome;
+	duplicateOf?: ReportID;
+}
+
+function refuse(path: 'outcome' | 'duplicate_of'): never {
+	throw InputValidationError.fromCode(path, ValidationErrorCodes.REPORT_OUTCOME_INVALID);
+}
+
+function staffOutcome(
+	resolution: UpdateReportRequest['resolution'],
+	outcome: ReportItemOutcome | undefined,
+	duplicateOf: ReportID | undefined,
+): ReportItemOutcome | null {
+	if (resolution !== 'duplicate' && duplicateOf !== undefined) refuse('duplicate_of');
+	switch (resolution) {
+		case 'no_violation':
+			if (outcome !== undefined && outcome !== 'no_violation') refuse('outcome');
+			return 'no_violation';
+		case 'actioned':
+			if (outcome === undefined || outcome === 'no_violation') refuse('outcome');
+			return outcome;
+		case 'duplicate':
+			if (outcome !== undefined) refuse('outcome');
+			if (duplicateOf === undefined) refuse('duplicate_of');
+			return null;
+	}
+}
 
 interface ReportLookupCache {
 	channelNsfwByChannelId: Map<string, boolean | null>;
@@ -169,20 +202,29 @@ export class AdminReportService {
 
 	async resolveReport(
 		reportId: ReportID,
-		adminUserId: UserID,
-		publicComment: string | null,
-		auditLogReason: string | null,
-		notifyReporter: boolean,
-		resolution?: StaffReportResolution,
+		{
+			adminUserId,
+			publicComment,
+			auditLogReason,
+			notifyReporter,
+			resolution,
+			outcome,
+			duplicateOf,
+		}: StaffReportResolution,
 	) {
 		const {reportService, auditService, reporterResolutionNotifier} = this.deps;
+		const reporterOutcome =
+			staffOutcome(resolution, outcome, duplicateOf) ?? (await this.duplicatedOutcome(reportId, duplicateOf));
 		const sentComment = notifyReporter ? publicComment : null;
 		const internalComment = notifyReporter ? null : publicComment;
 		const resolvedReport = await reportService.resolveReport(reportId, adminUserId, sentComment, auditLogReason, {
 			outcome: resolution,
 			resolvedBy: 'staff',
+			reporterOutcome,
 		});
-		const notice = await reporterResolutionNotifier.notifyReporterOfResolution(resolvedReport, sentComment);
+		const notice = reporterOutcome
+			? await reporterResolutionNotifier.notifyReporterOfResolution(resolvedReport, sentComment, reporterOutcome)
+			: null;
 		await auditService.createAuditLog({
 			adminUserId,
 			targetType: 'report',
@@ -194,8 +236,12 @@ export class AdminReportService {
 				['report_type', resolvedReport.reportType.toString()],
 				['notify_reporter', notifyReporter ? 'true' : 'false'],
 				...(internalComment ? [['internal_comment', internalComment] as [string, string]] : []),
-				...describeReporterNotice(notice),
-				...(resolution ? [['resolution', resolution] as [string, string]] : []),
+				...(notice
+					? describeReporterNotice(notice)
+					: [['reporter_notice_skipped', 'duplicate_outcome_unknown'] as [string, string]]),
+				['resolution', resolution],
+				...(duplicateOf ? [['duplicate_of', duplicateOf.toString()] as [string, string]] : []),
+				...(reporterOutcome ? [['outcome', reporterOutcome] as [string, string]] : []),
 			]),
 		});
 		return {
@@ -204,6 +250,16 @@ export class AdminReportService {
 			resolved_at: resolvedReport.resolvedAt?.toISOString() ?? null,
 			public_comment: resolvedReport.publicComment,
 		};
+	}
+
+	private async duplicatedOutcome(
+		reportId: ReportID,
+		duplicateOf: ReportID | undefined,
+	): Promise<ReportItemOutcome | null> {
+		if (duplicateOf === undefined) return null;
+		if (duplicateOf === reportId) refuse('duplicate_of');
+		const original = await this.deps.reportService.getReport(duplicateOf);
+		return original.reporterOutcome;
 	}
 
 	async searchReports(data: SearchReportsRequest, acls: ReadonlySet<string>) {
@@ -516,7 +572,7 @@ export class AdminReportService {
 				const channelId = message.channelId ?? report.reportedChannelId;
 				if (!channelId) return null;
 				try {
-					const access = await this.getMessageResponseAccessForAdmin(channelId);
+					const access = await adminMessageResponseAccess(this.deps.channelRepository, channelId);
 					return await createMessageResponseDataService().getMessage({
 						userId: createUserID(0n),
 						channelId,
@@ -538,12 +594,6 @@ export class AdminReportService {
 			}),
 		);
 		return responses.filter((message): message is MessageResponse => message !== null);
-	}
-
-	private async getMessageResponseAccessForAdmin(channelId: ChannelID): Promise<MessageResponseAccessContext> {
-		const channel = await this.deps.channelRepository.channelData.findUnique(channelId);
-		const access = channel ? messageResponseAccessForChannel(channel) : messageResponseAccessForGuild(null);
-		return {...access, includeHidden: true};
 	}
 
 	private async getMutualDmChannelId(report: IARSubmission): Promise<string | null> {

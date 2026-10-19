@@ -8,6 +8,7 @@ import {NativeTitlebar} from '@app/features/app/components/layout/NativeTitlebar
 import {AuthShellHintKind, useAuthShellHintCapture} from '@app/features/app/components/skeleton/AuthShellHint';
 import {useNativePlatform} from '@app/features/app/hooks/useNativePlatform';
 import {useSetLayoutVariant} from '@app/features/app/state/LayoutVariantContext';
+import {AccountRestrictionGate} from '@app/features/auth/flow/AccountRestrictionScreen';
 import {AuthBackground} from '@app/features/auth/flow/AuthBackground';
 import {AuthCardContainer} from '@app/features/auth/flow/AuthCardContainer';
 import {AuthRuntimeTargetBoundary} from '@app/features/auth/flow/AuthRuntimeTargetBoundary';
@@ -26,7 +27,6 @@ import {Scroller, type ScrollerHandle} from '@app/features/ui/components/Scrolle
 import {isMobileExperienceEnabled} from '@app/features/ui/utils/MobileExperience';
 import {hasUnavailableElectronNativeContext} from '@app/features/ui/utils/NativeUtils';
 import {useNativeTitleBar} from '@app/features/window/hooks/useNativeTitleBar';
-import Window from '@app/features/window/state/Window';
 import {flxElementClassName} from '@app/lib/react';
 import type {GuildSplashCardAlignmentValue} from '@fluxer/constants/src/GuildConstants';
 import {GuildSplashCardAlignment} from '@fluxer/constants/src/GuildConstants';
@@ -65,7 +65,6 @@ function resolveAuthLayoutContentMode({current, value}: ResolveAuthLayoutContent
 }
 
 const AuthLayoutContent = observer(function AuthLayoutContent({children}: {children?: ReactNode}) {
-	const {width: viewportWidth, height: viewportHeight} = Window.windowSize;
 	const [splashUrl, setSplashUrl] = useState<string | null>(null);
 	const [cardVariant, setCardVariant] = useState<AuthCardVariant>('default');
 	const [contentMode, setContentMode] = useState<AuthLayoutContentMode | null>(null);
@@ -102,14 +101,6 @@ const AuthLayoutContent = observer(function AuthLayoutContent({children}: {child
 	useLayoutEffect(() => {
 		setContentMode((current) => current ?? AuthLayoutContentMode.CARD);
 	}, []);
-	const splashScale = useMemo(() => {
-		if (!splashDimensions) return null;
-		const {width, height} = splashDimensions;
-		if (width <= 0 || height <= 0) return null;
-		const heightScale = viewportHeight / height;
-		const widthScale = viewportWidth / width;
-		return Math.max(heightScale, widthScale);
-	}, [splashDimensions, viewportHeight, viewportWidth]);
 	const handleSetContentMode = useCallback<Dispatch<SetStateAction<AuthLayoutContentMode>>>((value) => {
 		setContentMode((current) => resolveAuthLayoutContentMode({current, value}));
 	}, []);
@@ -236,11 +227,10 @@ const AuthLayoutContent = observer(function AuthLayoutContent({children}: {child
 							data-flx="app.auth-layout.auth-layout-content.character-background"
 						>
 							<AuthBackground
+								className={styles.splashBackdrop}
 								splashUrl={splashUrl}
 								splashDimensions={splashDimensions}
-								splashScale={splashScale}
 								splashAlignment={splashAlignment}
-								useFullCover={false}
 								data-flx="app.auth-layout.auth-layout-content.auth-background"
 							/>
 							<flx-app-auth-layout-split
@@ -318,7 +308,9 @@ export const AuthLayout = observer(function AuthLayout({children}: {children?: R
 		<AppI18nProvider i18n={i18n}>
 			<AuthLayoutContent data-flx="app.auth-layout.auth-layout-content">
 				<AuthRuntimeTargetBoundary data-flx="app.auth-layout.auth-runtime-target-boundary">
-					{children}
+					<AccountRestrictionGate data-flx="app.auth-layout.account-restriction-gate">
+						{children}
+					</AccountRestrictionGate>
 				</AuthRuntimeTargetBoundary>
 			</AuthLayoutContent>
 		</AppI18nProvider>

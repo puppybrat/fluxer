@@ -8,17 +8,13 @@ import {MessageRequestService} from '@app/api/channel/services/message/MessageRe
 import type {MessageResponseDataService} from '@app/api/channel/services/message/MessageResponseDataService';
 import {setCassandraQueryExecutorForTesting, upsertOne} from '@app/api/database/CassandraQueryExecution';
 import type {CassandraParams, PreparedQuery} from '@app/api/database/CassandraTypes';
-import {
-	clearChannelThreadsTaintCacheForTesting,
-	syncChannelThreadsConfig,
-	type ThreadViewer,
-} from '@app/api/experiment/ChannelThreadsGate';
+import {clearChannelThreadsTaintCacheForTesting, type ThreadViewer} from '@app/api/experiment/ChannelThreadsGate';
+import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {RequestCache} from '@app/api/middleware/RequestCacheMiddleware';
 import {GuildThreadState} from '@app/api/Tables';
 import {InMemoryCassandraQueryExecutor} from '@app/api/test/InMemoryCassandraQueryExecutor';
 import {ChannelTypes, MessageTypes} from '@fluxer/constants/src/ChannelConstants';
 import {ServerMessageFlags} from '@fluxer/constants/src/ThreadConstants';
-import {ChannelThreadsConfigSchema} from '@fluxer/schema/src/domains/admin/ChannelThreadsSchemas';
 import type {MessageResponse} from '@fluxer/schema/src/domains/message/MessageResponseSchemas';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -75,6 +71,7 @@ function build(responses: Array<MessageResponse>) {
 		{listMessages, getMessage} as unknown as MessageResponseDataService,
 		{} as CrosspostSourceService,
 		{} as ChannelRepository,
+		{} as IGatewayService,
 	);
 	return {service, listMessages, getMessage};
 }
@@ -117,12 +114,9 @@ describe('MessageRequestService thread masking', () => {
 		executor = new MarkerCountingExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		clearChannelThreadsTaintCacheForTesting();
-		const raw = JSON.stringify(ChannelThreadsConfigSchema.parse({enabled: false, ever_enabled: true}));
-		syncChannelThreadsConfig(raw, (value) => ChannelThreadsConfigSchema.parse(JSON.parse(value ?? '{}')));
 	});
 
 	afterEach(() => {
-		syncChannelThreadsConfig(null, () => ChannelThreadsConfigSchema.parse({}));
 		setCassandraQueryExecutorForTesting(null);
 	});
 

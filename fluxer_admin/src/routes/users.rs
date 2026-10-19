@@ -53,6 +53,8 @@ struct UserDetailQuery {
     delete_all_messages_dry_run: Option<String>,
     delete_all_messages_channel_count: Option<u64>,
     delete_all_messages_message_count: Option<u64>,
+    report_id: Option<String>,
+    message: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -380,6 +382,8 @@ async fn user_tab(
         delete_all_messages_dry_run: None,
         delete_all_messages_channel_count: None,
         delete_all_messages_message_count: None,
+        report_id: None,
+        message: None,
     };
     let admin_acls = auth
         .0
@@ -458,6 +462,8 @@ fn to_tab_query(q: &UserDetailQuery) -> user_tabs::TabQuery {
         delete_all_messages_dry_run: q.delete_all_messages_dry_run.clone(),
         delete_all_messages_channel_count: q.delete_all_messages_channel_count,
         delete_all_messages_message_count: q.delete_all_messages_message_count,
+        report_id: q.report_id.clone(),
+        message: q.message.clone(),
     }
 }
 
@@ -468,33 +474,5 @@ fn append_query_params(url: &mut String, params: &[(String, String)]) {
         url.push_str(&urlencoding::encode(key));
         url.push('=');
         url.push_str(&urlencoding::encode(value));
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn badge_name_follows_the_cached_branding_and_falls_back_to_the_default() {
-        let gold = PremiumBranding {
-            name: Some("Gold".to_owned()),
-            premium_enabled: true,
-        };
-        assert_eq!(premium_badge_name(Some(&gold)).as_deref(), Some("Gold"));
-        let unnamed = PremiumBranding {
-            name: None,
-            premium_enabled: true,
-        };
-        assert_eq!(
-            premium_badge_name(Some(&unnamed)).as_deref(),
-            Some("Premium")
-        );
-        let everyone = PremiumBranding {
-            name: Some("Gold".to_owned()),
-            premium_enabled: false,
-        };
-        assert_eq!(premium_badge_name(Some(&everyone)), None);
-        assert_eq!(premium_badge_name(None).as_deref(), Some("Premium"));
     }
 }

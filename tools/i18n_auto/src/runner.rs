@@ -15,8 +15,8 @@ use crate::config::{
     DEFAULT_OPENROUTER_BASE_URL, DEFAULT_OPENROUTER_FALLBACK_MODELS,
     DEFAULT_OPENROUTER_HTTP_REFERER, DEFAULT_OPENROUTER_MODEL, DEFAULT_OPENROUTER_PROVIDER_SORT,
     DEFAULT_PROGRESS_INTERVAL_SECONDS, DEFAULT_REQUEST_TIMEOUT_SECONDS, DEFAULT_STRING_CONCURRENCY,
-    EnvOverlay, SOURCE_LOCALE, default_app_dir, env_value, locales_dir, positive_float_env,
-    positive_int_env, trim_trailing_slash,
+    EmptyFallback, EnvOverlay, SOURCE_LOCALE, default_app_dir, env_value, locales_dir,
+    positive_float_env, positive_int_env, trim_trailing_slash,
 };
 use crate::json_catalog::{
     StaticJsonCatalogConfig, read_static_json_entries, rebuild_static_json_allow_replacing,
@@ -224,16 +224,6 @@ impl RuntimeConfig {
             openrouter_provider_sort,
             request_timeout_seconds,
         }
-    }
-}
-
-trait EmptyFallback {
-    fn if_empty(self, fallback: impl FnOnce() -> String) -> String;
-}
-
-impl EmptyFallback for String {
-    fn if_empty(self, fallback: impl FnOnce() -> String) -> String {
-        if self.is_empty() { fallback() } else { self }
     }
 }
 
@@ -1146,7 +1136,7 @@ pub fn sync_source_locale(
     if matches!(&config.catalog_layout, CatalogLayout::StaticJson(_)) {
         log(
             &format!(
-                "[{SOURCE_LOCALE}] Source strings live in the static source catalog; nothing to sync"
+                "[{SOURCE_LOCALE}] Source strings are in the static source catalog; nothing to sync"
             ),
             false,
         );

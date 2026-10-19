@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {type FormSubmission, type UseFormReturn, useForm} from '@app/features/app/hooks/useForm';
+import {showAccountRestriction} from '@app/features/auth/commands/AuthenticationCommands';
 import * as RouterUtils from '@app/features/navigation/utils/RouterUtils';
 import {HttpError} from '@app/features/platform/types/EndpointError';
 import {failureMessage, failureValidationErrors} from '@app/features/platform/utils/ResponseInspection';
@@ -60,6 +61,9 @@ const applyAuthFormErrors = ({
 	setError,
 	setFieldErrors,
 }: ApplyAuthFormErrorsRequest): void => {
+	if (showAccountRestriction(error)) {
+		return;
+	}
 	const fieldViolations = failureValidationErrors(error) ?? [];
 	if (fieldViolations.length > 0) {
 		const fieldErrors = collectFieldErrors(fieldViolations);
@@ -123,3 +127,22 @@ export const getAuthErrorMessage = (error: unknown, i18n: I18n): string => {
 	}
 	return i18n._(AN_UNEXPECTED_ERROR_OCCURRED_DESCRIPTOR);
 };
+
+export function resolveAuthBannerError(
+	error: string | null,
+	fieldErrors: ReadonlyMap<string, string> | null | undefined,
+	renderedFields: ReadonlySet<string>,
+): string | null {
+	if (error != null) {
+		return error;
+	}
+	if (fieldErrors == null) {
+		return null;
+	}
+	for (const [fieldName, message] of fieldErrors) {
+		if (!renderedFields.has(fieldName)) {
+			return message;
+		}
+	}
+	return null;
+}

@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use crate::templates::components::report_category::{
+    message_lookup_href, report_status, report_type, reported_guild_icon,
+};
+
 use crate::{
     acl,
     api::{
@@ -18,13 +22,14 @@ use crate::{
                 data_field, data_field_link_mono, data_field_mono, data_field_muted,
                 data_field_text,
             },
+            enforcement_fields::{TakeAction, can_take_action, take_action_href},
             form::{
                 FORM_CONTROL_CLASS, FORM_LABEL_CLASS, checkbox, csrf_input, danger_button,
                 opt_out_checkbox, select_chevron,
             },
-            media::{guild_icon_url, initials, user_avatar_url},
+            media::user_avatar_url,
             message_data::ordered_messages,
-            message_list::{message_deletion_script, message_list},
+            message_list::message_list,
             nsfw_indicators::{
                 adult_content_badge, channel_nsfw_state_badge, content_warning_badge,
             },
@@ -50,24 +55,11 @@ pub struct LiveProfile {
 }
 
 fn status_badge(status: i32) -> Markup {
-    let (label, variant) = match status {
-        0 => ("Pending", BadgeVariant::Warning),
-        1 => ("Resolved", BadgeVariant::Success),
-        _ => ("Unknown", BadgeVariant::Default),
-    };
+    let (label, variant) = report_status(status);
     html! {
         span class="inline-flex w-fit self-start" {
             (badge(label, variant))
         }
-    }
-}
-
-fn report_type_label(report_type: i32) -> &'static str {
-    match report_type {
-        0 => "Message",
-        1 => "User",
-        2 => "Guild",
-        _ => "Unknown",
     }
 }
 
@@ -102,10 +94,15 @@ fn reported_user_label(report: &ReportEntry) -> String {
     )
 }
 
-fn has_acl(auth: &AuthContext, permission: &str) -> bool {
+fn admin_acls(auth: &AuthContext) -> &[String] {
     auth.admin_user
         .as_ref()
-        .is_some_and(|admin| acl::has_permission(&admin.acls, permission))
+        .map(|admin| admin.acls.as_slice())
+        .unwrap_or(&[])
+}
+
+fn has_acl(auth: &AuthContext, permission: &str) -> bool {
+    acl::has_permission(admin_acls(auth), permission)
 }
 
 fn basic_info_section(config: &AdminConfig, auth: &AuthContext, report: &ReportEntry) -> Markup {
@@ -116,7 +113,7 @@ fn basic_info_section(config: &AdminConfig, auth: &AuthContext, report: &ReportE
             div class="grid grid-cols-1 sm:grid-cols-2 gap-4" {
                 (data_field_mono("Report ID", &report.report_id))
                 (data_field_text("Reported At", &format_admin_timestamp(&report.reported_at)))
-                (data_field_text("Type", report_type_label(report.report_type)))
+                (data_field_text("Type", report_type(report.report_type).0))
                 (category_field(report))
                 (reason_field(report))
                 @if let Some(ref reporter_id) = report.reporter_id {
@@ -235,18 +232,6 @@ fn answer_steps(flow: &ReportFlowAnswersEntry) -> Markup {
             }
         }
     }
-}
-
-fn message_lookup_href(base: &str, channel_id: &str, message_id: Option<&str>) -> String {
-    let mut href = format!(
-        "{base}/messages?channel_id={}&context_limit=50",
-        urlencoding::encode(channel_id)
-    );
-    if let Some(message_id) = message_id.filter(|id| !id.is_empty()) {
-        href.push_str("&message_id=");
-        href.push_str(&urlencoding::encode(message_id));
-    }
-    href
 }
 
 fn snapshot_note() -> Markup {
@@ -484,30 +469,6 @@ fn reported_guild_field(config: &AdminConfig, report: &ReportEntry) -> Markup {
     }
 }
 
-fn reported_guild_icon(
-    config: &AdminConfig,
-    report: &ReportEntry,
-    guild_id: &str,
-    label: &str,
-) -> Markup {
-    match guild_icon_url(
-        config,
-        guild_id,
-        report.reported_guild_icon_hash.as_deref(),
-        80,
-        true,
-    ) {
-        Some(url) => html! {
-            img src=(url) alt="" class="h-8 w-8 flex-shrink-0 rounded-full object-cover";
-        },
-        None => html! {
-            span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-neutral-200 text-neutral-600 text-xs" {
-                (initials(label))
-            }
-        },
-    }
-}
-
 fn additional_info_section(report: &ReportEntry) -> Markup {
     html! {
         @if let Some(ref info) = report.additional_info {
@@ -551,18 +512,38 @@ fn status_card(config: &AdminConfig, report: &ReportEntry) -> Markup {
     }
 }
 
-fn actions_card(config: &AdminConfig, report: &ReportEntry, csrf_token: &str) -> Markup {
+fn take_action_subject(report: &ReportEntry) -> Option<&str> {
+    match report.report_type {
+        0 | 1 => report.reported_user_id.as_deref(),
+        _ => None,
+    }
+}
+
+fn actions_card(
+    config: &AdminConfig,
+    auth: &AuthContext,
+    report: &ReportEntry,
+    csrf_token: &str,
+) -> Markup {
     let base = &config.base_path;
+    let reported_message = report
+        .reported_channel_id
+        .as_deref()
+        .zip(report.reported_message_id.as_deref());
     html! {
         (section_card(Some("Actions"), None, None, html! {
             div class="flex flex-col gap-3" {
                 @if report.status == 0 {
                     (resolve_report_form(base, &report.report_id, csrf_token))
                 }
-                @if report.report_type == 0 || report.report_type == 1 {
-                    @if let Some(ref reported_id) = report.reported_user_id {
-                        (nav_link(&format!("{base}/users/{reported_id}"), "View Reported User"))
+                @if let Some(reported_id) = take_action_subject(report) {
+                    @if can_take_action(admin_acls(auth)) {
+                        (nav_link(
+                            &take_action_href(base, reported_id, Some(&report.report_id), reported_message),
+                            "Take action",
+                        ))
                     }
+                    (nav_link(&format!("{base}/users/{reported_id}"), "View Reported User"))
                 }
                 @if report.report_type == 2 {
                     @if let Some(ref guild_id) = report.reported_guild_id {
@@ -613,6 +594,31 @@ fn resolve_report_form(base: &str, report_id: &str, csrf_token: &str) -> Markup 
                 }
                 (select_chevron())
             }
+            fieldset class="flex flex-col gap-3" data-show-for-resolution="actioned" hidden disabled {
+                label for="outcome" class=(FORM_LABEL_CLASS) { "Outcome" }
+                div class="relative" {
+                    select id="outcome" name="outcome" required
+                        class={(FORM_CONTROL_CLASS) " h-8 appearance-none px-3 py-1.5 pr-10"} {
+                        option value="" selected disabled { "Choose one" }
+                        option value="removed" { "Content removed" }
+                        option value="warned" { "Warning given" }
+                        option value="restricted" { "Account restricted" }
+                        option value="action_taken" { "Other action taken" }
+                    }
+                    (select_chevron())
+                }
+                p class="text-neutral-500 text-xs" {
+                    "What happened to the reported content or account. The reporter is told it. Warning given and other action taken tell them we acted but not how."
+                }
+            }
+            fieldset class="flex flex-col gap-3" data-show-for-resolution="duplicate" hidden disabled {
+                label for="duplicate_of" class=(FORM_LABEL_CLASS) { "Duplicate of" }
+                input type="text" id="duplicate_of" name="duplicate_of" required inputmode="numeric"
+                    placeholder="Report ID" class={(FORM_CONTROL_CLASS) " h-8 px-3 py-1.5"};
+                p class="text-neutral-500 text-xs" {
+                    "The report this one repeats. The reporter is told its outcome, or nothing while it is still open."
+                }
+            }
             label for="public_comment" class=(FORM_LABEL_CLASS) {
                 "Public comment to the reporter (optional)"
             }
@@ -620,14 +626,14 @@ fn resolve_report_form(base: &str, report_id: &str, csrf_token: &str) -> Markup 
                 class={(FORM_CONTROL_CLASS) " px-3 py-2"} {}
             (opt_out_checkbox("notify_reporter", "Include the public comment in the reporter notice"))
             p class="text-neutral-500 text-xs" data-resolve-notice-help="" {
-                "The reporter is told the report was resolved either way, unless their account is gone or barred from reporting. \
+                "The reporter is told the outcome, unless their account is gone or was barred from reporting when they filed it. \
                  When unticked, the comment is not sent or shown on the report. It is only kept in the audit log."
             }
             button type="submit"
                 class="inline-flex w-full items-center justify-center gap-2 \
                        font-medium rounded-lg bg-neutral-900 text-white \
                        px-4 py-2 text-sm" {
-                "Resolve Report"
+                "Resolve report"
             }
         }
     }
@@ -1080,8 +1086,7 @@ fn nav_link(href: &str, label: &str) -> Markup {
 fn message_context_section(
     config: &AdminConfig,
     report: &ReportEntry,
-    include_delete: bool,
-    csrf_token: Option<&str>,
+    take_action: bool,
 ) -> Markup {
     let Some(values) = &report.message_context else {
         return html! {};
@@ -1103,13 +1108,18 @@ fn message_context_section(
                     config,
                     &config.base_path,
                     &messages,
-                    include_delete,
+                    false,
                     report.reported_message_id.as_deref(),
+                    take_action
+                        .then_some(report.reported_user_id.as_deref())
+                        .flatten()
+                        .map(|user_id| TakeAction {
+                            author_id: Some(user_id),
+                            report_id: Some(&report.report_id),
+                        })
+                        .as_ref(),
                 ))
             }
-        }
-        @if let Some(csrf_token) = csrf_token {
-            (message_deletion_script(csrf_token))
         }
     }
 }
@@ -1137,12 +1147,12 @@ pub fn report_detail_page(
                 (report_answers_section(report))
                 (reported_entity_section(config, report))
                 (profile_snapshot_section(config, report, live))
-                (message_context_section(config, report, has_acl(auth, acl::MESSAGE_DELETE), Some(csrf_token)))
+                (message_context_section(config, report, can_take_action(admin_acls(auth))))
                 (additional_info_section(report))
             }
             div class="space-y-6" {
                 (status_card(config, report))
-                (actions_card(config, report, csrf_token))
+                (actions_card(config, auth, report, csrf_token))
                 (legal_hold_card(config, auth, report, csrf_token))
                 (delete_report_card(config, auth, report, csrf_token))
             }
@@ -1163,7 +1173,7 @@ pub fn report_detail_fragment(config: &AdminConfig, report: &ReportEntry) -> Mar
             (basic_info_section_fragment(config, report))
             (report_answers_section(report))
             (reported_entity_section(config, report))
-            (message_context_section(config, report, false, None))
+            (message_context_section(config, report, false))
             (additional_info_section(report))
             a href={(base) "/reports/" (&report.report_id)}
                 class="inline-flex min-h-[44px] w-full items-center justify-center \
@@ -1182,7 +1192,7 @@ fn basic_info_section_fragment(config: &AdminConfig, report: &ReportEntry) -> Ma
             div class="grid grid-cols-1 sm:grid-cols-2 gap-4" {
                 (data_field_mono("Report ID", &report.report_id))
                 (data_field_text("Reported At", &format_admin_timestamp(&report.reported_at)))
-                (data_field_text("Type", report_type_label(report.report_type)))
+                (data_field_text("Type", report_type(report.report_type).0))
                 (category_field(report))
                 (reason_field(report))
                 @if let Some(ref reporter_id) = report.reporter_id {
@@ -1193,16 +1203,5 @@ fn basic_info_section_fragment(config: &AdminConfig, report: &ReportEntry) -> Ma
                 (data_field("Status", status_badge(report.status)))
             }
         }))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn resolve_form_shares_the_comment_by_default_and_says_the_reporter_is_always_told() {
-        let markup = resolve_report_form("/admin", "1500000000000000001", "csrf").into_string();
-        assert!(markup.contains(r#"name="notify_reporter_present" value="1""#));
     }
 }

@@ -11,7 +11,6 @@ import {reportSkeletonVoicePresence} from '@app/features/app/components/skeleton
 import {getStatusTypeLabel} from '@app/features/app/constants/AppConstants';
 import {useContextMenuHoverState} from '@app/features/app/hooks/useContextMenuHoverState';
 import * as VoiceStateCommands from '@app/features/devtools/commands/VoiceStateCommands';
-import DeveloperOptions from '@app/features/devtools/state/DeveloperOptions';
 import Keybind from '@app/features/input/state/InputKeybind';
 import {getPushToTalkHoldLabel} from '@app/features/input/utils/PushToTalkHint';
 import Presence from '@app/features/presence/state/Presence';
@@ -148,8 +147,7 @@ const UserAreaInner = observer(
 			? i18n._(USER_SETTINGS_PRIVACY_REVIEW_NEEDED_DESCRIPTOR)
 			: i18n._(USER_SETTINGS_LABEL_DESCRIPTOR);
 		const storeConnectedChannelId = MediaEngine.channelId;
-		const forceShowVoiceConnection = DeveloperOptions.forceShowVoiceConnection;
-		const hasVoiceConnection = !MobileLayout.enabled && (forceShowVoiceConnection || !!storeConnectedChannelId);
+		const hasVoiceConnection = !MobileLayout.enabled && !!storeConnectedChannelId;
 		useEffect(() => {
 			const root = document.documentElement;
 			const clearHeight = () => {
@@ -208,6 +206,7 @@ const UserAreaInner = observer(
 		}, [hasVoiceConnection]);
 		const wrapperClassName = styles.userAreaInnerWrapper;
 		const isPushToTalkEffective = Keybind.isPushToTalkEffective();
+		const isSelfMuted = isMuted || muteReason === 'self';
 		const microphoneState = selectUserAreaMicrophoneState({
 			effectiveAudioMuted: isMuted,
 			effectiveAudioDeafened: isDeafened,
@@ -216,7 +215,6 @@ const UserAreaInner = observer(
 			isPermissionMuted,
 			muteReason,
 			isPushToTalkEffective,
-			isPushToTalkHeld: Keybind.pushToTalkHeld,
 			isPushToMuteEffective: Keybind.isPushToMuteEffective(),
 			isPushToMuteHeld: Keybind.pushToMuteHeld,
 		});
@@ -226,7 +224,8 @@ const UserAreaInner = observer(
 			if (isGuildDeafened) return getVoiceDeafenedByModeratorsStatusLabel(i18n, true);
 			if (isGuildMuted) return i18n._(VOICE_MUTED_BY_MODERATORS_DESCRIPTOR);
 			if (isPermissionMuted || muteReason === 'permission') return i18n._(VOICE_NO_SPEAK_PERMISSION_DESCRIPTOR);
-			if (isPushToTalkEffective) return getPushToTalkHoldLabel(i18n, PUSH_TO_TALK_IS_ON_HOLD_TO_SPEAK_DESCRIPTOR);
+			if (isPushToTalkEffective && !isSelfMuted)
+				return getPushToTalkHoldLabel(i18n, PUSH_TO_TALK_IS_ON_HOLD_TO_SPEAK_DESCRIPTOR);
 			if (effectiveMuted) return i18n._(UNMUTE_MICROPHONE_DESCRIPTOR);
 			return i18n._(MUTE_MICROPHONE_DESCRIPTOR);
 		})();
@@ -234,7 +233,8 @@ const UserAreaInner = observer(
 			if (isGuildDeafened) return getVoiceDeafenedByModeratorsStatusLabel(i18n, true);
 			if (isGuildMuted) return i18n._(VOICE_MUTED_BY_MODERATORS_DESCRIPTOR);
 			if (isPermissionMuted || muteReason === 'permission') return i18n._(VOICE_NO_SPEAK_PERMISSION_DESCRIPTOR);
-			if (isPushToTalkEffective) return getPushToTalkHoldLabel(i18n, PUSH_TO_TALK_IS_ON_HOLD_TO_SPEAK_DESCRIPTOR);
+			if (isPushToTalkEffective && !isSelfMuted)
+				return getPushToTalkHoldLabel(i18n, PUSH_TO_TALK_IS_ON_HOLD_TO_SPEAK_DESCRIPTOR);
 			if (effectiveMuted) return i18n._(UNMUTE_MICROPHONE_DESCRIPTOR);
 			return i18n._(MUTE_MICROPHONE_DESCRIPTOR);
 		})();

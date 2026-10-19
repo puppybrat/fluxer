@@ -2,7 +2,7 @@
 
 import type {ApiContext} from '@app/api/ApiContext';
 import {mapAuthSessionsToResponse} from '@app/api/auth/AuthModel';
-import {revokeAllAuthSessions, revokeAuthSessions} from '@app/api/auth/AuthSessionRevocation';
+import {revokeAuthSessions} from '@app/api/auth/AuthSessionRevocation';
 import * as AuthUtility from '@app/api/auth/AuthUtility';
 import type {UserID} from '@app/api/BrandedTypes';
 import {
@@ -54,8 +54,6 @@ interface ReplaceCurrentAuthSessionParams {
 
 interface ReplaceCurrentAuthSessionResult {
 	token: string;
-	authSession: AuthSession;
-	oldAuthSessionIdHash: string;
 	newAuthSessionIdHash: string;
 }
 
@@ -81,9 +79,9 @@ export async function createAuthSession(
 ): Promise<[token: string, AuthSession]> {
 	const {users} = ctx.services;
 	if (user.isBot) throw new BotUserAuthSessionCreationDeniedError();
+	user = await AuthUtility.assertSignInAllowed(ctx, user);
 	if (user.traits.has(REGISTRATION_PENDING_APPROVAL_TRAIT)) throw new RegistrationPendingApprovalError();
 	if (user.traits.has(REGISTRATION_REJECTED_TRAIT)) throw new RegistrationRejectedError();
-	user = await AuthUtility.handleBanStatus(ctx, user);
 	user = await AuthUtility.reactivateOnSignIn(ctx, user, getKVAccountDeletionQueue());
 	const now = new Date();
 	const token = await AuthUtility.generateAuthToken(ctx);
@@ -171,10 +169,6 @@ export async function logoutAuthSessions(
 	);
 }
 
-export async function terminateAllUserSessions(ctx: ApiContext, userId: UserID): Promise<number> {
-	return await revokeAllAuthSessions(ctx.services, userId);
-}
-
 export async function replaceCurrentAuthSession(
 	ctx: ApiContext,
 	{user, currentAuthSession, request}: ReplaceCurrentAuthSessionParams,
@@ -196,8 +190,6 @@ export async function replaceCurrentAuthSession(
 	});
 	return {
 		token: newToken,
-		authSession: newAuthSession,
-		oldAuthSessionIdHash,
 		newAuthSessionIdHash,
 	};
 }

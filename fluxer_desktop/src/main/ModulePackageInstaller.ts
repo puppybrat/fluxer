@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {errorMessage} from '@electron/common/ErrorMessage';
+
 import {
 	ModulePackageHashMismatchError,
 	ModulePackageIOError,
@@ -117,10 +119,6 @@ class ModulePackageUrlPolicyError extends Error {
 	}
 }
 
-function errorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
-
 export function describeErrorChain(error: unknown): string {
 	const messages: Array<string> = [];
 	let cursor: unknown = error;
@@ -203,6 +201,14 @@ export class ModulePackageInstaller {
 					sha256: item.entry.sha256,
 					download: (resumeFrom) => this.openPackageStream(item, current, total, resumeFrom),
 				});
+				await this.store.recordShellRanges([
+					{
+						module: item.module,
+						sha256: item.entry.sha256,
+						minimum: item.entry.minimumShellVersion?.source ?? null,
+						maximum: item.entry.maximumShellVersion?.source ?? null,
+					},
+				]);
 				this.onProgress({
 					phase: ModulePackageInstallPhase.INSTALLING,
 					current,

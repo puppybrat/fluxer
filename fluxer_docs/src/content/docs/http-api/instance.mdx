@@ -62,7 +62,7 @@ Each value is an absolute URL supplied by the operator. A value can be a bare or
 | webapp | string | Web application base URL |
 | docs? | string | Documentation website base URL |
 
-<sup>1</sup> Both fields are the same configured client API endpoint, which the first-party web application reads. `api_public` is the separately configured public API endpoint, which a bot, a library, or any other third-party client reads. A deployment can point the two at one origin, and the instance Fluxer hosts does not
+<sup>1</sup> Both fields are the same configured client API endpoint, which the first-party web application reads. `api_public` is the separately configured public API endpoint, which a bot, a library, or any other third-party client reads. A deployment can serve the client API and the public API from one origin, and the instance Fluxer hosts serves them from different origins
 
 <sup>2</sup> The value is the configured Gateway endpoint and its scheme is `ws` or `wss` as the operator configured it
 
@@ -346,8 +346,8 @@ Each key names one limit. A key whose name begins with `feature_` is a feature g
 
 | Value | Description |
 | --- | --- |
-| avatar_max_size | Maximum file size for avatar uploads in bytes, in user scope |
-| emoji_max_size | Maximum file size for emoji uploads in bytes, in guild scope |
+| avatar_max_size | Maximum file size for avatar uploads in bytes, effective up to 104857600, in user scope |
+| emoji_max_size | Maximum file size for emoji uploads in bytes, effective up to 104857600, in guild scope |
 | feature_animated_avatar | Allow animated avatar uploads, in user scope |
 | feature_animated_banner | Allow animated banner uploads, in user scope |
 | feature_custom_discriminator | Allow custom discriminator selection, in user scope. Ignored for people on an instance with the `none` tag style |
@@ -360,7 +360,7 @@ Each key names one limit. A key whose name begins with `feature_` is a feature g
 | feature_voice_entrance_sounds | Play a sound when joining voice, in user scope |
 | max_attachment_file_size | Maximum size of each attachment file in bytes, in user and guild scope |
 | max_attachments_per_message | Maximum number of file attachments per message, in user and guild scope |
-| max_bio_length | Maximum characters in a user biography, in user scope |
+| max_bio_length | Maximum characters in a user biography, in user scope. At most 320 |
 | max_bookmarks | Maximum bookmarked messages, in user scope |
 | max_channels_per_category | Maximum channels per category, in guild scope |
 | max_custom_backgrounds | Maximum custom profile backgrounds, in user scope |
@@ -385,11 +385,12 @@ Each key names one limit. A key whose name begins with `feature_` is a feature g
 | max_private_channels_per_user | Maximum direct message channels per user, in user scope |
 | max_reactions_per_message | Maximum distinct reactions per message, in guild scope |
 | max_relationships | Maximum friend and blocked relationships, in user scope |
+| max_screen_share_bitrate | Highest screen share video bitrate in bits per second, from 1000000 to 50000000, in user scope |
 | max_users_per_message_reaction | Maximum users who can use the same reaction on a message, in guild scope |
 | max_voice_message_duration | Maximum voice message duration in seconds, in user and guild scope |
 | max_webhooks_per_channel | Maximum webhooks per channel, in guild scope |
 | max_webhooks_per_guild | Maximum webhooks per guild, in guild scope |
-| sticker_max_size | Maximum file size for sticker uploads in bytes, in guild scope |
+| sticker_max_size | Maximum file size for sticker uploads in bytes, effective up to 104857600, in guild scope |
 
 <sup>1</sup> Emoji limits are enforced as one shared total against `max_guild_emojis`, and the aliases exist only for older clients. The default of each alias equals the `max_guild_emojis` default
 
@@ -426,7 +427,7 @@ The instance identity a client renders: its name, its images, its theme colour, 
 | logo_url | ?string | Application logo URL, or null |
 | wordmark_url | ?string | Application wordmark URL, or null |
 | favicon_url | ?string | Browser favicon URL, or null |
-| theme_color | ?string | Browser theme colour, or null |
+| theme_color | ?string | Brand and browser theme colour as lowercase `#rrggbb`, or null |
 | status_page_url | ?string | Public status page URL, or null |
 | status_page_incident_history_url | ?string | Status page incident history URL, or null |
 | premium_product_name | string | Name of the premium tier a client displays. A self-hosted deployment reports `Premium` until the operator sets a name |
@@ -443,10 +444,13 @@ Whether the deployment has finished its initial configuration, and where an oper
 | configured | boolean | Whether initial deployment configuration is complete |
 | admin_url<sup>1</sup> | ?string | The admin application URL used to continue setup, or null |
 | account_identity_locked? | boolean | Whether the sign-in method can no longer change, sent only while a self-hosted deployment is not configured |
+| setup_token_required? | boolean | Whether registration needs the setup token, sent only while a self-hosted deployment is not configured |
 
 <sup>1</sup> The value is the deployment's configured admin endpoint, and it is null when no admin endpoint is configured
 
 `account_identity_locked` is true once the first account exists, and on a deployment stored as already in use. [Set the setup sign-in method](#set-the-setup-sign-in-method) returns 409 there.
+
+`setup_token_required` is true while [Register an account](/http-api/authentication/#register-an-account) refuses a body without `setup_token`. It is false once the first admin account exists, and on a deployment that does not enforce the token.
 
 ## Public legal configuration object
 
@@ -614,8 +618,8 @@ Chooses how members sign in on a new self-hosted deployment, and on an `email` d
 
 The setup wizard calls this before the owner account exists. The choice stays open on a self-hosted deployment until setup is complete or the first account exists. After that, on a deployment that was already in use before username sign-in existed, and on every hosted deployment, the route returns 409 `ACCOUNT_IDENTITY_LOCKED`. The choice and the first registration take turns, so a choice never lands after the first account exists. A repeated call while the choice is open replaces the earlier one.
 
-:::caution[Anyone can call this before the first account exists]
-The route needs no credential, the same as the rule that makes the first registration the instance admin. An operator finishes setup in the same sitting that brings the deployment up.
+:::caution[The setup token stands in for a credential]
+The route needs no credential. While `setup_token_required` is true in the [public setup state](#public-setup-state-object), a call without the correct `setup_token` is refused.
 :::
 
 ### JSON body
@@ -624,18 +628,21 @@ The route needs no credential, the same as the rule that makes the first registr
 | --- | --- | --- |
 | mode | string | The [account identity mode](#account-identity-modes) to use |
 | tag_style?<sup>1</sup> | string | How usernames are tagged, one of the [tag styles](#tag-styles). Defaults to `none` |
+| setup_token?<sup>2</sup> | ?string | The setup token of the deployment (1-256 characters) |
 
 <sup>1</sup> A `username` instance always uses `none`. Sending `random` with `username` returns the field code `TAG_STYLE_REQUIRES_EMAIL_SIGN_IN` on `tag_style`
+
+<sup>2</sup> Checked the way [Register an account](/http-api/authentication/#register-an-account) checks it, with the same field codes and the same allowance for wrong tokens
 
 ### Response
 
 | Status | Body | Condition |
 | --- | --- | --- |
 | 200 | [account identity](#account-identity-object) object | The mode was stored |
-| 400 | [error response](/http-api/#error-response) | The body is invalid, or `random` tags were requested with `username` |
+| 400 | [error response](/http-api/#error-response) | The body is invalid, `random` tags were requested with `username`, or the setup token is missing or wrong |
 | 409 | [error response](/http-api/#error-response) | `ACCOUNT_IDENTITY_LOCKED`, because the sign-in method can no longer change |
 | 423 | [error response](/http-api/#error-response) | `GENERAL_ERROR`, because a registration or another choice held the turn for more than 15 seconds |
-| 429 | [rate limit response](/topics/rate-limits/#rate-limit-response-object) | Route or global bucket denies the request |
+| 429 | [rate limit response](/topics/rate-limits/#rate-limit-response-object) | Route or global bucket denies the request, or the address has used its wrong setup token allowance |
 
 ### Side effects
 

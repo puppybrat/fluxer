@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {generateKeyPairSync} from 'node:crypto';
-import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
 import {loadConfig, resetConfig} from '@fluxer/config/src/ConfigLoader';
 import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
 
@@ -83,22 +80,27 @@ describe('ConfigLoader', () => {
 		expect((await loadConfig()).domain.base_domain).toBe('localhost');
 	});
 
-	test('loadConfig reads secrets from NAME_FILE', async () => {
-		const dir = mkdtempSync(join(tmpdir(), 'fluxer-config-file-'));
-		try {
-			const path = join(dir, 'postgres_password');
-			writeFileSync(path, 'from-secret-file\n');
-			stubMinimalEnv({FLUXER_POSTGRES_PASSWORD: '', FLUXER_POSTGRES_PASSWORD_FILE: path});
-			const config = await loadConfig();
-			expect(config.database.postgres.password).toBe('from-secret-file');
-		} finally {
-			rmSync(dir, {recursive: true, force: true});
-		}
+	test('a self-hosted instance without FLUXER_ENV runs in production', async () => {
+		stubMinimalEnv({
+			FLUXER_SELF_HOSTED: 'true',
+			FLUXER_PROFILE_PSEUDONYM_SECRET: 'self-hosted-secret',
+			FLUXER_POSTGRES_HOST: 'postgres',
+			FLUXER_POSTGRES_DATABASE: 'fluxer',
+			FLUXER_POSTGRES_PASSWORD: 'self-hosted-password',
+		});
+		vi.stubEnv('FLUXER_ENV', undefined);
+		expect((await loadConfig()).env).toBe('production');
 	});
 
-	test('loadConfig rejects NAME and NAME_FILE together', async () => {
-		stubMinimalEnv({FLUXER_SUDO_MODE_SECRET_FILE: '/run/secrets/sudo'});
-		await expect(loadConfig()).rejects.toThrow('FLUXER_SUDO_MODE_SECRET and FLUXER_SUDO_MODE_SECRET_FILE are both set');
+	test('a self-hosted instance keeps an explicit FLUXER_ENV', async () => {
+		stubMinimalEnv({FLUXER_SELF_HOSTED: 'true', FLUXER_ENV: 'development'});
+		expect((await loadConfig()).env).toBe('development');
+	});
+
+	test('an instance that is not self-hosted still defaults to development', async () => {
+		stubMinimalEnv();
+		vi.stubEnv('FLUXER_ENV', undefined);
+		expect((await loadConfig()).env).toBe('development');
 	});
 
 	test('endpoint overrides take precedence over derived endpoints', async () => {
@@ -369,16 +371,6 @@ describe('ConfigLoader', () => {
 		await expect(loadConfig()).rejects.toThrow('FLUXER_POSTGRES_PORT');
 	});
 
-	test('rejects a non-integer port', async () => {
-		stubMinimalEnv({FLUXER_API_PORT: '80a'});
-		await expect(loadConfig()).rejects.toThrow('FLUXER_API_PORT must be an integer, got "80a"');
-	});
-
-	test('rejects malformed JSON for a JSON-shaped variable', async () => {
-		stubMinimalEnv({FLUXER_LIVEKIT_DEFAULT_REGION: '{bad'});
-		await expect(loadConfig()).rejects.toThrow('FLUXER_LIVEKIT_DEFAULT_REGION must be valid JSON');
-	});
-
 	test('rejects a non-boolean Postgres prepared statements value', async () => {
 		stubMinimalEnv({FLUXER_POSTGRES_PREPARED_STATEMENTS: 'maybe'});
 		await expect(loadConfig()).rejects.toThrow('FLUXER_POSTGRES_PREPARED_STATEMENTS');
@@ -472,6 +464,25 @@ describe('ConfigLoader', () => {
 		stubMinimalEnv({FLUXER_TAG_STYLE: raw});
 		const config = await loadConfig();
 		expect(config.instance.tag_style).toBe(expected);
+	});
+
+	test.each([
+		['implicit', 'implicit'],
+		[' StartTLS ', 'starttls'],
+		['opportunistic', 'opportunistic'],
+		['none', 'none'],
+		['', undefined],
+	])('parses FLUXER_EMAIL_SMTP_TLS_MODE=%j', async (raw, expected) => {
+		stubMinimalEnv({FLUXER_EMAIL_SMTP_HOST: 'smtp.example.com', FLUXER_EMAIL_SMTP_TLS_MODE: raw});
+		const config = await loadConfig();
+		expect(config.integrations.email.smtp?.tls_mode).toBe(expected);
+	});
+
+	test.each(['tls', 'true'])('rejects the SMTP TLS mode %j', async (raw) => {
+		stubMinimalEnv({FLUXER_EMAIL_SMTP_TLS_MODE: raw});
+		await expect(loadConfig()).rejects.toThrow(
+			'FLUXER_EMAIL_SMTP_TLS_MODE must be implicit, starttls, opportunistic or none',
+		);
 	});
 
 	test.each(['sequential', 'zero_first'])('rejects the tag style %j', async (raw) => {
@@ -615,6 +626,46 @@ describe('ConfigLoader', () => {
 		}
 	});
 
+	test('rejects the controller cache purge adapter without an endpoint', async () => {
+		stubMinimalEnv({FLUXER_CACHE_PURGE_ADAPTER: 'controller'});
+		await expect(loadConfig()).rejects.toThrow('FLUXER_CACHE_PURGE_CONTROLLER_ENDPOINT is required');
+	});
+
+	test('rejects a controller cache purge endpoint that is not https', async () => {
+		stubMinimalEnv({
+			FLUXER_CACHE_PURGE_ADAPTER: 'controller',
+			FLUXER_CACHE_PURGE_CONTROLLER_ENDPOINT: 'http://controller.test/v1/orgs/a/sites/b/purge',
+			FLUXER_CACHE_PURGE_CONTROLLER_TOKEN: 'pak_test',
+		});
+		await expect(loadConfig()).rejects.toThrow(
+			'FLUXER_CACHE_PURGE_CONTROLLER_ENDPOINT must be an absolute https URL without credentials',
+		);
+	});
+
+	test('rejects the controller cache purge adapter without a token', async () => {
+		stubMinimalEnv({
+			FLUXER_CACHE_PURGE_ADAPTER: 'controller',
+			FLUXER_CACHE_PURGE_CONTROLLER_ENDPOINT: 'https://controller.test/v1/orgs/a/sites/b/purge',
+		});
+		await expect(loadConfig()).rejects.toThrow('FLUXER_CACHE_PURGE_CONTROLLER_TOKEN is required');
+	});
+
+	test('accepts a complete controller cache purge configuration', async () => {
+		stubMinimalEnv({
+			FLUXER_CACHE_PURGE_ADAPTER: 'controller',
+			FLUXER_CACHE_PURGE_CONTROLLER_ENDPOINT: 'https://controller.test/v1/orgs/a/sites/b/purge',
+			FLUXER_CACHE_PURGE_CONTROLLER_TOKEN: 'pak_test',
+			FLUXER_CACHE_PURGE_CONTROLLER_TIMEOUT_MS: '5000',
+		});
+		const cachePurge = (await loadConfig()).integrations.cache_purge;
+		expect(cachePurge.adapter).toBe('controller');
+		expect(cachePurge.controller).toEqual({
+			endpoint: 'https://controller.test/v1/orgs/a/sites/b/purge',
+			token: 'pak_test',
+			timeout_ms: 5000,
+		});
+	});
+
 	test('leaves the cache purge settings unvalidated when the adapter is none', async () => {
 		stubMinimalEnv({
 			FLUXER_CACHE_PURGE_HTTP_ENDPOINT: 'ftp://purge.internal/purge',
@@ -730,42 +781,22 @@ describe('report retention settings', () => {
 		vi.unstubAllEnvs();
 	});
 
-	test('deletes reports for real after 365 days with no resolved-report rule by default', async () => {
+	test('deletes resolved reports for real after 365 days by default', async () => {
 		stubMinimalEnv();
 		const config = await loadConfig();
-		expect(config.report_retention).toEqual({days: 365, resolved_days: null, dry_run: false});
+		expect(config.report_retention).toEqual({days: 365, dry_run: false});
 	});
 
-	test('reads both day settings and the dry run switch from the environment', async () => {
-		stubMinimalEnv({
-			FLUXER_REPORT_RETENTION_DAYS: '730',
-			FLUXER_RESOLVED_REPORT_RETENTION_DAYS: ' 90 ',
-			FLUXER_REPORT_RETENTION_DRY_RUN: 'TRUE',
-		});
+	test('reads the day setting and the dry run switch from the environment', async () => {
+		stubMinimalEnv({FLUXER_REPORT_RETENTION_DAYS: ' 730 ', FLUXER_REPORT_RETENTION_DRY_RUN: 'TRUE'});
 		const config = await loadConfig();
-		expect(config.report_retention).toEqual({days: 730, resolved_days: 90, dry_run: true});
-	});
-
-	test('an empty resolved-report setting leaves the rule off', async () => {
-		stubMinimalEnv({FLUXER_RESOLVED_REPORT_RETENTION_DAYS: '', FLUXER_REPORT_RETENTION_DRY_RUN: 'false'});
-		const config = await loadConfig();
-		expect(config.report_retention).toEqual({days: 365, resolved_days: null, dry_run: false});
+		expect(config.report_retention).toEqual({days: 730, dry_run: true});
 	});
 
 	test.each([
 		['FLUXER_REPORT_RETENTION_DAYS', '0', 'FLUXER_REPORT_RETENTION_DAYS must be an integer between 1 and 36500'],
 		['FLUXER_REPORT_RETENTION_DAYS', '36501', 'FLUXER_REPORT_RETENTION_DAYS must be an integer between 1 and 36500'],
 		['FLUXER_REPORT_RETENTION_DAYS', '1.5', 'FLUXER_REPORT_RETENTION_DAYS must be an integer, got "1.5"'],
-		[
-			'FLUXER_RESOLVED_REPORT_RETENTION_DAYS',
-			'0',
-			'FLUXER_RESOLVED_REPORT_RETENTION_DAYS must be an integer between 1 and 36500',
-		],
-		[
-			'FLUXER_RESOLVED_REPORT_RETENTION_DAYS',
-			'-30',
-			'FLUXER_RESOLVED_REPORT_RETENTION_DAYS must be an integer between 1 and 36500',
-		],
 		['FLUXER_REPORT_RETENTION_DRY_RUN', '1', 'FLUXER_REPORT_RETENTION_DRY_RUN must be true or false'],
 	])('refuses %s=%j', async (name, value, message) => {
 		stubMinimalEnv({[name]: value});

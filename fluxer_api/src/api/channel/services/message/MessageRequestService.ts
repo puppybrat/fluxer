@@ -7,11 +7,13 @@ import type {MessageRequest, MessageUpdateRequest} from '@app/api/channel/Messag
 import type {AuthenticatedChannel} from '@app/api/channel/services/AuthenticatedChannel';
 import type {ChannelService} from '@app/api/channel/services/ChannelService';
 import type {CrosspostSourceService} from '@app/api/channel/services/message/CrosspostSourceService';
-import {isPersonalNotesChannel} from '@app/api/channel/services/message/MessageHelpers';
+import {dispatchMessageUpdateBroadcast} from '@app/api/channel/services/message/MessageGatewayDispatch';
 import {resolveIcCharacterIds} from '@app/api/channel/services/message/MessageIcResolutionService';
 import type {MessageResponseDataService} from '@app/api/channel/services/message/MessageResponseDataService';
 import {carriesThreadArtifact, maskThreadArtifactsFor} from '@app/api/channel/services/message/ThreadMessageResponses';
-import {everEnabled, isTainted, type ThreadViewer, viewerActive} from '@app/api/experiment/ChannelThreadsGate';
+import {isPersonalNotesChannelId} from '@app/api/channel/services/PersonalNotesChannelRepair';
+import {isTainted, type ThreadViewer, viewerActive} from '@app/api/experiment/ChannelThreadsGate';
+import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {RequestCache} from '@app/api/middleware/RequestCacheMiddleware';
 import type {User} from '@app/api/models/User';
 import {mapWithConcurrency} from '@app/api/utils/ConcurrencyUtils';
@@ -46,6 +48,7 @@ export class MessageRequestService {
 		private readonly responseDataService: MessageResponseDataService,
 		private readonly crosspostSourceService: CrosspostSourceService,
 		private readonly channelRepository: ChannelRepository,
+		private readonly gatewayService: IGatewayService,
 	) {}
 
 	async listMessages(params: {
@@ -95,7 +98,7 @@ export class MessageRequestService {
 		guildId: GuildID | null,
 		responses: Array<MessageResponse>,
 	): Promise<boolean> {
-		if (guildId === null || !everEnabled() || viewerActive(viewer, guildId)) return false;
+		if (guildId === null || viewerActive(viewer, guildId)) return false;
 		if (!responses.some(carriesMaskableThreadData)) return false;
 		return isTainted(guildId);
 	}
@@ -195,7 +198,7 @@ export class MessageRequestService {
 	}): Promise<MessageResponse> {
 		if (
 			params.user.isUnclaimedAccount() &&
-			!isPersonalNotesChannel({userId: params.user.id, channelId: params.channelId})
+			!isPersonalNotesChannelId({userId: params.user.id, channelId: params.channelId})
 		) {
 			throw new UnclaimedAccountCannotSendMessagesError();
 		}
@@ -403,10 +406,10 @@ export class MessageRequestService {
 		// Broadcast the same MESSAGE_UPDATE an edit emits, so connected clients reflect the
 		// in-character change live rather than only on a manual refresh. Without this the toggle
 		// is a local-only view for whoever pressed it.
-		await this.channelService.messages.dispatch.dispatchMessageUpdate({
+		await dispatchMessageUpdateBroadcast({
+			gatewayService: this.gatewayService,
 			channel: authChannel.channel,
 			message: updated,
-			requestCache: params.requestCache,
 		});
 
 		const access = await this.channelService.messages.retrieval.getResponseAccessContext({

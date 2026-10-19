@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {Routes} from '@app/app/Routes';
 import * as Modal from '@app/features/app/components/dialogs/Modal';
 import styles from '@app/features/app/components/setup/SelfHostedSetupWizardGate.module.css';
 import {
@@ -39,23 +40,26 @@ import {
 	type ServiceIntegrationDraft,
 	type ServiceSelection,
 	ServicesStep,
+	SetupTokenStep,
 	SignInMethodStep,
 	ThemeStep,
+	toSmtpTlsMode,
 	WelcomeStep,
 } from '@app/features/app/components/setup/SetupWizardSteps';
 import {resolveAppShellBranding} from '@app/features/app/state/AppShellBranding';
 import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import Authentication from '@app/features/auth/state/Authentication';
 import {AuthRegisterDraftContext, type AuthRegisterFormDraft} from '@app/features/auth/state/AuthRegisterDraftContext';
-import {getAcceptString} from '@app/features/expressions/utils/AssetFormatCopy';
-import {BACK_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
+import {BACK_DESCRIPTOR, SIGN_OUT_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {openFilePicker} from '@app/features/messaging/utils/FilePickerUtils';
+import * as RouterUtils from '@app/features/navigation/utils/RouterUtils';
 import {AccountScopedWork} from '@app/features/platform/state/AccountScopedWork';
 import {isAccountTransitionAbortError} from '@app/features/platform/state/AccountTransitionAbort';
 import SessionManager from '@app/features/platform/state/AuthSession';
 import {HttpError} from '@app/features/platform/types/EndpointError';
 import {Logger} from '@app/features/platform/utils/AppLogger';
-import {failureCode} from '@app/features/platform/utils/ResponseInspection';
+import {readBlobAsDataUrl as fileToBase64} from '@app/features/platform/utils/BlobDataUrl';
+import {failureCode, failureValidationErrors} from '@app/features/platform/utils/ResponseInspection';
 import Theme from '@app/features/theme/state/Theme';
 import {Button} from '@app/features/ui/button/Button';
 import FocusRingManager from '@app/features/ui/focus_ring/FocusRingManager';
@@ -71,7 +75,6 @@ import {
 import * as RecoveryKitCommands from '@app/features/user/commands/RecoveryKitCommands';
 import {confirmNewRecoveryKit} from '@app/features/user/components/modals/tabs/account_security_tab/RecoveryKitSettings';
 import RecoveryKitStatus from '@app/features/user/state/RecoveryKitStatus';
-import {fileToBase64} from '@app/features/user/utils/AvatarUtils';
 import * as FormUtils from '@app/lib/forms';
 import {
 	type AccountIdentityMode,
@@ -80,6 +83,8 @@ import {
 	TagStyles,
 } from '@fluxer/constants/src/AccountIdentityConstants';
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
+import {getAcceptString} from '@fluxer/constants/src/AssetFormatPolicy';
+import type {SmtpTlsMode} from '@fluxer/constants/src/SmtpConstants';
 import {type ThemeType, ThemeTypes} from '@fluxer/constants/src/UserConstants';
 import type {InstanceConfigResponse} from '@fluxer/schema/src/domains/admin/AdminSchemas';
 import type {MessageDescriptor} from '@lingui/core';
@@ -130,6 +135,11 @@ const LOAD_ERROR_DESCRIPTOR = msg({
 	message: 'Could not load the instance configuration. Try reloading the page.',
 	comment: 'Error shown when the setup wizard fails to load the instance configuration.',
 });
+const NOT_ADMIN_DESCRIPTOR = msg({
+	message: 'This account is not an admin of this instance. Sign in with an admin account to finish setup.',
+	comment:
+		'Error shown in the setup wizard when the signed-in account lacks admin access to the unconfigured instance. A sign out button follows.',
+});
 const ORIGIN_MISMATCH_DESCRIPTOR = msg({
 	message:
 		'The API is on a different origin than this page, so setup requests are sent without your session. Check the public origin and port this instance is configured with, then reload.',
@@ -159,10 +169,10 @@ const STEP_NAVIGATION_LOCK_MS = 320;
 
 const BRANDING_ASSET_KINDS: ReadonlyArray<SetupBrandingAssetKind> = ['icon', 'symbol', 'logo', 'wordmark', 'favicon'];
 
-function hexToNumber(value: string | null): number {
-	if (!value) return 0;
+function hexToNumber(value: string | null): number | null {
+	if (!value) return null;
 	const match = /^#?([0-9a-fA-F]{6})$/.exec(value.trim());
-	if (!match) return 0;
+	if (!match) return null;
 	return parseInt(match[1], 16) >>> 0;
 }
 
@@ -199,7 +209,7 @@ const DEFAULT_INTEGRATION_DRAFT: ServiceIntegrationDraft = {
 	smtpPort: '587',
 	smtpUsername: '',
 	smtpPassword: '',
-	smtpSecure: true,
+	smtpTlsMode: 'auto',
 	blueskyMode: 'later',
 	blueskyEnabled: true,
 	blueskyClientName: '',
@@ -345,7 +355,7 @@ function buildIntegrationsPatch(draft: ServiceIntegrationDraft, accountIdentity:
 				port: number;
 				username: string;
 				password: string;
-				secure: boolean;
+				tls_mode: SmtpTlsMode;
 			};
 		};
 		bluesky?: {
@@ -365,6 +375,7 @@ function buildIntegrationsPatch(draft: ServiceIntegrationDraft, accountIdentity:
 		integrations.youtube = {api_key: draft.youtubeApiKey.trim()};
 	}
 	if (draft.emailMode === 'configure' && accountIdentity === AccountIdentityModes.EMAIL) {
+		const smtpPort = parsePort(draft.smtpPort) ?? 587;
 		integrations.email = {
 			enabled: draft.emailEnabled,
 			provider: 'smtp',
@@ -372,10 +383,10 @@ function buildIntegrationsPatch(draft: ServiceIntegrationDraft, accountIdentity:
 			from_name: draft.emailFromName.trim(),
 			smtp: {
 				host: draft.smtpHost.trim(),
-				port: parsePort(draft.smtpPort) ?? 587,
+				port: smtpPort,
 				username: draft.smtpUsername.trim(),
 				password: draft.smtpPassword.trim(),
-				secure: draft.smtpSecure,
+				tls_mode: toSmtpTlsMode(draft.smtpTlsMode, smtpPort),
 			},
 		};
 	}
@@ -457,10 +468,12 @@ export const SelfHostedSetupWizardGate = observer(() => {
 	const [tagStyleChoice, setTagStyleChoice] = useState<TagStyle>(() => RuntimeConfig.tagStyle);
 	const [savingSignInMethod, setSavingSignInMethod] = useState(false);
 	const [signInMethodError, setSignInMethodError] = useState<string | null>(null);
+	const [setupToken, setSetupToken] = useState('');
+	const [setupTokenError, setSetupTokenError] = useState<string | null>(null);
 	const [creatingRecoveryKit, setCreatingRecoveryKit] = useState(false);
 
 	const [productName, setProductName] = useState('');
-	const [themeColor, setThemeColor] = useState(0);
+	const [themeColor, setThemeColor] = useState<number | null>(null);
 	const [registrationMode, setRegistrationMode] = useState<RegistrationMode>('open');
 	const [singleCommunityEnabled, setSingleCommunityEnabled] = useState(false);
 	const [singleCommunityName, setSingleCommunityName] = useState('');
@@ -549,8 +562,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 		setForceUnauthenticatedSetup(false);
 	}, [authStoreAuthenticated, forceUnauthenticatedSetup]);
 
-	const resetStaleSetupSession = useCallback(async () => {
-		logger.warn('The setup session token was rejected. Clearing the stale local setup session.');
+	const resetSetupSession = useCallback(async () => {
 		setForceUnauthenticatedSetup(true);
 		registerFormDraftsRef.current.clear();
 		setConfig(null);
@@ -566,16 +578,23 @@ export const SelfHostedSetupWizardGate = observer(() => {
 		setSmtpTestResult(null);
 		setSignInMethodError(null);
 		setSavingSignInMethod(false);
+		setSetupToken('');
+		setSetupTokenError(null);
 		setCreatingRecoveryKit(false);
 		try {
 			await SessionManager.logout();
 		} catch (error) {
-			logger.warn('Failed to fully clear stale setup session', error);
+			logger.warn('Failed to fully clear the setup session', error);
 			Authentication.handleSessionStart({token: null});
-			Authentication.setUserId(null);
+			SessionManager.setUserId(null);
 		}
 		Authentication.handleLogout({skipRedirect: true});
 	}, [clearStepNavigationLock]);
+
+	const signOutOfSetup = useCallback(async () => {
+		await resetSetupSession();
+		if (RuntimeConfig.appPublic.setup.setup_token_required !== true) RouterUtils.replaceWith(Routes.LOGIN);
+	}, [resetSetupSession]);
 
 	const hydrateFromConfig = useCallback((next: InstanceConfigResponse) => {
 		setConfig(next);
@@ -599,7 +618,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 			smtpHost: next.integrations.email.smtp.host ?? current.smtpHost,
 			smtpPort: next.integrations.email.smtp.port ? String(next.integrations.email.smtp.port) : current.smtpPort,
 			smtpUsername: next.integrations.email.smtp.username ?? current.smtpUsername,
-			smtpSecure: next.integrations.email.smtp.secure ?? current.smtpSecure,
+			smtpTlsMode: next.integrations.email.smtp.tls_mode ?? current.smtpTlsMode,
 			blueskyEnabled: next.integrations.bluesky.effective_enabled || next.integrations.bluesky.enabled !== false,
 			blueskyClientName: next.integrations.bluesky.client_name ?? current.blueskyClientName,
 			blueskyClientUri: next.integrations.bluesky.client_uri ?? current.blueskyClientUri,
@@ -640,7 +659,12 @@ export const SelfHostedSetupWizardGate = observer(() => {
 					error instanceof HttpError && error.status === 401 ? await classifySetupUnauthorized() : 'unknown';
 				if (cancelled) return;
 				if (cause === 'stale_session') {
-					await resetStaleSetupSession();
+					logger.warn('The setup session token was rejected. Clearing the stale local setup session.');
+					await resetSetupSession();
+					return;
+				}
+				if (error instanceof HttpError && error.status === 403) {
+					setLoadError(NOT_ADMIN_DESCRIPTOR);
 					return;
 				}
 				logger.error('Failed to load instance configuration', error);
@@ -650,7 +674,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 		return () => {
 			cancelled = true;
 		};
-	}, [isAuthenticated, config, accountWorkAdmitted, hydrateFromConfig, resetStaleSetupSession]);
+	}, [isAuthenticated, config, accountWorkAdmitted, hydrateFromConfig, resetSetupSession]);
 
 	const serviceAvailability: ServiceAvailability = useMemo(
 		() => ({
@@ -672,17 +696,20 @@ export const SelfHostedSetupWizardGate = observer(() => {
 
 	const hasConfig = Boolean(config);
 	const identityLocked = RuntimeConfig.appPublic.setup.account_identity_locked === true;
+	const setupTokenRequired = RuntimeConfig.appPublic.setup.setup_token_required === true;
 	const syncedSnapshot =
 		wizardSnapshot.context.isAuthenticated !== isAuthenticated ||
 		wizardSnapshot.context.hasConfig !== hasConfig ||
 		wizardSnapshot.context.accountIdentity !== accountIdentity ||
-		wizardSnapshot.context.identityLocked !== identityLocked
+		wizardSnapshot.context.identityLocked !== identityLocked ||
+		wizardSnapshot.context.setupTokenRequired !== setupTokenRequired
 			? transitionSetupWizardSnapshot(wizardSnapshot, {
 					type: 'wizard.sync',
 					isAuthenticated,
 					hasConfig,
 					accountIdentity,
 					identityLocked,
+					setupTokenRequired,
 				})
 			: wizardSnapshot;
 	if (syncedSnapshot !== wizardSnapshot) {
@@ -690,7 +717,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 	}
 	const wizardModel = selectSetupWizardModel(syncedSnapshot);
 	const {step, steps, direction} = wizardModel;
-	const currentUserId = Authentication.userId;
+	const currentUserId = Authentication.currentUserId;
 	const hasRecoveryKit = currentUserId ? (RecoveryKitStatus.get(currentUserId)?.hasRecoveryKit ?? false) : false;
 
 	useEffect(() => {
@@ -709,6 +736,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 	const canAdvance = useMemo(() => {
 		if (step === 'welcome') return !isAuthenticated || Boolean(config);
 		if (step === 'admin_account' || step === 'loading') return false;
+		if (step === 'setup_token') return setupToken.trim().length > 0;
 		if (step === 'sign_in_method') return !savingSignInMethod;
 		if (step === 'admin_recovery_kit') return hasRecoveryKit;
 		if (step === 'branding') return !productNameError;
@@ -728,6 +756,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 		integrationDraft,
 		savingSignInMethod,
 		hasRecoveryKit,
+		setupToken,
 	]);
 
 	const goNext = useCallback(() => {
@@ -742,6 +771,18 @@ export const SelfHostedSetupWizardGate = observer(() => {
 		setWizardSnapshot((current) => transitionSetupWizardSnapshot(current, {type: 'wizard.back'}));
 	}, [beginStepNavigation]);
 
+	const handleSetupTokenChange = useCallback((value: string) => {
+		setSetupToken(value);
+		setSetupTokenError(null);
+	}, []);
+
+	const submittedSetupToken = setupToken.trim() || undefined;
+
+	const handleSetupTokenRejected = useCallback((message: string) => {
+		setSetupTokenError(message);
+		setWizardSnapshot((current) => transitionSetupWizardSnapshot(current, {type: 'wizard.setupTokenRejected'}));
+	}, []);
+
 	const submitSignInMethod = useCallback(async () => {
 		if (savingSignInMethod) return;
 		setSavingSignInMethod(true);
@@ -751,8 +792,16 @@ export const SelfHostedSetupWizardGate = observer(() => {
 		try {
 			let saved: Awaited<ReturnType<typeof setSetupAccountIdentity>> | null = null;
 			try {
-				saved = await setSetupAccountIdentity(signInMethod, effectiveTagStyle);
+				saved = await setSetupAccountIdentity(signInMethod, effectiveTagStyle, submittedSetupToken);
 			} catch (error) {
+				const setupTokenViolation = failureValidationErrors(error)?.find(
+					(violation) => violation.path === 'setup_token',
+				);
+				if (setupTokenViolation) {
+					handleSetupTokenRejected(setupTokenViolation.message);
+					setSavingSignInMethod(false);
+					return;
+				}
 				if (failureCode(error) !== APIErrorCodes.ACCOUNT_IDENTITY_LOCKED) {
 					throw error;
 				}
@@ -789,7 +838,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 		}
 		setSavingSignInMethod(false);
 		goNext();
-	}, [savingSignInMethod, signInMethod, tagStyleChoice, i18n, goNext]);
+	}, [savingSignInMethod, signInMethod, tagStyleChoice, submittedSetupToken, handleSetupTokenRejected, i18n, goNext]);
 
 	const handleSignInMethodChange = useCallback((mode: AccountIdentityMode) => {
 		setSignInMethod(mode);
@@ -864,7 +913,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 				port,
 				username: integrationDraft.smtpUsername.trim(),
 				password: integrationDraft.smtpPassword,
-				secure: integrationDraft.smtpSecure,
+				tls_mode: toSmtpTlsMode(integrationDraft.smtpTlsMode, port),
 			});
 			setSmtpTestResult(result.ok ? 'ok' : (result.error ?? 'failed'));
 		} catch (error) {
@@ -899,7 +948,7 @@ export const SelfHostedSetupWizardGate = observer(() => {
 				app_public: {
 					branding: {
 						product_name: productNameTrimmed,
-						theme_color: numberToHexColor(themeColor),
+						theme_color: themeColor === null ? null : numberToHexColor(themeColor),
 					},
 					setup: {configured: true},
 				},
@@ -1004,7 +1053,11 @@ export const SelfHostedSetupWizardGate = observer(() => {
 									hideCloseButton
 									data-flx="app.self-hosted-setup-wizard-gate.header"
 								/>
-								<Modal.Content className={styles.contentScroller} data-flx="app.self-hosted-setup-wizard-gate.content">
+								<Modal.Content
+									className={styles.contentScroller}
+									contentClassName={styles.contentFrame}
+									data-flx="app.self-hosted-setup-wizard-gate.content"
+								>
 									<div className={styles.content} data-flx="app.self-hosted-setup-wizard-gate.content-inner">
 										{loadError ? (
 											<div className={styles.centeredStep} data-flx="app.self-hosted-setup-wizard-gate.load-error-wrap">
@@ -1015,6 +1068,15 @@ export const SelfHostedSetupWizardGate = observer(() => {
 												>
 													{i18n._(loadError)}
 												</p>
+												{loadError === NOT_ADMIN_DESCRIPTOR && (
+													<Button
+														variant="secondary"
+														onClick={signOutOfSetup}
+														data-flx="app.self-hosted-setup-wizard-gate.load-error-sign-out"
+													>
+														{i18n._(SIGN_OUT_DESCRIPTOR)}
+													</Button>
+												)}
 											</div>
 										) : (
 											<SteppedCarousel
@@ -1031,6 +1093,14 @@ export const SelfHostedSetupWizardGate = observer(() => {
 														isAuthenticated={isAuthenticated}
 														initialFocusRef={welcomeInitialFocusRef}
 														data-flx="app.setup.self-hosted-setup-wizard-gate.welcome-step"
+													/>
+												)}
+												{step === 'setup_token' && (
+													<SetupTokenStep
+														value={setupToken}
+														onChange={handleSetupTokenChange}
+														error={setupTokenError}
+														data-flx="app.setup.self-hosted-setup-wizard-gate.setup-token-step"
 													/>
 												)}
 												{step === 'theme' && (
@@ -1061,6 +1131,8 @@ export const SelfHostedSetupWizardGate = observer(() => {
 													<AdminAccountStep
 														theme={setupTheme}
 														usernameSignIn={accountIdentity === AccountIdentityModes.USERNAME}
+														setupToken={submittedSetupToken}
+														onSetupTokenRejected={handleSetupTokenRejected}
 														data-flx="app.setup.self-hosted-setup-wizard-gate.admin-account-step"
 													/>
 												)}

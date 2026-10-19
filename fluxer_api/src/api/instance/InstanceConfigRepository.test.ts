@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {createServer} from 'node:net';
+import {createUserID} from '@app/api/BrandedTypes';
 import {Config, getConfig} from '@app/api/Config';
 import type {CassandraQueryExecutorForTesting} from '@app/api/database/CassandraQueryExecution';
 import {setCassandraQueryExecutorForTesting} from '@app/api/database/CassandraQueryExecution';
-import type {PreparedQuery} from '@app/api/database/CassandraTypes';
-import {ensurePostgresKvSchema, PostgresKvQueryExecutor} from '@app/api/database/PostgresKvQueryExecutor';
+import {PostgresKvQueryExecutor} from '@app/api/database/PostgresKvQueryExecutor';
 import {
 	INSTANCE_CONFIG_REFRESH_CHANNEL,
 	INSTANCE_CONFIG_WRITE_ATTEMPTS,
@@ -17,22 +15,18 @@ import {
 } from '@app/api/instance/InstanceConfigRepository';
 import {getLegalUrls, setCachedConfiguredLegalUrls} from '@app/api/instance/LegalUrls';
 import {getInstanceProductName, setCachedProductName} from '@app/api/instance/ProductName';
+import {ensureSetupToken, isSetupTokenEnforced} from '@app/api/instance/SetupToken';
 import {InstanceConfigWriteRaceExecutor} from '@app/api/instance/tests/InstanceConfigWriteRaceExecutor';
-import {startDockerContainer} from '@app/api/test/DockerTestContainer';
+import {dockerAvailable, startPostgresKv, stopPostgresKv} from '@app/api/test/DockerTestContainer';
 import {InMemoryCassandraQueryExecutor} from '@app/api/test/InMemoryCassandraQueryExecutor';
-import {MockKVProvider} from '@app/api/test/mocks/MockKVProvider';
 import {
 	DEFAULT_CHANNEL_THREADS_CONFIG,
 	everyoneChannelThreadsConfig,
 } from '@fluxer/schema/src/domains/admin/ChannelThreadsSchemas';
 import {DEFAULT_DOMAIN_MIGRATION_CONFIG} from '@fluxer/schema/src/domains/admin/DomainMigrationSchemas';
 import {DEFAULT_EXPERIMENT_DELIVERY_CONFIG} from '@fluxer/schema/src/domains/experiment/ExperimentSchemas';
-import {
-	getDefaultPostgresClient,
-	type IPostgresClient,
-	initPostgres,
-	shutdownPostgres,
-} from '@pkgs/postgres/src/Client';
+import {MockKVProvider} from '@pkgs/kv_client/src/testing/MockKVProvider';
+import type {IPostgresClient} from '@pkgs/postgres/src/Client';
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const DOMAIN_MIGRATION_CONFIG_KEY = 'domain_migration_config';
@@ -46,20 +40,8 @@ const REGISTRATION_CONFIG_KEY = 'registration_config';
 const REGISTRATION_URLS_KEY = 'registration_urls';
 const REGISTRATION_PENDING_APPROVALS_KEY = 'registration_pending_approvals';
 const POSTGRES_KV_TABLE = 'kv_instance_config_races';
-const POSTGRES_CONTAINER = `fluxer-instance-config-races-${process.pid.toString(36)}-${Date.now().toString(36)}`;
-const dockerAvailable = spawnSync('docker', ['version'], {stdio: 'ignore'}).status === 0;
-
-class CountingInMemoryCassandraQueryExecutor extends InMemoryCassandraQueryExecutor {
-	instanceConfigSelects = 0;
-
-	override async executeQuery<T = Record<string, unknown>>(query: PreparedQuery): Promise<Array<T>> {
-		if (query.kvMeta?.action === 'select' && query.kvMeta.table.name === 'instance_configuration') {
-			this.instanceConfigSelects++;
-		}
-		return super.executeQuery<T>(query);
-	}
-}
-
+const SETUP_TOKEN_HASH_KEY = 'setup_token_hash';
+const ENV_SETUP_TOKEN = 'setup-token-for-tests-0123456789-abcdefghijklmnopqrstuvwxyz';
 describe('InstanceConfigRepository', () => {
 	const repositories: Array<InstanceConfigRepository> = [];
 
@@ -77,13 +59,13 @@ describe('InstanceConfigRepository', () => {
 	}
 
 	it('serves repeated config reads from the hydrated in-memory cache', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
 
 		await repository.setRegistrationConfig({mode: 'closed'});
-		executor.instanceConfigSelects = 0;
+		executor.executed.length = 0;
 
 		expect(await repository.getRegistrationConfig()).toEqual({
 			mode: 'closed',
@@ -93,12 +75,12 @@ describe('InstanceConfigRepository', () => {
 			mode: 'closed',
 			admin_registration_urls_enabled: true,
 		} satisfies InstanceRegistrationConfig);
-		expect(executor.instanceConfigSelects).toBe(0);
+		expect(executor.countStatements('select:instance_configuration')).toBe(0);
 		expect(kvProvider.getSubscription().subscribedChannels).toContain(INSTANCE_CONFIG_REFRESH_CHANNEL);
 	});
 
 	it('refreshes a hydrated cache after another repository publishes a config update', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const reader = createRepository(kvProvider);
@@ -120,7 +102,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('reuses the memoized effective bluesky config until the integrations blob changes', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -137,7 +119,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('recomputes the effective bluesky config after another repository publishes an integrations update', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const reader = createRepository(kvProvider);
@@ -154,14 +136,14 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('turns the captcha on at the default difficulty when no row is stored', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 
 		await expect(repository.getCaptchaConfig()).resolves.toEqual({enabled: true, cost: 5000, max_counter: 1000});
 	});
 
 	it('ignores a legacy altcha captcha row that turned the experiment off', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 
 		await repository.setConfig(
@@ -173,7 +155,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('merges a partial captcha update onto the stored config', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 
 		await repository.updateCaptchaConfig({cost: 2000});
@@ -183,7 +165,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('drops a legacy captcha integration, secrets included, on the next integrations write', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 
 		await repository.setConfig(
@@ -204,7 +186,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('keeps the stored setup state when a branding field is invalid', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -219,8 +201,35 @@ describe('InstanceConfigRepository', () => {
 		expect(config.branding.product_name).toBe('Kept');
 	});
 
+	it('serves the theme colour as six-digit hex and drops a stored value that is not hex', async () => {
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
+		const repository = createRepository(new MockKVProvider());
+
+		expect((await repository.setAppPublicConfig({branding: {theme_color: '7B2CE4'}})).branding.theme_color).toBe(
+			'#7b2ce4',
+		);
+		expect((await repository.setAppPublicConfig({branding: {theme_color: '#AbC'}})).branding.theme_color).toBe(
+			'#aabbcc',
+		);
+
+		await repository.setConfig(APP_PUBLIC_CONFIG_KEY, JSON.stringify({branding: {theme_color: 'rgb(123, 44, 228)'}}));
+		expect((await repository.getAppPublicConfig()).branding.theme_color).toBeNull();
+	});
+
+	it('treats the black theme colour the setup wizard used to store as unset', async () => {
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
+		const repository = createRepository(new MockKVProvider());
+
+		await repository.setConfig(APP_PUBLIC_CONFIG_KEY, JSON.stringify({branding: {theme_color: '#000000'}}));
+		expect((await repository.getAppPublicConfig()).branding.theme_color).toBeNull();
+		expect((await repository.setAppPublicConfig({branding: {theme_color: '#000'}})).branding.theme_color).toBeNull();
+		expect((await repository.setAppPublicConfig({branding: {theme_color: '#000001'}})).branding.theme_color).toBe(
+			'#000001',
+		);
+	});
+
 	it('stores uploaded branding assets as references and resolves them against the current media endpoint', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 		const media = Config.endpoints.media;
 		const foreign = 'https://cdn.example.com/favicon.ico';
@@ -243,7 +252,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('normalises legacy branding URLs from an old domain only when the object is ours', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 		await repository.setConfig(
 			APP_PUBLIC_CONFIG_KEY,
@@ -269,7 +278,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('round-trips the community guidelines URL and clears a blank one', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 		const originalSelfHosted = getConfig().instance.selfHosted;
 		getConfig().instance.selfHosted = true;
@@ -301,7 +310,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('loads the stored guidelines URL into the legal URL cache on initialize', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const kvProvider = new MockKVProvider();
 		const originalSelfHosted = getConfig().instance.selfHosted;
 		getConfig().instance.selfHosted = true;
@@ -321,7 +330,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('keeps the product name cache in step with the stored branding', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const kvProvider = new MockKVProvider();
 		try {
 			await createRepository(kvProvider).setConfig(
@@ -339,7 +348,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('reads a stored legal config written before the guidelines URL existed', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 		await repository.setConfig(
 			APP_PUBLIC_CONFIG_KEY,
@@ -353,7 +362,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('keeps valid stored instance policy flags when one field is invalid', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -370,7 +379,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('keeps valid stored integration settings when one field is invalid', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -385,7 +394,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('drops invalid stored SSO allowed domains and keeps the valid ones', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -396,7 +405,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('falls back to the default SSO flags when a stored flag is not a boolean', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -412,7 +421,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('clears an invalid allowed domain list only while SSO is disabled', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -424,7 +433,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('keeps an all-invalid stored allowed domain list non-empty so SSO still rejects every domain', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -437,7 +446,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('serves the everyone channel threads config at version zero when the key is absent', async () => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 
 		await expect(repository.getChannelThreadsConfig()).resolves.toEqual(everyoneChannelThreadsConfig(0));
@@ -459,7 +468,7 @@ describe('InstanceConfigRepository', () => {
 		{name: 'a row with an invalid version', stored: '{"enabled":false,"config_version":-1}', version: 0},
 		{name: 'unparseable text', stored: 'not-json', version: 0},
 	])('serves the everyone channel threads config for $name and keeps the stored version', async ({stored, version}) => {
-		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
 		const repository = createRepository(new MockKVProvider());
 
 		await repository.setConfig(CHANNEL_THREADS_CONFIG_KEY, stored);
@@ -468,7 +477,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('returns the default domain migration config when the key is absent', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -482,7 +491,7 @@ describe('InstanceConfigRepository', () => {
 		{name: 'out-of-range values', stored: '{"rollout_basis_points":99999}'},
 		{name: 'a non-boolean enabled flag', stored: '{"enabled":"yes"}'},
 	])('falls back to the default domain migration config for $name', async ({stored}) => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -493,7 +502,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('publishes a refresh so another repository observes the domain migration config', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const reader = createRepository(kvProvider);
@@ -513,7 +522,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('returns the default experiment delivery config when the key is absent', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -528,7 +537,7 @@ describe('InstanceConfigRepository', () => {
 		{name: 'an out-of-range jitter', stored: '{"poll_jitter_percent":99}'},
 		{name: 'a non-numeric poll interval', stored: '{"poll_interval_seconds":"often"}'},
 	])('falls back to the default experiment delivery config for $name', async ({stored}) => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -539,7 +548,7 @@ describe('InstanceConfigRepository', () => {
 	});
 
 	it('uses the registration URL id as the admin-visible registration code', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
+		const executor = new InMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
 		const kvProvider = new MockKVProvider();
 		const repository = createRepository(kvProvider);
@@ -559,25 +568,6 @@ describe('InstanceConfigRepository', () => {
 		});
 	});
 });
-
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function freePort(): Promise<number> {
-	return new Promise((resolve, reject) => {
-		const server = createServer();
-		server.on('error', reject);
-		server.listen(0, '127.0.0.1', () => {
-			const address = server.address();
-			if (typeof address === 'string' || address === null) {
-				reject(new Error('no port'));
-				return;
-			}
-			server.close(() => resolve(address.port));
-		});
-	});
-}
 
 function describeConcurrentInstanceConfigWrites(prepareBase: () => Promise<CassandraQueryExecutorForTesting>): void {
 	const pods: Array<InstanceConfigRepository> = [];
@@ -946,6 +936,7 @@ function pendingRegistration(userId: string) {
 		requested_at: `2026-09-01T00:00:${userId.slice(-2)}.000Z`,
 		registration_url_id: null,
 		client_ip: '127.0.0.1',
+		invite_code: null,
 	};
 }
 
@@ -959,6 +950,271 @@ function registrationUrlParams(maxUses: number | null) {
 	};
 }
 
+describe('InstanceConfigRepository setup token', () => {
+	const repositories: Array<InstanceConfigRepository> = [];
+	const config = getConfig();
+	let executor: InstanceConfigWriteRaceExecutor;
+	let kvProvider: MockKVProvider;
+	let originalSelfHosted: boolean;
+	let originalNodeEnv: typeof config.nodeEnv;
+	let originalSetupToken: typeof config.instance.setup.token;
+	let originalSetupConfigured: boolean;
+
+	beforeEach(() => {
+		executor = new InstanceConfigWriteRaceExecutor(new InMemoryCassandraQueryExecutor());
+		setCassandraQueryExecutorForTesting(executor);
+		kvProvider = new MockKVProvider();
+		originalSelfHosted = config.instance.selfHosted;
+		originalNodeEnv = config.nodeEnv;
+		originalSetupToken = config.instance.setup.token;
+		originalSetupConfigured = config.instance.setup.configured;
+	});
+
+	afterEach(() => {
+		config.instance.selfHosted = originalSelfHosted;
+		config.nodeEnv = originalNodeEnv;
+		config.instance.setup.token = originalSetupToken;
+		config.instance.setup.configured = originalSetupConfigured;
+		for (const repository of repositories) {
+			repository.shutdown();
+		}
+		repositories.length = 0;
+		setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
+	});
+
+	function createPod(): InstanceConfigRepository {
+		const repository = new InstanceConfigRepository(kvProvider);
+		repositories.push(repository);
+		return repository;
+	}
+
+	function useSelfHostedProduction(): void {
+		config.instance.selfHosted = true;
+		config.nodeEnv = 'production';
+		config.instance.setup.token = null;
+		config.instance.setup.configured = false;
+	}
+
+	function sha256(value: string): string {
+		return createHash('sha256').update(value).digest('hex');
+	}
+
+	const accountExists = async () => true;
+	const accountMissing = async () => false;
+
+	it('generates one setup token when two pods start together and stores only its hash', async () => {
+		const tokens = await Promise.all([createPod().createSetupTokenIfAbsent(), createPod().createSetupTokenIfAbsent()]);
+		const generated = tokens.filter((token) => token !== null);
+		expect(generated).toHaveLength(1);
+		expect(tokens.filter((token) => token === null)).toHaveLength(1);
+		const stored = await executor.readDirectly(SETUP_TOKEN_HASH_KEY);
+		expect(stored).toBe(sha256(generated[0]!));
+		expect(stored).not.toBe(generated[0]);
+		expect(await createPod().createSetupTokenIfAbsent()).toBeNull();
+	});
+
+	it('verifies only the generated setup token', async () => {
+		const pod = createPod();
+		for (const presented of ['anything', '', null, undefined]) {
+			expect(await pod.verifySetupToken(presented)).toBe(false);
+		}
+		const token = await pod.createSetupTokenIfAbsent();
+		expect(await pod.verifySetupToken(token)).toBe(true);
+		expect(await createPod().verifySetupToken(token)).toBe(true);
+		for (const presented of [`${token}x`, sha256(token!), '', null, undefined]) {
+			expect(await pod.verifySetupToken(presented)).toBe(false);
+		}
+	});
+
+	it('takes the environment setup token over a generated one', async () => {
+		const pod = createPod();
+		const generated = await pod.createSetupTokenIfAbsent();
+		config.instance.setup.token = ENV_SETUP_TOKEN;
+		expect(await pod.verifySetupToken(ENV_SETUP_TOKEN)).toBe(true);
+		expect(await pod.verifySetupToken(generated)).toBe(false);
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBe(sha256(generated!));
+	});
+
+	it('burns the stored setup token and leaves it alone when the admin bootstrap is only claimed', async () => {
+		useSelfHostedProduction();
+		const pod = createPod();
+		const token = await pod.createSetupTokenIfAbsent();
+		await pod.claimAdminBootstrap();
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBe(sha256(token!));
+		await pod.burnSetupToken();
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBe('');
+		expect(await pod.verifySetupToken(token)).toBe(false);
+		expect(await pod.verifySetupToken('')).toBe(false);
+		await ensureSetupToken(pod, accountExists);
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBe('');
+	});
+
+	it('writes nothing when there is no stored setup token to burn', async () => {
+		await createPod().burnSetupToken();
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBeNull();
+	});
+
+	it('releases a claimed admin bootstrap so it can be claimed again', async () => {
+		const pod = createPod();
+		await pod.releaseAdminBootstrap();
+		expect(await executor.readDirectly('admin_bootstrapped')).toBeNull();
+		expect(await pod.claimAdminBootstrap()).toBe(true);
+		expect(await pod.isAdminBootstrapped()).toBe(true);
+		await pod.releaseAdminBootstrap();
+		expect(await pod.isAdminBootstrapped()).toBe(false);
+		expect(await createPod().isAdminBootstrapped()).toBe(false);
+		expect(await pod.claimAdminBootstrap()).toBe(true);
+		expect(await pod.claimAdminBootstrap()).toBe(false);
+	});
+
+	it('keeps a won admin bootstrap claim when the refresh cannot be published', async () => {
+		const pod = createPod();
+		await pod.isAdminBootstrapped();
+		vi.spyOn(kvProvider, 'publish').mockRejectedValueOnce(new Error('kv down'));
+		expect(await pod.claimAdminBootstrap()).toBe(true);
+		expect(await pod.isAdminBootstrapped()).toBe(true);
+		expect(await executor.readDirectly('admin_bootstrapped')).toBe('true');
+	});
+
+	it('enforces the setup token only on self-hosted instances that run in production or configure one', async () => {
+		const pod = createPod();
+		const gate = async () => ({
+			enforced: isSetupTokenEnforced(config),
+			open: await pod.isSetupTokenGateOpen(),
+			required: await pod.isSetupTokenRequired(),
+		});
+		config.instance.setup.configured = false;
+		config.instance.selfHosted = false;
+		config.nodeEnv = 'production';
+		config.instance.setup.token = ENV_SETUP_TOKEN;
+		expect(await gate()).toEqual({enforced: false, open: false, required: false});
+		config.instance.selfHosted = true;
+		config.nodeEnv = 'development';
+		config.instance.setup.token = null;
+		expect(await gate()).toEqual({enforced: false, open: false, required: false});
+		config.instance.setup.token = ENV_SETUP_TOKEN;
+		expect(await gate()).toEqual({enforced: true, open: true, required: true});
+		config.nodeEnv = 'production';
+		config.instance.setup.token = null;
+		expect(await gate()).toEqual({enforced: true, open: true, required: true});
+		config.instance.setup.configured = true;
+		expect(await gate()).toEqual({enforced: true, open: true, required: false});
+		config.instance.setup.configured = false;
+		expect(await gate()).toEqual({enforced: true, open: true, required: true});
+		await pod.setAppPublicConfig({setup: {configured: true}});
+		expect(await gate()).toEqual({enforced: true, open: true, required: false});
+		await pod.claimAdminBootstrap();
+		expect(await gate()).toEqual({enforced: true, open: false, required: false});
+	});
+
+	it('stores a setup token on the first production start and keeps it on the next', async () => {
+		useSelfHostedProduction();
+		await ensureSetupToken(createPod(), accountExists);
+		const stored = await executor.readDirectly(SETUP_TOKEN_HASH_KEY);
+		expect(stored).toMatch(/^[a-f0-9]{64}$/);
+		await ensureSetupToken(createPod(), accountExists);
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBe(stored);
+	});
+
+	it('stores a setup token when setup is configured but no admin exists', async () => {
+		useSelfHostedProduction();
+		config.instance.setup.configured = true;
+		await ensureSetupToken(createPod(), accountExists);
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toMatch(/^[a-f0-9]{64}$/);
+	});
+
+	it('stores no setup token when one is set in the environment', async () => {
+		useSelfHostedProduction();
+		config.instance.setup.token = ENV_SETUP_TOKEN;
+		await ensureSetupToken(createPod(), accountExists);
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBeNull();
+	});
+
+	it('stores no setup token on the hosted service or in self-hosted development', async () => {
+		useSelfHostedProduction();
+		config.instance.selfHosted = false;
+		await ensureSetupToken(createPod(), accountExists);
+		config.instance.selfHosted = true;
+		config.nodeEnv = 'development';
+		await ensureSetupToken(createPod(), accountExists);
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBeNull();
+	});
+
+	it('stores no setup token once the admin exists', async () => {
+		useSelfHostedProduction();
+		const pod = createPod();
+		await pod.claimAdminBootstrap();
+		await ensureSetupToken(pod, accountExists);
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBeNull();
+	});
+
+	it('releases an admin bootstrap claim at start when the claiming account was never created', async () => {
+		useSelfHostedProduction();
+		const pod = createPod();
+		expect(await pod.claimAdminBootstrap(createUserID(4242n))).toBe(true);
+		expect(await executor.readDirectly('admin_bootstrap_user_id')).toBe('4242');
+		await ensureSetupToken(createPod(), accountExists);
+		expect(await executor.readDirectly('admin_bootstrapped')).toBe('true');
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toBeNull();
+		const restarted = createPod();
+		await ensureSetupToken(restarted, accountMissing);
+		expect(await executor.readDirectly('admin_bootstrapped')).toBe('false');
+		expect(await restarted.isSetupTokenGateOpen()).toBe(true);
+		expect(await executor.readDirectly(SETUP_TOKEN_HASH_KEY)).toMatch(/^[a-f0-9]{64}$/);
+	});
+
+	it('keeps an admin bootstrap claim at start when no claiming account is recorded', async () => {
+		useSelfHostedProduction();
+		const pod = createPod();
+		await pod.claimAdminBootstrap();
+		expect(await executor.readDirectly('admin_bootstrap_user_id')).toBeNull();
+		await ensureSetupToken(createPod(), accountMissing);
+		expect(await executor.readDirectly('admin_bootstrapped')).toBe('true');
+		await pod.releaseAdminBootstrap();
+		await pod.claimAdminBootstrap(createUserID(4242n));
+		await pod.releaseAdminBootstrap();
+		await pod.claimAdminBootstrap();
+		expect(await executor.readDirectly('admin_bootstrap_user_id')).toBe('');
+		await ensureSetupToken(createPod(), accountMissing);
+		expect(await executor.readDirectly('admin_bootstrapped')).toBe('true');
+	});
+
+	it('keeps a won admin bootstrap claim when the claiming account cannot be recorded', async () => {
+		const pod = createPod();
+		executor.watch('admin_bootstrap_user_id');
+		executor.competeBeforeEachWrite(async () => {
+			throw new Error('database down');
+		});
+		expect(await pod.claimAdminBootstrap(createUserID(4242n))).toBe(true);
+		expect(await pod.isAdminBootstrapped()).toBe(true);
+		expect(await executor.readDirectly('admin_bootstrapped')).toBe('true');
+		expect(await executor.readDirectly('admin_bootstrap_user_id')).toBeNull();
+	});
+
+	it('confirms the admin bootstrap against the database and repairs a stale snapshot', async () => {
+		const stale = createPod();
+		const writer = createPod();
+		expect(await stale.isAdminBootstrapped()).toBe(false);
+		vi.spyOn(kvProvider, 'publish').mockRejectedValueOnce(new Error('kv down'));
+		await writer.claimAdminBootstrap();
+		expect(await stale.isAdminBootstrapped()).toBe(false);
+		expect(await stale.confirmAdminBootstrapped()).toBe(true);
+		expect(await stale.isAdminBootstrapped()).toBe(true);
+		vi.spyOn(kvProvider, 'publish').mockRejectedValueOnce(new Error('kv down'));
+		await writer.releaseAdminBootstrap();
+		expect(await stale.isAdminBootstrapped()).toBe(true);
+		expect(await stale.confirmAdminBootstrapped()).toBe(false);
+		expect(await stale.isAdminBootstrapped()).toBe(false);
+	});
+
+	it('refuses to start when the setup token cannot be stored', async () => {
+		useSelfHostedProduction();
+		const pod = createPod();
+		vi.spyOn(pod, 'createSetupTokenIfAbsent').mockRejectedValueOnce(new Error('database down'));
+		await expect(ensureSetupToken(pod, accountExists)).rejects.toThrow('database down');
+	});
+});
+
 describe('InstanceConfigRepository concurrent writes', () => {
 	describe('in memory', () => {
 		describeConcurrentInstanceConfigWrites(async () => new InMemoryCassandraQueryExecutor());
@@ -967,53 +1223,20 @@ describe('InstanceConfigRepository concurrent writes', () => {
 	describe.skipIf(!dockerAvailable)('on postgres', () => {
 		let client: IPostgresClient;
 
+		let postgresContainer: string;
 		beforeAll(async () => {
-			const port = await freePort();
-			startDockerContainer([
-				'run',
-				'-d',
-				'--name',
-				POSTGRES_CONTAINER,
-				'-e',
-				'POSTGRES_USER=fluxer',
-				'-e',
-				'POSTGRES_PASSWORD=fluxer',
-				'-e',
-				'POSTGRES_DB=fluxer',
-				'-p',
-				`127.0.0.1:${port}:5432`,
-				'postgres:16-alpine',
-				'-c',
-				'fsync=off',
-			]);
-			let ready = false;
-			for (let attempt = 0; attempt < 180 && !ready; attempt += 1) {
-				await sleep(500);
-				const probe = spawnSync('docker', ['exec', POSTGRES_CONTAINER, 'pg_isready', '-U', 'fluxer', '-d', 'fluxer'], {
-					stdio: 'ignore',
-				});
-				if (probe.status !== 0) continue;
-				try {
-					await initPostgres({
-						url: `postgres://fluxer:fluxer@127.0.0.1:${port}/fluxer`,
-						maxConnections: 4,
-						kvTable: POSTGRES_KV_TABLE,
-					});
-					await getDefaultPostgresClient().query('SELECT 1');
-					ready = true;
-				} catch {
-					await shutdownPostgres().catch(() => {});
-				}
-			}
-			if (!ready) throw new Error('postgres never came up');
-			client = getDefaultPostgresClient();
-			await ensurePostgresKvSchema(client);
+			const started = await startPostgresKv({
+				namePrefix: 'fluxer-instance-config-races',
+				kvTable: POSTGRES_KV_TABLE,
+				maxConnections: 4,
+			});
+			postgresContainer = started.container;
+			client = started.client;
 		}, 900_000);
 
 		afterAll(async () => {
 			setCassandraQueryExecutorForTesting(new InMemoryCassandraQueryExecutor());
-			await shutdownPostgres().catch(() => {});
-			spawnSync('docker', ['rm', '-f', POSTGRES_CONTAINER], {stdio: 'ignore'});
+			await stopPostgresKv(postgresContainer);
 		});
 
 		describeConcurrentInstanceConfigWrites(async () => {

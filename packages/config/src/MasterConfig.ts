@@ -5,7 +5,7 @@ import type {DerivedEndpoints} from '@fluxer/config/src/EndpointDerivation';
 type RuntimeEnv = 'development' | 'production' | 'test';
 type DatabaseBackend = 'postgres' | 'cassandra';
 type PublicScheme = 'http' | 'https';
-export const CACHE_PURGE_ADAPTER_NAMES = ['none', 'http'] as const;
+export const CACHE_PURGE_ADAPTER_NAMES = ['none', 'http', 'controller'] as const;
 export type CachePurgeAdapterName = (typeof CACHE_PURGE_ADAPTER_NAMES)[number];
 export const STORE_PRODUCT_SLOT_NAMES = ['monthly', 'yearly', 'gift_1_month', 'gift_1_year'] as const;
 export type StoreProductSlotName = (typeof STORE_PRODUCT_SLOT_NAMES)[number];
@@ -13,6 +13,7 @@ export const ACCOUNT_IDENTITY_MODE_NAMES = ['email', 'username'] as const;
 type AccountIdentityModeName = (typeof ACCOUNT_IDENTITY_MODE_NAMES)[number];
 export const TAG_STYLE_NAMES = ['none', 'random'] as const;
 type TagStyleName = (typeof TAG_STYLE_NAMES)[number];
+type SmtpTlsModeName = 'implicit' | 'starttls' | 'opportunistic' | 'none';
 
 interface InstanceBrandingConfig {
 	product_name: string;
@@ -189,7 +190,8 @@ export interface MasterConfig {
 				port: number;
 				username: string;
 				password: string;
-				secure: boolean;
+				tls_mode?: SmtpTlsModeName;
+				secure?: boolean;
 			};
 		};
 		voice: {
@@ -241,6 +243,11 @@ export interface MasterConfig {
 		cache_purge: {
 			adapter: CachePurgeAdapterName;
 			http: {
+				endpoint: string;
+				token: string;
+				timeout_ms: number;
+			};
+			controller: {
 				endpoint: string;
 				token: string;
 				timeout_ms: number;
@@ -303,6 +310,7 @@ export interface MasterConfig {
 		branding: InstanceBrandingConfig;
 		setup: {
 			configured: boolean;
+			token?: string;
 		};
 		account_identity: AccountIdentityModeName | null;
 		tag_style: TagStyleName | null;
@@ -330,7 +338,6 @@ export interface MasterConfig {
 	inactivity_deletion_threshold_days: number;
 	report_retention: {
 		days: number;
-		resolved_days: number | null;
 		dry_run: boolean;
 	};
 }

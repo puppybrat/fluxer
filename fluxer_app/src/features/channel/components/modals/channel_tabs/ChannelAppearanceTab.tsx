@@ -32,6 +32,7 @@ import Channels from '@app/features/channel/state/Channels';
 import ChannelThemes from '@app/features/channel/state/ChannelThemes';
 import variableManifest from '@app/features/channel/theme-editor/variable-manifest.json';
 import Theme from '@app/features/theme/state/Theme';
+import type {ThemeVariableKind} from '@app/features/theme/variables/ThemeVariableManifest';
 import QuickCssEditor from '@app/features/theme_studio/sections/QuickCssEditor';
 import {StudioTokenColor, StudioTokenFont, StudioTokenValue} from '@app/features/theme_studio/ui/StudioToken';
 import {getThemeStudioBaseTheme} from '@app/features/theme_studio/utils/ThemeStudioPinnedVariables';
@@ -43,7 +44,6 @@ import * as UnsavedChangesCommands from '@app/features/ui/commands/UnsavedChange
 import {ColorPickerField} from '@app/features/ui/components/form/ColorPickerField';
 import {Combobox, type ComboboxOption} from '@app/features/ui/components/form/FormCombobox';
 import {Input} from '@app/features/ui/components/form/FormInput';
-import type {ThemeVariableKind} from '@app/features/user/components/modals/tabs/appearance_tab/theme/ThemeConstants';
 import type {MessageDescriptor} from '@lingui/core';
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';

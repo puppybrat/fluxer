@@ -6,16 +6,25 @@ import {type Dirent, constants as fsConstants, type Stats} from 'node:fs';
 import type {FileHandle} from 'node:fs/promises';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {
+	fsyncDirectory,
+	ModuleStoreError,
+	ModuleStoreIOError,
+	renameWithRetry,
+	WINDOWS_TRANSIENT_FS_RETRY_DELAYS_MS,
+	writeFileAtomically,
+} from '@electron/main/AtomicFile';
 import {ModuleInstallCoordinator} from '@electron/main/ModuleInstallCoordinator';
 import {
 	DESKTOP_MODULE_FILE_LIST_NAME,
 	DESKTOP_MODULE_MANIFEST_MAX_BYTES,
 	type DesktopModuleManifest,
+	isPathInsideRoot,
 	ModulePackageHashMismatchError,
 	parseDesktopModuleManifest,
 	verifyAndExtract,
 } from '@electron/main/ModulePackage';
-import {compareModuleVersions, parseModuleVersion} from '@electron/main/ModuleVersion';
+import {parseModuleVersion} from '@electron/main/ModuleVersion';
 import {isDesktopModuleName} from '@fluxer/desktop_ipc/src/ModuleContract';
 
 const MODULE_STORE_DIRECTORY_NAME = 'modules';
@@ -48,23 +57,6 @@ const MODULE_FILE_STAMPS_MAX_BYTES = 16 * 1024 * 1024;
 const MISSING_INSTALLATION_ERROR_CODES: ReadonlySet<string> = new Set(['ENOENT', 'ENOTDIR', 'ELOOP']);
 const MODULE_PACKAGE_DIGEST_MISMATCH_PREFIX = 'package sha256 mismatch:';
 const MODULE_LAUNCH_ATTEMPT = Symbol('fluxer.desktop.moduleLaunchAttempt');
-const WINDOWS_TRANSIENT_FS_ERROR_CODES: ReadonlySet<string> = new Set(['EPERM', 'EACCES', 'EBUSY']);
-const WINDOWS_TRANSIENT_FS_RETRY_DELAYS_MS: ReadonlyArray<number> = [25, 50, 100, 200, 400, 800];
-
-class ModuleStoreError extends Error {
-	public constructor(message: string, options?: ErrorOptions) {
-		super(message, options);
-		this.name = 'ModuleStoreError';
-	}
-}
-
-class ModuleStoreIOError extends ModuleStoreError {
-	public constructor(message: string, options?: ErrorOptions) {
-		super(message, options);
-		this.name = 'ModuleStoreIOError';
-	}
-}
-
 class ModuleStoreStateCorruptError extends ModuleStoreError {
 	public constructor(statePath: string, detail: string, options?: ErrorOptions) {
 		super(`module state at ${statePath} is corrupt: ${detail}`, options);
@@ -139,9 +131,16 @@ export class ModuleStoreGarbageCollectionOrderError extends ModuleStoreError {
 	}
 }
 
-export interface LinuxModuleSecurityMinimum {
-	readonly version: string;
-	readonly requiredModules: ReadonlyArray<string>;
+export interface ModuleShellRange {
+	readonly minimum_shell_version: string | null;
+	readonly maximum_shell_version: string | null;
+}
+
+export interface ModuleShellRangeRecord {
+	readonly module: string;
+	readonly sha256: string;
+	readonly minimum: string | null;
+	readonly maximum: string | null;
 }
 
 export interface ModuleManifestFeedIdentity {
@@ -169,7 +168,7 @@ interface ModuleStoreState {
 	readonly previous: Readonly<Record<string, string>>;
 	readonly rejected: Readonly<Record<string, string>>;
 	readonly floor: Readonly<Record<string, string>>;
-	readonly linux_security_minimum: LinuxModuleSecurityMinimum | null;
+	readonly shell_ranges: Readonly<Record<string, ModuleShellRange>>;
 	readonly manifest_high_water: ReadonlyArray<ModuleManifestHighWater>;
 	readonly last_manifest_etag: string | null;
 	readonly last_manifest_fetch: string | null;
@@ -244,42 +243,11 @@ function assertSha256(sha256: string): void {
 	}
 }
 
-function isPathInsideRoot(root: string, candidate: string): boolean {
-	const relative = path.relative(root, candidate);
-	return relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative);
-}
-
 async function createDirectory(directory: string): Promise<void> {
 	try {
 		await fs.mkdir(directory, {recursive: true});
 	} catch (error) {
 		throw new ModuleStoreIOError(`failed to create ${directory}`, {cause: error});
-	}
-}
-
-function isWindowsTransientFsError(error: unknown): boolean {
-	return (
-		process.platform === 'win32' &&
-		typeof error === 'object' &&
-		error !== null &&
-		'code' in error &&
-		typeof error.code === 'string' &&
-		WINDOWS_TRANSIENT_FS_ERROR_CODES.has(error.code)
-	);
-}
-
-async function renameWithRetry(source: string, target: string): Promise<void> {
-	for (let attempt = 0; ; attempt += 1) {
-		try {
-			await fs.rename(source, target);
-			return;
-		} catch (error) {
-			const delay = WINDOWS_TRANSIENT_FS_RETRY_DELAYS_MS[attempt];
-			if (delay === undefined || !isWindowsTransientFsError(error)) {
-				throw error;
-			}
-			await new Promise((resolve) => setTimeout(resolve, delay));
-		}
 	}
 }
 
@@ -339,52 +307,6 @@ async function fsyncFile(filePath: string): Promise<void> {
 	} finally {
 		await handle.close();
 	}
-}
-
-async function fsyncDirectory(directory: string): Promise<void> {
-	if (process.platform === 'win32') {
-		return;
-	}
-	let handle: FileHandle;
-	try {
-		handle = await fs.open(directory, 'r');
-	} catch (error) {
-		throw new ModuleStoreIOError(`failed to open ${directory} for fsync`, {cause: error});
-	}
-	try {
-		await handle.sync();
-	} catch (error) {
-		throw new ModuleStoreIOError(`failed to fsync ${directory}`, {cause: error});
-	} finally {
-		await handle.close();
-	}
-}
-
-export async function writeFileAtomically(target: string, contents: Buffer | string, mode: number): Promise<void> {
-	const directory = path.dirname(target);
-	const temporary = path.join(directory, `${path.basename(target)}.${randomBytes(8).toString('hex')}.tmp`);
-	let handle: FileHandle;
-	try {
-		handle = await fs.open(temporary, 'wx', mode);
-	} catch (error) {
-		throw new ModuleStoreIOError(`failed to create ${temporary}`, {cause: error});
-	}
-	try {
-		await handle.writeFile(contents, 'utf8');
-		await handle.sync();
-	} catch (error) {
-		await handle.close();
-		await fs.rm(temporary, {force: true});
-		throw new ModuleStoreIOError(`failed to write ${temporary}`, {cause: error});
-	}
-	await handle.close();
-	try {
-		await renameWithRetry(temporary, target);
-	} catch (error) {
-		await fs.rm(temporary, {force: true});
-		throw new ModuleStoreIOError(`failed to publish ${target}`, {cause: error});
-	}
-	await fsyncDirectory(directory);
 }
 
 async function openPartialPackage(partial: string): Promise<FileHandle> {
@@ -459,6 +381,15 @@ async function isRegularFile(target: string): Promise<boolean> {
 	try {
 		const stats = await fs.stat(target);
 		return stats.isFile();
+	} catch {
+		return false;
+	}
+}
+
+async function isDirectory(target: string): Promise<boolean> {
+	try {
+		const stats = await fs.stat(target);
+		return stats.isDirectory();
 	} catch {
 		return false;
 	}
@@ -970,63 +901,66 @@ function retainRejected(
 	return retained;
 }
 
-function parseLinuxSecurityMinimum(value: unknown): LinuxModuleSecurityMinimum | null | undefined {
-	if (value === undefined || value === null) {
-		return null;
-	}
-	if (typeof value !== 'object' || Array.isArray(value)) {
-		return undefined;
-	}
-	const record = value as Record<string, unknown>;
-	const version = record['version'];
-	const rawRequiredModules = record['required_modules'];
-	if (typeof version !== 'string' || !Array.isArray(rawRequiredModules)) {
-		return undefined;
-	}
-	try {
-		parseModuleVersion(version, 'persisted Linux security minimum');
-	} catch {
-		return undefined;
-	}
-	const requiredModules: Array<string> = [];
-	const seen = new Set<string>();
-	for (const moduleName of rawRequiredModules) {
-		if (!isDesktopModuleName(moduleName) || seen.has(moduleName)) {
-			return undefined;
-		}
-		seen.add(moduleName);
-		requiredModules.push(moduleName);
-	}
-	return {version, requiredModules: Object.freeze(requiredModules.sort())};
+function shellRangeKey(moduleName: string, sha256: string): string {
+	return `${moduleName}/${sha256}`;
 }
 
-function advanceLinuxSecurityMinimum(
-	current: LinuxModuleSecurityMinimum | null,
-	candidate: LinuxModuleSecurityMinimum,
-): LinuxModuleSecurityMinimum {
-	const version = parseModuleVersion(candidate.version, 'Linux security minimum');
-	const requiredModules = Array.from(new Set(candidate.requiredModules)).sort();
-	if (requiredModules.length !== candidate.requiredModules.length) {
-		throw new ModuleStoreError('Linux security minimum contains duplicate required modules');
+function isShellRangeVersion(value: unknown): value is string | null {
+	if (value === null) {
+		return true;
 	}
-	for (const moduleName of requiredModules) {
-		assertModuleName(moduleName);
+	if (typeof value !== 'string') {
+		return false;
 	}
-	if (current != null) {
-		const comparison = compareModuleVersions(
-			version,
-			parseModuleVersion(current.version, 'persisted Linux security minimum'),
-		);
-		if (comparison < 0) {
-			throw new ModuleStoreError(
-				`refusing to lower Linux security minimum from ${current.version} to ${candidate.version}`,
-			);
+	try {
+		parseModuleVersion(value, 'persisted module shell range');
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function isShellRangeKey(key: string): boolean {
+	const separator = key.indexOf('/');
+	return separator > 0 && isDesktopModuleName(key.slice(0, separator)) && SHA256_PATTERN.test(key.slice(separator + 1));
+}
+
+function sortShellRanges(
+	value: Readonly<Record<string, ModuleShellRange>>,
+): Readonly<Record<string, ModuleShellRange>> {
+	const sorted: Record<string, ModuleShellRange> = {};
+	for (const key of Object.keys(value).sort()) {
+		sorted[key] = Object.freeze({...value[key]});
+	}
+	return Object.freeze(sorted);
+}
+
+function parseShellRanges(value: unknown): Readonly<Record<string, ModuleShellRange>> {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+		return Object.freeze({});
+	}
+	const parsed: Record<string, ModuleShellRange> = {};
+	for (const [key, rawRange] of Object.entries(value as Record<string, unknown>)) {
+		if (!isShellRangeKey(key) || typeof rawRange !== 'object' || rawRange === null || Array.isArray(rawRange)) {
+			continue;
 		}
-		if (comparison === 0 && requiredModules.join('\0') !== current.requiredModules.join('\0')) {
-			throw new ModuleStoreError(`Linux security minimum ${candidate.version} changed its required modules`);
+		const range = rawRange as Record<string, unknown>;
+		const minimum = range['minimum_shell_version'];
+		const maximum = range['maximum_shell_version'];
+		if (!isShellRangeVersion(minimum) || !isShellRangeVersion(maximum)) {
+			continue;
 		}
+		parsed[key] = {minimum_shell_version: minimum, maximum_shell_version: maximum};
 	}
-	return {version: candidate.version, requiredModules: Object.freeze(requiredModules)};
+	return sortShellRanges(parsed);
+}
+
+function sameShellRange(left: ModuleShellRange | undefined, right: ModuleShellRange): boolean {
+	return (
+		left != null &&
+		left.minimum_shell_version === right.minimum_shell_version &&
+		left.maximum_shell_version === right.maximum_shell_version
+	);
 }
 
 function parseOptionalString(value: unknown): string | null | undefined {
@@ -1075,19 +1009,8 @@ function parseModuleStoreState(bytes: Buffer, statePath: string): ModuleStoreSta
 	const previous = parseModuleMap(record['previous']);
 	const rejected = record['rejected'] === undefined ? {} : parseModuleMap(record['rejected']);
 	const floor = parseModuleMap(record['floor']);
-	const rawLinuxSecurityMinimum = record['linux_security_minimum'];
-	if (rawLinuxSecurityMinimum === undefined) {
-		throw new ModuleStoreStateCorruptError(statePath, 'linux_security_minimum is required');
-	}
-	const linuxSecurityMinimum = parseLinuxSecurityMinimum(rawLinuxSecurityMinimum);
-	if (
-		committed === null ||
-		previous === null ||
-		rejected === null ||
-		floor === null ||
-		linuxSecurityMinimum === undefined
-	) {
-		throw new ModuleStoreStateCorruptError(statePath, 'module maps or Linux security minimum are invalid');
+	if (committed === null || previous === null || rejected === null || floor === null) {
+		throw new ModuleStoreStateCorruptError(statePath, 'module maps are invalid');
 	}
 	const manifestHighWater = parseManifestHighWater(record['manifest_high_water']);
 	if (manifestHighWater === null) {
@@ -1110,7 +1033,7 @@ function parseModuleStoreState(bytes: Buffer, statePath: string): ModuleStoreSta
 		previous,
 		rejected,
 		floor,
-		linux_security_minimum: linuxSecurityMinimum,
+		shell_ranges: parseShellRanges(record['shell_ranges']),
 		manifest_high_water: manifestHighWater,
 		last_manifest_etag: lastManifestEtag,
 		last_manifest_fetch: lastManifestFetch,
@@ -1127,7 +1050,7 @@ function createInitialModuleStoreState(shellVersion: string, releaseChannel: str
 		previous: {},
 		rejected: {},
 		floor: {},
-		linux_security_minimum: null,
+		shell_ranges: {},
 		manifest_high_water: [],
 		last_manifest_etag: null,
 		last_manifest_fetch: null,
@@ -1145,13 +1068,8 @@ function serializeModuleStoreState(state: ModuleStoreState): string {
 			previous: sortModuleMap(state.previous),
 			rejected: sortModuleMap(state.rejected),
 			floor: sortModuleMap(state.floor),
-			linux_security_minimum:
-				state.linux_security_minimum == null
-					? null
-					: {
-							version: state.linux_security_minimum.version,
-							required_modules: state.linux_security_minimum.requiredModules,
-						},
+			linux_security_minimum: null,
+			shell_ranges: sortShellRanges(state.shell_ranges),
 			manifest_high_water: state.manifest_high_water.map((entry) => ({
 				release_channel: entry.releaseChannel,
 				platform: entry.platform,
@@ -1595,14 +1513,12 @@ export class ModuleStore {
 		fetchedAt,
 		manifest,
 		floor,
-		linuxSecurityMinimum,
 		advertised,
 	}: {
 		readonly etag: string | null;
 		readonly fetchedAt: string;
 		readonly manifest: ModuleManifestFeedObservation;
 		readonly floor?: Readonly<Record<string, string>>;
-		readonly linuxSecurityMinimum?: LinuxModuleSecurityMinimum;
 		readonly advertised?: Readonly<Record<string, string>>;
 	}): Promise<ModuleStoreState> {
 		return await this.withStateLock(async () => {
@@ -1613,12 +1529,78 @@ export class ModuleStore {
 				last_manifest_etag: etag,
 				last_manifest_fetch: fetchedAt,
 				floor: floor == null ? this.state.floor : sortModuleMap(floor),
-				linux_security_minimum:
-					linuxSecurityMinimum == null
-						? this.state.linux_security_minimum
-						: advanceLinuxSecurityMinimum(this.state.linux_security_minimum, linuxSecurityMinimum),
 				manifest_high_water: manifestHighWater,
 			});
+		});
+	}
+
+	public getShellRange(moduleName: string, sha256: string): ModuleShellRange | null {
+		return this.state.shell_ranges[shellRangeKey(moduleName, sha256)] ?? null;
+	}
+
+	public async recordShellRanges(ranges: ReadonlyArray<ModuleShellRangeRecord>): Promise<void> {
+		for (const range of ranges) {
+			assertModuleName(range.module);
+			assertSha256(range.sha256);
+		}
+		await this.withStateLock(async () => {
+			const shellRanges: Record<string, ModuleShellRange> = {...this.state.shell_ranges};
+			let changed = false;
+			for (const range of ranges) {
+				const key = shellRangeKey(range.module, range.sha256);
+				const next = {minimum_shell_version: range.minimum, maximum_shell_version: range.maximum};
+				if (sameShellRange(shellRanges[key], next)) {
+					continue;
+				}
+				shellRanges[key] = next;
+				changed = true;
+			}
+			if (changed) {
+				await this.writeState({...this.state, shell_ranges: shellRanges});
+			}
+		});
+	}
+
+	public async retireIncompatible(
+		isRunnable: (moduleName: string, sha256: string) => boolean,
+	): Promise<ReadonlyArray<string>> {
+		return await this.withStateLock(async () => {
+			const retired = new Set<string>();
+			const keepRunnable = (map: Readonly<Record<string, string>>): Record<string, string> => {
+				const kept: Record<string, string> = {};
+				for (const [moduleName, sha256] of Object.entries(map)) {
+					if (isRunnable(moduleName, sha256)) {
+						kept[moduleName] = sha256;
+					} else {
+						retired.add(moduleName);
+					}
+				}
+				return kept;
+			};
+			const committed = keepRunnable(this.state.committed);
+			const previous = keepRunnable(this.state.previous);
+			const floor = keepRunnable(this.state.floor);
+			if (retired.size === 0) {
+				return [];
+			}
+			await this.writeState({...this.state, committed, previous, floor});
+			return [...retired].sort();
+		});
+	}
+
+	private async pruneShellRanges(): Promise<void> {
+		await this.withStateLock(async () => {
+			const shellRanges: Record<string, ModuleShellRange> = {};
+			for (const [key, range] of Object.entries(this.state.shell_ranges)) {
+				const separator = key.indexOf('/');
+				const directory = this.getModuleDirectory(key.slice(0, separator), key.slice(separator + 1));
+				if (await isDirectory(directory)) {
+					shellRanges[key] = range;
+				}
+			}
+			if (Object.keys(shellRanges).length !== Object.keys(this.state.shell_ranges).length) {
+				await this.writeState({...this.state, shell_ranges: shellRanges});
+			}
 		});
 	}
 
@@ -1751,7 +1733,9 @@ export class ModuleStore {
 		if (!this.launchSucceeded) {
 			throw new ModuleStoreGarbageCollectionOrderError();
 		}
-		return await this.withStoreTreeLock(() => this.collectGarbageExclusively(now));
+		const result = await this.withStoreTreeLock(() => this.collectGarbageExclusively(now));
+		await this.pruneShellRanges();
+		return result;
 	}
 
 	private async collectGarbageExclusively(now: number): Promise<ModuleGarbageCollectionResult> {
@@ -1876,13 +1860,7 @@ export class ModuleStore {
 			previous: sortModuleMap(next.previous),
 			rejected: sortModuleMap(next.rejected),
 			floor: sortModuleMap(next.floor),
-			linux_security_minimum:
-				next.linux_security_minimum == null
-					? null
-					: {
-							version: next.linux_security_minimum.version,
-							requiredModules: Object.freeze([...next.linux_security_minimum.requiredModules]),
-						},
+			shell_ranges: sortShellRanges(next.shell_ranges),
 			manifest_high_water: sortManifestHighWater(next.manifest_high_water),
 		};
 		for (const [moduleName, sha256] of Object.entries(this.state.committed)) {

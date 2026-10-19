@@ -25,7 +25,7 @@ import {
 	updateGuild,
 } from '@app/api/channel/tests/ChannelTestUtils';
 import {deleteOneOrMany} from '@app/api/database/CassandraQueryExecution';
-import {GuildMemberRepository} from '@app/api/guild/repositories/GuildMemberRepository';
+import {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import {resolveContactEmails} from '@app/api/instance/ContactEmails';
 import {getInstanceProductName} from '@app/api/instance/ProductName';
 import {getRateLimitService} from '@app/api/middleware/ServiceSingletons';
@@ -35,6 +35,7 @@ import {Users} from '@app/api/Tables';
 import {type ApiTestHarness, createApiTestHarness} from '@app/api/test/ApiTestHarness';
 import {HTTP_STATUS, TEST_IDS} from '@app/api/test/TestConstants';
 import {createBuilder, createBuilderWithoutAuth} from '@app/api/test/TestRequestBuilder';
+import {systemDmBody} from '@app/api/user/services/SystemDmMessage';
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
 import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {DELETED_USER_USERNAME} from '@fluxer/constants/src/UserConstants';
@@ -138,7 +139,7 @@ function contextIds(report: Awaited<ReturnType<typeof readReport>>): Array<strin
 }
 
 async function setJoinedAt(guildId: string, userId: string, joinedAt: Date): Promise<void> {
-	const repository = new GuildMemberRepository();
+	const repository = new GuildRepository();
 	const member = await repository.getMember(createGuildID(BigInt(guildId)), createUserID(BigInt(userId)));
 	if (!member) {
 		throw new Error(`Member ${userId} of guild ${guildId} was not stored`);
@@ -208,6 +209,8 @@ describe('Content Reporting', () => {
 				.patch(`/admin/reports/${report.report_id}`)
 				.body({
 					status: 'resolved',
+					resolution: 'actioned',
+					outcome: 'restricted',
 					public_comment: publicComment,
 				})
 				.expect(HTTP_STATUS.OK)
@@ -227,7 +230,8 @@ describe('Content Reporting', () => {
 					reportId: report.report_id,
 					publicComment,
 					hasComment: 'yes',
-					safety_email: resolveContactEmails().safetyEmail,
+					outcome: 'restricted',
+					appeals_email: resolveContactEmails().appealsEmail,
 				},
 				getInstanceProductName(),
 			);
@@ -235,7 +239,8 @@ describe('Content Reporting', () => {
 			if (!template.ok) {
 				throw new Error('Failed to resolve expected report_resolved email template');
 			}
-			expect(systemMessages[0]?.content).toBe(template.value.body);
+			expect(systemMessages[0]?.content).toBe(systemDmBody(template.value.body));
+			expect(systemMessages[0]?.content).not.toContain(reporter.username!);
 			const systemDmChannel = (await listSystemDmChannels(harness, reporter.token))[0];
 			expect(systemDmChannel?.id).toBeTruthy();
 			const readStateRepository = new ReadStateRepository();

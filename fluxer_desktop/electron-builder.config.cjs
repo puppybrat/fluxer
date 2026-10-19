@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 const {execFile} = require('node:child_process');
+const {readFileSync} = require('node:fs');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
@@ -102,6 +103,7 @@ const isMacBuild = process.argv.includes('--mac');
 const isWindowsBuild = process.argv.includes('--win');
 const targetPlatform = isLinuxBuild ? 'linux' : isMacBuild ? 'darwin' : isWindowsBuild ? 'win32' : process.platform;
 const metadataName = isLinuxBuild ? linuxPackageName : packageName;
+const shellVersion = process.env.VERSION || readBundledRendererVersion();
 const supportedTargetArchs = ['x64', 'arm64'];
 const supportedMacTargetArchs = [...supportedTargetArchs, 'universal'];
 const electronArch = process.env.ELECTRON_ARCH;
@@ -278,7 +280,6 @@ const nativeRuntimeFilePatterns = [
 	'node_modules/@fluxer/linux-input-hook/*.node',
 	'node_modules/@fluxer/platform-info/package.json',
 	'node_modules/@fluxer/platform-info/index.js',
-	'node_modules/@fluxer/platform-info/pure.cjs',
 	'node_modules/@fluxer/platform-info/loader-diagnostics.cjs',
 	'node_modules/@fluxer/platform-info/*.node',
 	'node_modules/@fluxer/webauthn/package.json',
@@ -294,12 +295,10 @@ const nativeRuntimeFilePatterns = [
 	'node_modules/@fluxer/hardware-encoder/*.node',
 	'node_modules/@fluxer/app-store/package.json',
 	'node_modules/@fluxer/app-store/index.js',
-	'node_modules/@fluxer/app-store/pure.cjs',
 	'node_modules/@fluxer/app-store/loader-diagnostics.cjs',
 	'node_modules/@fluxer/app-store/*.node',
 	'node_modules/@fluxer/gateway-socket/package.json',
 	'node_modules/@fluxer/gateway-socket/index.js',
-	'node_modules/@fluxer/gateway-socket/pure.cjs',
 	'node_modules/@fluxer/gateway-socket/loader-diagnostics.cjs',
 	'node_modules/@fluxer/gateway-socket/*.node',
 	'node_modules/.pnpm/@fluxer+*/node_modules/@fluxer/*/loader-diagnostics.cjs',
@@ -645,6 +644,15 @@ function packagePathParts(packageName) {
 		return parts;
 	}
 	return [packageName];
+}
+
+function readBundledRendererVersion() {
+	try {
+		const {version} = JSON.parse(readFileSync(path.join(__dirname, 'dist', 'renderer', 'version.json'), 'utf8'));
+		return typeof version === 'string' && /^\d+\.\d+\.\d+$/u.test(version) ? version : null;
+	} catch {
+		return null;
+	}
 }
 
 function isNonEmptyString(value) {
@@ -1626,7 +1634,7 @@ module.exports = {
 	extraMetadata: {
 		main: 'dist/main/index.js',
 		name: metadataName,
-		...(process.env.VERSION ? {version: process.env.VERSION} : {}),
+		...(shellVersion ? {version: shellVersion} : {}),
 		...(targetPlatform === 'linux' ? {desktopName: `${linuxDesktopId}.desktop`} : {}),
 	},
 	extraResources: [

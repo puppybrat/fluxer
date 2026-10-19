@@ -3,33 +3,44 @@
 import type {ApiContext} from '@app/api/ApiContext';
 import {mapUserToAdminResponse} from '@app/api/admin/models/UserTypes';
 import type {AdminAuditService} from '@app/api/admin/services/AdminAuditService';
-import type {AdminUserUpdatePropagator} from '@app/api/admin/services/AdminUserUpdatePropagator';
 import * as AuthEmail from '@app/api/auth/AuthEmail';
 import * as AuthMfa from '@app/api/auth/AuthMfa';
-import * as AuthSession from '@app/api/auth/AuthSession';
+import {revokeAllAuthSessions} from '@app/api/auth/AuthSessionRevocation';
 import * as AuthUtility from '@app/api/auth/AuthUtility';
 import {visibleWebAuthnCredentials} from '@app/api/auth/services/PasskeyRelyingParty';
 import {RecoveryKitRepository} from '@app/api/auth/services/RecoveryKitRepository';
 import {createPasswordResetToken, createUserID, type UserID} from '@app/api/BrandedTypes';
 import {Config} from '@app/api/Config';
+import {
+	FEATURE_LIMIT_PREMIUM_FLAGS,
+	FEATURE_LIMIT_USER_FLAGS,
+	findHoldingFeatureLimit,
+} from '@app/api/enforcement/FeatureLimitState';
 import {emitAdminAction} from '@app/api/infrastructure/activity/AccountChangeEvents';
 import {Logger} from '@app/api/Logger';
-import {getInstanceConfigRepository} from '@app/api/middleware/ServiceSingletons';
+import {requireGrantedAdminACLs} from '@app/api/middleware/AdminMiddleware';
+import {getEnforcementDecisionRepository, getInstanceConfigRepository} from '@app/api/middleware/ServiceSingletons';
 import {User} from '@app/api/models/User';
 import {clearNewConversationLimit} from '@app/api/user/NewConversationLimit';
 import {PASSWORD_RESET_TOKEN_TTL_SECONDS} from '@app/api/user/repositories/auth/TokenRepository';
+import {
+	type PartialUserChangePropagationDeps,
+	propagateUserUpdate,
+} from '@app/api/user/services/PartialUserChangePropagation';
 import {mapWebAuthnCredentialToResponse} from '@app/api/user/UserMappers';
 import {resolveAssignedTraits} from '@app/api/user/UserTraits';
 import {getIpAddressReverse, getLocationLabelFromIp} from '@app/api/utils/IpUtils';
+import * as RandomUtils from '@app/api/utils/RandomUtils';
 import {resolveSessionClientInfo} from '@app/api/utils/SessionClientIdentity';
 import {AdminACLs} from '@fluxer/constants/src/AdminACLs';
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
-import {UserFlags} from '@fluxer/constants/src/UserConstants';
+import type {EnforcementLimit} from '@fluxer/constants/src/EnforcementReasons';
+import {PremiumFlags, UserFlags} from '@fluxer/constants/src/UserConstants';
 import {ValidationErrorCodes} from '@fluxer/constants/src/ValidationErrorCodes';
 import {AccessDeniedError} from '@fluxer/errors/src/domains/core/AccessDeniedError';
 import {InputValidationError} from '@fluxer/errors/src/domains/core/InputValidationError';
-import {MissingACLError} from '@fluxer/errors/src/domains/core/MissingACLError';
 import {ServiceUnavailableError} from '@fluxer/errors/src/domains/core/ServiceUnavailableError';
+import {EnforcementDecisionOwnsStateError} from '@fluxer/errors/src/domains/moderation/EnforcementDecisionOwnsStateError';
 import {UnknownUserError} from '@fluxer/errors/src/domains/user/UnknownUserError';
 import type {
 	AdminPasswordResetLinkResponse,
@@ -44,10 +55,74 @@ import type {
 } from '@fluxer/schema/src/domains/admin/AdminUserSchemas';
 import type {WebAuthnCredentialListResponse} from '@fluxer/schema/src/domains/auth/AuthSchemas';
 
+const RESTRICTION_USER_FLAGS = UserFlags.DISABLED | UserFlags.DELETED | UserFlags.SPAMMER | UserFlags.REPORT_BANNED;
+
+function combineUserFlags(flags: ReadonlyArray<bigint>): bigint {
+	return flags.reduce((combined, flag) => combined | flag, 0n);
+}
+
+function combinePremiumFlags(flags: ReadonlyArray<number>): number {
+	return flags.reduce((combined, flag) => combined | flag, 0);
+}
+
+function refuseFlag(field: 'add_flags' | 'remove_flags'): never {
+	throw InputValidationError.fromCode(field, ValidationErrorCodes.FLAG_REQUIRES_ENFORCEMENT_ROUTE);
+}
+
+export function assertNoRestrictionFlagsAdded(addFlags: ReadonlyArray<bigint>): void {
+	if ((combineUserFlags(addFlags) & RESTRICTION_USER_FLAGS) !== 0n) {
+		refuseFlag('add_flags');
+	}
+}
+
+async function assertNoFeatureLimitHeld(user: User, limits: ReadonlyArray<EnforcementLimit>): Promise<void> {
+	for (const limit of limits) {
+		const holding = await findHoldingFeatureLimit(getEnforcementDecisionRepository(), user.id, limit);
+		if (holding) {
+			throw new EnforcementDecisionOwnsStateError(holding.decision_id);
+		}
+	}
+}
+
+async function assertUserFlagUpdateAllowed(
+	user: User,
+	addFlags: ReadonlyArray<bigint>,
+	removeFlags: ReadonlyArray<bigint>,
+): Promise<void> {
+	assertNoRestrictionFlagsAdded(addFlags);
+	const removing = combineUserFlags(removeFlags) & user.flags;
+	if ((removing & UserFlags.DELETED) !== 0n || ((removing & UserFlags.DISABLED) !== 0n && user.tempBannedUntil)) {
+		refuseFlag('remove_flags');
+	}
+	await assertNoFeatureLimitHeld(
+		user,
+		(Object.keys(FEATURE_LIMIT_USER_FLAGS) as Array<EnforcementLimit>).filter(
+			(limit) => (removing & FEATURE_LIMIT_USER_FLAGS[limit]!) !== 0n,
+		),
+	);
+}
+
+async function assertPremiumFlagUpdateAllowed(
+	user: User,
+	addFlags: ReadonlyArray<number>,
+	removeFlags: ReadonlyArray<number>,
+): Promise<void> {
+	if ((combinePremiumFlags(addFlags) & PremiumFlags.PURCHASE_DISABLED) !== 0) {
+		refuseFlag('add_flags');
+	}
+	const removing = combinePremiumFlags(removeFlags) & user.premiumFlags;
+	await assertNoFeatureLimitHeld(
+		user,
+		(Object.keys(FEATURE_LIMIT_PREMIUM_FLAGS) as Array<EnforcementLimit>).filter(
+			(limit) => (removing & FEATURE_LIMIT_PREMIUM_FLAGS[limit]!) !== 0,
+		),
+	);
+}
+
 interface AdminUserSecurityServiceDeps {
 	apiContext: ApiContext;
 	auditService: AdminAuditService;
-	updatePropagator: AdminUserUpdatePropagator;
+	userUpdateDeps: PartialUserChangePropagationDeps;
 }
 
 interface FlagAuditMetadataParams {
@@ -125,7 +200,12 @@ export class AdminUserSecurityService {
 		acls: ReadonlySet<string>;
 	}) {
 		const {users: userRepository, cache: cacheService} = this.deps.apiContext.services;
-		const {auditService, updatePropagator} = this.deps;
+		const {auditService, userUpdateDeps} = this.deps;
+		const user = await userRepository.findUnique(userId);
+		if (!user) {
+			throw new UnknownUserError();
+		}
+		await assertUserFlagUpdateAllowed(user, data.addFlags, data.removeFlags);
 		let previousFlags = 0n;
 		const updatedUser = await userRepository.updateFlags(userId, (flags) => {
 			previousFlags = flags;
@@ -140,7 +220,7 @@ export class AdminUserSecurityService {
 			await clearNewConversationLimit(userId, {cache: cacheService});
 		}
 		const oldUser = new User({...updatedUser.toRow(), flags: previousFlags});
-		await updatePropagator.propagateUserUpdate({userId, oldUser, updatedUser});
+		await propagateUserUpdate(userUpdateDeps, oldUser, updatedUser);
 		await auditService.createAuditLog({
 			adminUserId,
 			targetType: 'user',
@@ -176,11 +256,12 @@ export class AdminUserSecurityService {
 		acls: ReadonlySet<string>;
 	}) {
 		const {users: userRepository, cache: cacheService} = this.deps.apiContext.services;
-		const {auditService, updatePropagator} = this.deps;
+		const {auditService, userUpdateDeps} = this.deps;
 		const user = await userRepository.findUnique(userId);
 		if (!user) {
 			throw new UnknownUserError();
 		}
+		await assertPremiumFlagUpdateAllowed(user, data.addFlags, data.removeFlags);
 		const newPremiumFlags = applyNumberFlagUpdates(user.premiumFlags, data.addFlags, data.removeFlags);
 		const updatedUser = await userRepository.patchUpsert(
 			userId,
@@ -189,7 +270,7 @@ export class AdminUserSecurityService {
 			},
 			user.toRow(),
 		);
-		await updatePropagator.propagateUserUpdate({userId, oldUser: user, updatedUser: updatedUser});
+		await propagateUserUpdate(userUpdateDeps, user, updatedUser);
 		await auditService.createAuditLog({
 			adminUserId,
 			targetType: 'user',
@@ -209,7 +290,7 @@ export class AdminUserSecurityService {
 
 	async disableMfa(data: DisableMfaRequest, adminUserId: UserID, auditLogReason: string | null) {
 		const {users: userRepository, botMfaMirror: botMfaMirrorService} = this.deps.apiContext.services;
-		const {auditService, updatePropagator} = this.deps;
+		const {auditService, userUpdateDeps} = this.deps;
 		const userId = createUserID(data.user_id);
 		const user = await userRepository.findUnique(userId);
 		if (!user) {
@@ -227,7 +308,7 @@ export class AdminUserSecurityService {
 			await botMfaMirrorService.syncAuthenticatorTypesForOwner(updatedUser);
 		}
 		await userRepository.clearMfaBackupCodes(userId);
-		await updatePropagator.propagateUserUpdate({userId, oldUser: user, updatedUser: updatedUser});
+		await propagateUserUpdate(userUpdateDeps, user, updatedUser);
 		await auditService.createAuditLog({
 			adminUserId,
 			targetType: 'user',
@@ -240,7 +321,7 @@ export class AdminUserSecurityService {
 
 	async sendPasswordReset(data: SendPasswordResetRequest, adminUserId: UserID, auditLogReason: string | null) {
 		const {users: userRepository, email: emailService} = this.deps.apiContext.services;
-		const {apiContext, auditService} = this.deps;
+		const {auditService} = this.deps;
 		const userId = createUserID(data.user_id);
 		const user = await userRepository.findUnique(userId);
 		if (!user) {
@@ -249,7 +330,7 @@ export class AdminUserSecurityService {
 		if (!user.email) {
 			throw InputValidationError.fromCode('email', ValidationErrorCodes.USER_DOES_NOT_HAVE_AN_EMAIL_ADDRESS);
 		}
-		const token = createPasswordResetToken(await AuthUtility.generateSecureToken(apiContext));
+		const token = createPasswordResetToken(await RandomUtils.randomString(64));
 		await userRepository.createPasswordResetToken({
 			token_: token,
 			user_id: userId,
@@ -280,8 +361,8 @@ export class AdminUserSecurityService {
 			throw new UnknownUserError();
 		}
 		AuthUtility.assertNonBotUser(apiContext, user);
-		assertCallerHoldsTargetAcls(user.acls, acls);
-		const token = createPasswordResetToken(await AuthUtility.generateSecureToken(apiContext));
+		requireGrantedAdminACLs(acls, user.acls);
+		const token = createPasswordResetToken(await RandomUtils.randomString(64));
 		const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_SECONDS * 1000);
 		await userRepository.deleteAllPasswordResetTokens(userId);
 		await new RecoveryKitRepository().delete(userId);
@@ -316,7 +397,7 @@ export class AdminUserSecurityService {
 		if (!user) {
 			throw new UnknownUserError();
 		}
-		assertCallerHoldsTargetAcls(user.acls, acls);
+		requireGrantedAdminACLs(acls, user.acls);
 		await new RecoveryKitRepository().delete(userId);
 		await this.deps.auditService.createAuditLog({
 			adminUserId,
@@ -362,7 +443,7 @@ export class AdminUserSecurityService {
 		if (!user) {
 			throw new UnknownUserError();
 		}
-		const terminatedCount = await AuthSession.terminateAllUserSessions(this.deps.apiContext, userId);
+		const terminatedCount = await revokeAllAuthSessions(this.deps.apiContext.services, userId);
 		await auditService.createAuditLog({
 			adminUserId,
 			targetType: 'user',
@@ -381,7 +462,7 @@ export class AdminUserSecurityService {
 		acls: ReadonlySet<string>,
 	) {
 		const {users: userRepository, cache: cacheService} = this.deps.apiContext.services;
-		const {auditService, updatePropagator} = this.deps;
+		const {auditService, userUpdateDeps} = this.deps;
 		const userId = createUserID(data.user_id);
 		if (userId === adminUserId) {
 			throw new AccessDeniedError();
@@ -390,12 +471,7 @@ export class AdminUserSecurityService {
 		if (!user) {
 			throw new UnknownUserError();
 		}
-		if (!acls.has(AdminACLs.WILDCARD)) {
-			const invalidAcls = data.acls.filter((acl) => !acls.has(acl));
-			if (invalidAcls.length > 0) {
-				throw new MissingACLError(invalidAcls[0]);
-			}
-		}
+		requireGrantedAdminACLs(acls, data.acls);
 		const updatedUser = await userRepository.patchUpsert(
 			userId,
 			{
@@ -403,7 +479,7 @@ export class AdminUserSecurityService {
 			},
 			user.toRow(),
 		);
-		await updatePropagator.propagateUserUpdate({userId, oldUser: user, updatedUser: updatedUser});
+		await propagateUserUpdate(userUpdateDeps, user, updatedUser);
 		await auditService.createAuditLog({
 			adminUserId,
 			targetType: 'user',
@@ -424,7 +500,7 @@ export class AdminUserSecurityService {
 		acls: ReadonlySet<string>,
 	) {
 		const {users: userRepository, cache: cacheService} = this.deps.apiContext.services;
-		const {auditService, updatePropagator} = this.deps;
+		const {auditService, userUpdateDeps} = this.deps;
 		const userId = createUserID(data.user_id);
 		const user = await userRepository.findUnique(userId);
 		if (!user) {
@@ -439,7 +515,7 @@ export class AdminUserSecurityService {
 			},
 			user.toRow(),
 		);
-		await updatePropagator.propagateUserUpdate({userId, oldUser: user, updatedUser: updatedUser});
+		await propagateUserUpdate(userUpdateDeps, user, updatedUser);
 		await auditService.createAuditLog({
 			adminUserId,
 			targetType: 'user',
@@ -637,13 +713,5 @@ export class AdminUserSecurityService {
 				};
 			}),
 		};
-	}
-}
-
-function assertCallerHoldsTargetAcls(targetAcls: ReadonlySet<string>, callerAcls: ReadonlySet<string>): void {
-	if (callerAcls.has(AdminACLs.WILDCARD)) return;
-	const missing = [...targetAcls].find((acl) => !callerAcls.has(acl));
-	if (missing !== undefined) {
-		throw new MissingACLError(missing);
 	}
 }

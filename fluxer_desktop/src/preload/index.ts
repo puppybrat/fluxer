@@ -1,3 +1,4 @@
+import {isRecord} from '@fluxer/record_utils/src/RecordGuards';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {BUILD_CHANNEL} from '@electron/common/BuildChannel';
@@ -35,6 +36,7 @@ import type {
 	NativeAudioAvailability,
 	NativeAudioEndMessage,
 	NativeAudioFrameMessage,
+	NativeAudioPlaybackDevice,
 	NativeAudioStartOptions,
 	NativeAudioStartResult,
 	NativeScreenCaptureLifecycleEventKind,
@@ -43,6 +45,7 @@ import type {
 	NotificationOptions,
 	NotificationResult,
 	SetDesktopTroubleshootingDisableHardwareAccelerationOptions,
+	SetDesktopTroubleshootingDisableModuleUpdatesOptions,
 	SpellcheckBundledDictionary,
 	SpellcheckResolvedEngineInfo,
 	SpellcheckState,
@@ -63,6 +66,7 @@ import {createFirstContentPaintSignal} from '@electron/preload/FirstContentPaint
 import {applyLegacyRawLocalStorage} from '@electron/preload/LegacyRawStorageSeed';
 import {createLocalAppPreloadAPI} from '@electron/preload/LocalAppPreload';
 import {createNativeGatewayPreloadAPI} from '@electron/preload/NativeGatewayPreload';
+import {createOtherPlatformTemplatePreloadAPI} from '@electron/preload/OtherPlatformTemplatePreload';
 import type {DesktopCapabilityManifest} from '@fluxer/desktop_ipc/src/CapabilityManifest';
 import {DESKTOP_CAPABILITY_MANIFEST_CHANNEL} from '@fluxer/desktop_ipc/src/CapabilityManifest';
 import {DESKTOP_LAST_ROUTE_CHANNEL} from '@fluxer/desktop_ipc/src/LastRouteContract';
@@ -105,10 +109,6 @@ class DesktopCapabilityManifestContractError extends TypeError {
 interface AccessibilityStartupSettings {
 	syncReducedMotionWithSystem: boolean;
 	reducedMotionOverride: boolean | null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 const NATIVE_SCREEN_CAPTURE_LIFECYCLE_KINDS: ReadonlySet<NativeScreenCaptureLifecycleEventKind> = new Set([
@@ -405,6 +405,7 @@ const api: ElectronAPI = {
 	...createLocalAppPreloadAPI(ipcRenderer),
 	...createBrowserHandoffPreloadAPI(ipcRenderer),
 	...createNativeGatewayPreloadAPI(ipcRenderer),
+	...createOtherPlatformTemplatePreloadAPI(ipcRenderer),
 	reportLastRoute: (routePath: string): void => {
 		ipcRenderer.send(DESKTOP_LAST_ROUTE_CHANNEL, routePath);
 	},
@@ -443,6 +444,10 @@ const api: ElectronAPI = {
 		options: SetDesktopTroubleshootingDisableHardwareAccelerationOptions,
 	): Promise<DesktopTroubleshootingSettings> =>
 		ipcRenderer.invoke('desktop-troubleshooting-set-disable-hardware-acceleration', options),
+	setDesktopDisableModuleUpdates: (
+		options: SetDesktopTroubleshootingDisableModuleUpdatesOptions,
+	): Promise<DesktopTroubleshootingSettings> =>
+		ipcRenderer.invoke('desktop-troubleshooting-set-disable-module-updates', options),
 	onUpdaterEvent: (callback: (event: UpdaterEvent) => void): (() => void) => {
 		const handler = (_event: Electron.IpcRendererEvent, data: UpdaterEvent) => callback(data);
 		ipcRenderer.on('updater-event', handler);
@@ -460,7 +465,7 @@ const api: ElectronAPI = {
 	},
 	windowIsMaximized: (): Promise<boolean> => ipcRenderer.invoke('window-is-maximized'),
 	focusThemeStudioPopout: (): Promise<boolean> => ipcRenderer.invoke('theme-studio-popout-focus'),
-	closeThemeStudioPopout: (): Promise<boolean> => ipcRenderer.invoke('theme-studio-popout-close'),
+
 	popoutSetAlwaysOnTop: (key: string, flag: boolean): Promise<boolean> =>
 		ipcRenderer.invoke('popout:set-always-on-top', key, flag),
 	popoutFocus: (key: string): Promise<boolean> => ipcRenderer.invoke('popout:focus', key),
@@ -587,6 +592,9 @@ const api: ElectronAPI = {
 	setBadgeCount: (count: number): void => {
 		ipcRenderer.send('set-badge-count', count);
 	},
+	setUnreadBadge: (badge: number): void => {
+		ipcRenderer.send('set-unread-badge', badge);
+	},
 	setNativeLocale: (locale: string, strings: Record<string, string>): void => {
 		ipcRenderer.send('native-locale-set', {locale, strings});
 	},
@@ -663,7 +671,7 @@ const api: ElectronAPI = {
 	globalKeyHookUnregister: (id: string): Promise<void> => ipcRenderer.invoke('global-key-hook-unregister', id),
 	globalKeyHookUnregisterAll: (): Promise<void> => ipcRenderer.invoke('global-key-hook-unregister-all'),
 	linuxEvdevStatus: () => ipcRenderer.invoke('linux-evdev-status'),
-	linuxEvdevGrantAccess: () => ipcRenderer.invoke('linux-evdev-grant-access'),
+
 	onGlobalKeyEvent: (callback: (event: GlobalKeyEvent) => void): (() => void) => {
 		const handler = (_event: Electron.IpcRendererEvent, data: GlobalKeyEvent): void => {
 			callback(data);
@@ -782,6 +790,10 @@ const api: ElectronAPI = {
 			ipcRenderer.invoke('native-audio:start', options),
 		setRule: (captureId: string, linuxRule: NonNullable<NativeAudioStartOptions['linuxRule']>): Promise<boolean> =>
 			ipcRenderer.invoke('native-audio:set-rule', captureId, linuxRule),
+		listPlaybackDevices: (): Promise<Array<NativeAudioPlaybackDevice>> =>
+			ipcRenderer.invoke('native-audio:list-playback-devices'),
+		setWinEndpoints: (captureId: string, endpoints: Array<string>): Promise<boolean> =>
+			ipcRenderer.invoke('native-audio:set-win-endpoints', captureId, endpoints),
 		stop: (captureId: string): Promise<void> => ipcRenderer.invoke('native-audio:stop', captureId),
 		onFrame: (callback: (message: NativeAudioFrameMessage) => void): (() => void) => {
 			const handler = (_event: Electron.IpcRendererEvent, message: NativeAudioFrameMessage): void => {

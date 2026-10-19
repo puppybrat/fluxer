@@ -2,26 +2,28 @@
 
 import {AdminAuditReadActions} from '@app/api/admin/AdminAuditActions';
 import {recordAdminRead, recordAdminWrite} from '@app/api/admin/AdminAuditRecorder';
+import {startAttachmentDecayReconcile} from '@app/api/attachment/AttachmentDecayReconcileRun';
+import {maybeAutoJoinInvite} from '@app/api/auth/AuthRegistration';
 import {createUserID} from '@app/api/BrandedTypes';
 import {Config} from '@app/api/Config';
 import {
+	type InstanceAttachmentDecayEffectiveConfig,
 	type InstancePolicyConfig,
 	REGISTRATION_PENDING_APPROVAL_TRAIT,
 	REGISTRATION_REJECTED_TRAIT,
 } from '@app/api/instance/InstanceConfigRepository';
+import {clearUsedSetupToken} from '@app/api/instance/SetupToken';
 import {deriveSsoRedirectUri, normalizeAndValidateSsoConfig} from '@app/api/instance/SsoConfigValidation';
 import {requireAdminACL} from '@app/api/middleware/AdminMiddleware';
 import {RateLimitMiddleware} from '@app/api/middleware/RateLimitMiddleware';
 import {OpenAPI} from '@app/api/middleware/ResponseTypeMiddleware';
-import {
-	getGatewayRolloutConfigPublisher,
-	getInstanceConfigRepository,
-	getPushRelayConfigPublisher,
-} from '@app/api/middleware/ServiceSingletons';
+import {getKVClient, getWorkerService} from '@app/api/middleware/ServiceRegistry';
+import {getInstanceConfigRepository, getNatsConfigPublisher} from '@app/api/middleware/ServiceSingletons';
 import {RateLimitConfigs} from '@app/api/RateLimitConfig';
 import type {HonoApp, HonoEnv} from '@app/api/types/HonoEnv';
 import {Validator} from '@app/api/Validator';
 import {AdminACLs} from '@fluxer/constants/src/AdminACLs';
+import {resolveSmtpTlsMode, type SmtpTlsMode, smtpTlsModeFromSecure} from '@fluxer/constants/src/SmtpConstants';
 import {InputValidationError} from '@fluxer/errors/src/domains/core/InputValidationError';
 import {InstancePolicyTransitionNotAllowedError} from '@fluxer/errors/src/domains/core/InstancePolicyTransitionNotAllowedError';
 import {
@@ -33,6 +35,7 @@ import {
 	InstanceEmailSmtpTestRequest,
 	InstanceEmailSmtpTestResponse,
 	PendingRegistrationActionRequest,
+	PendingRegistrationListResponse,
 	RegistrationUrlIdParam,
 } from '@fluxer/schema/src/domains/admin/AdminSchemas';
 import {DomainMigrationConfigSchema} from '@fluxer/schema/src/domains/admin/DomainMigrationSchemas';
@@ -44,12 +47,37 @@ import {ExperimentDeliveryConfigSchema} from '@fluxer/schema/src/domains/experim
 import type {InstanceBranding} from '@fluxer/schema/src/domains/instance/InstanceSchemas';
 import {SmtpEmailProvider} from '@pkgs/email/src/SmtpEmailProvider';
 import type {Context} from 'hono';
-import {createMiddleware} from 'hono/factory';
 
 const INSTANCE_BRANDING_ENTITY_ID = 0n;
+const ATTACHMENT_EXPIRY_RULE_FIELDS = [
+	'enabled',
+	'min_size_mb',
+	'max_size_mb',
+	'max_eligible_size_mb',
+	'min_lifetime_days',
+	'max_lifetime_days',
+	'curve',
+] as const satisfies ReadonlyArray<keyof InstanceAttachmentDecayEffectiveConfig>;
+
+function attachmentExpiryRulesChanged(
+	previous: InstanceAttachmentDecayEffectiveConfig,
+	next: InstanceAttachmentDecayEffectiveConfig,
+): boolean {
+	return ATTACHMENT_EXPIRY_RULE_FIELDS.some((field) => previous[field] !== next[field]);
+}
 
 function readOptionalField<T extends object, K extends keyof T>(value: T, key: K): T[K] | undefined {
 	return Object.hasOwn(value, key) ? value[key] : undefined;
+}
+
+function readSmtpTlsModeUpdate(smtp: {
+	tls_mode?: SmtpTlsMode | null;
+	secure?: boolean | null;
+}): SmtpTlsMode | null | undefined {
+	const tlsMode = readOptionalField(smtp, 'tls_mode');
+	if (tlsMode !== undefined) return tlsMode;
+	const secure = readOptionalField(smtp, 'secure');
+	return secure === undefined ? undefined : smtpTlsModeFromSecure(secure);
 }
 
 function mergeOptionalField<T>(currentValue: T, nextValue: T | undefined): T {
@@ -72,7 +100,6 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 		experimentDelivery,
 		registrationConfig,
 		registrationUrls,
-		pendingRegistrations,
 	] = await Promise.all([
 		instanceConfigRepository.getSsoConfig(),
 		instanceConfigRepository.getGatewayRolloutConfig(),
@@ -83,7 +110,6 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 		instanceConfigRepository.getExperimentDeliveryConfig(),
 		instanceConfigRepository.getRegistrationConfig(),
 		instanceConfigRepository.getRegistrationUrlsForAdmin(),
-		instanceConfigRepository.getPendingRegistrations(),
 	]);
 	const [appPublic, policy, resolvedServices, integrations, media, billing, accountIdentity, accountIdentityLocked] =
 		await Promise.all([
@@ -122,7 +148,6 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 		registration: {
 			...registrationConfig,
 			urls: registrationUrls,
-			pending_registrations: pendingRegistrations,
 		},
 		self_hosted: Config.instance.selfHosted,
 		account_identity: {
@@ -159,49 +184,6 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 function buildAdminIssuedRegistrationUrl(code: string): string {
 	const baseUrl = Config.endpoints.webApp.replace(/\/$/, '');
 	return `${baseUrl}/register?registration_url=${encodeURIComponent(code)}`;
-}
-
-function requireSetupSessionOrAdminACL(requiredACL: string) {
-	const requireAcl = requireAdminACL(requiredACL);
-	return createMiddleware<HonoEnv>(async (ctx, next) => {
-		const user = ctx.get('user');
-		const tokenType = ctx.get('authTokenType');
-		if (user && tokenType === 'session') {
-			const appPublic = await getInstanceConfigRepository().getAppPublicConfig();
-			if (!appPublic.setup.configured) {
-				ctx.set('adminUserId', user.id);
-				ctx.set('adminUserAcls', user.acls);
-				await next();
-				return;
-			}
-		}
-		return requireAcl(ctx, next);
-	});
-}
-
-function hasAdminAuthenticationACL(acls: ReadonlySet<string>): boolean {
-	return acls.has(AdminACLs.AUTHENTICATE) || acls.has(AdminACLs.WILDCARD);
-}
-
-function completesInitialSetup(data: InstanceConfigUpdateRequest, setupConfigured: boolean): boolean {
-	return (
-		!setupConfigured &&
-		data.app_public?.setup != null &&
-		readOptionalField(data.app_public.setup, 'configured') === true
-	);
-}
-
-async function grantSetupCompleterAdminACL(ctx: Context<HonoEnv>): Promise<boolean> {
-	const user = ctx.get('user');
-	if (!user || ctx.get('authTokenType') !== 'session' || hasAdminAuthenticationACL(user.acls)) {
-		return false;
-	}
-	const nextACLs = new Set(user.acls);
-	nextACLs.add(AdminACLs.WILDCARD);
-	const updatedUser = await ctx.get('userRepository').patchUpsert(user.id, {acls: nextACLs}, user.toRow());
-	ctx.set('user', updatedUser);
-	ctx.set('adminUserAcls', updatedUser.acls);
-	return true;
 }
 
 function relayConsentStamp(
@@ -320,7 +302,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 	app.get(
 		'/admin/instance/config',
 		RateLimitMiddleware(RateLimitConfigs.ADMIN_LOOKUP),
-		requireSetupSessionOrAdminACL(AdminACLs.INSTANCE_CONFIG_VIEW),
+		requireAdminACL(AdminACLs.INSTANCE_CONFIG_VIEW),
 		OpenAPI({
 			operationId: 'get_admin_instance_config',
 			summary: 'Get instance configuration',
@@ -337,10 +319,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 				targetType: 'instance_config',
 				targetId: 0n,
 				action: AdminAuditReadActions.GET_INSTANCE_CONFIG,
-				metadata: {
-					registration_url_count: response.registration.urls.length,
-					pending_registration_count: response.registration.pending_registrations.length,
-				},
+				metadata: {registration_url_count: response.registration.urls.length},
 			});
 			return ctx.json(response);
 		},
@@ -348,7 +327,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 	app.patch(
 		'/admin/instance/config',
 		RateLimitMiddleware(RateLimitConfigs.ADMIN_USER_MODIFY),
-		requireSetupSessionOrAdminACL(AdminACLs.INSTANCE_CONFIG_UPDATE),
+		requireAdminACL(AdminACLs.INSTANCE_CONFIG_UPDATE),
 		Validator('json', InstanceConfigUpdateRequest),
 		OpenAPI({
 			operationId: 'update_admin_instance_config',
@@ -364,17 +343,12 @@ export function InstanceConfigAdminController(app: HonoApp) {
 			const data = ctx.req.valid('json');
 			assertSelfHostedBillingSections(data);
 			await assertBillingCompatibleWithPremiumMode(data);
-			const appPublicBeforeUpdate = completesInitialSetup(data, false)
-				? await instanceConfigRepository.getAppPublicConfig()
-				: null;
-			const shouldGrantSetupCompleterAdmin =
-				appPublicBeforeUpdate !== null && completesInitialSetup(data, appPublicBeforeUpdate.setup.configured);
 			if (data.gateway_rollout) {
 				const patch = data.gateway_rollout;
 				const landed = await instanceConfigRepository.updateGatewayRolloutConfig((current) =>
 					GatewayRolloutConfigSchema.parse({...current, ...patch}),
 				);
-				await getGatewayRolloutConfigPublisher().publish(landed);
+				await getNatsConfigPublisher().publish('config.gateway.rollout', 'gateway_rollout_config', landed);
 			}
 			if (data.push_relay) {
 				const patch = omitUndefinedFields(data.push_relay);
@@ -385,7 +359,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 						...patch,
 						...relayConsentStamp(current, patch, adminUserId),
 					}));
-					await getPushRelayConfigPublisher().publish(landed);
+					await getNatsConfigPublisher().publish('config.push.delivery', 'push_service_delivery_config', landed);
 				}
 			}
 			if (data.domain_migration) {
@@ -535,7 +509,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 											port: readOptionalField(data.integrations.email.smtp, 'port'),
 											username: readOptionalField(data.integrations.email.smtp, 'username'),
 											password: readOptionalField(data.integrations.email.smtp, 'password'),
-											secure: readOptionalField(data.integrations.email.smtp, 'secure'),
+											tls_mode: readSmtpTlsModeUpdate(data.integrations.email.smtp),
 										})
 									: undefined,
 							}
@@ -556,6 +530,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 				});
 			}
 			if (data.media) {
+				const previousAttachmentDecay = await instanceConfigRepository.getEffectiveAttachmentDecayConfig();
 				await instanceConfigRepository.setInstanceMediaConfig({
 					attachment_decay: data.media.attachment_decay
 						? omitUndefinedFields({
@@ -571,6 +546,10 @@ export function InstanceConfigAdminController(app: HonoApp) {
 							})
 						: undefined,
 				});
+				const attachmentDecay = await instanceConfigRepository.getEffectiveAttachmentDecayConfig();
+				if (attachmentDecay.enabled && attachmentExpiryRulesChanged(previousAttachmentDecay, attachmentDecay)) {
+					await startAttachmentDecayReconcile(getKVClient(), getWorkerService());
+				}
 			}
 			if (data.policy) {
 				await applyInstancePolicyUpdate(
@@ -597,16 +576,14 @@ export function InstanceConfigAdminController(app: HonoApp) {
 				);
 			}
 			if (data.app_public?.setup) {
+				const configured = readOptionalField(data.app_public.setup, 'configured');
 				await instanceConfigRepository.setAppPublicConfig({
-					setup: omitUndefinedFields({
-						configured: readOptionalField(data.app_public.setup, 'configured'),
-					}),
+					setup: omitUndefinedFields({configured}),
 				});
-			}
-			let grantedSetupCompleterAdmin = false;
-			if (shouldGrantSetupCompleterAdmin) {
-				grantedSetupCompleterAdmin = await grantSetupCompleterAdminACL(ctx);
-				await instanceConfigRepository.markAdminBootstrapped();
+				if (configured === true) {
+					await instanceConfigRepository.claimAdminBootstrap();
+					await clearUsedSetupToken(instanceConfigRepository);
+				}
 			}
 			await recordAdminWrite(ctx, {
 				targetType: 'instance_config',
@@ -614,7 +591,6 @@ export function InstanceConfigAdminController(app: HonoApp) {
 				action: 'update_instance_config',
 				metadata: {
 					sections: listSuppliedSections(data),
-					granted_acls: grantedSetupCompleterAdmin ? AdminACLs.WILDCARD : undefined,
 				},
 			});
 			return ctx.json(await buildInstanceConfigResponse());
@@ -623,7 +599,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 	app.post(
 		'/admin/instance/config/branding-assets',
 		RateLimitMiddleware(RateLimitConfigs.ADMIN_USER_MODIFY),
-		requireSetupSessionOrAdminACL(AdminACLs.INSTANCE_CONFIG_UPDATE),
+		requireAdminACL(AdminACLs.INSTANCE_CONFIG_UPDATE),
 		Validator('json', BrandingAssetUploadRequest),
 		OpenAPI({
 			operationId: 'create_admin_instance_branding_asset',
@@ -659,28 +635,25 @@ export function InstanceConfigAdminController(app: HonoApp) {
 	app.post(
 		'/admin/instance/config/smtp-tests',
 		RateLimitMiddleware(RateLimitConfigs.ADMIN_USER_MODIFY),
-		requireSetupSessionOrAdminACL(AdminACLs.INSTANCE_CONFIG_UPDATE),
+		requireAdminACL(AdminACLs.INSTANCE_CONFIG_UPDATE),
 		Validator('json', InstanceEmailSmtpTestRequest),
 		OpenAPI({
 			operationId: 'create_admin_instance_smtp_test',
 			summary: 'Run an SMTP configuration test',
 			description:
-				'Validates that an SMTP configuration can authenticate and accept a connection. Requires INSTANCE_CONFIG_UPDATE permission.',
+				'Validates that an SMTP configuration can authenticate and accept a connection. Fields left out of the body come from the saved configuration, and the saved password is reused only for the saved host and username. An empty body tests what outgoing email uses and fails when email is off or incomplete. Requires INSTANCE_CONFIG_UPDATE permission.',
 			responseSchema: InstanceEmailSmtpTestResponse,
 			statusCode: 200,
 			security: 'adminApiKey',
 			tags: 'Admin',
 		}),
 		async (ctx) => {
-			const data = ctx.req.valid('json');
+			const {smtp, problem} = await instanceConfigRepository.getSmtpTestConfig(ctx.req.valid('json'));
 			let result: InstanceEmailSmtpTestResponse;
 			try {
+				if (problem) throw new Error(problem);
 				const provider = new SmtpEmailProvider({
-					host: data.host,
-					port: data.port,
-					username: data.username,
-					password: data.password,
-					secure: data.secure,
+					...smtp,
 					connectionTimeoutMs: 10000,
 					greetingTimeoutMs: 10000,
 					socketTimeoutMs: 10000,
@@ -694,7 +667,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 				targetType: 'instance_config',
 				targetId: 0n,
 				action: 'test_smtp_connection',
-				metadata: {port: data.port, secure: data.secure, ok: result.ok},
+				metadata: {port: smtp.port, tls_mode: resolveSmtpTlsMode(smtp.tlsMode, smtp.port), ok: result.ok},
 			});
 			return ctx.json(result);
 		},
@@ -761,18 +734,43 @@ export function InstanceConfigAdminController(app: HonoApp) {
 			return ctx.json(await buildInstanceConfigResponse());
 		},
 	);
+	app.get(
+		'/admin/instance/pending-registrations',
+		RateLimitMiddleware(RateLimitConfigs.ADMIN_LOOKUP),
+		requireAdminACL(AdminACLs.REGISTRATION_REVIEW),
+		OpenAPI({
+			operationId: 'list_admin_pending_registrations',
+			summary: 'List pending registrations',
+			description:
+				'Lists every registration waiting for manual review, oldest first. Requires REGISTRATION_REVIEW permission.',
+			responseSchema: PendingRegistrationListResponse,
+			statusCode: 200,
+			security: 'adminApiKey',
+			tags: 'Admin',
+		}),
+		async (ctx) => {
+			const pendingRegistrations = await instanceConfigRepository.getPendingRegistrations();
+			await recordAdminRead(ctx, {
+				targetType: 'instance_config',
+				targetId: 0n,
+				action: AdminAuditReadActions.LIST_PENDING_REGISTRATIONS,
+				metadata: {pending_registration_count: pendingRegistrations.length},
+			});
+			return ctx.json({pending_registrations: pendingRegistrations});
+		},
+	);
 	app.patch(
 		'/admin/instance/pending-registrations/:user_id',
 		RateLimitMiddleware(RateLimitConfigs.ADMIN_USER_MODIFY),
-		requireAdminACL(AdminACLs.INSTANCE_CONFIG_UPDATE),
+		requireAdminACL(AdminACLs.REGISTRATION_REVIEW),
 		Validator('param', UserIdParam),
 		Validator('json', PendingRegistrationActionRequest),
 		OpenAPI({
 			operationId: 'update_admin_pending_registration',
 			summary: 'Approve or reject a pending registration',
 			description:
-				'Decides a registration waiting for manual review. Approving removes its pending registration trait, rejecting also prevents the account from logging in. Requires INSTANCE_CONFIG_UPDATE permission.',
-			responseSchema: InstanceConfigResponse,
+				'Decides a registration waiting for manual review and returns the registrations still waiting. Approving removes its pending registration trait and joins the account to the community it was invited to and the single community, rejecting also prevents the account from logging in. Requires REGISTRATION_REVIEW permission.',
+			responseSchema: PendingRegistrationListResponse,
 			statusCode: 200,
 			security: 'adminApiKey',
 			tags: 'Admin',
@@ -780,9 +778,12 @@ export function InstanceConfigAdminController(app: HonoApp) {
 		async (ctx) => {
 			const userId = ctx.req.valid('param').user_id.toString();
 			const decision = ctx.req.valid('json').status === 'approved' ? 'approve' : 'reject';
-			await updatePendingRegistrationUser(ctx, userId, decision);
+			const pendingRegistration = (await instanceConfigRepository.getPendingRegistrations()).find(
+				(entry) => entry.user_id === userId,
+			);
+			await updatePendingRegistrationUser(ctx, userId, decision, pendingRegistration?.invite_code ?? null);
 			await instanceConfigRepository.removePendingRegistration(userId);
-			return ctx.json(await buildInstanceConfigResponse());
+			return ctx.json({pending_registrations: await instanceConfigRepository.getPendingRegistrations()});
 		},
 	);
 }
@@ -878,6 +879,7 @@ async function updatePendingRegistrationUser(
 	ctx: Context<HonoEnv>,
 	userId: string,
 	decision: 'approve' | 'reject',
+	inviteCode: string | null,
 ): Promise<void> {
 	const userRepository = ctx.get('userRepository');
 	const user = await userRepository.findUnique(createUserID(BigInt(userId)));
@@ -899,13 +901,16 @@ async function updatePendingRegistrationUser(
 	}
 	await userRepository.patchUpsert(user.id, {traits: traits.size > 0 ? traits : null}, user.toRow());
 	if (decision === 'approve' && wasPendingApproval) {
+		await maybeAutoJoinInvite(ctx.get('inviteService'), {
+			userId: user.id,
+			inviteCode,
+			requestCache: ctx.get('requestCache'),
+		});
 		await ctx.get('singleCommunityService').joinStockCommunity(user.id, ctx.get('requestCache'));
 	}
-	await ctx.get('adminService').auditService.createAuditLog({
-		adminUserId: ctx.get('adminUserId'),
+	await recordAdminWrite(ctx, {
 		targetType: 'user',
 		targetId: user.id,
 		action: decision === 'approve' ? 'approve_registration' : 'reject_registration',
-		auditLogReason: ctx.get('auditLogReason'),
 	});
 }

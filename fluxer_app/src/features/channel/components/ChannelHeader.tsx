@@ -13,7 +13,6 @@ import {
 	measureSkeletonWidthPx,
 	useSkeletonLayoutReport,
 } from '@app/features/app/hooks/useSkeletonLayoutMemoryCapture';
-import {useTextOverflow} from '@app/features/app/hooks/useTextOverflow';
 import {ChannelDetailsBottomSheet} from '@app/features/channel/components/bottomsheets/ChannelDetailsBottomSheet';
 import {ChannelSearchBottomSheet} from '@app/features/channel/components/bottomsheets/ChannelSearchBottomSheet';
 import styles from '@app/features/channel/components/ChannelHeader.module.css';
@@ -100,6 +99,7 @@ import {modal} from '@app/features/ui/commands/ModalCommands';
 import * as ToastCommands from '@app/features/ui/commands/ToastCommands';
 import {StatusAwareAvatar} from '@app/features/ui/components/StatusAwareAvatar';
 import FocusRing from '@app/features/ui/focus_ring/FocusRing';
+import {useTextOverflow} from '@app/features/ui/hooks/useTextOverflow';
 import ContextMenuState, {isContextMenuNodeTarget} from '@app/features/ui/state/ContextMenu';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
 import PopoutState from '@app/features/ui/state/Popout';
@@ -233,11 +233,11 @@ export const ChannelHeader = observer(
 		const dmNameRef = useRef<HTMLSpanElement>(null);
 		const groupDMNameRef = useRef<HTMLSpanElement>(null);
 		const guildChannelNameRef = useRef<HTMLSpanElement>(null);
-		const isDMNameOverflowing = useTextOverflow(dmNameRef);
-		const isGroupDMNameOverflowing = useTextOverflow(groupDMNameRef);
-		const isGuildChannelNameOverflowing = useTextOverflow(guildChannelNameRef);
 		const {isDM, isGroupDM, isPersonalNotes, isGuildChannel, recipient, directMessageName, groupDMName, channelName} =
 			useChannelHeaderData(channel);
+		const isDMNameOverflowing = useTextOverflow(dmNameRef, {content: directMessageName});
+		const isGroupDMNameOverflowing = useTextOverflow(groupDMNameRef, {content: groupDMName});
+		const isGuildChannelNameOverflowing = useTextOverflow(guildChannelNameRef, {content: channelName});
 		const isBotDMRecipient = isDM && (recipient?.bot || recipient?.system);
 		const isFavorited = channel && !isPersonalNotes ? !!Favorites.getChannel(channel.id) : false;
 		const channelDetailsLabel =
@@ -1120,7 +1120,7 @@ export const ChannelHeader = observer(
 									data-flx="channel.channel-header.channel-header-icon.toggle-select-mode"
 								/>
 							)}
-							{!isMobile && channel && !isPersonalNotes && !channel.isThreadOnly() && (
+							{!isMobile && channel && !channel.isThreadOnly() && (
 								<FocusRing offset={-2} within data-flx="channel.channel-header.focus-ring--12">
 									<div
 										className={styles.messageSearchFocusWrapper}

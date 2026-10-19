@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {identityLocale} from '@fluxer/i18n/src/normalization/IdentityLocale';
 import {compileMessage} from '@fluxer/i18n/src/runtime/CompileMessage';
 import {createStaticI18n} from '@fluxer/i18n/src/runtime/CreateStaticI18n';
 import type {I18nResult} from '@fluxer/i18n/src/runtime/I18nTypes';
@@ -11,6 +10,7 @@ import type {EmailTemplateVariables} from '@pkgs/email/src/email_i18n/EmailI18nT
 import type {EmailTemplate, EmailTemplateKey} from '@pkgs/email/src/email_i18n/EmailI18nTypes.generated';
 
 const DEFAULT_LOCALE = 'en-US';
+const DOUBLED_PERIOD = /(?<!\.)\.\.(?!\.)/g;
 
 function formatEmailDate(value: unknown, locale: string, style: string | null): string {
 	const options: Intl.DateTimeFormatOptions = {timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric'};
@@ -43,7 +43,6 @@ const emailI18n = createStaticI18n<EmailTemplateKey, EmailTemplate, Record<strin
 		defaultLocale: DEFAULT_LOCALE,
 		defaultMessages: EMAIL_I18N_MESSAGES,
 		localeMessages: EMAIL_I18N_LOCALE_MESSAGES,
-		normalizeLocale: (locale) => identityLocale(locale),
 		onWarning: (message) => {
 			if (message.startsWith('Unsupported locale, falling back to en-US:')) {
 				console.warn(
@@ -59,8 +58,8 @@ const emailI18n = createStaticI18n<EmailTemplateKey, EmailTemplate, Record<strin
 		messageFormatOptions: {customFormatters: {date: formatEmailDate, time: formatEmailTime}},
 	},
 	(template, variables, mf) => {
-		const compiledSubject = String(compileMessage(mf, template.subject)(variables));
-		const compiledBody = String(compileMessage(mf, template.body)(variables));
+		const compiledSubject = String(compileMessage(mf, template.subject)(variables)).replace(DOUBLED_PERIOD, '.');
+		const compiledBody = String(compileMessage(mf, template.body)(variables)).replace(DOUBLED_PERIOD, '.');
 		return {subject: compiledSubject, body: compiledBody};
 	},
 );

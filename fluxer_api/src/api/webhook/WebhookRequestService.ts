@@ -26,6 +26,7 @@ import type {WebhookExecuteMessageData, WebhookService} from '@app/api/webhook/W
 import type {MessageResponse} from '@fluxer/schema/src/domains/message/MessageResponseSchemas';
 import type {GitHubWebhook} from '@fluxer/schema/src/domains/webhook/GitHubWebhookSchemas';
 import type {InstatusWebhook} from '@fluxer/schema/src/domains/webhook/InstatusWebhookSchemas';
+import type {LibredeskWebhook} from '@fluxer/schema/src/domains/webhook/LibredeskWebhookSchemas';
 import type {
 	SlackWebhookRequest,
 	WebhookCreateRequest,
@@ -162,6 +163,14 @@ interface WebhookExecuteInstatusParams {
 	webhookId: WebhookID;
 	token: WebhookToken;
 	data: InstatusWebhook;
+	requestCache: RequestCache;
+}
+
+interface WebhookExecuteLibredeskParams {
+	webhookId: WebhookID;
+	token: WebhookToken;
+	threadId?: string;
+	data: LibredeskWebhook;
 	requestCache: RequestCache;
 }
 
@@ -340,34 +349,19 @@ export class WebhookRequestService {
 	}
 
 	async deleteWebhookMessage(params: WebhookDeleteMessageParams): Promise<void> {
-		await this.webhookService.deleteWebhookMessage({
-			webhookId: params.webhookId,
-			token: params.token,
-			threadId: params.threadId,
-			messageId: params.messageId,
-			requestCache: params.requestCache,
-		});
+		await this.webhookService.deleteWebhookMessage(params);
 	}
 
 	async executeGitHubWebhook(params: WebhookExecuteGitHubParams): Promise<void> {
-		await this.webhookService.executeGitHubWebhook({
-			webhookId: params.webhookId,
-			token: params.token,
-			threadId: params.threadId,
-			event: params.event,
-			delivery: params.delivery,
-			data: params.data,
-			requestCache: params.requestCache,
-		});
+		await this.webhookService.executeGitHubWebhook(params);
 	}
 
 	async executeInstatusWebhook(params: WebhookExecuteInstatusParams): Promise<void> {
-		await this.webhookService.executeInstatusWebhook({
-			webhookId: params.webhookId,
-			token: params.token,
-			data: params.data,
-			requestCache: params.requestCache,
-		});
+		await this.webhookService.executeInstatusWebhook(params);
+	}
+
+	async executeLibredeskWebhook(params: WebhookExecuteLibredeskParams): Promise<void> {
+		await this.webhookService.executeLibredeskWebhook(params);
 	}
 
 	async executeSlackWebhook(params: WebhookExecuteSlackParams): Promise<void> {

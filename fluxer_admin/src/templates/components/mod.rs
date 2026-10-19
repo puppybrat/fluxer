@@ -9,6 +9,7 @@ pub mod data_field;
 pub mod detail_tabs;
 pub mod drawer;
 pub mod empty_state;
+pub mod enforcement_fields;
 pub mod error_display;
 pub mod form;
 pub mod icons;
@@ -26,3 +27,5 @@ pub mod tooltip;
 pub mod user_display;
 pub mod user_profile_badges;
 pub mod voice;
+
+pub mod pagination;

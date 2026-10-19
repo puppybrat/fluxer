@@ -331,6 +331,7 @@ export function buildConfiguredScreenShareOptions(input: ScreenShareOptionsBuild
 	const {captureOptions, publishOptions} = buildScreenShareOptions({
 		resolution: input.target.resolution,
 		frameRate: input.target.frameRate,
+		maxBitrate: input.target.maxBitrate,
 		context: input.target.context,
 		includeAudio: input.includeAudio,
 		contentHint: input.target.contentHint,
@@ -489,7 +490,14 @@ async function runConfiguredDisplayScreenShare(
 			}
 		} else if (requestedNativeDesktopAudio) {
 			try {
-				nativeAudioArmed = await armNativeSystemAudioForNextCapture();
+				nativeAudioArmed = await armNativeSystemAudioForNextCapture(
+					electronApi.platform === 'win32'
+						? {
+								all: VoiceSettings.getWindowsDesktopAudioAll(),
+								devices: VoiceSettings.getWindowsDesktopAudioDevices(),
+							}
+						: undefined,
+				);
 			} catch (error) {
 				logger.warn('Failed to arm native desktop audio capture', {
 					sourceId,

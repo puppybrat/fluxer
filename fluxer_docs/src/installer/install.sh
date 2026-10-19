@@ -119,6 +119,7 @@ FLUXER_MEDIA_PROXY_UPLOAD_RELAY_SECRET_BASE64 base64
 FLUXER_ADMIN_SECRET_KEY_BASE hex
 FLUXER_ADMIN_OAUTH_CLIENT_SECRET hex
 LIVEKIT_API_SECRET hex
+FLUXER_SETUP_TOKEN hex
 FLUXER_VAPID_PUBLIC_KEY vapid_public
 FLUXER_VAPID_PRIVATE_KEY vapid_private
 KEYS
@@ -239,6 +240,13 @@ USAGE
 
 fluxer_say() {
 	printf '%s\n' "$1"
+}
+
+fluxer_say_first_run() {
+	fluxer_say 'Open it and enter this setup token to create the admin account:'
+	fluxer_say ''
+	fluxer_say "  $(fluxer_env_scalar FLUXER_SETUP_TOKEN)"
+	fluxer_say ''
 }
 
 fluxer_fail() {
@@ -984,7 +992,8 @@ fluxer_generate_vapid() {
 # other non-secret keys in the list above ship correct in .env.example and need no
 # edit.
 #
-# Every secret in .env.example contains the literal CHANGE_ME. A key whose name
+# Every secret in .env.example contains the literal CHANGE_ME, apart from
+# FLUXER_SETUP_TOKEN, which sits there as a commented line. A key whose name
 # ends in _BASE64 takes openssl rand -base64 32, every other key takes
 # openssl rand -hex 32, and the VAPID pair comes from the generator above.
 #
@@ -1677,6 +1686,11 @@ fluxer_free_kb() {
 	df -Pk "$1" 2>/dev/null | awk 'NR==2 {print $4}'
 }
 
+fluxer_start_stopped() {
+	[ -s "$fluxer_scratch/stopped" ] || return 0
+	xargs $fluxer_engine start < "$fluxer_scratch/stopped" > /dev/null
+}
+
 # Step 2 continued: the volume copy.
 #
 # A live copy can catch a file mid-write, so the stack stops for it. The stack
@@ -1684,12 +1698,13 @@ fluxer_free_kb() {
 # happens, so a failure here leaves a working instance rather than a stopped one.
 #
 # By hand:
+#   docker compose ps -q > running
 #   docker compose stop
 #   docker run --rm -v fluxer_seaweedfs-data:/data -v "$PWD/backups:/backup" alpine tar czf /backup/seaweedfs-data.tgz -C /data .
-#   docker compose up -d
+#   xargs docker start < running
 fluxer_copy_volumes() {
 	if ! fluxer_stack_defines_service seaweedfs; then
-		fluxer_say 'Skipping the uploads copy. This stack defines no seaweedfs service, so its objects live outside the stack and only the operator of that store can copy them.'
+		fluxer_say 'Skipping the uploads copy. This stack defines no seaweedfs service, so its objects are outside the stack and only the operator of that store can copy them.'
 		return 0
 	fi
 	fluxer_backup_volumes > "$fluxer_scratch/backup-volumes"
@@ -1729,6 +1744,9 @@ $(fluxer_volume_error '  ')" ;;
 		fluxer_tar_ext='tgz'
 	fi
 	fluxer_say 'Stopping the stack for a consistent copy of the uploads.'
+	if ! $fluxer_engine compose ps -q > "$fluxer_scratch/stopped"; then
+		fluxer_fail 7 "$fluxer_engine compose ps failed in $opt_dir, so the containers to start again after the copy cannot be read."
+	fi
 	if ! $fluxer_engine compose stop; then
 		fluxer_fail 7 "$fluxer_engine compose stop failed in $opt_dir."
 	fi
@@ -1737,13 +1755,13 @@ $(fluxer_volume_error '  ')" ;;
 		fluxer_full="${fluxer_project}_${fluxer_volume}"
 		fluxer_say "Copying $fluxer_full."
 		if ! $fluxer_engine run --rm -v "$fluxer_full:/data:ro" -v "$fluxer_record:/backup" "$FLUXER_HELPER_IMAGE" tar "$fluxer_tar_flags" "/backup/$fluxer_volume.$fluxer_tar_ext" -C /data .; then
-			$fluxer_engine compose up -d --remove-orphans || true
+			fluxer_start_stopped || true
 			fluxer_fail 7 "Copying $fluxer_full failed. The stack is started again on the images it was running."
 		fi
 	done < "$fluxer_scratch/copy-volumes"
 	fluxer_say 'Starting the stack again before the upgrade continues.'
-	if ! $fluxer_engine compose up -d --remove-orphans; then
-		fluxer_fail 7 "$fluxer_engine compose up -d failed in $opt_dir after the copy. Read $fluxer_engine compose logs there."
+	if ! fluxer_start_stopped; then
+		fluxer_fail 7 "$fluxer_engine start failed in $opt_dir after the copy. Read $fluxer_engine compose logs there."
 	fi
 }
 
@@ -2240,8 +2258,8 @@ fluxer_say 'That .env serves https on 443, which is the only layout this script 
 
 if [ "$opt_no_start" -eq 1 ]; then
 	fluxer_say "Start the instance with $fluxer_engine compose up -d in $opt_dir."
-	fluxer_say 'Open it and create the first admin account. Finish the setup wizard in the same sitting.'
-	fluxer_say "Secrets live in $opt_dir/.env. Back that file up."
+	fluxer_say_first_run
+	fluxer_say "Secrets are in $opt_dir/.env. Back that file up."
 	exit 0
 fi
 
@@ -2265,5 +2283,5 @@ fi
 fluxer_probe "$fluxer_ready_origin"
 
 fluxer_say "Instance ready at $fluxer_ready_origin"
-fluxer_say 'Open it and create the first admin account. Finish the setup wizard in the same sitting.'
-fluxer_say "Secrets live in $opt_dir/.env. Back that file up."
+fluxer_say_first_run
+fluxer_say "Secrets are in $opt_dir/.env. Back that file up."

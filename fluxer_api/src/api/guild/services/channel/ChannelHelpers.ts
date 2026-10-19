@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {ChannelID} from '@app/api/BrandedTypes';
+import type {ChannelID, GuildID} from '@app/api/BrandedTypes';
+import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
+import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
+import type {LimitConfigService} from '@app/api/limits/LimitConfigService';
+import {resolveLimitSafe} from '@app/api/limits/LimitConfigUtils';
+import {createLimitMatchContext} from '@app/api/limits/LimitMatchContextBuilder';
 import type {Channel} from '@app/api/models/Channel';
-import {serializeChannelForAudit as serializeChannelForAuditUtil} from '@app/api/utils/AuditSerializationUtils';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
+import {MAX_CHANNELS_PER_CATEGORY} from '@fluxer/constants/src/LimitConstants';
 import {THREAD_ONLY_CHANNEL_TYPES} from '@fluxer/constants/src/ThreadConstants';
 import {ValidationErrorCodes} from '@fluxer/constants/src/ValidationErrorCodes';
+import {MaxCategoryChannelsError} from '@fluxer/errors/src/domains/channel/MaxCategoryChannelsError';
 import {InputValidationError} from '@fluxer/errors/src/domains/core/InputValidationError';
 
 export interface ChannelReorderOperation {
@@ -25,6 +31,33 @@ function isTextLikeChannelType(type: number): boolean {
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Existing callers use this as a namespaced helper API.
 export class ChannelHelpers {
+	// Upstream's assertValidParentCategory (categories can't have parents) is omitted: categories
+	// nest in this fork, and both channel services keep their own nesting-aware parent validation.
+	static async assertCategoryCapacity(params: {
+		gatewayService: IGatewayService;
+		guildRepository: GuildRepository;
+		limitConfigService: LimitConfigService;
+		guildId: GuildID;
+		categoryId: ChannelID;
+	}): Promise<void> {
+		const count = await params.gatewayService.getCategoryChannelCount({
+			guildId: params.guildId,
+			categoryId: params.categoryId,
+		});
+		const guild = await params.guildRepository.findUnique(params.guildId);
+		const context = createLimitMatchContext({user: null, guildFeatures: guild?.features ?? null});
+		const maxChannels = Math.floor(
+			resolveLimitSafe(
+				params.limitConfigService.getConfigSnapshot(),
+				context,
+				'max_channels_per_category',
+				MAX_CHANNELS_PER_CATEGORY,
+				'guild',
+			),
+		);
+		if (count >= maxChannels) throw new MaxCategoryChannelsError(maxChannels);
+	}
+
 	static getNextGlobalChannelPosition(
 		channelType: number,
 		parentId: ChannelID | null | undefined,
@@ -131,9 +164,5 @@ export class ChannelHelpers {
 				}
 			}
 		}
-	}
-
-	static serializeChannelForAudit(channel: Channel): Record<string, unknown> {
-		return serializeChannelForAuditUtil(channel);
 	}
 }

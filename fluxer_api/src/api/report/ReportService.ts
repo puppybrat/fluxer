@@ -32,18 +32,21 @@ import type {
 	MessageReportSubmissionByReporterRow,
 	UserReportSubmissionByReporterRow,
 } from '@app/api/database/types/ReportTypes';
+import {isDecisionExpired} from '@app/api/enforcement/DecisionStatus';
+import {listActiveFeatureLimits} from '@app/api/enforcement/FeatureLimitState';
 import type {ThreadViewer} from '@app/api/experiment/ChannelThreadsGate';
 import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import {emitActivity} from '@app/api/infrastructure/activity/ActivityEvents';
 import type {ReportOutcome, ReportTarget, ResolvedBy} from '@app/api/infrastructure/activity/Contract.generated';
 import {emitReportResolved} from '@app/api/infrastructure/activity/ModerationEvents';
-import type {IEmailDnsValidationService} from '@app/api/infrastructure/IEmailDnsValidationService';
+import type {EmailDnsValidationService} from '@app/api/infrastructure/EmailDnsValidationService';
 import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {ISnowflakeService} from '@app/api/infrastructure/ISnowflakeService';
 import type {IStorageService} from '@app/api/infrastructure/IStorageService';
 import {usesUniqueUsernames} from '@app/api/instance/AccountIdentityModeCache';
 import type {InviteRepository} from '@app/api/invite/InviteRepository';
 import {Logger} from '@app/api/Logger';
+import {getEnforcementDecisionRepository} from '@app/api/middleware/ServiceSingletons';
 import type {Attachment} from '@app/api/models/Attachment';
 import type {Channel} from '@app/api/models/Channel';
 import type {Guild} from '@app/api/models/Guild';
@@ -61,10 +64,10 @@ import {
 } from '@app/api/report/ReportModels';
 import type {ReportRepository} from '@app/api/report/ReportRepository';
 import type {IReportSearchService} from '@app/api/search/IReportSearchService';
-import {isUnderEnforcement} from '@app/api/user/ProfileVisibility';
 import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import {findPersonByLoginHandle, type ParsedLoginHandle, parseLoginHandle} from '@app/api/user/UniqueUsernames';
 import {isAccountClosed} from '@app/api/user/UserHelpers';
+import {dispatchUserUpdate} from '@app/api/user/UserMappers';
 import type {WebhookRepository} from '@app/api/webhook/WebhookRepository';
 import {buildHashedAssetKey} from '@app/api/worker/utils/AssetArchiveHelpers';
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
@@ -92,6 +95,7 @@ import {InvalidDsaVerificationCodeError} from '@fluxer/errors/src/domains/modera
 import {ReportBannedError} from '@fluxer/errors/src/domains/moderation/ReportBannedError';
 import {UnknownReportError} from '@fluxer/errors/src/domains/moderation/UnknownReportError';
 import {UnknownUserError} from '@fluxer/errors/src/domains/user/UnknownUserError';
+import type {ReportItemOutcome} from '@fluxer/schema/src/domains/admin/AdminSchemas';
 import type {ReportFlowSurface} from '@fluxer/schema/src/domains/report/ReportFlowSchemas';
 import {
 	type ReportProfileAssetSnapshot,
@@ -274,7 +278,7 @@ export class ReportService {
 		private userRepository: UserRepository,
 		private inviteRepository: InviteRepository,
 		private emailService: IEmailService,
-		private emailDnsValidationService: IEmailDnsValidationService,
+		private emailDnsValidationService: EmailDnsValidationService,
 		private snowflakeService: ISnowflakeService,
 		private storageService: IStorageService,
 		private gatewayService: IGatewayService,
@@ -376,11 +380,9 @@ export class ReportService {
 			});
 			const report = await this.reportRepository.createReport(reportData);
 			await emitReportFiled(reportData, 'message');
-			if (this.reportSearchService && 'indexReport' in this.reportSearchService) {
-				await this.reportSearchService.indexReport(report).catch((error) => {
-					Logger.error({error, reportId: report.reportId}, 'Failed to index message report in search');
-				});
-			}
+			await this.reportSearchService?.indexReport(report).catch((error) => {
+				Logger.error({error, reportId: report.reportId}, 'Failed to index message report in search');
+			});
 			return report;
 		} catch (error) {
 			if (reservation) {
@@ -462,11 +464,9 @@ export class ReportService {
 			});
 			const report = await this.reportRepository.createReport(reportData);
 			await emitReportFiled(reportData, 'user');
-			if (this.reportSearchService && 'indexReport' in this.reportSearchService) {
-				await this.reportSearchService.indexReport(report).catch((error) => {
-					Logger.error({error, reportId: report.reportId}, 'Failed to index user report in search');
-				});
-			}
+			await this.reportSearchService?.indexReport(report).catch((error) => {
+				Logger.error({error, reportId: report.reportId}, 'Failed to index user report in search');
+			});
 			return report;
 		} catch (error) {
 			if (reservation) {
@@ -545,11 +545,9 @@ export class ReportService {
 			reportData.reported_profile_snapshot = await this.captureProfileSnapshot(reportId, {guild});
 			const report = await this.reportRepository.createReport(reportData);
 			await emitReportFiled(reportData, 'guild');
-			if (this.reportSearchService && 'indexReport' in this.reportSearchService) {
-				await this.reportSearchService.indexReport(report).catch((error) => {
-					Logger.error({error, reportId: report.reportId}, 'Failed to index guild report in search');
-				});
-			}
+			await this.reportSearchService?.indexReport(report).catch((error) => {
+				Logger.error({error, reportId: report.reportId}, 'Failed to index guild report in search');
+			});
 			return report;
 		} catch (error) {
 			if (reservation) {
@@ -702,7 +700,6 @@ export class ReportService {
 			fullLegalName: report.reporter_full_legal_name ?? null,
 			countryOfResidence: report.reporter_country_of_residence,
 		};
-		await this.checkReportBan(null);
 		const reporterKey = this.getReporterRateLimitKey(reporterMeta);
 		await this.ensureReportRateLimit(this.createReportRateLimitIdentifier(reporterKey), REPORT_RATE_LIMIT_MAX, false);
 		const reportId = createReportID(await this.snowflakeService.generate());
@@ -720,11 +717,9 @@ export class ReportService {
 		reportRow.reported_profile_snapshot = await this.captureProfileSnapshot(reportId, profileSubject);
 		const createdReport = await this.reportRepository.createReport(reportRow);
 		await emitReportFiled(reportRow, 'dsa');
-		if (this.reportSearchService && 'indexReport' in this.reportSearchService) {
-			await this.reportSearchService.indexReport(createdReport).catch((error) => {
-				Logger.error({error, reportId: createdReport.reportId}, 'Failed to index DSA report in search');
-			});
-		}
+		await this.reportSearchService?.indexReport(createdReport).catch((error) => {
+			Logger.error({error, reportId: createdReport.reportId}, 'Failed to index DSA report in search');
+		});
 		await this.sendDsaReportReceipt(
 			ticket.email_lower,
 			createdReport.reportId,
@@ -1314,28 +1309,20 @@ export class ReportService {
 		adminUserId: UserID,
 		publicComment: string | null,
 		auditLogReason: string | null,
-		resolution: {outcome?: ReportOutcome; resolvedBy?: ResolvedBy} = {},
+		resolution: {outcome: ReportOutcome; resolvedBy: ResolvedBy; reporterOutcome: ReportItemOutcome | null},
 	): Promise<IARSubmission> {
-		const report = await this.reportRepository.resolveReport(reportId, adminUserId, publicComment, auditLogReason);
-		if (this.reportSearchService && 'updateReport' in this.reportSearchService) {
-			await this.reportSearchService.updateReport(report).catch((error) => {
-				Logger.error({error, reportId: report.reportId}, 'Failed to update report in search index');
-			});
-		}
-		const outcome = resolution.outcome ?? (await this.observedOutcome(report));
-		await emitReportResolved(report, outcome, resolution.resolvedBy ?? 'staff');
+		const report = await this.reportRepository.resolveReport(
+			reportId,
+			adminUserId,
+			publicComment,
+			auditLogReason,
+			resolution.reporterOutcome,
+		);
+		await this.reportSearchService?.updateReport(report).catch((error) => {
+			Logger.error({error, reportId: report.reportId}, 'Failed to update report in search index');
+		});
+		await emitReportResolved(report, resolution.outcome, resolution.resolvedBy);
 		return report;
-	}
-
-	private async observedOutcome(report: IARSubmission): Promise<ReportOutcome> {
-		if (!report.reportedUserId) return 'unspecified';
-		try {
-			const reported = await this.userRepository.findUnique(report.reportedUserId);
-			return reported && isUnderEnforcement(reported) ? 'actioned' : 'unspecified';
-		} catch (error) {
-			Logger.warn({error, reportId: report.reportId}, 'Could not read the reported account for a resolved report');
-			return 'unspecified';
-		}
 	}
 
 	private async gatherMessageContext(
@@ -1636,8 +1623,16 @@ export class ReportService {
 			return;
 		}
 		const user = await this.userRepository.findUnique(userId);
-		if (user && (user.flags & UserFlags.REPORT_BANNED) !== 0n) {
+		if (!user || (user.flags & UserFlags.REPORT_BANNED) === 0n) {
+			return;
+		}
+		const limits = await listActiveFeatureLimits(getEnforcementDecisionRepository(), userId, 'reports');
+		if (limits.length === 0 || limits.some((decision) => !isDecisionExpired(decision))) {
 			throw new ReportBannedError();
+		}
+		const updated = await this.userRepository.updateFlags(userId, (flags) => flags & ~UserFlags.REPORT_BANNED);
+		if (updated) {
+			await dispatchUserUpdate(this.gatewayService, updated);
 		}
 	}
 

@@ -15,7 +15,7 @@ import {ComponentBus} from '@app/features/platform/utils/ComponentBus';
 import * as SlowmodeCommands from '@app/features/slowmode/commands/SlowmodeCommands';
 import {SlowmodeRateLimitedModal} from '@app/features/slowmode/components/alerts/SlowmodeRateLimitedModal';
 import Slowmode from '@app/features/slowmode/state/Slowmode';
-import {TypingUtils} from '@app/features/typing/utils/TypingUtils';
+import RollingTypingSender from '@app/features/typing/rolling/RollingTypingSender';
 import {modal, push as pushModal} from '@app/features/ui/commands/ModalCommands';
 import Users from '@app/features/user/state/Users';
 import {MessageStates, MessageTypes, Permissions} from '@fluxer/constants/src/ChannelConstants';
@@ -111,7 +111,7 @@ export const useMessageSubmission = ({
 			const nonce = SnowflakeUtils.fromTimestamp(Date.now());
 			if (!MessageCommands.reserveSend(channel.id, nonce)) return false;
 			const messageReference = MessageSubmitUtils.prepareMessageReference(channel.id, referencedMessage);
-			TypingUtils.handleOwnMessageSent(channel.id);
+			RollingTypingSender.handleOwnMessageSent(channel.id);
 			DraftCommands.deleteDraft(accountKey, channel.id);
 			MessageCommands.stopReply(channel.id);
 			const uploadingAttachments = MessageSubmitUtils.createUploadingAttachments(
@@ -198,7 +198,7 @@ export const useMessageSubmission = ({
 			if (isBlockedBySlowmode(channel)) return;
 			const nonce = SnowflakeUtils.fromTimestamp(Date.now());
 			if (!MessageCommands.reserveSend(channel.id, nonce)) return;
-			TypingUtils.handleOwnMessageSent(channel.id);
+			RollingTypingSender.handleOwnMessageSent(channel.id);
 			MessageCommands.stopReply(channel.id);
 			const inCharacter = ComposerInCharacter.isChannelInCharacter(channel.id);
 			const castCharacterIds = inCharacter ? ComposerInCharacter.getPrimaryCharacterIds(channel.id) : undefined;

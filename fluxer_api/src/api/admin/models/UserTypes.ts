@@ -1,14 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type {UserID} from '@app/api/BrandedTypes';
+import {hasAdminACL} from '@app/api/middleware/AdminMiddleware';
 import type {User} from '@app/api/models/User';
+import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import {getIpAddressReverse, lookupGeoip} from '@app/api/utils/IpUtils';
 import {AdminACLs, filterKnownAdminACLs} from '@fluxer/constants/src/AdminACLs';
-import type {UserAdminResponse} from '@fluxer/schema/src/domains/admin/AdminUserSchemas';
+import {DeletionReasons} from '@fluxer/constants/src/Core';
+import type {ValueOf} from '@fluxer/constants/src/ValueOf';
+import type {AdminResolvedUser, UserAdminResponse} from '@fluxer/schema/src/domains/admin/AdminUserSchemas';
 import type {ICacheService} from '@pkgs/cache/src/ICacheService';
 import {formatGeoipLocation} from '@pkgs/geoip/src/GeoipLookup';
 
-function hasAcl(acls: ReadonlySet<string>, acl: string): boolean {
-	return acls.has(acl) || acls.has(AdminACLs.WILDCARD);
+const DELETION_REASON_CODES: ReadonlySet<number> = new Set(Object.values(DeletionReasons));
+
+function deletionReasonCode(code: number | null): ValueOf<typeof DeletionReasons> | null {
+	return code !== null && DELETION_REASON_CODES.has(code) ? (code as ValueOf<typeof DeletionReasons>) : null;
 }
 
 export async function mapUserToAdminResponse(
@@ -16,10 +23,10 @@ export async function mapUserToAdminResponse(
 	cacheService?: ICacheService,
 	acls?: ReadonlySet<string>,
 ): Promise<UserAdminResponse> {
-	const canViewEmail = !acls || hasAcl(acls, AdminACLs.USER_VIEW_EMAIL);
-	const canViewDob = !acls || hasAcl(acls, AdminACLs.USER_VIEW_DOB);
-	const canViewIp = !acls || hasAcl(acls, AdminACLs.USER_VIEW_IP);
-	const canViewAuditLog = !acls || hasAcl(acls, AdminACLs.AUDIT_LOG_VIEW);
+	const canViewEmail = !acls || hasAdminACL(acls, AdminACLs.USER_VIEW_EMAIL);
+	const canViewDob = !acls || hasAdminACL(acls, AdminACLs.USER_VIEW_DOB);
+	const canViewIp = !acls || hasAdminACL(acls, AdminACLs.USER_VIEW_IP);
+	const canViewAuditLog = !acls || hasAdminACL(acls, AdminACLs.AUDIT_LOG_VIEW);
 	const lastActiveIpReverse =
 		canViewIp && user.lastActiveIp ? await getIpAddressReverse(user.lastActiveIp, cacheService) : null;
 	let lastActiveLocation: string | null = null;
@@ -60,11 +67,12 @@ export async function mapUserToAdminResponse(
 			user.tempBannedUntil && user.tempBannedUntil.getTime() > Date.now() ? user.tempBannedUntil.toISOString() : null,
 		pending_deletion_at: user.pendingDeletionAt?.toISOString() ?? null,
 		pending_bulk_message_deletion_at: user.pendingBulkMessageDeletionAt?.toISOString() ?? null,
-		deletion_reason_code: user.deletionReasonCode,
+		deletion_reason_code: deletionReasonCode(user.deletionReasonCode),
 		deletion_public_reason: user.deletionPublicReason,
 		deletion_audit_log_reason: canViewAuditLog ? user.deletionAuditLogReason : null,
 		deletion_scheduled_by: user.deletionScheduledBy?.toString() ?? null,
 		deletion_scheduled_at: user.deletionScheduledAt?.toISOString() ?? null,
+		enforcement_decision_id: user.enforcementDecisionId?.toString() ?? null,
 		acls: user.acls ? filterKnownAdminACLs(user.acls) : [],
 		traits: Array.from(user.traits).sort(),
 		has_totp: user.totpSecret !== null,
@@ -74,4 +82,24 @@ export async function mapUserToAdminResponse(
 		last_active_ip_reverse: canViewIp ? lastActiveIpReverse : null,
 		last_active_location: canViewIp ? lastActiveLocation : null,
 	};
+}
+
+export async function resolveAdminUsers(
+	userRepository: Pick<UserRepository, 'findUnique'>,
+	userIds: Array<UserID>,
+): Promise<Map<UserID, AdminResolvedUser>> {
+	const results = new Map<UserID, AdminResolvedUser>();
+	const users = await Promise.all(userIds.map((id) => userRepository.findUnique(id)));
+	for (let i = 0; i < userIds.length; i++) {
+		const user = users[i];
+		if (user)
+			results.set(userIds[i], {
+				id: user.id.toString(),
+				username: user.username,
+				discriminator: String(user.discriminator).padStart(4, '0'),
+				global_name: user.globalName,
+				avatar: user.avatarHash,
+			});
+	}
+	return results;
 }

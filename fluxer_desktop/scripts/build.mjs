@@ -39,18 +39,20 @@ const isProduction =
 	process.env.FLUXER_DESKTOP_PRODUCTION === 'true' ||
 	process.env.GITHUB_ACTIONS === 'true';
 const skipNative = process.env.FLUXER_SKIP_NATIVE === 'true';
-const embeddedBuildVersion = process.env.PUBLIC_BUILD_VERSION || process.env.BUILD_VERSION || '';
+let embeddedBuildVersion = process.env.PUBLIC_BUILD_VERSION || process.env.BUILD_VERSION || '';
 const embeddedReleaseChannel = process.env.PUBLIC_RELEASE_CHANNEL || process.env.RELEASE_CHANNEL || '';
 const modulesEnabled = process.env.FLUXER_MODULES === '1' || process.env.FLUXER_MODULES === 'true';
 const offlineBuild = process.env.FLUXER_OFFLINE === '1' || process.env.FLUXER_OFFLINE === 'true';
-const publicBuildDefines = {
-	'process.env.PUBLIC_BUILD_VERSION': JSON.stringify(embeddedBuildVersion),
-	'process.env.BUILD_VERSION': JSON.stringify(embeddedBuildVersion),
-	'process.env.PUBLIC_RELEASE_CHANNEL': JSON.stringify(embeddedReleaseChannel),
-	'process.env.RELEASE_CHANNEL': JSON.stringify(embeddedReleaseChannel),
-	'process.env.FLUXER_MODULES': JSON.stringify(modulesEnabled ? '1' : ''),
-	'process.env.FLUXER_OFFLINE': JSON.stringify(offlineBuild ? '1' : ''),
-};
+function publicBuildDefines() {
+	return {
+		'process.env.PUBLIC_BUILD_VERSION': JSON.stringify(embeddedBuildVersion),
+		'process.env.BUILD_VERSION': JSON.stringify(embeddedBuildVersion),
+		'process.env.PUBLIC_RELEASE_CHANNEL': JSON.stringify(embeddedReleaseChannel),
+		'process.env.RELEASE_CHANNEL': JSON.stringify(embeddedReleaseChannel),
+		'process.env.FLUXER_MODULES': JSON.stringify(modulesEnabled ? '1' : ''),
+		'process.env.FLUXER_OFFLINE': JSON.stringify(offlineBuild ? '1' : ''),
+	};
+}
 const electronExternals = [
 	'electron',
 	'electron-log',
@@ -113,6 +115,16 @@ function readBundledRendererVersion() {
 		return typeof parsed?.version === 'string' ? parsed.version : '';
 	} catch {
 		return '';
+	}
+}
+
+function fallBackToBundledRendererVersion() {
+	if (embeddedBuildVersion !== '') {
+		return;
+	}
+	const bundledVersion = readBundledRendererVersion();
+	if (BUNDLED_RENDERER_VERSION_PATTERN.test(bundledVersion)) {
+		embeddedBuildVersion = bundledVersion;
 	}
 }
 
@@ -322,12 +334,12 @@ function expectedNativeRuntimeArtifactsForArch(platform, arch) {
 	artifacts.push({
 		label: '@fluxer/app-store',
 		relativePath: `app-store.${tag}.node`,
-		runtimeFiles: ['index.js', 'loader-diagnostics.cjs', 'pure.cjs'],
+		runtimeFiles: ['index.js', 'loader-diagnostics.cjs'],
 	});
 	artifacts.push({
 		label: '@fluxer/gateway-socket',
 		relativePath: `gateway-socket.${tag}.node`,
-		runtimeFiles: ['index.js', 'loader-diagnostics.cjs', 'pure.cjs'],
+		runtimeFiles: ['index.js', 'loader-diagnostics.cjs'],
 	});
 	if (platform === 'darwin') {
 		artifacts.push({
@@ -357,7 +369,7 @@ function expectedNativeRuntimeArtifactsForArch(platform, arch) {
 		artifacts.push({
 			label: '@fluxer/platform-info',
 			relativePath: `platform-info.${tag}.node`,
-			runtimeFiles: ['index.js', 'loader-diagnostics.cjs', 'pure.cjs'],
+			runtimeFiles: ['index.js', 'loader-diagnostics.cjs'],
 		});
 	} else if (platform === 'win32') {
 		artifacts.push({
@@ -380,7 +392,7 @@ function expectedNativeRuntimeArtifactsForArch(platform, arch) {
 		artifacts.push({
 			label: '@fluxer/platform-info',
 			relativePath: `platform-info.${tag}.node`,
-			runtimeFiles: ['index.js', 'loader-diagnostics.cjs', 'pure.cjs'],
+			runtimeFiles: ['index.js', 'loader-diagnostics.cjs'],
 		});
 	} else if (platform === 'linux') {
 		artifacts.push({
@@ -410,7 +422,7 @@ function expectedNativeRuntimeArtifactsForArch(platform, arch) {
 		artifacts.push({
 			label: '@fluxer/platform-info',
 			relativePath: `platform-info.${tag}.node`,
-			runtimeFiles: ['index.js', 'loader-diagnostics.cjs', 'pure.cjs'],
+			runtimeFiles: ['index.js', 'loader-diagnostics.cjs'],
 		});
 	}
 	return artifacts;
@@ -674,7 +686,7 @@ async function buildMain() {
 		define: {
 			'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
 			[MAIN_APP_OUTPUT_FILE_DEFINE]: JSON.stringify(MAIN_APP_OUTPUT_FILE_NAME),
-			...publicBuildDefines,
+			...publicBuildDefines(),
 		},
 		banner: {
 			js: `import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);`,
@@ -806,7 +818,7 @@ function preloadBuildOptions(entryFileName, outputFileName) {
 		tsconfig: DESKTOP_TSCONFIG,
 		define: {
 			'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
-			...publicBuildDefines,
+			...publicBuildDefines(),
 		},
 	};
 }
@@ -887,6 +899,7 @@ async function build() {
 	if (!options.useSharedRenderer) {
 		copyRendererIntoDist();
 	}
+	fallBackToBundledRendererVersion();
 	if (modulesEnabled) {
 		prunePackedRendererModules();
 	}

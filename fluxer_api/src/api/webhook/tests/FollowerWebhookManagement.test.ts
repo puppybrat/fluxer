@@ -24,6 +24,7 @@ import {
 	setupFanoutWorld,
 } from '@app/api/channel/tests/CrosspostWorkerTestUtils';
 import {getPngDataUrl} from '@app/api/emoji/tests/EmojiTestUtils';
+import {processRecordedGuildDeletions, recordGuildDeletions} from '@app/api/guild/tests/GuildDeletionTestUtils';
 import {type ApiTestHarness, createApiTestHarness} from '@app/api/test/ApiTestHarness';
 import {NoopGatewayService} from '@app/api/test/NoopGatewayService';
 import {HTTP_STATUS} from '@app/api/test/TestConstants';
@@ -91,6 +92,7 @@ describe('Follower webhook management', () => {
 			{method: 'post', path: `${base}?wait=true`, body: {content: 'hello'}},
 			{method: 'post', path: `${base}/slack`, body: {text: 'hello'}},
 			{method: 'post', path: `${base}/instatus`, body: {meta: {unsubscribe: '', documentation: ''}, page: {id: 'x'}}},
+			{method: 'post', path: `${base}/libredesk`, body: {event: 'webhook.test', payload: {id: 1, name: 'x'}}},
 			{method: 'get', path: `${base}/messages/${messageId}`},
 			{method: 'patch', path: `${base}/messages/${messageId}`, body: {content: 'edited'}},
 			{method: 'delete', path: `${base}/messages/${messageId}`},
@@ -295,11 +297,13 @@ describe('Follower webhook management', () => {
 		await follow(harness, b.owner.token, a.ann.id, b.t1.id);
 		await follow(harness, b.owner.token, a.ann.id, b.t2.id);
 		expect(await sourceIndex(a.ann.id)).toHaveLength(2);
+		const worker = recordGuildDeletions();
 		await createBuilder(harness, b.owner.token)
 			.post(`/guilds/${b.guild.id}/delete`)
 			.body({password: b.owner.password})
 			.expect(HTTP_STATUS.NO_CONTENT)
 			.execute();
+		await processRecordedGuildDeletions(worker);
 		expect(await sourceIndex(a.ann.id)).toEqual([]);
 	});
 
@@ -462,7 +466,7 @@ describe('Follower webhook delivery', () => {
 		const dispatchSpy = vi.spyOn(NoopGatewayService.prototype, 'dispatchGuild');
 		await createBuilder(harness, admin.token)
 			.delete(`/admin/guilds/${world.a.guild.id}`)
-			.body(null)
+			.body({basis: {type: 'holder_request'}})
 			.expect(HTTP_STATUS.OK)
 			.execute();
 		await world.worker.drain();

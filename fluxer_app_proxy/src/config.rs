@@ -5,6 +5,8 @@ use reqwest::Url;
 use std::env;
 use std::fmt;
 
+const DEFAULT_DISCOVERY_UPSTREAM_URL: &str = "http://localhost:8088/api/.well-known/fluxer";
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InvalidAppProxyEnvironmentError {
     InvalidValue {
@@ -104,6 +106,19 @@ impl HttpEndpoint {
         Ok(Self { url, csp_origin })
     }
 
+    pub fn origin_of(
+        name: &'static str,
+        value: &str,
+    ) -> Result<Self, InvalidAppProxyEnvironmentError> {
+        let url = Url::parse(value.trim())
+            .ok()
+            .filter(|url| matches!(url.scheme(), "http" | "https") && url.host_str().is_some())
+            .ok_or_else(|| {
+                InvalidAppProxyEnvironmentError::new(name, value, "an absolute HTTP or HTTPS URL")
+            })?;
+        Self::parse(name, &url.origin().ascii_serialization())
+    }
+
     pub fn with_host_prefix(
         &self,
         name: &'static str,
@@ -131,10 +146,6 @@ impl HttpEndpoint {
         })?;
         let csp_origin = url.origin().ascii_serialization();
         Ok(Self { url, csp_origin })
-    }
-
-    pub fn as_url(&self) -> &Url {
-        &self.url
     }
 
     pub fn as_str(&self) -> &str {
@@ -344,35 +355,15 @@ pub struct AppProxyConfig {
     pub media_endpoint: Option<HttpEndpoint>,
     pub s3_public_endpoint: Option<HttpEndpoint>,
     pub s3_uploads_endpoint: Option<HttpEndpoint>,
-    pub release_channel: ReleaseChannel,
+    pub branding: crate::branding_images::BrandingSnapshot,
+    pub discovery_upstream_url: String,
+    pub discovery_refresh_interval_ms: u64,
     pub build_version: String,
     pub csp: CspConfig,
     pub same_origin_hosts: Vec<String>,
     pub manifest_scope_extensions: Vec<String>,
+    pub release_channel: Option<&'static str>,
     pub self_hosted: bool,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ReleaseChannel {
-    Stable,
-    Canary,
-}
-
-impl ReleaseChannel {
-    fn from_env_value(value: &str) -> Self {
-        if value.eq_ignore_ascii_case("canary") {
-            Self::Canary
-        } else {
-            Self::Stable
-        }
-    }
-
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Stable => "stable",
-            Self::Canary => "canary",
-        }
-    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -430,9 +421,6 @@ fn read_csp_report_uri(name: &'static str) -> Option<CspReportUri> {
 
 impl AppProxyConfig {
     pub fn from_env() -> Self {
-        let release_channel =
-            ReleaseChannel::from_env_value(&cfg::read_env("RELEASE_CHANNEL", "stable"));
-
         let s3_public_endpoint = parse_optional_http_endpoint(
             "FLUXER_S3_PUBLIC_ENDPOINT",
             cfg::env_value("FLUXER_S3_PUBLIC_ENDPOINT"),
@@ -467,7 +455,16 @@ impl AppProxyConfig {
             ),
             s3_public_endpoint,
             s3_uploads_endpoint,
-            release_channel,
+            branding: crate::branding_images::snapshot_from_environment(cfg::env_value),
+            discovery_upstream_url: cfg::read_env(
+                "DISCOVERY_UPSTREAM_URL",
+                DEFAULT_DISCOVERY_UPSTREAM_URL,
+            ),
+            discovery_refresh_interval_ms: parse_env_or_warn(
+                "DISCOVERY_REFRESH_INTERVAL_MS",
+                &cfg::read_env("DISCOVERY_REFRESH_INTERVAL_MS", "60000"),
+                60_000u64,
+            ),
             build_version: cfg::read_first_env(
                 &["BUILD_VERSION", "FLUXER_BUILD_VERSION"],
                 env!("CARGO_PKG_VERSION"),
@@ -481,7 +478,27 @@ impl AppProxyConfig {
                 "FLUXER_APP_PROXY_MANIFEST_SCOPE_EXTENSIONS",
                 &cfg::read_env("FLUXER_APP_PROXY_MANIFEST_SCOPE_EXTENSIONS", ""),
             ),
+            release_channel: parse_release_channel(
+                "RELEASE_CHANNEL",
+                &cfg::read_env("RELEASE_CHANNEL", ""),
+            ),
             self_hosted: cfg::read_bool_env("FLUXER_SELF_HOSTED", false),
+        }
+    }
+}
+
+fn parse_release_channel(name: &'static str, raw: &str) -> Option<&'static str> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "" => None,
+        "stable" => Some("stable"),
+        "canary" => Some("canary"),
+        _ => {
+            warn_invalid(&InvalidAppProxyEnvironmentError::new(
+                name,
+                raw,
+                "stable or canary",
+            ));
+            None
         }
     }
 }
@@ -593,6 +610,21 @@ mod tests {
             ),
             vec!["canary.fluxer.com".to_owned()]
         );
+    }
+
+    #[test]
+    fn release_channel_accepts_only_stable_or_canary() {
+        assert_eq!(
+            parse_release_channel("TEST_CHANNEL", " Stable "),
+            Some("stable")
+        );
+        assert_eq!(
+            parse_release_channel("TEST_CHANNEL", "canary"),
+            Some("canary")
+        );
+        assert_eq!(parse_release_channel("TEST_CHANNEL", ""), None);
+        assert_eq!(parse_release_channel("TEST_CHANNEL", "development"), None);
+        assert_eq!(parse_release_channel("TEST_CHANNEL", "\"><script>"), None);
     }
 
     #[test]

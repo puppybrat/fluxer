@@ -3,11 +3,11 @@
 import {Config} from '@app/api/Config';
 import type {APICachePurgeConfig} from '@app/api/config/APIConfig';
 import {CachePurgeQueue} from '@app/api/infrastructure/CachePurgeQueue';
-import {MockKVProvider} from '@app/api/test/mocks/MockKVProvider';
 import {NoopLogger} from '@app/api/test/mocks/NoopLogger';
 import {server} from '@app/api/test/msw/server';
 import processCachePurgeQueue from '@app/api/worker/tasks/ProcessCachePurgeQueue';
 import {clearWorkerDependencies, setWorkerDependenciesForTest} from '@app/api/worker/WorkerContext';
+import {MockKVProvider} from '@pkgs/kv_client/src/testing/MockKVProvider';
 import type {WorkerTaskHelpers} from '@pkgs/worker/src/contracts/WorkerTask';
 import {delay, HttpResponse, http} from 'msw';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -64,7 +64,11 @@ describe('processCachePurgeQueue', () => {
 	let previousMedia: string;
 
 	beforeEach(() => {
-		previousCachePurge = {adapter: Config.cachePurge.adapter, http: Config.cachePurge.http};
+		previousCachePurge = {
+			adapter: Config.cachePurge.adapter,
+			http: Config.cachePurge.http,
+			controller: Config.cachePurge.controller,
+		};
 		previousMedia = Config.endpoints.media;
 		Config.endpoints.media = MEDIA;
 		Config.cachePurge.adapter = 'http';

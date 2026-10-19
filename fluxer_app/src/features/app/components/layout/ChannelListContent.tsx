@@ -76,8 +76,8 @@ import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
 import {UsersThreeIcon} from '@phosphor-icons/react';
 import {clsx} from 'clsx';
+import type {MotionValue} from 'framer-motion';
 import {observer} from 'mobx-react-lite';
-import type {MotionValue} from 'motion';
 import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useDragLayer} from 'react-dnd';
 
@@ -205,11 +205,9 @@ export const ChannelListContent = observer(({guild, scrollY, banner}: ChannelLis
 	const scrollPersistRafRef = useRef<number | null>(null);
 	const channelListNavigationRef = useRovingFocusList<HTMLDivElement>({
 		focusableSelector: '[data-channel-list-focus-item="true"]',
-		orientation: 'vertical',
-		loop: true,
+
 		enabled: KeyboardMode.keyboardModeEnabled,
 		restoreFocusOnWindowFocus: false,
-		manageTabIndex: true,
 	});
 	const connectedChannelId = MediaEngine.channelId;
 	const hideMutedChannels = userGuildSettings?.hide_muted_channels ?? false;

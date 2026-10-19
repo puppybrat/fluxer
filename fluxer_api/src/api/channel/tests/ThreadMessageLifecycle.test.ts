@@ -5,12 +5,8 @@ import {createChannelID, createMessageID, createUserID} from '@app/api/BrandedTy
 import {ChannelRepository} from '@app/api/channel/ChannelRepository';
 import {ThreadRepository} from '@app/api/channel/repositories/ThreadRepository';
 import {acceptInvite, createChannel, createChannelInvite, createGuild} from '@app/api/channel/tests/ChannelTestUtils';
-import {
-	ALL_THREADS_ACTIVE,
-	resetChannelThreadsConfig,
-	setChannelThreadsConfig,
-	threadsRequest,
-} from '@app/api/channel/tests/ThreadTestUtils';
+import {threadsRequest} from '@app/api/channel/tests/ThreadTestUtils';
+import {clearChannelThreadsTaintCacheForTesting} from '@app/api/experiment/ChannelThreadsGate';
 import {ensureSessionStarted, sendMessage} from '@app/api/message/tests/MessageTestUtils';
 import {type ApiTestHarness, createApiTestHarness} from '@app/api/test/ApiTestHarness';
 import {NoopGatewayService} from '@app/api/test/NoopGatewayService';
@@ -40,7 +36,7 @@ describe('thread message lifecycle', () => {
 
 	beforeEach(async () => {
 		await harness.reset();
-		resetChannelThreadsConfig();
+		clearChannelThreadsTaintCacheForTesting();
 	});
 
 	afterEach(() => {
@@ -48,12 +44,11 @@ describe('thread message lifecycle', () => {
 	});
 
 	afterAll(async () => {
-		resetChannelThreadsConfig();
+		clearChannelThreadsTaintCacheForTesting();
 		await harness.shutdown();
 	});
 
 	async function setup(): Promise<Setup> {
-		await setChannelThreadsConfig(ALL_THREADS_ACTIVE);
 		const owner = await createTestAccount(harness);
 		const member = await createTestAccount(harness);
 		const guild = await createGuild(harness, owner.token, 'lifecycle');
@@ -178,6 +173,7 @@ describe('thread message lifecycle', () => {
 		const admin = await setUserACLs(harness, await createTestAccount(harness), [AdminACLs.WILDCARD]);
 		await createBuilder(harness, admin.token)
 			.delete(`/admin/channels/${thread.id}/messages/${first.id}`)
+			.body({basis: {type: 'housekeeping'}})
 			.expect(200)
 			.execute();
 		expect(await messageCount(s.member.token, thread.id)).toBe(1);

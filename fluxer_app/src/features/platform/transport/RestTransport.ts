@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {accountRestrictionFromBody} from '@app/features/auth/state/AccountRestriction';
 import {isDesktopLocalAppDocument, isDesktopLocalAppOrigin} from '@app/features/platform/DesktopLocalAppRuntime';
 import {
 	AccountScopedWork,
@@ -11,7 +12,6 @@ import {ClientInstallationId} from '@app/features/platform/state/ClientInstallat
 import {HttpError, type HttpErrorDetail} from '@app/features/platform/types/EndpointError';
 import type {
 	HttpMethod,
-	MultipartBody,
 	RestAuthMode,
 	RestClientHooks,
 	RestInterceptor,
@@ -32,6 +32,7 @@ import {
 	LOCAL_APP_API_PATH_PREFIX,
 	LOCAL_APP_UPLOAD_ID_HEADER,
 } from '@fluxer/desktop_ipc/src/LocalAppRouteContract';
+import {isObjectLike as isRecord} from '@fluxer/record_utils/src/RecordGuards';
 import {i18n} from '@lingui/core';
 import {msg} from '@lingui/core/macro';
 
@@ -183,7 +184,7 @@ function waitUntilOnline(signal?: AbortSignal): Promise<void> {
 	});
 }
 
-function withoutTrailingSlashes(value: string): string {
+export function withoutTrailingSlashes(value: string): string {
 	return value.replace(/\/+$/u, '');
 }
 
@@ -394,10 +395,6 @@ function isSudoVerificationFailure(err: unknown): boolean {
 	});
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
 async function runRetryLoop<T>(
 	state: RuntimeState,
 	routing: RestRuntimeRouting | null,
@@ -563,9 +560,6 @@ function reportStrippedAuthorization(state: RuntimeState, apiOrigin: string, aut
 }
 
 function encodeBody(options: RestRequestOptions): BodyShape {
-	if (options.multipart) {
-		return {tag: 'form', payload: buildFormData(options.multipart)};
-	}
 	if (options.raw !== undefined) return classifyOpaque(options.raw);
 	const raw = options.body;
 	if (raw === undefined || raw === null) return {tag: 'empty'};
@@ -597,19 +591,6 @@ function copyArrayBufferView(raw: ArrayBufferView): ArrayBuffer {
 	const buffer = new ArrayBuffer(raw.byteLength);
 	new Uint8Array(buffer).set(new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength));
 	return buffer;
-}
-
-function buildFormData(payload: MultipartBody): FormData {
-	const form = new FormData();
-	const fields = payload.fields ?? {};
-	for (const [name, value] of Object.entries(fields)) {
-		form.append(name, value);
-	}
-	const files = payload.files ?? [];
-	for (const part of files) {
-		form.append(part.name, part.file, part.filename);
-	}
-	return form;
 }
 
 interface AssembleHeadersInput {
@@ -874,7 +855,7 @@ async function reactToOutcome(
 	if (reply.status === 429) {
 		return reactToRateLimit(state, plan, reply);
 	}
-	const interceptor = plan.options.skipIntercept ? undefined : (plan.options.intercept ?? state.globalIntercept);
+	const interceptor = plan.options.skipIntercept ? undefined : state.globalIntercept;
 	if (interceptor) {
 		const intercepted = await invokeInterceptor(state, ticket, plan, interceptor, reply);
 		if (intercepted) return intercepted;
@@ -888,6 +869,15 @@ async function reactToOutcome(
 	}
 	if (reply.status === 403 && hasContentBlockedCode(reply.body) && !plan.suppressContentBlockedModal) {
 		void import('@app/features/auth/components/ContentBlockedHandler').then((m) => m.showContentBlockedModal());
+	}
+	const restriction =
+		reply.status === 403 && plan.headers[Headers.AUTHORIZATION] !== undefined
+			? accountRestrictionFromBody(reply.body)
+			: null;
+	if (restriction?.type === 'network_blocked') {
+		void import('@app/features/auth/components/NetworkBlockedHandler').then((m) =>
+			m.showNetworkBlockedModal(restriction.block),
+		);
 	}
 	if (plan.mode === 'silent') {
 		propagateSudoToken(state, receivedSudoToken);
@@ -1096,10 +1086,10 @@ function createHandle(
 }
 
 function mergeBody(options: RestRequestOptions, augmentation: Record<string, unknown>): RestRequestOptions {
-	if (options.multipart !== undefined || options.raw !== undefined) {
-		throw new Error('RestClient: cannot fold sudo payload into a multipart or raw body');
+	if (options.raw !== undefined) {
+		throw new Error('RestClient: cannot fold sudo payload into a raw body');
 	}
-	const {body: existing, multipart: _m, raw: _r, ...rest} = options;
+	const {body: existing, raw: _r, ...rest} = options;
 	if (existing === undefined || existing === null) {
 		return {...rest, body: augmentation};
 	}

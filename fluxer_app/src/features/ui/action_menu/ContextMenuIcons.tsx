@@ -51,7 +51,6 @@ import {
 	MonitorArrowUpIcon,
 	MonitorPlayIcon,
 	NotePencilIcon,
-	PaperPlaneIcon,
 	PaperPlaneRightIcon,
 	PencilIcon,
 	PencilSimpleIcon,
@@ -880,13 +879,6 @@ export const UnfocusIcon: React.FC<IconProps> = observer(({size = 16}) => (
 		size={remFromPx(size)}
 		weight="fill"
 		data-flx="ui.action-menu.context-menu-icons.unfocus-icon.eye-slash-icon"
-	/>
-));
-export const SendInvitesIcon: React.FC<IconProps> = observer(({size = 16}) => (
-	<PaperPlaneIcon
-		size={remFromPx(size)}
-		weight="fill"
-		data-flx="ui.action-menu.context-menu-icons.send-invites-icon.paper-plane-icon"
 	/>
 ));
 export const SendInviteToCommunityIcon: React.FC<IconProps> = observer(({size = 16}) => (

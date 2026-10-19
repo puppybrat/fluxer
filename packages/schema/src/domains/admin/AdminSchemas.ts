@@ -6,7 +6,9 @@ import {
 	SystemChannelFlags,
 	SystemChannelFlagsDescriptions,
 } from '@fluxer/constants/src/GuildConstants';
-import {LIMIT_KEYS} from '@fluxer/constants/src/LimitConfigMetadata';
+import {LIMIT_KEY_METADATA, LIMIT_KEYS} from '@fluxer/constants/src/LimitConfigMetadata';
+import {SmtpTlsModes} from '@fluxer/constants/src/SmtpConstants';
+import {ValidationErrorCodes} from '@fluxer/constants/src/ValidationErrorCodes';
 import {ADMIN_ACL_COUNT, AdminAclType} from '@fluxer/schema/src/domains/admin/AdminAclType';
 import {AdminArchiveResponseSchema} from '@fluxer/schema/src/domains/admin/AdminArchiveSchemas';
 import {GuildAdminResponse} from '@fluxer/schema/src/domains/admin/AdminGuildSchemas';
@@ -244,6 +246,19 @@ const ReportResolutionEnum = createNamedStringLiteralUnion(
 	'How the report was resolved',
 );
 
+const ReportItemOutcomeEnum = createNamedStringLiteralUnion(
+	[
+		['removed', 'removed', 'The reported content, profile field or community was removed'],
+		['warned', 'warned', 'The account responsible for the reported item was warned'],
+		['restricted', 'restricted', 'The reported account was restricted and the content was left up'],
+		['action_taken', 'action_taken', 'Action was taken under the rules, and the reporter is not told which'],
+		['no_violation', 'no_violation', 'The reported content or account does not break the rules and was left as it is'],
+	],
+	'What happened to the reported item',
+);
+
+export type ReportItemOutcome = z.infer<typeof ReportItemOutcomeEnum>;
+
 export const UpdateReportRequest = z.object({
 	status: z.literal('resolved').describe('The status to move the report to'),
 	public_comment: createStringType(0, 512).optional().describe('Public comment to include with the resolution'),
@@ -253,7 +268,13 @@ export const UpdateReportRequest = z.object({
 		.describe(
 			'Whether to include the public comment in the notice sent to the reporter. The reporter is notified either way',
 		),
-	resolution: ReportResolutionEnum.optional().describe('How the report was resolved'),
+	resolution: ReportResolutionEnum.describe('How the report was resolved'),
+	outcome: ReportItemOutcomeEnum.optional().describe(
+		'What happened to the reported content or account. Required for actioned, where no_violation is refused. Optional for no_violation, where it can only be no_violation. Refused for duplicate. The reporter is told it',
+	),
+	duplicate_of: SnowflakeType.optional().describe(
+		'The report this one repeats. Required for duplicate and refused otherwise. The reporter is told the outcome of that report, or nothing while it has none',
+	),
 });
 
 export type UpdateReportRequest = z.infer<typeof UpdateReportRequest>;
@@ -510,7 +531,7 @@ const RegistrationUrlResponse = z.object({
 });
 export type RegistrationUrlResponse = z.infer<typeof RegistrationUrlResponse>;
 
-const PendingRegistrationResponse = z.object({
+export const PendingRegistrationResponse = z.object({
 	user_id: SnowflakeStringType,
 	username: z.string(),
 	discriminator: z.number().int().min(0).max(9999),
@@ -519,12 +540,17 @@ const PendingRegistrationResponse = z.object({
 	requested_at: z.iso.datetime(),
 	registration_url_id: createStringType(1, 128).nullable(),
 	client_ip: z.string().nullable(),
+	invite_code: createStringType(0, 256).nullable(),
 });
 export type PendingRegistrationResponse = z.infer<typeof PendingRegistrationResponse>;
 
+export const PendingRegistrationListResponse = z.object({
+	pending_registrations: z.array(PendingRegistrationResponse),
+});
+export type PendingRegistrationListResponse = z.infer<typeof PendingRegistrationListResponse>;
+
 const InstanceRegistrationResponse = InstanceRegistrationConfigResponse.extend({
 	urls: z.array(RegistrationUrlResponse),
-	pending_registrations: z.array(PendingRegistrationResponse),
 });
 
 const AppPublicConfigResponse = z.object({
@@ -563,6 +589,8 @@ function isAbsoluteHttpUrl(value: string): boolean {
 	}
 }
 
+const HEX_THEME_COLOR_PATTERN = /^(?:#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))?$/;
+
 const AppPublicConfigUpdateRequest = z.object({
 	branding: z
 		.object({
@@ -572,7 +600,7 @@ const AppPublicConfigUpdateRequest = z.object({
 			logo_url: z.string().trim().max(2048).nullish(),
 			wordmark_url: z.string().trim().max(2048).nullish(),
 			favicon_url: z.string().trim().max(2048).nullish(),
-			theme_color: z.string().trim().max(64).nullish(),
+			theme_color: z.string().trim().regex(HEX_THEME_COLOR_PATTERN).nullish(),
 			status_page_url: z.string().trim().max(2048).nullish(),
 			status_page_incident_history_url: z.string().trim().max(2048).nullish(),
 			premium_product_name: z.string().trim().min(1).max(40).nullable().optional(),
@@ -626,6 +654,16 @@ const InstancePolicyResponse = z.object({
 
 const EmailProviderSchema = z.enum(['smtp', 'none']);
 
+const SmtpTlsModeSchema = createNamedStringLiteralUnion(
+	[
+		[SmtpTlsModes.IMPLICIT, 'IMPLICIT', 'TLS from the first byte, usually on port 465'],
+		[SmtpTlsModes.STARTTLS, 'STARTTLS', 'Plain connection that must upgrade with STARTTLS, usually on port 587'],
+		[SmtpTlsModes.OPPORTUNISTIC, 'OPPORTUNISTIC', 'Plain connection upgraded with STARTTLS when the server offers it'],
+		[SmtpTlsModes.NONE, 'NONE', 'No TLS, even when the server offers STARTTLS'],
+	],
+	'How the SMTP connection is encrypted',
+);
+
 const AttachmentDecayEffectiveResponse = z.object({
 	enabled: z.boolean(),
 	min_size_mb: z.number().positive(),
@@ -674,7 +712,8 @@ const InstanceIntegrationsResponse = z.object({
 			port: z.number().int().min(1).max(65535).nullable(),
 			username: z.string().nullable(),
 			password_set: z.boolean(),
-			secure: z.boolean().nullable(),
+			tls_mode: SmtpTlsModeSchema.nullable().describe('Saved TLS mode, or null to pick one from the port'),
+			effective_tls_mode: SmtpTlsModeSchema.nullable(),
 		}),
 		disable_new_ip_authorization: z.boolean(),
 		effective_disable_new_ip_authorization: z.boolean(),
@@ -788,8 +827,10 @@ export const InstanceConfigUpdateRequest = z.object({
 							port: z.number().int().min(1).max(65535).nullish(),
 							username: z.string().trim().max(320).nullish(),
 							password: z.string().trim().max(4096).nullish(),
-							secure: z.boolean().nullish(),
+							tls_mode: SmtpTlsModeSchema.nullish(),
+							secure: z.boolean().nullish().describe('Deprecated, use tls_mode'),
 						})
+						.register(schemaMetadata, {preserveNullFields: true})
 						.nullish(),
 					disable_new_ip_authorization: z.boolean().nullish(),
 				})
@@ -846,11 +887,11 @@ export const BrandingAssetUploadRequest = z.object({
 export type BrandingAssetUploadRequest = z.infer<typeof BrandingAssetUploadRequest>;
 
 export const InstanceEmailSmtpTestRequest = z.object({
-	host: z.string().trim().min(1).max(255),
-	port: z.number().int().min(1).max(65535),
-	username: z.string().trim().min(1).max(320),
-	password: z.string().trim().min(1).max(4096),
-	secure: z.boolean().default(true),
+	host: z.string().trim().min(1).max(255).nullish(),
+	port: z.number().int().min(1).max(65535).nullish(),
+	username: z.string().trim().min(1).max(320).nullish(),
+	password: z.string().trim().min(1).max(4096).nullish(),
+	tls_mode: SmtpTlsModeSchema.nullish(),
 });
 
 export type InstanceEmailSmtpTestRequest = z.infer<typeof InstanceEmailSmtpTestRequest>;
@@ -916,6 +957,20 @@ const LimitRuleSchema = z.object({
 			},
 			{error: 'Invalid limit key detected'},
 		)
+		.superRefine((limits, ctx) => {
+			for (const key of LIMIT_KEYS) {
+				const value = limits[key];
+				const {min = 0, max} = LIMIT_KEY_METADATA[key];
+				if (value !== undefined && max !== undefined && (value < min || value > max)) {
+					ctx.addIssue({
+						code: 'custom',
+						message: ValidationErrorCodes.VALUE_MUST_BE_INTEGER_IN_RANGE,
+						params: {minValue: min, maxValue: max},
+						path: [key],
+					});
+				}
+			}
+		})
 		.describe('Per-limit key values'),
 });
 const LimitConfigSchema = z.object({
@@ -1137,6 +1192,9 @@ export const BanCheckResponseSchema = z.object({
 		.describe(
 			'ISO 8601 timestamp when the matching ban expires. Null when the ban is permanent, when nothing matches, and on every blocklist other than ip.',
 		),
+	decision_id: SnowflakeStringType.nullable().describe(
+		'Enforcement decision the matching ip block belongs to. Null for a block added through the blocklist, when nothing matches, and on every blocklist other than ip.',
+	),
 });
 export const BulkJobResponse = z.object({
 	job_id: SnowflakeStringType,
@@ -1652,7 +1710,7 @@ const LimitKeyMetadataSchema = z.object({
 	category: z.string(),
 	scope: z.string(),
 	isToggle: z.boolean(),
-	unit: z.enum(['bytes', 'count']).optional(),
+	unit: z.enum(['bytes', 'count', 'bps']).optional(),
 	min: z.number().optional(),
 	max: z.number().optional(),
 });

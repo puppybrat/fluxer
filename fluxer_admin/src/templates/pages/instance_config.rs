@@ -3,14 +3,15 @@
 use crate::{
     api::types::{
         AccountIdentityConfigResponse, AccountIdentityMode, AppPublicConfigResponse,
+        BRANDING_ASSET_ACCEPT, BRANDING_ASSET_MAX_IMAGE_CHARS, BrandingAssetKind,
         CAPTCHA_COST_RANGE, CAPTCHA_MAX_COUNTER_RANGE, CaptchaConfigResponse,
         DOMAIN_MIGRATION_DEFAULT_SALT, DomainMigrationConfigResponse,
         EXPERIMENT_MAX_ROLLOUT_COUNTRY_CODES, EXPERIMENT_MAX_TARGETED_USERS,
         ExperimentDeliveryConfigResponse, GatewayRolloutConfigResponse, InstanceConfigResponse,
         InstanceIntegrationsResponse, InstanceMediaResponse, InstancePolicyResponse,
-        InstanceRegistrationResponse, LimitConfigResponse, PendingRegistrationResponse,
-        PushRelayConfigResponse, RegistrationUrlResponse, SsoConfigResponse, TagStyle,
-        VOICE_P2P_DEFAULT_SALT, VOICE_P2P_MAX_PARTICIPANTS_RANGE, VoiceP2pConfigResponse,
+        InstanceRegistrationResponse, LimitConfigResponse, PremiumMode, PushRelayConfigResponse,
+        RegistrationUrlResponse, SsoConfigResponse, TagStyle, VOICE_P2P_DEFAULT_SALT,
+        VOICE_P2P_MAX_PARTICIPANTS_RANGE, VoiceP2pConfigResponse,
     },
     config::AdminConfig,
     middleware::auth::AuthContext,
@@ -30,7 +31,7 @@ use crate::{
     },
     utils::timestamps::format_admin_timestamp,
 };
-use maud::{Markup, html};
+use maud::{Markup, PreEscaped, html};
 
 fn format_percent(value: f64) -> String {
     if value.fract() == 0.0 {
@@ -158,6 +159,7 @@ pub fn instance_config_page(
                                 csrf_token,
                                 &instance_config.policy,
                                 &instance_config.app_public.branding.premium_product_name,
+                                instance_config.billing.enabled == Some(true),
                             ))
                         },
                     ))
@@ -199,7 +201,12 @@ pub fn instance_config_page(
                     "Media & retention",
                     "Attachment expiry rules that can be changed without editing environment variables.",
                     html! {
-                        (media_config_section(base, csrf_token, &instance_config.media))
+                        (media_config_section(
+                            base,
+                            csrf_token,
+                            &instance_config.media,
+                            instance_config.self_hosted,
+                        ))
                     },
                 ))
                 (config_group(
@@ -264,6 +271,7 @@ fn policy_config_section(
     csrf_token: &str,
     policy: &InstancePolicyResponse,
     premium_name: &str,
+    billing_enabled: bool,
 ) -> Markup {
     section_card_with_description(
         "Community & Policy",
@@ -274,7 +282,7 @@ fn policy_config_section(
             div class="space-y-8" {
                 (single_community_form(base, csrf_token, policy))
                 (direct_messages_form(base, csrf_token, policy))
-                (premium_mode_form(base, csrf_token, policy, premium_name))
+                (premium_mode_form(base, csrf_token, policy, premium_name, billing_enabled))
                 (community_creation_form(base, csrf_token, policy))
                 (services_form(base, csrf_token, policy))
             }
@@ -373,6 +381,7 @@ fn premium_mode_form(
     csrf_token: &str,
     policy: &InstancePolicyResponse,
     premium_name: &str,
+    billing_enabled: bool,
 ) -> Markup {
     let mirror_label = format!("Mirror (Free and {premium_name} tiers)");
     let everyone_label = format!("Everyone (every member gets {premium_name} limits)");
@@ -386,6 +395,16 @@ fn premium_mode_form(
                         ("mirror", mirror_label.as_str()),
                         ("everyone", everyone_label.as_str()),
                     ], policy.premium_mode.as_str()))
+                    p class="text-xs text-neutral-500" {
+                        "Limits you have not edited follow the model. Limits you changed under Limit \
+                         Config keep your values in both models."
+                    }
+                    @if billing_enabled && matches!(policy.premium_mode, PremiumMode::Mirror) {
+                        p class="text-sm text-amber-700" {
+                            "Billing is enabled. Disable it under Premium & billing before switching \
+                             the premium model to Everyone."
+                        }
+                    }
                     (form_actions(html! {
                         (submit_button("Save premium model"))
                     }))
@@ -526,6 +545,16 @@ fn password_input(name: &str, label: &str, helper: Option<&str>) -> Markup {
                 autocomplete="new-password";
         },
     )
+}
+
+fn smtp_tls_mode_summary(mode: &str) -> &str {
+    match mode {
+        "implicit" => "implicit TLS",
+        "starttls" => "required STARTTLS",
+        "opportunistic" => "STARTTLS when the server offers it",
+        "none" => "no encryption",
+        other => other,
+    }
 }
 
 fn account_identity_section(account_identity: &AccountIdentityConfigResponse) -> Markup {
@@ -671,14 +700,33 @@ fn integrations_config_section(
                                 ))
                                 (password_input("integration_smtp_password", "SMTP password", Some("Leave blank to keep the current password.")))
                             }
-                            (checkbox("integration_smtp_secure", "true", "Use TLS", integrations.email.smtp.secure.unwrap_or(true), true))
+                            (select_input("integration_smtp_tls_mode", "SMTP encryption", &[
+                                ("", "Automatic"),
+                                ("implicit", "Implicit TLS"),
+                                ("starttls", "STARTTLS, required"),
+                                ("opportunistic", "STARTTLS, when the server offers it"),
+                                ("none", "None"),
+                            ], integrations.email.smtp.tls_mode.as_deref().unwrap_or("")))
+                            p class="text-xs text-neutral-500" {
+                                "Automatic follows FLUXER_EMAIL_SMTP_TLS_MODE when it is set, then the older FLUXER_EMAIL_SMTP_SECURE, where true means implicit TLS on any port. With neither set it uses implicit TLS on port 465 and requires STARTTLS on every other port."
+                            }
+                            @if let Some(mode) = integrations.email.smtp.effective_tls_mode.as_deref() {
+                                p class="text-xs text-neutral-500" {
+                                    "Outgoing email currently uses " (smtp_tls_mode_summary(mode))
+                                    @if let Some(port) = integrations.email.smtp.port { " on port " (port) }
+                                    "."
+                                }
+                            }
                             (checkbox("integration_email_disable_new_ip_authorization", "true", "Disable new IP login authorization", integrations.email.disable_new_ip_authorization, true))
                             div class="flex flex-wrap gap-2" {
                                 button type="submit"
                                     formaction={(base) "/instance-config?action=test_smtp"}
                                     class="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-neutral-50 px-4 py-2 font-medium text-base text-neutral-700 transition-all duration-150 hover:border-neutral-400 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white" {
-                                    span { "Test SMTP connection" }
+                                    span { "Save and test SMTP" }
                                 }
+                            }
+                            p class="text-xs text-neutral-500" {
+                                "The test saves this form first, then connects with the saved settings, the same ones outgoing email uses."
                             }
                         }
                     }
@@ -739,7 +787,12 @@ fn integrations_config_section(
     )
 }
 
-fn media_config_section(base: &str, csrf_token: &str, media: &InstanceMediaResponse) -> Markup {
+fn media_config_section(
+    base: &str,
+    csrf_token: &str,
+    media: &InstanceMediaResponse,
+    self_hosted: bool,
+) -> Markup {
     let decay = &media.attachment_decay;
     let effective = &decay.effective;
     let enabled = decay.enabled.unwrap_or(effective.enabled);
@@ -767,9 +820,14 @@ fn media_config_section(base: &str, csrf_token: &str, media: &InstanceMediaRespo
         .renew_window_days
         .unwrap_or(effective.renew_window_days)
         .to_string();
+    let description = if self_hosted {
+        "Expire eligible attachments using size-based lifetimes. This is enabled by default and applies at runtime. On a self-hosted instance, changes also apply to attachments uploaded earlier, which are kept for at least the renew window before a new or shorter expiry deletes them."
+    } else {
+        "Expire eligible attachments using size-based lifetimes. This is enabled by default and applies at runtime. Changes apply to attachments uploaded from then on."
+    };
     section_card_with_description(
         "Media Expiry",
-        "Expire eligible attachments using size-based lifetimes. This is disabled by default and applies at runtime.",
+        description,
         html! {
             form method="post" action={(base) "/instance-config?action=update_media"} {
                 (csrf_input(csrf_token))
@@ -893,42 +951,15 @@ fn app_public_config_section(
                             ))
                             (text_input(
                                 "app_theme_color",
-                                "Theme Color",
+                                "Theme Color (hex)",
                                 app_public.branding.theme_color.as_deref().unwrap_or(""),
-                                "#5865f2",
+                                "#4641d9",
                             ))
                         }
                         div class="grid grid-cols-1 gap-4 sm:grid-cols-2" {
-                            (text_input(
-                                "app_icon_url",
-                                "Icon URL",
-                                app_public.branding.icon_url.as_deref().unwrap_or(""),
-                                "https://example.com/icon.png",
-                            ))
-                            (text_input(
-                                "app_symbol_url",
-                                "Symbol URL",
-                                app_public.branding.symbol_url.as_deref().unwrap_or(""),
-                                "https://example.com/symbol.png",
-                            ))
-                            (text_input(
-                                "app_logo_url",
-                                "Logo URL",
-                                app_public.branding.logo_url.as_deref().unwrap_or(""),
-                                "https://example.com/logo.png",
-                            ))
-                            (text_input(
-                                "app_wordmark_url",
-                                "Wordmark URL",
-                                app_public.branding.wordmark_url.as_deref().unwrap_or(""),
-                                "https://example.com/wordmark.png",
-                            ))
-                            (text_input(
-                                "app_favicon_url",
-                                "Favicon URL",
-                                app_public.branding.favicon_url.as_deref().unwrap_or(""),
-                                "https://example.com/favicon.ico",
-                            ))
+                            @for kind in BrandingAssetKind::ALL {
+                                (branding_asset_field(kind, kind.url(&app_public.branding)))
+                            }
                             (text_input(
                                 "app_status_page_url",
                                 "Status page URL",
@@ -957,6 +988,7 @@ fn app_public_config_section(
                         }))
                     }
                 }
+                script { (PreEscaped(BRANDING_ASSET_SCRIPT)) }
                 div class="space-y-4 border-t border-neutral-200 pt-6" {
                     h3 class="text-sm font-semibold text-neutral-900" { "Legal Documents" }
                     form method="post" action={(base) "/instance-config?action=update_app_legal"} {
@@ -998,6 +1030,173 @@ fn app_public_config_section(
         },
     )
 }
+
+pub fn branding_asset_field_id(kind: BrandingAssetKind) -> String {
+    format!("branding-asset-{}", kind.as_str())
+}
+
+pub fn branding_asset_field(kind: BrandingAssetKind, url: Option<&str>) -> Markup {
+    let name = format!("app_{}_url", kind.as_str());
+    let placeholder = match kind {
+        BrandingAssetKind::Favicon => "https://example.com/favicon.ico".to_owned(),
+        _ => format!("https://example.com/{}.png", kind.as_str()),
+    };
+    html! {
+        div id=(branding_asset_field_id(kind)) class="flex flex-col gap-2"
+            data-branding-asset=(kind.as_str())
+            data-branding-asset-max-chars=(BRANDING_ASSET_MAX_IMAGE_CHARS) {
+            (text_input(&name, &format!("{} URL", kind.label()), url.unwrap_or(""), &placeholder))
+            div class="flex items-center gap-2" {
+                @if let Some(url) = url {
+                    img src=(url) alt={(kind.label()) " preview"}
+                        onerror="this.hidden=true"
+                        class="h-8 w-8 shrink-0 rounded-md border border-neutral-200 bg-neutral-50 object-contain";
+                }
+                input type="file" accept=(BRANDING_ASSET_ACCEPT) class="hidden"
+                    data-branding-asset-file
+                    aria-label={"Upload " (kind.as_str())};
+                button type="button" data-branding-asset-upload
+                    class=(BRANDING_ASSET_BUTTON_CLASS) {
+                    "Upload"
+                }
+                @if url.is_some() {
+                    button type="button" data-branding-asset-remove
+                        class=(BRANDING_ASSET_BUTTON_CLASS) {
+                        "Remove"
+                    }
+                }
+            }
+        }
+    }
+}
+
+const BRANDING_ASSET_BUTTON_CLASS: &str = "inline-flex h-8 shrink-0 items-center justify-center \
+     rounded-lg border border-neutral-300 bg-neutral-50 px-3 text-xs font-medium \
+     text-neutral-700 transition-all hover:border-neutral-400 hover:text-neutral-900 \
+     focus:outline-none focus:ring-2 focus:ring-brand-primary/20 \
+     disabled:cursor-not-allowed disabled:opacity-50";
+
+const BRANDING_ASSET_SCRIPT: &str = r#"
+(function () {
+	if (window.__adminBrandingAssetBound) return;
+	window.__adminBrandingAssetBound = true;
+	function toast(level, message) {
+		document.body.dispatchEvent(new CustomEvent('showFlash', {detail: {level: level, message: message}}));
+	}
+	function toastFromResponse(response) {
+		var raw = response.headers.get('X-Fluxer-Admin-Toast');
+		if (!raw) return null;
+		try {
+			var parsed = JSON.parse(raw);
+			return {
+				level: parsed && parsed.level ? String(parsed.level) : 'info',
+				message: parsed && parsed.message ? String(parsed.message) : ''
+			};
+		} catch (error) {
+			return null;
+		}
+	}
+	function fieldOf(element) {
+		return element.closest('[data-branding-asset]');
+	}
+	function setBusy(field, busy) {
+		field.setAttribute('aria-busy', busy ? 'true' : 'false');
+		field.querySelectorAll('button').forEach(function (button) {
+			button.disabled = busy;
+		});
+	}
+	function send(field, action, image, failure) {
+		var form = field.closest('form');
+		var csrfInput = form ? form.querySelector('input[name="_csrf"]') : null;
+		var token = csrfInput ? csrfInput.value || '' : '';
+		var url = new URL(form ? form.getAttribute('action') || window.location.href : window.location.href, window.location.href);
+		url.searchParams.set('action', action);
+		var body = new URLSearchParams();
+		body.set('_csrf', token);
+		body.set('kind', field.getAttribute('data-branding-asset') || '');
+		if (image !== null) body.set('image', image);
+		setBusy(field, true);
+		fetch(url.toString(), {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'HX-Request': 'true',
+				'HX-Target': field.id,
+				'X-CSRF-Token': token
+			},
+			body: body.toString()
+		}).then(function (response) {
+			var parsed = toastFromResponse(response);
+			if (response.status !== 200) {
+				setBusy(field, false);
+				toast(parsed ? parsed.level : 'error', parsed ? parsed.message : failure);
+				return;
+			}
+			return response.text().then(function (html) {
+				var template = document.createElement('template');
+				template.innerHTML = html.trim();
+				var replacement = template.content.firstElementChild;
+				if (replacement && replacement.id === field.id) {
+					field.replaceWith(replacement);
+				} else {
+					setBusy(field, false);
+				}
+				if (parsed) toast(parsed.level, parsed.message);
+			});
+		}).catch(function () {
+			setBusy(field, false);
+			toast('error', failure);
+		});
+	}
+	document.addEventListener('click', function (event) {
+		var target = event.target;
+		if (!(target instanceof Element)) return;
+		var upload = target.closest('[data-branding-asset-upload]');
+		if (upload) {
+			var uploadField = fieldOf(upload);
+			var file = uploadField ? uploadField.querySelector('[data-branding-asset-file]') : null;
+			if (file) file.click();
+			return;
+		}
+		var remove = target.closest('[data-branding-asset-remove]');
+		if (remove) {
+			var removeField = fieldOf(remove);
+			if (removeField) send(removeField, 'remove_branding_asset', null, 'Failed to remove the image');
+		}
+	});
+	document.addEventListener('change', function (event) {
+		var input = event.target;
+		if (!(input instanceof HTMLInputElement) || !input.hasAttribute('data-branding-asset-file')) return;
+		var field = fieldOf(input);
+		var selected = input.files && input.files[0];
+		input.value = '';
+		if (!field || !selected) return;
+		var maxChars = Number(field.getAttribute('data-branding-asset-max-chars')) || 0;
+		setBusy(field, true);
+		var reader = new FileReader();
+		reader.onload = function () {
+			var dataUrl = typeof reader.result === 'string' ? reader.result : '';
+			if (!dataUrl) {
+				setBusy(field, false);
+				toast('error', 'Failed to read the image');
+				return;
+			}
+			if (maxChars > 0 && dataUrl.length > maxChars) {
+				setBusy(field, false);
+				toast('error', 'This image is too large to upload');
+				return;
+			}
+			send(field, 'upload_branding_asset', dataUrl, 'Failed to upload the image');
+		};
+		reader.onerror = function () {
+			setBusy(field, false);
+			toast('error', 'Failed to read the image');
+		};
+		reader.readAsDataURL(selected);
+	});
+})();
+"#;
 
 fn gateway_rollout_section(
     base: &str,
@@ -1583,7 +1782,7 @@ fn registration_config_section(
     let base = &config.base_path;
     section_card_with_description(
         "Registration Controls",
-        "Control public registration, admin-issued registration URLs, and pending approval requests.",
+        "Control public registration and admin-issued registration URLs.",
         html! {
             div class="space-y-8" {
                 (registration_policy_form(base, csrf_token, registration))
@@ -1592,7 +1791,6 @@ fn registration_config_section(
                 }
                 (create_registration_url_form(base, csrf_token))
                 (registration_url_list(config, csrf_token, &registration.urls))
-                (pending_registration_list(config, csrf_token, &registration.pending_registrations))
             }
         },
     )
@@ -1815,110 +2013,7 @@ fn registration_url_row(
     }
 }
 
-pub fn pending_registration_list(
-    config: &AdminConfig,
-    csrf_token: &str,
-    pending_registrations: &[PendingRegistrationResponse],
-) -> Markup {
-    let base = &config.base_path;
-    html! {
-        div id="pending-registration-list" class="space-y-4 border-t border-neutral-200 pt-6" {
-            h3 class="text-sm font-semibold text-neutral-900" { "Pending Registrations" }
-            @if pending_registrations.is_empty() {
-                p class="text-sm text-neutral-500" { "No pending registrations." }
-            } @else {
-                div class="overflow-x-auto rounded-lg border border-neutral-200" {
-                    table class="min-w-[940px] divide-y divide-neutral-200 text-sm" {
-                        thead class="bg-neutral-50" {
-                            tr {
-                                th scope="col" class="px-4 py-3 text-left font-semibold text-neutral-600" { "Applicant" }
-                                th scope="col" class="px-4 py-3 text-left font-semibold text-neutral-600" { "Requested" }
-                                th scope="col" class="px-4 py-3 text-left font-semibold text-neutral-600" { "Registration URL" }
-                                th scope="col" class="px-4 py-3 text-left font-semibold text-neutral-600" { "IP" }
-                                th scope="col" class="px-4 py-3 text-left font-semibold text-neutral-600" { "Action" }
-                            }
-                        }
-                        tbody class="divide-y divide-neutral-200 bg-white" {
-                            @for pending in pending_registrations {
-                                (pending_registration_row(config, base, csrf_token, pending))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn pending_registration_row(
-    config: &AdminConfig,
-    base: &str,
-    csrf_token: &str,
-    pending: &PendingRegistrationResponse,
-) -> Markup {
-    let account_name = pending_registration_account_name(pending);
-    let requested_at = format_admin_timestamp(&pending.requested_at);
-    let email = pending.email.as_deref().unwrap_or("None");
-    let link_id = pending.registration_url_id.as_deref().unwrap_or("None");
-    let client_ip = pending.client_ip.as_deref().unwrap_or("None");
-    let approve_action = format!("{base}/instance-config?action=approve_pending_registration");
-    let reject_action = format!("{base}/instance-config?action=reject_pending_registration");
-    html! {
-        tr {
-            td class="max-w-[20rem] px-4 py-3 align-top" {
-                p class="font-medium text-neutral-900" { (account_name) }
-                @if let Some(global_name) = pending.global_name.as_deref() {
-                    p class="truncate text-xs text-neutral-500" title=(global_name) { (global_name) }
-                }
-                p class="truncate text-xs text-neutral-500" title=(email) { (email) }
-                p class="whitespace-nowrap text-xs text-neutral-500" { "ID: " (&pending.user_id) }
-            }
-            td class="px-4 py-3 align-top text-neutral-700 whitespace-nowrap" {
-                (requested_at)
-            }
-            td class="px-4 py-3 align-top text-neutral-700" {
-                @if let Some(registration_url_id) = pending.registration_url_id.as_deref() {
-                    @let full_url = admin_issued_registration_url(config, registration_url_id);
-                    p class="whitespace-nowrap text-xs text-neutral-500" { "ID: " (registration_url_id) }
-                    div class="mt-1" {
-                        (compact_copy_button(&full_url, "Copy URL"))
-                    }
-                } @else {
-                    span class="text-neutral-500" { (link_id) }
-                }
-            }
-            td class="px-4 py-3 align-top text-neutral-700 whitespace-nowrap" {
-                (client_ip)
-            }
-            td class="px-4 py-3 align-top" {
-                div class="flex flex-nowrap gap-2" {
-                    form method="post" action=(&approve_action)
-                        hx-post=(&approve_action)
-                        hx-target="#pending-registration-list"
-                        hx-swap="outerHTML"
-                        hx-push-url="false"
-                        data-admin-allow-swap="true" {
-                        (csrf_input(csrf_token))
-                        input type="hidden" name="user_id" value=(&pending.user_id);
-                        (compact_button("Approve", false))
-                    }
-                    form method="post" action=(&reject_action)
-                        hx-post=(&reject_action)
-                        hx-target="#pending-registration-list"
-                        hx-swap="outerHTML"
-                        hx-push-url="false"
-                        data-admin-allow-swap="true" {
-                        (csrf_input(csrf_token))
-                        input type="hidden" name="user_id" value=(&pending.user_id);
-                        (compact_button("Reject", true))
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn admin_issued_registration_url(config: &AdminConfig, code: &str) -> String {
+pub(super) fn admin_issued_registration_url(config: &AdminConfig, code: &str) -> String {
     format!(
         "{}/register?registration_url={}",
         config.web_app_endpoint.trim_end_matches('/'),
@@ -1937,7 +2032,7 @@ fn copyable_registration_url(value: &str, label: &str) -> Markup {
     }
 }
 
-fn compact_copy_button(value: &str, label: &str) -> Markup {
+pub(super) fn compact_copy_button(value: &str, label: &str) -> Markup {
     html! {
         button type="button"
             class="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-neutral-50 px-3 text-xs font-medium text-neutral-700 transition-all hover:border-neutral-400 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
@@ -1948,7 +2043,7 @@ fn compact_copy_button(value: &str, label: &str) -> Markup {
     }
 }
 
-fn compact_button(label: &str, danger: bool) -> Markup {
+pub(super) fn compact_button(label: &str, danger: bool) -> Markup {
     let variant_class = if danger {
         "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500/30"
     } else {
@@ -2031,14 +2126,6 @@ fn registration_url_uses_text(url: &RegistrationUrlResponse) -> String {
     match url.max_uses {
         Some(max_uses) => format!("{} / {}", url.use_count, max_uses),
         None => format!("{} / unlimited", url.use_count),
-    }
-}
-
-fn pending_registration_account_name(pending: &PendingRegistrationResponse) -> String {
-    if pending.discriminator == 0 {
-        pending.username.clone()
-    } else {
-        format!("{}#{:04}", pending.username, pending.discriminator)
     }
 }
 

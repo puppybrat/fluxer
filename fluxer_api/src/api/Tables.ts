@@ -79,26 +79,17 @@ import {
 	type WebAuthnCredentialRow,
 } from '@app/api/database/types/AuthTypes';
 import {
-	BILLING_ACTION_INTENT_COLUMNS,
-	BILLING_CHARGE_BY_CUSTOMER_COLUMNS,
 	BILLING_CHARGE_COLUMNS,
-	BILLING_CHECKOUT_SESSION_BY_CUSTOMER_COLUMNS,
-	BILLING_CHECKOUT_SESSION_COLUMNS,
 	BILLING_CUSTOMER_BY_USER_ID_COLUMNS,
 	BILLING_CUSTOMER_COLUMNS,
-	BILLING_DISPUTE_BY_CHARGE_COLUMNS,
-	BILLING_DISPUTE_COLUMNS,
 	BILLING_INVOICE_BY_CUSTOMER_COLUMNS,
-	BILLING_INVOICE_BY_SUBSCRIPTION_COLUMNS,
 	BILLING_INVOICE_COLUMNS,
 	BILLING_PAYMENT_BY_INVOICE_COLUMNS,
 	BILLING_PAYMENT_COLUMNS,
-	BILLING_PAYMENT_INTENT_BY_CUSTOMER_COLUMNS,
 	BILLING_PAYMENT_INTENT_COLUMNS,
 	BILLING_PAYMENT_METHOD_BY_CUSTOMER_COLUMNS,
 	BILLING_PAYMENT_METHOD_COLUMNS,
 	BILLING_PRICE_COLUMNS,
-	BILLING_PRODUCT_COLUMNS,
 	BILLING_REFUND_BY_CHARGE_COLUMNS,
 	BILLING_REFUND_BY_INVOICE_COLUMNS,
 	BILLING_REFUND_BY_PAYMENT_INTENT_COLUMNS,
@@ -106,26 +97,17 @@ import {
 	BILLING_SUBSCRIPTION_BY_CUSTOMER_COLUMNS,
 	BILLING_SUBSCRIPTION_BY_USER_COLUMNS,
 	BILLING_SUBSCRIPTION_COLUMNS,
-	type BillingActionIntentRow,
-	type BillingChargeByCustomerRow,
 	type BillingChargeRow,
-	type BillingCheckoutSessionByCustomerRow,
-	type BillingCheckoutSessionRow,
 	type BillingCustomerByUserIdRow,
 	type BillingCustomerRow,
-	type BillingDisputeByChargeRow,
-	type BillingDisputeRow,
 	type BillingInvoiceByCustomerRow,
-	type BillingInvoiceBySubscriptionRow,
 	type BillingInvoiceRow,
 	type BillingPaymentByInvoiceRow,
-	type BillingPaymentIntentByCustomerRow,
 	type BillingPaymentIntentRow,
 	type BillingPaymentMethodByCustomerRow,
 	type BillingPaymentMethodRow,
 	type BillingPaymentRow,
 	type BillingPriceRow,
-	type BillingProductRow,
 	type BillingRefundByChargeRow,
 	type BillingRefundByInvoiceRow,
 	type BillingRefundByPaymentIntentRow,
@@ -157,6 +139,18 @@ import {
 	type WebhooksBySourceChannelRow,
 } from '@app/api/database/types/ChannelTypes';
 import {USER_CONNECTION_STORAGE_COLUMNS, type UserConnectionStorageRow} from '@app/api/database/types/ConnectionTypes';
+import {
+	ENFORCEMENT_DECISION_BY_SUBJECT_COLUMNS,
+	ENFORCEMENT_DECISION_COLUMNS,
+	ENFORCEMENT_DECISION_EVIDENCE_COLUMNS,
+	ENFORCEMENT_DECISION_NOTE_COLUMNS,
+	ENFORCEMENT_REVIEW_QUEUE_COLUMNS,
+	type EnforcementDecisionBySubjectRow,
+	type EnforcementDecisionEvidenceRow,
+	type EnforcementDecisionNoteRow,
+	type EnforcementDecisionRow,
+	type EnforcementReviewQueueRow,
+} from '@app/api/database/types/EnforcementTypes';
 import {
 	GUILD_DISCOVERY_BY_STATUS_COLUMNS,
 	GUILD_DISCOVERY_COLUMNS,
@@ -328,7 +322,6 @@ import {
 	USER_GUILD_SETTINGS_COLUMNS,
 	USER_HARVEST_COLUMNS,
 	USER_SETTINGS_COLUMNS,
-	USERS_PENDING_DELETION_COLUMNS,
 	type UserByEmailRow,
 	type UserByLastActiveIpRow,
 	type UserByLastActiveIpTrustKeyRow,
@@ -344,7 +337,6 @@ import {
 	type UserHarvestRow,
 	type UserRow,
 	type UserSettingsRow,
-	type UsersPendingDeletionRow,
 } from '@app/api/database/types/UserTypes';
 import {
 	VOICE_P2P_CONNECTION_REPORT_COLUMNS,
@@ -358,14 +350,7 @@ export const Users = defineTable<UserRow, 'user_id'>({
 	columns: USER_COLUMNS,
 	primaryKey: ['user_id'],
 });
-export const UsersPendingDeletion = defineTable<
-	UsersPendingDeletionRow,
-	'deletion_date' | 'pending_deletion_at' | 'user_id'
->({
-	name: 'users_pending_deletion',
-	columns: USERS_PENDING_DELETION_COLUMNS,
-	primaryKey: ['deletion_date', 'pending_deletion_at', 'user_id'],
-});
+
 export const UserDmHistory = defineTable<UserDmHistoryRow, 'user_id' | 'channel_id'>({
 	name: 'user_dm_history',
 	columns: USER_DM_HISTORY_COLUMNS,
@@ -910,6 +895,44 @@ export const AdminApiKeysByCreator = defineTable<AdminApiKeyByCreatorRow, 'creat
 	primaryKey: ['created_by_user_id', 'key_id'],
 	partitionKey: ['created_by_user_id'],
 });
+export const EnforcementDecisions = defineTable<EnforcementDecisionRow, 'decision_id'>({
+	name: 'enforcement_decisions',
+	columns: ENFORCEMENT_DECISION_COLUMNS,
+	primaryKey: ['decision_id'],
+});
+export const EnforcementDecisionsBySubject = defineTable<
+	EnforcementDecisionBySubjectRow,
+	'subject_type' | 'subject_id' | 'decision_id',
+	'subject_type' | 'subject_id'
+>({
+	name: 'enforcement_decisions_by_subject',
+	columns: ENFORCEMENT_DECISION_BY_SUBJECT_COLUMNS,
+	primaryKey: ['subject_type', 'subject_id', 'decision_id'],
+	partitionKey: ['subject_type', 'subject_id'],
+});
+export const EnforcementDecisionEvidence = defineTable<EnforcementDecisionEvidenceRow, 'decision_id'>({
+	name: 'enforcement_decision_evidence',
+	columns: ENFORCEMENT_DECISION_EVIDENCE_COLUMNS,
+	primaryKey: ['decision_id'],
+	defaultTtlSeconds: seconds('365 days'),
+});
+export const EnforcementDecisionNotes = defineTable<
+	EnforcementDecisionNoteRow,
+	'decision_id' | 'note_id',
+	'decision_id'
+>({
+	name: 'enforcement_decision_notes',
+	columns: ENFORCEMENT_DECISION_NOTE_COLUMNS,
+	primaryKey: ['decision_id', 'note_id'],
+	partitionKey: ['decision_id'],
+	defaultTtlSeconds: seconds('365 days'),
+});
+export const EnforcementReviewQueue = defineTable<EnforcementReviewQueueRow, 'bucket' | 'decision_id', 'bucket'>({
+	name: 'enforcement_review_queue',
+	columns: ENFORCEMENT_REVIEW_QUEUE_COLUMNS,
+	primaryKey: ['bucket', 'decision_id'],
+	partitionKey: ['bucket'],
+});
 export const BannedIps = defineTable<BannedIpRow, 'ip'>({
 	name: 'banned_ips',
 	columns: BANNED_IP_COLUMNS,
@@ -1339,11 +1362,6 @@ export const BillingCustomersByUserId = defineTable<BillingCustomerByUserIdRow, 
 	columns: BILLING_CUSTOMER_BY_USER_ID_COLUMNS,
 	primaryKey: ['user_id', 'provider_id'],
 });
-export const BillingProducts = defineTable<BillingProductRow, 'provider_id'>({
-	name: 'billing_products',
-	columns: BILLING_PRODUCT_COLUMNS,
-	primaryKey: ['provider_id'],
-});
 export const BillingPrices = defineTable<BillingPriceRow, 'provider_id'>({
 	name: 'billing_prices',
 	columns: BILLING_PRICE_COLUMNS,
@@ -1395,45 +1413,15 @@ export const BillingInvoicesByCustomer = defineTable<
 	primaryKey: ['customer_id', 'stripe_created_at', 'provider_id'],
 	partitionKey: ['customer_id'],
 });
-export const BillingInvoicesBySubscription = defineTable<
-	BillingInvoiceBySubscriptionRow,
-	'subscription_id' | 'stripe_created_at' | 'provider_id',
-	'subscription_id'
->({
-	name: 'billing_invoices_by_subscription',
-	columns: BILLING_INVOICE_BY_SUBSCRIPTION_COLUMNS,
-	primaryKey: ['subscription_id', 'stripe_created_at', 'provider_id'],
-	partitionKey: ['subscription_id'],
-});
 export const BillingPaymentIntents = defineTable<BillingPaymentIntentRow, 'provider_id'>({
 	name: 'billing_payment_intents',
 	columns: BILLING_PAYMENT_INTENT_COLUMNS,
 	primaryKey: ['provider_id'],
 });
-export const BillingPaymentIntentsByCustomer = defineTable<
-	BillingPaymentIntentByCustomerRow,
-	'customer_id' | 'stripe_created_at' | 'provider_id',
-	'customer_id'
->({
-	name: 'billing_payment_intents_by_customer',
-	columns: BILLING_PAYMENT_INTENT_BY_CUSTOMER_COLUMNS,
-	primaryKey: ['customer_id', 'stripe_created_at', 'provider_id'],
-	partitionKey: ['customer_id'],
-});
 export const BillingCharges = defineTable<BillingChargeRow, 'provider_id'>({
 	name: 'billing_charges',
 	columns: BILLING_CHARGE_COLUMNS,
 	primaryKey: ['provider_id'],
-});
-export const BillingChargesByCustomer = defineTable<
-	BillingChargeByCustomerRow,
-	'customer_id' | 'stripe_created_at' | 'provider_id',
-	'customer_id'
->({
-	name: 'billing_charges_by_customer',
-	columns: BILLING_CHARGE_BY_CUSTOMER_COLUMNS,
-	primaryKey: ['customer_id', 'stripe_created_at', 'provider_id'],
-	partitionKey: ['customer_id'],
 });
 export const BillingPayments = defineTable<BillingPaymentRow, 'provider_id'>({
 	name: 'billing_payments',
@@ -1484,36 +1472,6 @@ export const BillingRefundsByInvoice = defineTable<
 	columns: BILLING_REFUND_BY_INVOICE_COLUMNS,
 	primaryKey: ['invoice_id', 'stripe_created_at', 'provider_id'],
 	partitionKey: ['invoice_id'],
-});
-export const BillingCheckoutSessions = defineTable<BillingCheckoutSessionRow, 'provider_id'>({
-	name: 'billing_checkout_sessions',
-	columns: BILLING_CHECKOUT_SESSION_COLUMNS,
-	primaryKey: ['provider_id'],
-});
-export const BillingCheckoutSessionsByCustomer = defineTable<
-	BillingCheckoutSessionByCustomerRow,
-	'customer_id' | 'stripe_created_at' | 'provider_id',
-	'customer_id'
->({
-	name: 'billing_checkout_sessions_by_customer',
-	columns: BILLING_CHECKOUT_SESSION_BY_CUSTOMER_COLUMNS,
-	primaryKey: ['customer_id', 'stripe_created_at', 'provider_id'],
-	partitionKey: ['customer_id'],
-});
-export const BillingDisputes = defineTable<BillingDisputeRow, 'provider_id'>({
-	name: 'billing_disputes',
-	columns: BILLING_DISPUTE_COLUMNS,
-	primaryKey: ['provider_id'],
-});
-export const BillingDisputesByCharge = defineTable<BillingDisputeByChargeRow, 'charge_id' | 'provider_id'>({
-	name: 'billing_disputes_by_charge',
-	columns: BILLING_DISPUTE_BY_CHARGE_COLUMNS,
-	primaryKey: ['charge_id', 'provider_id'],
-});
-export const BillingActionIntents = defineTable<BillingActionIntentRow, 'intent_id'>({
-	name: 'billing_action_intents',
-	columns: BILLING_ACTION_INTENT_COLUMNS,
-	primaryKey: ['intent_id'],
 });
 export const VoiceP2pConnectionReports = defineTable<VoiceP2pConnectionReportRow, 'user_id' | 'report_id'>({
 	name: 'voice_p2p_connection_reports',

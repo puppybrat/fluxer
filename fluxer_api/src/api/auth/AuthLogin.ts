@@ -2,7 +2,6 @@
 
 import type {ApiContext} from '@app/api/ApiContext';
 import * as AuthMfa from '@app/api/auth/AuthMfa';
-import * as AuthPassword from '@app/api/auth/AuthPassword';
 import {applyPendingRecovery} from '@app/api/auth/AuthRecoveryKit';
 import * as AuthSession from '@app/api/auth/AuthSession';
 import * as AuthUtility from '@app/api/auth/AuthUtility';
@@ -17,7 +16,6 @@ import {
 } from '@app/api/BrandedTypes';
 import {getContentMessage} from '@app/api/content_i18n/ContentI18n';
 import {emitActivity} from '@app/api/infrastructure/activity/ActivityEvents';
-import type {KVAccountDeletionQueueService} from '@app/api/infrastructure/KVAccountDeletionQueueService';
 import {
 	REGISTRATION_PENDING_APPROVAL_TRAIT,
 	REGISTRATION_REJECTED_TRAIT,
@@ -30,6 +28,8 @@ import type {AuthSession as AuthSessionModel} from '@app/api/models/AuthSession'
 import type {User} from '@app/api/models/User';
 import {findPersonByLoginHandle, type ParsedLoginHandle, parseLoginHandle} from '@app/api/user/UniqueUsernames';
 import {lookupGeoip} from '@app/api/utils/IpUtils';
+import {verifyPassword} from '@app/api/utils/PasswordUtils';
+import * as RandomUtils from '@app/api/utils/RandomUtils';
 import {createRateLimitError} from '@app/api/utils/RateLimitUtils';
 import {requireConfiguredClientIp} from '@app/api/utils/RequestClientIp';
 import {AccountIdentityModes} from '@fluxer/constants/src/AccountIdentityConstants';
@@ -73,8 +73,7 @@ interface LoginMfaWebAuthnParams {
 }
 
 export interface LoginDependencies {
-	inviteService: InviteService | null;
-	kvDeletionQueue: KVAccountDeletionQueueService;
+	inviteService: InviteService;
 }
 
 interface LoginTokenResult {
@@ -200,7 +199,7 @@ export async function completeIpAuthorization(
 	if (!payload) {
 		throw InputValidationError.fromCode('token', ValidationErrorCodes.INVALID_OR_EXPIRED_AUTHORIZATION_TOKEN);
 	}
-	const repoResult = await AuthUtility.authorizeIpByToken(ctx, token);
+	const repoResult = await ctx.services.users.authorizeIpByToken(token);
 	if (!repoResult || repoResult.userId.toString() !== payload.userId) {
 		throw InputValidationError.fromCode('token', ValidationErrorCodes.INVALID_OR_EXPIRED_AUTHORIZATION_TOKEN);
 	}
@@ -223,7 +222,7 @@ export async function login(
 	{data, request, captchaVerified = false}: LoginParams,
 ): Promise<LoginResult> {
 	const {users, cache, rateLimit, email, config} = ctx.services;
-	const {inviteService, kvDeletionQueue} = deps;
+	const {inviteService} = deps;
 	const skipRateLimits = config.dev.testModeEnabled || config.dev.disableRateLimits;
 	const identifier = await resolveLoginIdentifier(ctx, data);
 	const invalidCredentials = () =>
@@ -256,6 +255,9 @@ export async function login(
 					retryAfter: Math.ceil(failureLimit.windowMs / failureLimit.maxAttempts / 1000),
 				}
 			: null;
+	if (failureLockout && ctx.request.blockedNetworkSignIn) {
+		throw createRateLimitError(failureLockout);
+	}
 	const rejectCredentials = async (): Promise<never> => {
 		if (failureLimit) {
 			await rateLimit.checkLimit(failureLimit);
@@ -263,22 +265,23 @@ export async function login(
 		if (failureLockout) {
 			throw createRateLimitError(failureLockout);
 		}
+		AuthUtility.assertNetworkAllowed(ctx);
 		throw invalidCredentials();
 	};
 	const user = await identifier.lookup();
 	if (!user) {
 		if (identifier.invalidCode === ValidationErrorCodes.INVALID_LOGIN_OR_PASSWORD) {
-			await AuthPassword.verifyPassword(ctx, {password: data.password, passwordHash: DUMMY_ARGON2_HASH});
+			await verifyPassword({password: data.password, passwordHash: DUMMY_ARGON2_HASH});
 		}
 		return await rejectCredentials();
 	}
 	AuthUtility.assertNonBotUser(ctx, user);
 	if (!user.passwordHash) {
-		await AuthPassword.verifyPassword(ctx, {password: data.password, passwordHash: DUMMY_ARGON2_HASH});
+		await verifyPassword({password: data.password, passwordHash: DUMMY_ARGON2_HASH});
 		emitLogin(user, false, {failure: 'no_password'});
 		return await rejectCredentials();
 	}
-	const isMatch = await AuthPassword.verifyPassword(ctx, {
+	const isMatch = await verifyPassword({
 		password: data.password,
 		passwordHash: user.passwordHash,
 	});
@@ -289,20 +292,19 @@ export async function login(
 	if (failureLockout && !captchaVerified && !(await users.checkIpAuthorized(user.id, clientIp))) {
 		throw createRateLimitError(failureLockout);
 	}
-	const currentUser = await AuthUtility.reactivateOnSignIn(
-		ctx,
-		await AuthUtility.handleBanStatus(ctx, user),
-		kvDeletionQueue,
-	);
+	const hasMfa =
+		user.authenticatorTypes.has(UserAuthenticatorTypes.TOTP) ||
+		user.authenticatorTypes.has(UserAuthenticatorTypes.WEBAUTHN);
+	if (hasMfa) {
+		AuthUtility.assertMfaTicketAllowed(ctx, user);
+	}
+	const currentUser = hasMfa ? user : await AuthUtility.assertSignInAllowed(ctx, user);
 	if (currentUser.traits.has(REGISTRATION_PENDING_APPROVAL_TRAIT)) {
 		throw new RegistrationPendingApprovalError();
 	}
 	if (currentUser.traits.has(REGISTRATION_REJECTED_TRAIT)) {
 		throw new RegistrationRejectedError();
 	}
-	const hasMfa =
-		currentUser.authenticatorTypes.has(UserAuthenticatorTypes.TOTP) ||
-		currentUser.authenticatorTypes.has(UserAuthenticatorTypes.WEBAUTHN);
 	const isAppStoreReviewer = (currentUser.flags & UserFlags.APP_STORE_REVIEWER) !== 0n;
 	let newIp = false;
 	if (!hasMfa && !isAppStoreReviewer) {
@@ -317,8 +319,8 @@ export async function login(
 			if (integrationsConfig.email.disable_new_ip_authorization || !effectiveEmailConfig.enabled) {
 				await users.createAuthorizedIp(currentUser.id, clientIp);
 			} else {
-				const ticket = createIpAuthorizationTicket(await AuthUtility.generateSecureToken(ctx));
-				const authToken = createIpAuthorizationToken(await AuthUtility.generateSecureToken(ctx));
+				const ticket = createIpAuthorizationTicket(await RandomUtils.randomString(64));
+				const authToken = createIpAuthorizationToken(await RandomUtils.randomString(64));
 				const geoipResult = await lookupGeoip(clientIp);
 				const clientLocation =
 					formatGeoipLocation(geoipResult, currentUser.locale) ??
@@ -362,7 +364,7 @@ export async function login(
 		const webauthnIsSecondFactor = await resolveWebAuthnSecondFactor(ctx, currentUser);
 		return await createMfaTicketResponse(ctx, currentUser, webauthnIsSecondFactor);
 	}
-	if (data.invite_code && inviteService) {
+	if (data.invite_code) {
 		try {
 			await inviteService.acceptInvite({
 				userId: currentUser.id,
@@ -476,16 +478,7 @@ export async function loginMfaTotp(
 	ctx: ApiContext,
 	{code, ticket, request}: LoginMfaTotpParams,
 ): Promise<LoginTokenResult> {
-	const {users, cache} = ctx.services;
-	const userId = await cache.get<string>(`mfa-ticket:${ticket}`);
-	if (!userId) {
-		throw InputValidationError.fromCode('ticket', ValidationErrorCodes.SESSION_TIMEOUT);
-	}
-	const user = await users.findUnique(createUserID(BigInt(userId)));
-	if (!user) {
-		throw new UnknownUserError();
-	}
-	AuthUtility.assertNonBotUser(ctx, user);
+	const user = await requireMfaTicketUser(ctx, ticket);
 	const hasTotp = Boolean(user.totpSecret) && user.authenticatorTypes.has(UserAuthenticatorTypes.TOTP);
 	if (!hasTotp && !(await AuthMfa.hasUnconsumedBackupCodes(ctx, user.id))) {
 		throw InputValidationError.fromCode('code', ValidationErrorCodes.TOTP_NOT_ENABLED);
@@ -532,16 +525,7 @@ export async function loginMfaWebAuthn(
 	ctx: ApiContext,
 	{response, challenge, ticket, request}: LoginMfaWebAuthnParams,
 ): Promise<LoginTokenResult> {
-	const {users, cache} = ctx.services;
-	const userId = await cache.get<string>(`mfa-ticket:${ticket}`);
-	if (!userId) {
-		throw InputValidationError.fromCode('ticket', ValidationErrorCodes.SESSION_TIMEOUT);
-	}
-	const user = await users.findUnique(createUserID(BigInt(userId)));
-	if (!user) {
-		throw new UnknownUserError();
-	}
-	AuthUtility.assertNonBotUser(ctx, user);
+	const user = await requireMfaTicketUser(ctx, ticket);
 	if (!(await resolveWebAuthnSecondFactor(ctx, user))) {
 		throw new MfaNotEnabledError();
 	}
@@ -557,7 +541,7 @@ export async function createMfaTicketResponse(
 	webauthnIsSecondFactor: boolean,
 ): Promise<LoginMfaResult> {
 	const {cache} = ctx.services;
-	const ticket = createMfaTicket(await AuthUtility.generateSecureToken(ctx));
+	const ticket = createMfaTicket(await RandomUtils.randomString(64));
 	await cache.set(`mfa-ticket:${ticket}`, user.id.toString(), seconds('5 minutes'));
 	const hasTotp = user.authenticatorTypes.has(UserAuthenticatorTypes.TOTP);
 	const hasBackupCodes = await AuthMfa.hasUnconsumedBackupCodes(ctx, user.id);
@@ -573,4 +557,14 @@ export async function createMfaTicketResponse(
 		webauthn: webauthnIsSecondFactor,
 		backup_codes: hasBackupCodes,
 	};
+}
+
+export async function requireMfaTicketUser(ctx: ApiContext, ticket: string, expectedUserId?: string): Promise<User> {
+	const userId = await ctx.services.cache.get<string>(`mfa-ticket:${ticket}`);
+	if (!userId || (expectedUserId !== undefined && userId !== expectedUserId)) {
+		throw InputValidationError.fromCode('ticket', ValidationErrorCodes.SESSION_TIMEOUT);
+	}
+	const user = await ctx.services.users.findUniqueAssert(createUserID(BigInt(userId)));
+	AuthUtility.assertNonBotUser(ctx, user);
+	return user;
 }

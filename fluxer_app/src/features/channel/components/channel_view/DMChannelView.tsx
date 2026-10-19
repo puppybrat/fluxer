@@ -20,7 +20,6 @@ import {CallParticipantsRow} from '@app/features/channel/components/channel_view
 import {
 	CALL_AVAILABLE_DESCRIPTOR,
 	CONNECTING_DESCRIPTOR,
-	getCompactCallHeightKey,
 	IN_CALL_DESCRIPTOR,
 	IN_CALL_ON_ANOTHER_DEVICE_DESCRIPTOR,
 	logger,
@@ -28,7 +27,6 @@ import {
 	VIEW_CALL_DESCRIPTOR,
 	VIEW_INCOMING_CALL_DESCRIPTOR,
 } from '@app/features/channel/components/channel_view/dm_channel_view/shared';
-import {useCompactCallBannerResize} from '@app/features/channel/components/channel_view/dm_channel_view/useCompactCallBannerResize';
 // LOCAL-ONLY: mobile SelectMode overlay styles — exclude from upstream sync.
 import mobileSelectModeOverlayStyles from '@app/features/channel/components/channel_view/MobileSelectModeOverlay.module.css';
 // LOCAL-ONLY: SelectModePanel is a local-only addition — exclude from upstream sync.
@@ -37,7 +35,6 @@ import {useCallHeaderState} from '@app/features/channel/components/channel_view/
 import {useChannelSearchState} from '@app/features/channel/components/channel_view/useChannelSearchState';
 import {useVoiceCallChromePinState} from '@app/features/channel/components/channel_view/useVoiceCallChromePinState';
 import dmStyles from '@app/features/channel/components/direct_message/DMChannelView.module.css';
-import {useMessagesBottomBarVisibility} from '@app/features/channel/components/MessagesBottomBarVisibility';
 import {useChannelPanelVisibility} from '@app/features/channel/hooks/useChannelPanelVisibility';
 import Channels from '@app/features/channel/state/Channels';
 // LOCAL-ONLY: ChannelThemes is a local-only addition — exclude from upstream sync.
@@ -61,13 +58,17 @@ import * as NicknameUtils from '@app/features/user/utils/NicknameUtils';
 import * as CallCommands from '@app/features/voice/commands/CallCommands';
 import {DirectCallLobbyBottomSheet} from '@app/features/voice/components/bottomsheets/DirectCallLobbyBottomSheet';
 import {CompactVoiceCallStreamHeaderInfo} from '@app/features/voice/components/CompactVoiceCallStreamHeaderInfo';
+import {useCompactVoiceCallResize} from '@app/features/voice/components/compact_voice_call_view/useCompactVoiceCallResize';
 import {useVoiceCallFullscreenViewState} from '@app/features/voice/components/useVoiceCallAppFullscreen';
 import {VoiceCallView} from '@app/features/voice/components/VoiceCallView';
 import {VoiceE2EEIndicator} from '@app/features/voice/components/VoiceE2EEIndicator';
 import {useVoiceParticipantAvatarEntries} from '@app/features/voice/components/VoiceParticipantAvatarList';
 import MediaEngine from '@app/features/voice/engine/MediaEngineFacade';
 import {useCompactCallExpansionState} from '@app/features/voice/hooks/useCompactCallExpansionState';
-import {COMPACT_VOICE_CALL_HEIGHT_MIN} from '@app/features/voice/state/CompactVoiceCallHeight';
+import {
+	COMPACT_VOICE_CALL_HEIGHT_MIN,
+	getCompactVoiceCallExpansionKey as getCompactCallHeightKey,
+} from '@app/features/voice/state/CompactVoiceCallHeight';
 import {VOICE_CALL_DESCRIPTOR} from '@app/features/voice/utils/VoiceMessageDescriptors';
 import {useFluxerDocumentTitle} from '@app/features/window/hooks/useFluxerDocumentTitle';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
@@ -119,7 +120,6 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 		activeSearchQuery,
 		activeSearchSegments,
 	} = searchState;
-	const {onBottomBarVisibilityChange} = useMessagesBottomBarVisibility(channelId);
 	const {enabled: isMobileLayout} = MobileLayout;
 	const isSearchPanelVisible = isSearchActive && !isMobileLayout;
 	useChannelPanelVisibility(channelId, isSearchPanelVisible);
@@ -147,18 +147,23 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 		if (!currentChannelId) return null;
 		return getCompactCallHeightKey(currentChannelId, call?.messageId ?? null);
 	}, [call?.messageId, currentChannelId]);
+	const compactCallContainerRef = useRef<HTMLDivElement>(null);
 	const {
-		compactCallBannerHeight,
-		compactCallMaxHeight,
-		isResizingCompactCallBanner,
-		compactCallBannerWrapperStyle,
-		handleCompactCallResizePointerDown,
-		handleCompactCallResizeKeyDown,
-	} = useCompactCallBannerResize({
-		isCompactCallResizable,
-		compactCallHeightKey,
-		compactCallHeightMin,
+		compactHeight: compactCallBannerHeight,
+		maxHeight: compactCallMaxHeight,
+		isResizing: isResizingCompactCallBanner,
+		handleResizePointerDown: handleCompactCallResizePointerDown,
+		handleResizeKeyDown: handleCompactCallResizeKeyDown,
+	} = useCompactVoiceCallResize({
+		containerRef: compactCallContainerRef,
+		heightKey: compactCallHeightKey ?? '',
+		isResizable: isCompactCallResizable && compactCallHeightKey != null,
+		compactHeightMin: compactCallHeightMin,
 	});
+	const compactCallBannerWrapperStyle =
+		isCompactCallResizable && compactCallHeightKey != null && compactCallBannerHeight != null
+			? {height: compactCallBannerHeight, minHeight: compactCallHeightMin, maxHeight: compactCallMaxHeight}
+			: undefined;
 	const [isCallSheetOpen, setIsCallSheetOpen] = useState(false);
 	const {
 		showFullscreenView: showVoiceCallViewForFullscreen,
@@ -460,6 +465,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 										styles.compactCallWrapper,
 										isResizingCompactCallBanner && styles.compactCallWrapperResizing,
 									)}
+									ref={compactCallContainerRef}
 									style={compactCallBannerWrapperStyle}
 									data-flx="channel.channel-view.dm-channel-view.compact-call-wrapper"
 								>
@@ -526,12 +532,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 				chatArea={
 					<ChannelChatLayout
 						messages={
-							<Messages
-								key={channel.id}
-								channel={channel}
-								onBottomBarVisibilityChange={onBottomBarVisibilityChange}
-								data-flx="channel.channel-view.dm-channel-view.messages"
-							/>
+							<Messages key={channel.id} channel={channel} data-flx="channel.channel-view.dm-channel-view.messages" />
 						}
 						textarea={
 							isSystemDm ? (
