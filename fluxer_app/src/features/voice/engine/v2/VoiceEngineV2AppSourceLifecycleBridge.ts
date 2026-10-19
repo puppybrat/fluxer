@@ -29,11 +29,11 @@ const CLOSED_CLEAN_DEDUP_WINDOW_MS = 500;
 
 export type VoiceEngineV2AppSourceLifecycleDispatch = (event: VoiceEngineV2Event) => void;
 
-export type VoiceEngineV2AppSourceLifecycleSubscribe = (
+type VoiceEngineV2AppSourceLifecycleSubscribe = (
 	callback: (message: NativeScreenCaptureLifecycleMessage) => void,
 ) => () => void;
 
-export interface VoiceEngineV2AppSourceLifecycleClosedCleanInfo {
+interface VoiceEngineV2AppSourceLifecycleClosedCleanInfo {
 	captureId: string;
 	sourceId: string;
 	source: 'delegate' | 'programmatic' | 'unknown';
@@ -240,19 +240,6 @@ export class VoiceEngineV2AppSourceLifecycleBridge {
 			atMs: this.now(),
 		};
 		this.dispatch(event);
-	}
-
-	dispose(): void {
-		if (this.disposed) return;
-		this.disposed = true;
-		for (const captureId of [...this.bindingsByCapture.keys()]) {
-			this.removeBinding(captureId);
-		}
-		try {
-			this.unsubscribe();
-		} catch {}
-		this.closedCleanLastAtMs.clear();
-		assert.equal(this.bindingsByCapture.size, 0, 'bindings must be cleared after dispose');
 	}
 
 	private handleNativeMessage(message: NativeScreenCaptureLifecycleMessage): void {

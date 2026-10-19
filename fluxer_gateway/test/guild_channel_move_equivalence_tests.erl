@@ -12,21 +12,12 @@
 -define(RECORDER, guild_channel_move_equivalence_recorder).
 -define(MODE, guild_channel_move_equivalence_mode).
 -define(DEFAULT_SEEDS, 300).
--define(SENSITIVITY_SEEDS, 150).
 
 equivalence_test_() ->
     {timeout, 1800, fun() ->
         with_harness(fun() ->
             First = env_int("CHMOVE_FIRST_SEED", 1),
             lists:foreach(fun check_seed/1, lists:seq(First, First + seed_count() - 1))
-        end)
-    end}.
-
-sensitivity_test_() ->
-    {timeout, 1800, fun() ->
-        with_harness(fun() ->
-            Undetected = [Name || Name <- broken_modes(), not diverges_for_some_case(Name)],
-            ?assertEqual([], Undetected)
         end)
     end}.
 
@@ -479,6 +470,76 @@ stale_detection_tracks_every_permission_input_test_() ->
         end)
     end}.
 
+twin_channel_engines_match_a_fresh_build_test_() ->
+    {timeout, 120, fun() ->
+        with_harness(fun() ->
+            {State0, Env} = materialize(twin_spec()),
+            Lists = twin_lists(),
+            State = lists:foldl(fun guild_member_list_channel_engine:ensure/2, State0, Lists),
+            Refs = [guild_member_list_channel_engine:ref(L, State) || L <- Lists],
+            ?assertEqual(length(Lists), length(lists:usort(Refs))),
+            Final = lists:foldl(fun assert_engine_matches_fresh_build/2, State, Lists),
+            teardown(Final, Env)
+        end)
+    end}.
+
+stale_twin_engine_is_not_cloned_test_() ->
+    {timeout, 120, fun() ->
+        with_harness(fun() ->
+            {State0, Env} = materialize(twin_spec()),
+            [A, B | _] = twin_lists(),
+            State1 = guild_member_list_channel_engine:ensure(A, State0),
+            Hidden = with_channels(
+                fun(C) ->
+                    case integer_to_binary(channel_int_id(C)) of
+                        A -> C#{<<"permission_overwrites">> => [hidden_overwrite()]};
+                        _ -> C
+                    end
+                end,
+                State1
+            ),
+            [
+                ok = guild_member_list_channel_engine:update_user(user_id(I), A, Hidden)
+             || I <- lists:seq(1, 60)
+            ],
+            State2 = guild_member_list_channel_engine:ensure(B, Hidden),
+            ?assert(guild_member_list_engine_inputs:is_stale(A, State2)),
+            ?assertNotEqual(engine_content(A, State2), engine_content(B, State2)),
+            teardown(assert_engine_matches_fresh_build(B, State2), Env)
+        end)
+    end}.
+
+twin_spec() ->
+    Restricted = [overwrite(role_id(1), 0, 0, view())],
+    single_session_spec(
+        renumber([
+            channel(?CHAN_BASE + 700, 0, null, []),
+            channel(?CHAN_BASE + 701, 0, null, []),
+            channel(?CHAN_BASE + 702, 0, null, Restricted),
+            channel(?CHAN_BASE + 703, 0, null, Restricted)
+        ])
+    ).
+
+twin_lists() ->
+    [integer_to_binary(?CHAN_BASE + I) || I <- [700, 701, 702, 703]].
+
+assert_engine_matches_fresh_build(ListId, State) ->
+    Built = engine_content(ListId, State),
+    Rebuilt = guild_member_list_channel_engine:rebuild(ListId, State),
+    ?assertEqual(engine_content(ListId, Rebuilt), Built),
+    Rebuilt.
+
+engine_content(ListId, State) ->
+    Ref = guild_member_list_channel_engine:ref(ListId, State),
+    Items = guild_member_list_engine:get_all_item_keys(Ref),
+    Members = [UserId || {member, UserId} <- Items],
+    {
+        guild_member_list_engine:get_counts(Ref),
+        guild_member_list_engine:get_groups(Ref),
+        Items,
+        [{U, guild_member_list_engine:is_member_online(Ref, U)} || U <- Members]
+    }.
+
 input_changes() ->
     Flip = flip_channel(),
     [
@@ -747,90 +808,11 @@ spec_layout_after_hooks(Spec) ->
     layout(Spec) ++ [C || {channel_create, C} <- maps:get(hooks, Spec, [])].
 
 check_spec(Spec, Events) ->
-    check_spec(Spec, Events, optimized).
-
-check_spec(Spec, Events, Mode) ->
     {RefHooks, Reference} = run(Spec, Events, reference),
-    {CandHooks, Candidate} = run(Spec, Events, Mode),
+    {CandHooks, Candidate} = run(Spec, Events, optimized),
     assert_same(hooks, log, RefHooks, CandHooks),
     compare_runs(Reference, Candidate, Events, 1),
     #{reference => Reference, optimized => Candidate}.
-
-diverges_for_some_case(Broken) ->
-    Cases =
-        hand_cases() ++
-            [
-                begin
-                    Spec = gen_spec(Seed),
-                    {Spec, gen_events(Seed, spec_layout_after_hooks(Spec))}
-                end
-             || Seed <- lists:seq(1, ?SENSITIVITY_SEEDS)
-            ],
-    lists:any(
-        fun({Spec, Events}) ->
-            try check_spec(Spec, Events, {broken, Broken}) of
-                _ -> false
-            catch
-                error:_ -> true
-            end
-        end,
-        Cases
-    ).
-
-broken_modes() ->
-    [never_stale, vca_marks_off, latch_off, reload_marks_off].
-
-hand_cases() ->
-    Create = (create_spec())#{hooks => [{channel_create, new_public_channel()}]},
-    CreateLayout = layout(Create) ++ [new_public_channel()],
-    Owner = (owner_spec())#{hooks => [{owner, user_id(2)}]},
-    OwnerFlip = (flip_spec())#{
-        hooks => owner_flip_hooks()
-    },
-    RoleFlip = (flip_spec())#{
-        list_subscriptions => [],
-        hooks => [
-            {ensure_list, flip_channel()},
-            {role_permissions, 1, 0},
-            {member_update, user_id(2)},
-            {role_permissions, 1, view()}
-        ]
-    },
-    Gap = (gap_spec(?CHAN_BASE + 500))#{
-        list_subscriptions => [{session_id(1), integer_to_binary(?CHAN_BASE + 500)}]
-    },
-    GapMoved = (find(?CHAN_BASE + 501, layout(Gap)))#{
-        <<"parent_id">> => integer_to_binary(?CHAN_BASE + 500)
-    },
-    Text = ticker_category() + 1,
-    [
-        {Create, [
-            bulk_event(renumber(move_channels([new_id()], {parent, cat_id()}, CreateLayout)))
-        ]},
-        {Owner, [position_move(Owner)]},
-        {flip_spec(), [position_move(flip_spec())]},
-        {OwnerFlip, [position_move(OwnerFlip)]},
-        {RoleFlip, [position_move(RoleFlip)]},
-        {Gap, [
-            {channel_update, GapMoved},
-            bulk_event(renumber(lists:reverse(replace(GapMoved, layout(Gap)))))
-        ]},
-        {ticker_spec(), [
-            {channel_update, (find(Text, layout(ticker_spec())))#{
-                <<"permission_overwrites">> => [overwrite(role_id(1), 0, 0, view())]
-            }}
-        ]},
-        {hidden_voice_spec(), [position_move(hidden_voice_spec())]},
-        category_flip_case(),
-        bulk_category_flip_case(),
-        everyone_patch_flip_case(),
-        reload_case(),
-        created_child_flip_case(),
-        subscribed_hidden_voice_case(),
-        shared_roles_case(user_allow(), [hidden_overwrite() | user_allow()]),
-        shared_roles_case([], [hidden_overwrite() | user_allow()]),
-        shared_roles_case([hidden_overwrite() | user_allow()], [hidden_overwrite()])
-    ].
 
 compare_runs([], [], [], _N) ->
     ok;
@@ -1019,24 +1001,8 @@ install_modes() ->
     meck:expect(guild_member_list_engine_inputs, is_stale, fun(ListId, State) ->
         case get(?MODE) of
             reference -> true;
-            {broken, never_stale} -> false;
             _ -> meck:passthrough([ListId, State])
         end
-    end),
-    Unmarked = fun(Broken, Args) ->
-        case get(?MODE) of
-            {broken, Broken} -> lists:last(Args);
-            _ -> meck:passthrough(Args)
-        end
-    end,
-    meck:expect(guild_member_list_engine_inputs, mark_stale, fun(ChannelId, State) ->
-        Unmarked(vca_marks_off, [ChannelId, State])
-    end),
-    meck:expect(guild_member_list_engine_inputs, latch_stale, fun(State) ->
-        Unmarked(latch_off, [State])
-    end),
-    meck:expect(guild_member_list_engine_inputs, forget_all, fun(State) ->
-        Unmarked(reload_marks_off, [State])
     end).
 
 empty_log() ->

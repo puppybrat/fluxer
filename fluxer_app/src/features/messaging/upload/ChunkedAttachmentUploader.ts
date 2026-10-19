@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {wrapDesktopLocalUploadURL} from '@app/features/messaging/utils/DesktopResourceUrl';
 import {http} from '@app/features/platform/transport/RestTransport';
 import {HttpError} from '@app/features/platform/types/EndpointError';
 import {Logger} from '@app/features/platform/utils/AppLogger';
 import {ExponentialBackoff} from '@app/features/platform/utils/RetryScheduler';
 
 const logger = new Logger('ChunkedAttachmentUploader');
-export const MAX_CONCURRENT_PARTS = 4;
-export const PART_MAX_ATTEMPTS = 4;
+const MAX_CONCURRENT_PARTS = 4;
+const PART_MAX_ATTEMPTS = 4;
 const PART_RETRY_MIN_DELAY_MS = 500;
 const PART_RETRY_MAX_DELAY_MS = 8000;
 const PART_RETRY_HARD_CAP_MS = 30_000;
@@ -129,8 +130,9 @@ export async function uploadFileInChunks(plan: ChunkedUploadPlan, hooks: Chunked
 					while (true) {
 						attempt++;
 						try {
-							await http.put(part.uploadUrl, {
+							await http.put(wrapDesktopLocalUploadURL(part.uploadUrl), {
 								body: chunk,
+								auth: 'none',
 								headers: {
 									'Content-Type': contentType,
 								},

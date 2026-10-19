@@ -2,7 +2,6 @@
 
 import type {AttachmentID, ChannelID, MessageID, UserID} from '@app/api/BrandedTypes';
 import type {ChannelDataRepository} from '@app/api/channel/repositories/ChannelDataRepository';
-import {IMessageRepository, type ListMessagesOptions} from '@app/api/channel/repositories/IMessageRepository';
 import {MessageAttachmentRepository} from '@app/api/channel/repositories/message/MessageAttachmentRepository';
 import {MessageAuthorRepository} from '@app/api/channel/repositories/message/MessageAuthorRepository';
 import {MessageDataRepository} from '@app/api/channel/repositories/message/MessageDataRepository';
@@ -10,7 +9,17 @@ import {MessageDeletionRepository} from '@app/api/channel/repositories/message/M
 import type {MessageRow} from '@app/api/database/types/MessageTypes';
 import type {Message} from '@app/api/models/Message';
 
-export class MessageRepository extends IMessageRepository {
+export interface ListMessagesOptions {
+	restrictToBeforeBucket?: boolean;
+	immediateAfter?: boolean;
+}
+
+export interface UpsertMessageOptions {
+	isInsert?: boolean;
+	skipParentLastMessageId?: boolean;
+}
+
+export class MessageRepository {
 	private dataRepo: MessageDataRepository;
 	private deletionRepo: MessageDeletionRepository;
 	private attachmentRepo: MessageAttachmentRepository;
@@ -18,11 +27,10 @@ export class MessageRepository extends IMessageRepository {
 	private channelDataRepo: ChannelDataRepository;
 
 	constructor(channelDataRepo: ChannelDataRepository) {
-		super();
 		this.dataRepo = new MessageDataRepository();
 		this.deletionRepo = new MessageDeletionRepository(this.dataRepo);
 		this.attachmentRepo = new MessageAttachmentRepository();
-		this.authorRepo = new MessageAuthorRepository(this.dataRepo, this.deletionRepo);
+		this.authorRepo = new MessageAuthorRepository(this.dataRepo);
 		this.channelDataRepo = channelDataRepo;
 	}
 
@@ -40,10 +48,14 @@ export class MessageRepository extends IMessageRepository {
 		return this.dataRepo.getMessage(channelId, messageId);
 	}
 
-	async upsertMessage(data: MessageRow, oldData?: MessageRow | null): Promise<Message> {
+	async upsertMessage(data: MessageRow, oldData?: MessageRow | null, opts?: UpsertMessageOptions): Promise<Message> {
 		const message = await this.dataRepo.upsertMessage(data, oldData);
-		if (!oldData) {
-			await this.channelDataRepo.updateLastMessageId(data.channel_id, data.message_id);
+		if (!oldData && !opts?.skipParentLastMessageId) {
+			await this.channelDataRepo.updateLastMessageId(
+				data.channel_id,
+				data.message_id,
+				opts?.isInsert ? {isInsert: true} : undefined,
+			);
 		}
 		return message;
 	}
@@ -78,20 +90,8 @@ export class MessageRepository extends IMessageRepository {
 		return this.authorRepo.listMessagesByAuthor(authorId, limit, lastMessageId);
 	}
 
-	async deleteMessagesByAuthor(
-		authorId: UserID,
-		channelIds?: Array<ChannelID>,
-		messageIds?: Array<MessageID>,
-	): Promise<void> {
-		return this.authorRepo.deleteMessagesByAuthor(authorId, channelIds, messageIds);
-	}
-
 	async anonymizeMessage(channelId: ChannelID, messageId: MessageID, newAuthorId: UserID): Promise<void> {
 		return this.authorRepo.anonymizeMessage(channelId, messageId, newAuthorId);
-	}
-
-	async authorHasMessage(authorId: UserID, channelId: ChannelID, messageId: MessageID): Promise<boolean> {
-		return this.authorRepo.hasMessageByAuthor(authorId, channelId, messageId);
 	}
 
 	async lookupAttachmentByChannelAndFilename(

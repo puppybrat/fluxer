@@ -22,6 +22,7 @@ import {
 	MEDIA_DESCRIPTOR,
 	STICKERS_DESCRIPTOR,
 } from '@app/features/i18n/utils/CommonMessageDescriptors';
+import {AppStorageKey} from '@app/features/platform/state/AppStorageKeys';
 import {ComponentBus} from '@app/features/platform/utils/ComponentBus';
 import {remFromPx} from '@app/features/theme/layout/RemFromPx';
 import {useResizablePane} from '@app/features/ui/hooks/useResizablePane';
@@ -71,16 +72,16 @@ const RESIZE_EXPRESSION_PICKER_BOTTOM_RIGHT_DESCRIPTOR = msg({
 	comment: 'Accessible label for the bottom-right resize handle on the expression picker popout.',
 });
 
-export const EXPRESSION_PICKER_CATEGORY_RAIL_WIDTH = 46;
-export const EXPRESSION_PICKER_BORDER_WIDTH = 1;
-export const EXPRESSION_PICKER_GRID_CHROME_WIDTH =
+const EXPRESSION_PICKER_CATEGORY_RAIL_WIDTH = 46;
+const EXPRESSION_PICKER_BORDER_WIDTH = 1;
+const EXPRESSION_PICKER_GRID_CHROME_WIDTH =
 	EXPRESSION_PICKER_CATEGORY_RAIL_WIDTH + EXPRESSION_PICKER_BORDER_WIDTH * 2 + EMOJI_GRID_SCROLLER_PADDING_WIDTH * 2;
-export const EXPRESSION_PICKER_WIDTH_SNAP = {
+const EXPRESSION_PICKER_WIDTH_SNAP = {
 	step: EMOJI_GRID_TRACK_WIDTH,
 	offset: EXPRESSION_PICKER_GRID_CHROME_WIDTH,
 };
-export const EXPRESSION_PICKER_DEFAULT_SIZE = {width: 592, height: 690};
-export const EXPRESSION_PICKER_MIN_SIZE = {width: 360, height: 360};
+const EXPRESSION_PICKER_DEFAULT_SIZE = {width: 592, height: 690};
+const EXPRESSION_PICKER_MIN_SIZE = {width: 360, height: 360};
 const EXPRESSION_PICKER_VIEWPORT_PADDING = 16;
 const EXPRESSION_PICKER_RESIZING_CLASS = 'expression-picker-resizing';
 const EXPRESSION_PICKER_RESIZE_CURSOR_PROPERTY = '--expression-picker-resize-cursor';
@@ -230,7 +231,7 @@ export const ExpressionPickerPopout = observer(
 		const containerRef = useRef<HTMLDivElement>(null);
 		const tabRefs = useRef<Map<ExpressionPickerTabType, HTMLButtonElement>>(new Map());
 		const {size, getHandleProps} = useResizablePane(containerRef, {
-			storageKey: 'fluxer:ui:expression-picker-size',
+			storageKey: AppStorageKey.UI_EXPRESSION_PICKER_SIZE,
 			defaultSize: EXPRESSION_PICKER_DEFAULT_SIZE,
 			minSize: EXPRESSION_PICKER_MIN_SIZE,
 			widthSnap: EXPRESSION_PICKER_WIDTH_SNAP,

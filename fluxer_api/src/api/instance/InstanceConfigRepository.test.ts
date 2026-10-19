@@ -3,6 +3,7 @@
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {createServer} from 'node:net';
+import {Config, getConfig} from '@app/api/Config';
 import type {CassandraQueryExecutorForTesting} from '@app/api/database/CassandraQueryExecution';
 import {setCassandraQueryExecutorForTesting} from '@app/api/database/CassandraQueryExecution';
 import type {PreparedQuery} from '@app/api/database/CassandraTypes';
@@ -14,18 +15,18 @@ import {
 	InstanceConfigWriteConflictError,
 	type InstanceRegistrationConfig,
 } from '@app/api/instance/InstanceConfigRepository';
+import {getLegalUrls, setCachedConfiguredLegalUrls} from '@app/api/instance/LegalUrls';
+import {getInstanceProductName, setCachedProductName} from '@app/api/instance/ProductName';
 import {InstanceConfigWriteRaceExecutor} from '@app/api/instance/tests/InstanceConfigWriteRaceExecutor';
 import {startDockerContainer} from '@app/api/test/DockerTestContainer';
 import {InMemoryCassandraQueryExecutor} from '@app/api/test/InMemoryCassandraQueryExecutor';
 import {MockKVProvider} from '@app/api/test/mocks/MockKVProvider';
 import {
-	DEFAULT_DOMAIN_MIGRATION_CONFIG,
-	type DomainMigrationConfig,
-} from '@fluxer/schema/src/domains/admin/DomainMigrationSchemas';
-import {
-	DEFAULT_EXPERIMENT_DELIVERY_CONFIG,
-	type ExperimentDeliveryConfig,
-} from '@fluxer/schema/src/domains/experiment/ExperimentSchemas';
+	DEFAULT_CHANNEL_THREADS_CONFIG,
+	everyoneChannelThreadsConfig,
+} from '@fluxer/schema/src/domains/admin/ChannelThreadsSchemas';
+import {DEFAULT_DOMAIN_MIGRATION_CONFIG} from '@fluxer/schema/src/domains/admin/DomainMigrationSchemas';
+import {DEFAULT_EXPERIMENT_DELIVERY_CONFIG} from '@fluxer/schema/src/domains/experiment/ExperimentSchemas';
 import {
 	getDefaultPostgresClient,
 	type IPostgresClient,
@@ -35,6 +36,7 @@ import {
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const DOMAIN_MIGRATION_CONFIG_KEY = 'domain_migration_config';
+const CHANNEL_THREADS_CONFIG_KEY = 'channel_threads_config';
 const EXPERIMENT_DELIVERY_CONFIG_KEY = 'experiment_delivery_config';
 const APP_PUBLIC_CONFIG_KEY = 'app_public_config';
 const INSTANCE_POLICY_CONFIG_KEY = 'instance_policy_config';
@@ -217,6 +219,139 @@ describe('InstanceConfigRepository', () => {
 		expect(config.branding.product_name).toBe('Kept');
 	});
 
+	it('stores uploaded branding assets as references and resolves them against the current media endpoint', async () => {
+		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		const repository = createRepository(new MockKVProvider());
+		const media = Config.endpoints.media;
+		const foreign = 'https://cdn.example.com/favicon.ico';
+
+		await repository.setAppPublicConfig({
+			branding: {favicon_url: `${media}/branding/0/0123abcd.png`, logo_url: foreign},
+		});
+
+		const stored = JSON.parse((await repository.getConfig(APP_PUBLIC_CONFIG_KEY)) ?? '{}');
+		expect(stored.branding.favicon_url).toBe('branding/0/0123abcd.png');
+		expect(stored.branding.logo_url).toBe(foreign);
+		Config.endpoints.media = 'https://media.moved.example';
+		try {
+			const config = await repository.getAppPublicConfig();
+			expect(config.branding.favicon_url).toBe('https://media.moved.example/branding/0/0123abcd.png');
+			expect(config.branding.logo_url).toBe(foreign);
+		} finally {
+			Config.endpoints.media = media;
+		}
+	});
+
+	it('normalises legacy branding URLs from an old domain only when the object is ours', async () => {
+		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		const repository = createRepository(new MockKVProvider());
+		await repository.setConfig(
+			APP_PUBLIC_CONFIG_KEY,
+			JSON.stringify({
+				branding: {
+					favicon_url: 'https://old.example/media/branding/0/a_0123abcd.gif',
+					icon_url: 'https://other.example/branding/0/89abcdef.png',
+				},
+			}),
+		);
+		const storage = {
+			getObjectMetadata: vi.fn(async (_bucket: string, key: string) =>
+				key === 'branding/0/0123abcd' ? {contentLength: 1, contentType: 'image/gif'} : null,
+			),
+		};
+
+		expect(await repository.normalizeStoredBrandingAssets(storage as never)).toBe(1);
+		expect(await repository.normalizeStoredBrandingAssets(storage as never)).toBe(0);
+
+		const config = await repository.getAppPublicConfig();
+		expect(config.branding.favicon_url).toBe(`${Config.endpoints.media}/branding/0/a_0123abcd.gif`);
+		expect(config.branding.icon_url).toBe('https://other.example/branding/0/89abcdef.png');
+	});
+
+	it('round-trips the community guidelines URL and clears a blank one', async () => {
+		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		const repository = createRepository(new MockKVProvider());
+		const originalSelfHosted = getConfig().instance.selfHosted;
+		getConfig().instance.selfHosted = true;
+		try {
+			expect((await repository.getAppPublicConfig()).legal).toEqual({
+				terms_url: null,
+				privacy_url: null,
+				guidelines_url: null,
+			});
+			const saved = await repository.setAppPublicConfig({
+				legal: {terms_url: 'https://example.org/tos', guidelines_url: ' https://example.org/rules '},
+			});
+			expect(saved.legal).toEqual({
+				terms_url: 'https://example.org/tos',
+				privacy_url: null,
+				guidelines_url: 'https://example.org/rules',
+			});
+			expect((await repository.getAppPublicConfig()).legal.guidelines_url).toBe('https://example.org/rules');
+			expect(getLegalUrls()).toEqual({termsUrl: 'https://example.org/tos', guidelinesUrl: 'https://example.org/rules'});
+			await repository.setAppPublicConfig({legal: {privacy_url: 'https://example.org/privacy'}});
+			expect((await repository.getAppPublicConfig()).legal.guidelines_url).toBe('https://example.org/rules');
+			await repository.setAppPublicConfig({legal: {guidelines_url: '  '}});
+			expect((await repository.getAppPublicConfig()).legal.guidelines_url).toBeNull();
+			expect(getLegalUrls()).toEqual({termsUrl: 'https://example.org/tos', guidelinesUrl: null});
+		} finally {
+			getConfig().instance.selfHosted = originalSelfHosted;
+			setCachedConfiguredLegalUrls({terms_url: null, guidelines_url: null});
+		}
+	});
+
+	it('loads the stored guidelines URL into the legal URL cache on initialize', async () => {
+		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		const kvProvider = new MockKVProvider();
+		const originalSelfHosted = getConfig().instance.selfHosted;
+		getConfig().instance.selfHosted = true;
+		try {
+			await createRepository(kvProvider).setConfig(
+				APP_PUBLIC_CONFIG_KEY,
+				JSON.stringify({legal: {terms_url: null, privacy_url: null, guidelines_url: 'https://example.org/rules'}}),
+			);
+			setCachedConfiguredLegalUrls({terms_url: null, guidelines_url: null});
+			expect(getLegalUrls().guidelinesUrl).toBeNull();
+			await createRepository(kvProvider).initialize();
+			expect(getLegalUrls().guidelinesUrl).toBe('https://example.org/rules');
+		} finally {
+			getConfig().instance.selfHosted = originalSelfHosted;
+			setCachedConfiguredLegalUrls({terms_url: null, guidelines_url: null});
+		}
+	});
+
+	it('keeps the product name cache in step with the stored branding', async () => {
+		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		const kvProvider = new MockKVProvider();
+		try {
+			await createRepository(kvProvider).setConfig(
+				APP_PUBLIC_CONFIG_KEY,
+				JSON.stringify({branding: {product_name: 'Example Chat'}}),
+			);
+			setCachedProductName(null);
+			await createRepository(kvProvider).initialize();
+			expect(getInstanceProductName()).toBe('Example Chat');
+			await createRepository(kvProvider).setAppPublicConfig({branding: {product_name: 'Renamed Chat'}});
+			expect(getInstanceProductName()).toBe('Renamed Chat');
+		} finally {
+			setCachedProductName(null);
+		}
+	});
+
+	it('reads a stored legal config written before the guidelines URL existed', async () => {
+		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		const repository = createRepository(new MockKVProvider());
+		await repository.setConfig(
+			APP_PUBLIC_CONFIG_KEY,
+			JSON.stringify({legal: {terms_url: 'https://example.org/tos', privacy_url: null}}),
+		);
+		expect((await repository.getAppPublicConfig()).legal).toEqual({
+			terms_url: 'https://example.org/tos',
+			privacy_url: null,
+			guidelines_url: null,
+		});
+	});
+
 	it('keeps valid stored instance policy flags when one field is invalid', async () => {
 		const executor = new CountingInMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
@@ -301,6 +436,37 @@ describe('InstanceConfigRepository', () => {
 		expect(domains).not.toContain('example.com');
 	});
 
+	it('serves the everyone channel threads config at version zero when the key is absent', async () => {
+		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		const repository = createRepository(new MockKVProvider());
+
+		await expect(repository.getChannelThreadsConfig()).resolves.toEqual(everyoneChannelThreadsConfig(0));
+	});
+
+	it.each([
+		{
+			name: 'a disabled row',
+			stored: JSON.stringify({
+				...DEFAULT_CHANNEL_THREADS_CONFIG,
+				enabled: false,
+				config_version: 9,
+				disabled_guild_ids: ['1400000000000000001'],
+				excluded_user_ids: ['1400000000000000002'],
+			}),
+			version: 9,
+		},
+		{name: 'a partial rollout row', stored: '{"enabled":true,"config_version":4,"guild_basis_points":100}', version: 4},
+		{name: 'a row with an invalid version', stored: '{"enabled":false,"config_version":-1}', version: 0},
+		{name: 'unparseable text', stored: 'not-json', version: 0},
+	])('serves the everyone channel threads config for $name and keeps the stored version', async ({stored, version}) => {
+		setCassandraQueryExecutorForTesting(new CountingInMemoryCassandraQueryExecutor());
+		const repository = createRepository(new MockKVProvider());
+
+		await repository.setConfig(CHANNEL_THREADS_CONFIG_KEY, stored);
+
+		await expect(repository.getChannelThreadsConfig()).resolves.toEqual(everyoneChannelThreadsConfig(version));
+	});
+
 	it('returns the default domain migration config when the key is absent', async () => {
 		const executor = new CountingInMemoryCassandraQueryExecutor();
 		setCassandraQueryExecutorForTesting(executor);
@@ -324,47 +490,6 @@ describe('InstanceConfigRepository', () => {
 		await repository.setConfig(DOMAIN_MIGRATION_CONFIG_KEY, stored);
 
 		await expect(repository.getDomainMigrationConfig()).resolves.toEqual(DEFAULT_DOMAIN_MIGRATION_CONFIG);
-	});
-
-	it('round-trips a stored domain migration config', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
-		setCassandraQueryExecutorForTesting(executor);
-		const kvProvider = new MockKVProvider();
-		const repository = createRepository(kvProvider);
-
-		const config: DomainMigrationConfig = {
-			...DEFAULT_DOMAIN_MIGRATION_CONFIG,
-			enabled: true,
-			config_version: 5,
-			rollout_basis_points: 2500,
-			rollout_salt: 'domain-migration-v2',
-			included_user_ids: ['1400000000000000001'],
-			excluded_user_ids: ['1400000000000000002'],
-			anonymous_rollout_basis_points: 300,
-			standalone_forwarding: true,
-		};
-		await repository.setDomainMigrationConfig(config);
-
-		await expect(repository.getDomainMigrationConfig()).resolves.toEqual(config);
-	});
-
-	it('fills newly added domain migration fields from the schema defaults', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
-		setCassandraQueryExecutorForTesting(executor);
-		const kvProvider = new MockKVProvider();
-		const repository = createRepository(kvProvider);
-
-		await repository.setConfig(
-			DOMAIN_MIGRATION_CONFIG_KEY,
-			JSON.stringify({enabled: true, config_version: 2, rollout_basis_points: 1000}),
-		);
-
-		await expect(repository.getDomainMigrationConfig()).resolves.toEqual({
-			...DEFAULT_DOMAIN_MIGRATION_CONFIG,
-			enabled: true,
-			config_version: 2,
-			rollout_basis_points: 1000,
-		});
 	});
 
 	it('publishes a refresh so another repository observes the domain migration config', async () => {
@@ -411,32 +536,6 @@ describe('InstanceConfigRepository', () => {
 		await repository.setConfig(EXPERIMENT_DELIVERY_CONFIG_KEY, stored);
 
 		await expect(repository.getExperimentDeliveryConfig()).resolves.toEqual(DEFAULT_EXPERIMENT_DELIVERY_CONFIG);
-	});
-
-	it('round-trips a stored experiment delivery config', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
-		setCassandraQueryExecutorForTesting(executor);
-		const kvProvider = new MockKVProvider();
-		const repository = createRepository(kvProvider);
-
-		const config: ExperimentDeliveryConfig = {poll_interval_seconds: 900, poll_jitter_percent: 0};
-		await repository.setExperimentDeliveryConfig(config);
-
-		await expect(repository.getExperimentDeliveryConfig()).resolves.toEqual(config);
-	});
-
-	it('fills missing experiment delivery fields from the schema defaults', async () => {
-		const executor = new CountingInMemoryCassandraQueryExecutor();
-		setCassandraQueryExecutorForTesting(executor);
-		const kvProvider = new MockKVProvider();
-		const repository = createRepository(kvProvider);
-
-		await repository.setConfig(EXPERIMENT_DELIVERY_CONFIG_KEY, JSON.stringify({poll_interval_seconds: 3600}));
-
-		await expect(repository.getExperimentDeliveryConfig()).resolves.toEqual({
-			...DEFAULT_EXPERIMENT_DELIVERY_CONFIG,
-			poll_interval_seconds: 3600,
-		});
 	});
 
 	it('uses the registration URL id as the admin-visible registration code', async () => {

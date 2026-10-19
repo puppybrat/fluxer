@@ -4,17 +4,19 @@ import Accessibility from '@app/features/accessibility/state/Accessibility';
 import {showChannelDeleteFailedModal} from '@app/features/app/components/alerts/ChannelDeleteFailedModal';
 import {GenericErrorModal} from '@app/features/app/components/alerts/GenericErrorModal';
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
+import {ChannelSettingsModal} from '@app/features/app/components/dialogs/LoadableSettingsModals';
 import Authentication from '@app/features/auth/state/Authentication';
 import * as ChannelCommands from '@app/features/channel/commands/ChannelCommands';
 import * as LinkChannelCommands from '@app/features/channel/commands/LinkChannelCommands';
 import * as PrivateChannelCommands from '@app/features/channel/commands/PrivateChannelCommands';
 import {ChannelDuplicateModal} from '@app/features/channel/components/modals/ChannelDuplicateModal';
-import {ChannelSettingsModal} from '@app/features/channel/components/modals/ChannelSettingsModal';
+import {ChannelFollowModal} from '@app/features/channel/components/modals/ChannelFollowModal';
 import {EditGroupModal} from '@app/features/channel/components/modals/EditGroupModal';
 import {GroupInvitesModal} from '@app/features/channel/components/modals/GroupInvitesModal';
 import {useDeleteMyMessagesInChannel} from '@app/features/channel/hooks/useDeleteMyMessagesInChannel';
 import type {Channel} from '@app/features/channel/models/Channel';
 import {duplicateChannel, getDuplicateChannelDefaultValues} from '@app/features/channel/utils/ChannelCreateModalUtils';
+import {canFollowAnnouncementChannel, FOLLOW_CHANNEL_DESCRIPTOR} from '@app/features/channel/utils/ChannelFollowUtils';
 import {
 	CLOSE_DM_DESCRIPTOR,
 	DELETE_CHANNEL_DESCRIPTOR,
@@ -28,6 +30,8 @@ import {
 	UNPIN_GROUP_DM_DESCRIPTOR,
 } from '@app/features/channel/utils/ChannelMessageDescriptors';
 import {ChannelDebugModal} from '@app/features/devtools/components/debug/ChannelDebugModal';
+import {isNewPostsUnreadEnabled, setNewPostsUnreadEnabled} from '@app/features/forum/state/ForumReadState';
+import {NEW_POSTS_NOTIFICATION_DESCRIPTOR} from '@app/features/forum/utils/ForumMessageDescriptors';
 import {GuildNotificationSettingsModal} from '@app/features/guild/components/modals/GuildNotificationSettingsModal';
 import {useLeaveGroup} from '@app/features/guild/hooks/useLeaveGroup';
 import type {Guild} from '@app/features/guild/models/Guild';
@@ -62,6 +66,7 @@ import Permission from '@app/features/permissions/state/Permission';
 import {Logger} from '@app/features/platform/utils/AppLogger';
 import * as ReadStateCommands from '@app/features/read_state/commands/ReadStateCommands';
 import ReadStates from '@app/features/read_state/state/ReadStates';
+import {remFromPx} from '@app/features/theme/layout/RemFromPx';
 import {
 	CloseDMIcon,
 	CopyIcon,
@@ -81,6 +86,7 @@ import {
 	PinIcon,
 	SendInvitesIcon,
 	SettingsIcon,
+	VoiceCallIcon,
 } from '@app/features/ui/action_menu/ContextMenuIcons';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
@@ -89,12 +95,18 @@ import * as ToastCommands from '@app/features/ui/commands/ToastCommands';
 import type {MenuActionEvent, MenuGroupType, MenuItemType} from '@app/features/ui/menu_bottom_sheet/MenuBottomSheet';
 import UserGuildSettings from '@app/features/user/state/UserGuildSettings';
 import UserSettings from '@app/features/user/state/UserSettings';
+import {VoiceP2pConsentModal} from '@app/features/voice/components/alerts/VoiceP2pConsentModal';
+import MediaEngine from '@app/features/voice/engine/MediaEngineFacade';
 import CompactVoiceCallHeight, {getGuildVoiceCallExpansionKey} from '@app/features/voice/state/CompactVoiceCallHeight';
+import VoiceP2pConsent from '@app/features/voice/state/VoiceP2pConsent';
+import VoiceP2pRollout from '@app/features/voice/state/VoiceP2pRollout';
+import {VOICE_P2P_START_CALL_DESCRIPTOR} from '@app/features/voice/utils/VoiceMessageDescriptors';
 import {getMutedText} from '@app/lib/overlay/OverlayContextMenu';
 import {ME} from '@fluxer/constants/src/AppConstants';
 import {ChannelTypes, Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
+import {MegaphoneSimpleIcon} from '@phosphor-icons/react';
 import {useMemo} from 'react';
 
 const CHANNEL_LINK_COPIED_DESCRIPTOR = msg({
@@ -167,14 +179,16 @@ export interface ChannelMenuData {
 	state: ChannelMenuState;
 }
 
-export interface ChannelMenuHandlers {
+interface ChannelMenuHandlers {
 	handleMarkAsRead: () => void;
 	handleToggleFavorite: () => void;
 	handleInviteMembers: () => void;
+	handleFollowChannel: () => void;
 	handleCopyChannelLink: () => Promise<void>;
 	handleOpenChannelLink: () => void;
 	handleCopyLinkChannelUrl: () => Promise<void>;
 	handleOpenChat: () => void;
+	handleStartP2pCall: () => void;
 	handleOpenMuteSheet: () => void;
 	handleNotificationSettings: () => void;
 	handleDuplicateChannel: (event?: MenuActionEvent) => void;
@@ -192,7 +206,7 @@ export interface ChannelMenuHandlers {
 	handleResetMatureContentAgreeState: () => void;
 }
 
-export interface ChannelMenuState {
+interface ChannelMenuState {
 	isGroupDM: boolean;
 	isDM: boolean;
 	isTextChannel: boolean;
@@ -205,6 +219,8 @@ export interface ChannelMenuState {
 	canManageChannels: boolean;
 	canEditChannel: boolean;
 	canInvite: boolean;
+	canStartP2pCall: boolean;
+	canFollow: boolean;
 	developerMode: boolean;
 	isPinned: boolean;
 	mutedText: string | undefined;
@@ -214,7 +230,7 @@ function getChannelMenuState(channel: Channel, guild: Guild | undefined): Channe
 	const currentUserId = Authentication.currentUserId;
 	const isGroupDM = channel.type === ChannelTypes.GROUP_DM;
 	const isDM = channel.type === ChannelTypes.DM;
-	const isTextChannel = channel.type === ChannelTypes.GUILD_TEXT;
+	const isTextChannel = channel.type === ChannelTypes.GUILD_TEXT || channel.type === ChannelTypes.GUILD_ANNOUNCEMENT;
 	const isVoiceChannel = channel.type === ChannelTypes.GUILD_VOICE;
 	const isLinkChannel = channel.type === ChannelTypes.GUILD_LINK;
 	const isOwner = isGroupDM && channel.ownerId === currentUserId;
@@ -238,6 +254,13 @@ function getChannelMenuState(channel: Channel, guild: Guild | undefined): Channe
 		});
 	const canEditChannel = canManageChannels || canUpdateRtcRegion;
 	const canInvite = InviteUtils.canInviteToChannel(channel.id, channel.guildId);
+	const canStartP2pCall =
+		isVoiceChannel &&
+		!channel.rtcP2p &&
+		VoiceP2pRollout.enabled &&
+		Object.keys(MediaEngine.getAllVoiceStatesInChannel(channel.guildId ?? ME, channel.id)).length === 0 &&
+		Permission.can(Permissions.CONNECT, {channelId: channel.id, guildId: channel.guildId});
+	const canFollow = canFollowAnnouncementChannel(channel);
 	const developerMode = UserSettings.developerMode;
 	const isPinned = channel.isPinned;
 	return {
@@ -253,6 +276,8 @@ function getChannelMenuState(channel: Channel, guild: Guild | undefined): Channe
 		canManageChannels,
 		canEditChannel,
 		canInvite,
+		canStartP2pCall,
+		canFollow,
 		developerMode,
 		isPinned,
 		mutedText,
@@ -300,6 +325,17 @@ export function useChannelMenuData(
 					)),
 				);
 			},
+			handleFollowChannel: () => {
+				ModalCommands.pushAfterBottomSheetClose(
+					onClose,
+					modal(() => (
+						<ChannelFollowModal
+							channelId={channel.id}
+							data-flx="ui.action-menu.items.channel-menu-data.handle-follow-channel.channel-follow-modal"
+						/>
+					)),
+				);
+			},
 			handleCopyChannelLink: async () => {
 				const link = buildChannelLink({
 					guildId: channel.guildId,
@@ -331,6 +367,24 @@ export function useChannelMenuData(
 					NavigationCommands.selectChannel(channel.guildId, channel.id);
 				}
 				onClose();
+			},
+			handleStartP2pCall: () => {
+				const guildId = channel.guildId ?? null;
+				ModalCommands.pushAfterBottomSheetClose(
+					onClose,
+					modal(() => (
+						<VoiceP2pConsentModal
+							intent="start"
+							allowStandard={false}
+							onP2p={() => {
+								VoiceP2pConsent.agree(channel.id);
+								void MediaEngine.connectToVoiceChannel(guildId, channel.id);
+							}}
+							onCancel={() => {}}
+							data-flx="ui.action-menu.items.channel-menu-data.handle-start-p2p-call.voice-p2p-consent-modal"
+						/>
+					)),
+				);
 			},
 			handleOpenMuteSheet: () => {
 				onOpenMuteSheet?.();
@@ -383,12 +437,15 @@ export function useChannelMenuData(
 			handleChannelSettings: () => {
 				ModalCommands.pushAfterBottomSheetClose(
 					onClose,
-					modal(() => (
-						<ChannelSettingsModal
-							channelId={channel.id}
-							data-flx="ui.action-menu.items.channel-menu-data.handle-channel-settings.channel-settings-modal"
-						/>
-					)),
+					modal(
+						() => (
+							<ChannelSettingsModal
+								channelId={channel.id}
+								data-flx="ui.action-menu.items.channel-menu-data.handle-channel-settings.channel-settings-modal"
+							/>
+						),
+						'channel-settings',
+					),
 				);
 			},
 			handleDeleteChannel: () => {
@@ -629,19 +686,26 @@ export function useChannelMenuData(
 			menuGroups.push({items});
 			return menuGroups;
 		}
-		if (guild && (state.isTextChannel || state.isVoiceChannel || state.isLinkChannel)) {
+		if (guild && (state.isTextChannel || state.isVoiceChannel || state.isLinkChannel || channel.isThreadOnly())) {
+			const voiceItems: Array<MenuItemType> = [];
 			if (state.isVoiceChannel && !Accessibility.voiceChannelJoinRequiresDoubleClick) {
-				menuGroups.push({
-					items: [
-						{
-							icon: (
-								<MessageUserIcon size={20} data-flx="ui.action-menu.items.channel-menu-data.groups.open-chat-icon" />
-							),
-							label: i18n._(OPEN_CHAT_DESCRIPTOR),
-							onClick: handlers.handleOpenChat,
-						},
-					],
+				voiceItems.push({
+					icon: <MessageUserIcon size={20} data-flx="ui.action-menu.items.channel-menu-data.groups.open-chat-icon" />,
+					label: i18n._(OPEN_CHAT_DESCRIPTOR),
+					onClick: handlers.handleOpenChat,
 				});
+			}
+			if (state.canStartP2pCall) {
+				voiceItems.push({
+					icon: (
+						<VoiceCallIcon size={20} data-flx="ui.action-menu.items.channel-menu-data.groups.start-p2p-call-icon" />
+					),
+					label: i18n._(VOICE_P2P_START_CALL_DESCRIPTOR),
+					onClick: handlers.handleStartP2pCall,
+				});
+			}
+			if (voiceItems.length > 0) {
+				menuGroups.push({items: voiceItems});
 			}
 			const metaItems: Array<MenuItemType> = [];
 			if (showMarkAsReadItem) {
@@ -651,7 +715,7 @@ export function useChannelMenuData(
 					onClick: handlers.handleMarkAsRead,
 				});
 			}
-			if (Accessibility.showFavorites) {
+			if (Accessibility.showFavorites && !channel.isThread() && !channel.isThreadOnly()) {
 				metaItems.push({
 					icon: (
 						<FavoriteIcon
@@ -668,11 +732,24 @@ export function useChannelMenuData(
 				menuGroups.push({items: metaItems});
 			}
 			const inviteItems: Array<MenuItemType> = [];
-			if (state.canInvite) {
+			if (state.canInvite && !channel.isThreadOnly()) {
 				inviteItems.push({
 					icon: <InviteIcon size={20} data-flx="ui.action-menu.items.channel-menu-data.groups.invite-icon" />,
 					label: i18n._(INVITE_PEOPLE_DESCRIPTOR),
 					onClick: handlers.handleInviteMembers,
+				});
+			}
+			if (state.canFollow) {
+				inviteItems.push({
+					icon: (
+						<MegaphoneSimpleIcon
+							size={remFromPx(20)}
+							weight="fill"
+							data-flx="ui.action-menu.items.channel-menu-data.groups.follow-icon"
+						/>
+					),
+					label: i18n._(FOLLOW_CHANNEL_DESCRIPTOR),
+					onClick: handlers.handleFollowChannel,
 				});
 			}
 			if (state.isLinkChannel && channel.url) {
@@ -724,6 +801,17 @@ export function useChannelMenuData(
 				onClick: handlers.handleNotificationSettings,
 			});
 			menuGroups.push({items: notificationItems});
+			if (channel.isThreadOnly()) {
+				menuGroups.push({
+					items: [
+						{
+							label: i18n._(NEW_POSTS_NOTIFICATION_DESCRIPTOR),
+							checked: isNewPostsUnreadEnabled(channel),
+							onChange: (checked: boolean) => setNewPostsUnreadEnabled(channel, checked),
+						},
+					],
+				});
+			}
 			if (state.canEditChannel) {
 				const manageItems: Array<MenuItemType> = [
 					{

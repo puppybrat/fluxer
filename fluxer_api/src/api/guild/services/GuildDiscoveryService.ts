@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {GuildID, UserID} from '@app/api/BrandedTypes';
+import {type ChannelID, type GuildID, guildIdToRoleId, type UserID} from '@app/api/BrandedTypes';
 import {Config} from '@app/api/Config';
+import type {ChannelDataRepository} from '@app/api/channel/repositories/ChannelDataRepository';
 import type {GuildDiscoveryRow} from '@app/api/database/types/GuildDiscoveryTypes';
+import {type ThreadViewer, viewerActive} from '@app/api/experiment/ChannelThreadsGate';
 import {mapGuildToGuildResponse} from '@app/api/guild/GuildModel';
-import type {IGuildDiscoveryRepository} from '@app/api/guild/repositories/GuildDiscoveryRepository';
-import type {IGuildRepositoryAggregate} from '@app/api/guild/repositories/IGuildRepositoryAggregate';
+import type {GuildDiscoveryRepository} from '@app/api/guild/repositories/GuildDiscoveryRepository';
+import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import {contentModerationService} from '@app/api/infrastructure/ContentModerationService';
 import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import {Logger} from '@app/api/Logger';
 import type {IGuildSearchService} from '@app/api/search/IGuildSearchService';
+import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {
 	DISCOVERY_DEFAULT_LANGUAGE,
 	DISCOVERY_MAX_TAGS,
@@ -20,6 +23,7 @@ import {
 	normalizeDiscoveryTag,
 } from '@fluxer/constants/src/DiscoveryConstants';
 import {GuildFeatures, getEffectiveGuildVerificationLevel} from '@fluxer/constants/src/GuildConstants';
+import {THREAD_CHANNEL_TYPES, THREAD_ONLY_CHANNEL_TYPES} from '@fluxer/constants/src/ThreadConstants';
 import {FeatureTemporarilyDisabledError} from '@fluxer/errors/src/domains/core/FeatureTemporarilyDisabledError';
 import {DiscoveryAlreadyAppliedError} from '@fluxer/errors/src/domains/discovery/DiscoveryAlreadyAppliedError';
 import {DiscoveryApplicationAlreadyReviewedError} from '@fluxer/errors/src/domains/discovery/DiscoveryApplicationAlreadyReviewedError';
@@ -50,54 +54,6 @@ function resolveLanguage(language: string | null | undefined, fallback: string |
 	return DISCOVERY_DEFAULT_LANGUAGE;
 }
 
-export abstract class IGuildDiscoveryService {
-	abstract apply(params: {
-		guildId: GuildID;
-		userId: UserID;
-		description: string;
-		categoryId: number;
-		primaryLanguage?: string;
-		customTags?: ReadonlyArray<string>;
-	}): Promise<GuildDiscoveryRow>;
-
-	abstract editApplication(params: {
-		guildId: GuildID;
-		userId: UserID;
-		data: DiscoveryApplicationPatchRequest;
-	}): Promise<GuildDiscoveryRow>;
-
-	abstract withdraw(params: {guildId: GuildID; userId: UserID}): Promise<void>;
-
-	abstract getStatus(guildId: GuildID): Promise<GuildDiscoveryRow | null>;
-
-	abstract approve(params: {guildId: GuildID; adminUserId: UserID; reason?: string}): Promise<GuildDiscoveryRow>;
-
-	abstract reject(params: {guildId: GuildID; adminUserId: UserID; reason: string}): Promise<GuildDiscoveryRow>;
-
-	abstract remove(params: {guildId: GuildID; adminUserId: UserID; reason: string}): Promise<GuildDiscoveryRow>;
-
-	abstract getEligibility(guildId: GuildID): Promise<{
-		eligible: boolean;
-		min_member_count: number;
-	}>;
-
-	abstract listByStatus(params: {status: string}): Promise<Array<GuildDiscoveryRow>>;
-
-	abstract searchDiscoverable(params: {
-		query?: string;
-		categoryId?: number;
-		primaryLanguage?: string;
-		tag?: string;
-		sortBy?: string;
-		limit: number;
-		offset: number;
-	}): Promise<{
-		guilds: Array<DiscoveryGuildResult>;
-		total: number;
-		category_counts: Array<DiscoveryCategoryCount>;
-	}>;
-}
-
 interface DiscoveryCategoryCount {
 	category_type: number;
 	count: number;
@@ -118,7 +74,13 @@ interface DiscoveryGuildResult {
 	verification_level: number;
 }
 
+interface DiscoveryChannelPreview {
+	guild: {id: string; name: string; icon: string | null};
+	channel: {id: string; name: string | null; type: number};
+}
+
 const DISCOVERY_CATEGORY_FACET = 'discoveryCategory';
+const PUBLIC_CHANNEL_PERMISSIONS = Permissions.VIEW_CHANNEL | Permissions.READ_MESSAGE_HISTORY;
 
 function toDiscoveryCategoryCounts(
 	counts: Readonly<Record<string, number>> | undefined,
@@ -137,15 +99,14 @@ function toDiscoveryCategoryCounts(
 	return entries.sort((left, right) => left.category_type - right.category_type);
 }
 
-export class GuildDiscoveryService extends IGuildDiscoveryService {
+export class GuildDiscoveryService {
 	constructor(
-		private readonly discoveryRepository: IGuildDiscoveryRepository,
-		private readonly guildRepository: IGuildRepositoryAggregate,
+		private readonly discoveryRepository: GuildDiscoveryRepository,
+		private readonly guildRepository: GuildRepository,
 		private readonly gatewayService: IGatewayService,
 		private readonly guildSearchService: IGuildSearchService | null,
-	) {
-		super();
-	}
+		private readonly channelDataRepository: ChannelDataRepository,
+	) {}
 
 	async apply(params: {
 		guildId: GuildID;
@@ -380,6 +341,44 @@ export class GuildDiscoveryService extends IGuildDiscoveryService {
 
 	async listByStatus(params: {status: string}): Promise<Array<GuildDiscoveryRow>> {
 		return this.discoveryRepository.listFullByStatus(params.status);
+	}
+
+	async getChannelPreview(
+		guildId: GuildID,
+		channelId: ChannelID,
+		viewer: ThreadViewer,
+	): Promise<DiscoveryChannelPreview> {
+		const [status, guild, channel, everyoneRole] = await Promise.all([
+			this.discoveryRepository.findByGuildId(guildId),
+			this.guildRepository.findUnique(guildId),
+			this.channelDataRepository.findUnique(channelId),
+			this.guildRepository.getRole(guildIdToRoleId(guildId), guildId),
+		]);
+		if (
+			status?.status !== DiscoveryApplicationStatus.APPROVED ||
+			!guild ||
+			guild.features.has(GuildFeatures.INVITES_DISABLED) ||
+			!channel ||
+			channel.guildId !== guildId ||
+			!everyoneRole ||
+			THREAD_CHANNEL_TYPES.has(channel.type) ||
+			(THREAD_ONLY_CHANNEL_TYPES.has(channel.type) && !viewerActive(viewer, guildId))
+		) {
+			throw new DiscoveryNotDiscoverableError();
+		}
+		if ((everyoneRole.permissions & Permissions.ADMINISTRATOR) === 0n) {
+			const overwrite = channel.permissionOverwrites.get(everyoneRole.id);
+			const permissions = overwrite
+				? (everyoneRole.permissions & ~overwrite.deny) | overwrite.allow
+				: everyoneRole.permissions;
+			if ((permissions & PUBLIC_CHANNEL_PERMISSIONS) !== PUBLIC_CHANNEL_PERMISSIONS) {
+				throw new DiscoveryNotDiscoverableError();
+			}
+		}
+		return {
+			guild: {id: guild.id.toString(), name: guild.name, icon: guild.iconHash},
+			channel: {id: channel.id.toString(), name: channel.name, type: channel.type},
+		};
 	}
 
 	async searchDiscoverable(params: {

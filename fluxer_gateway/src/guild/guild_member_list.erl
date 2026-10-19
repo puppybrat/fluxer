@@ -5,11 +5,9 @@
 
 -export([
     calculate_list_id/2,
-    get_member_groups/2,
     get_counts/2,
     subscribe_ranges/4,
     unsubscribe_session/2,
-    get_items_in_range/3,
     build_sync_response/4,
     member_list_snapshot/2,
     get_online_count/1,
@@ -63,10 +61,6 @@ valid_range_item(Range) ->
         Valid -> {true, Valid}
     end.
 
--spec get_member_groups(list_id(), guild_state()) -> [map()].
-get_member_groups(ListId, State) ->
-    guild_member_list_read:get_member_groups(ListId, State).
-
 -spec get_counts(list_id(), guild_state()) -> {non_neg_integer(), non_neg_integer()}.
 get_counts(ListId, State) ->
     guild_member_list_read:get_counts(ListId, State).
@@ -79,10 +73,6 @@ subscribe_ranges(SessionId, ListId, Ranges, State) ->
 -spec unsubscribe_session(binary(), guild_state()) -> guild_state().
 unsubscribe_session(SessionId, State) ->
     guild_member_list_subscribe:unsubscribe_session(SessionId, State).
-
--spec get_items_in_range(list_id(), range(), guild_state()) -> [map()].
-get_items_in_range(ListId, Range, State) ->
-    guild_member_list_read:get_items_in_range(ListId, Range, State).
 
 -spec build_sync_response(integer(), list_id(), [range()], guild_state()) -> map().
 build_sync_response(GuildId, ListId, Ranges, State) ->
@@ -177,17 +167,6 @@ split_range_by_max_span({Start, End}) ->
     [{Start, ChunkEnd} | split_range_by_max_span({ChunkEnd + 1, End})].
 
 -ifdef(TEST).
-
-calculate_list_id_returns_channel_id_test() ->
-    State = #{
-        id => 100,
-        data => #{<<"channels">> => [#{<<"id">> => <<"500">>}]}
-    },
-    ?assertEqual(<<"500">>, calculate_list_id(500, State)).
-
-calculate_list_id_missing_channel_test() ->
-    State = #{id => 100, data => #{}},
-    ?assertEqual(undefined, calculate_list_id(123, State)).
 
 normalize_ranges_empty_test() ->
     ?assertEqual([], normalize_ranges([])).

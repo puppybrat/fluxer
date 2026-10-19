@@ -16,13 +16,26 @@ import {
 import {UserIndexRepository} from '@app/api/user/repositories/account/crud/UserIndexRepository';
 import {UserSearchRepository} from '@app/api/user/repositories/account/crud/UserSearchRepository';
 import {UserLookupRepository} from '@app/api/user/repositories/account/UserLookupRepository';
-import type {UserDeletionScheduleUpdate} from '@app/api/user/repositories/IUserAccountRepository';
 import {
 	extractPremiumFlagsFromLegacyUserFlags,
 	LEGACY_DEAD_USER_FLAGS_MASK,
 	LEGACY_PREMIUM_FLAGS_MASK,
 } from '@fluxer/constants/src/UserConstants';
 import type {IKVProvider} from '@pkgs/kv_client/src/IKVProvider';
+
+export interface UserDeletionScheduleUpdate {
+	pending_deletion_at: Date | null;
+	flags?: bigint;
+	deletion_reason_code?: number | null;
+	deletion_public_reason?: string | null;
+	deletion_audit_log_reason?: string | null;
+	deletion_scheduled_by?: UserID | null;
+	deletion_scheduled_at?: Date | null;
+	temp_banned_until?: Date | null;
+	first_refund_at?: Date | null;
+}
+
+const USER_FLAGS_WRITE_ATTEMPTS = 3;
 
 export class UserAccountRepository {
 	private dataRepo: UserDataRepository;
@@ -49,10 +62,6 @@ export class UserAccountRepository {
 
 	async findUniqueAssert(userId: UserID): Promise<User> {
 		return this.dataRepo.findUniqueAssert(userId);
-	}
-
-	async listAllUsersPaginated(limit: number, lastUserId?: UserID): Promise<Array<User>> {
-		return this.dataRepo.listAllUsersPaginated(limit, lastUserId);
 	}
 
 	async scanAllUsersPage(
@@ -112,12 +121,24 @@ export class UserAccountRepository {
 		return this.patchAccount(userId, patchData, oldData);
 	}
 
-	async compareAndSetSuspiciousFlags(user: User, suspiciousFlags: number): Promise<User | null> {
-		const result = await this.dataRepo.compareAndSetSuspiciousFlags(user, suspiciousFlags);
+	async compareAndSetFlags(user: User, flags: bigint): Promise<User | null> {
+		const result = await this.dataRepo.compareAndSetFlags(user, flags & ~LEGACY_DEAD_USER_FLAGS_MASK);
 		if (!result) return null;
 		const updatedUser = new User(result.updatedData);
 		await this.searchRepo.updateUser(updatedUser);
 		return updatedUser;
+	}
+
+	async updateFlags(userId: UserID, mutate: (flags: bigint) => bigint): Promise<User | null> {
+		for (let attempt = 0; attempt < USER_FLAGS_WRITE_ATTEMPTS; attempt++) {
+			const user = await this.findUnique(userId);
+			if (!user) return null;
+			const next = mutate(user.flags);
+			if (next === user.flags) return user;
+			const updated = await this.compareAndSetFlags(user, next);
+			if (updated) return updated;
+		}
+		throw new Error(`User ${userId} flags kept changing during update`);
 	}
 
 	async updateDeletionSchedule(user: User, patch: UserDeletionScheduleUpdate): Promise<User> {
@@ -238,6 +259,7 @@ export class UserAccountRepository {
 		updates: {
 			premiumWillCancel: boolean;
 			computedPremiumUntil: Date | null;
+			periodStart: Date | null;
 		},
 	): Promise<{
 		finalVersion: number | null;
@@ -272,7 +294,6 @@ export class UserAccountRepository {
 	private migratePremiumFlagsInPatch(patchData: Partial<UserRow>, oldData: UserRow): Partial<UserRow> {
 		const oldRawFlags = oldData.flags ?? 0n;
 		const oldLegacyPremiumBits = extractPremiumFlagsFromLegacyUserFlags(oldRawFlags);
-		const oldHasDeadBits = (oldRawFlags & LEGACY_DEAD_USER_FLAGS_MASK) !== 0n;
 		const flagsInPatch = patchData.flags;
 		let migratedPatch = patchData;
 		if (flagsInPatch !== undefined && flagsInPatch !== null) {
@@ -283,12 +304,10 @@ export class UserAccountRepository {
 				const basePremiumFlags = patchData.premium_flags ?? oldData.premium_flags ?? 0;
 				migratedPatch.premium_flags = basePremiumFlags | inboundLegacyPremium;
 			}
-		} else if (oldLegacyPremiumBits !== 0 || oldHasDeadBits) {
+		} else if (oldLegacyPremiumBits !== 0) {
 			migratedPatch = {...patchData, flags: oldRawFlags & ~LEGACY_PREMIUM_FLAGS_MASK & ~LEGACY_DEAD_USER_FLAGS_MASK};
-			if (oldLegacyPremiumBits !== 0) {
-				const basePremiumFlags = patchData.premium_flags ?? oldData.premium_flags ?? 0;
-				migratedPatch.premium_flags = basePremiumFlags | oldLegacyPremiumBits;
-			}
+			const basePremiumFlags = patchData.premium_flags ?? oldData.premium_flags ?? 0;
+			migratedPatch.premium_flags = basePremiumFlags | oldLegacyPremiumBits;
 		}
 		return migratedPatch;
 	}

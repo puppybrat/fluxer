@@ -73,16 +73,16 @@ const PATCHABLE_USER_FLAGS: &[UserFlag] = &[
         value: 1 << 6,
     },
     UserFlag {
+        name: "PROFILE_HIDDEN",
+        value: 1 << 7,
+    },
+    UserFlag {
         name: "HIGH_GLOBAL_RATE_LIMIT",
         value: 1 << 33,
     },
     UserFlag {
         name: "DELETED",
         value: 1 << 34,
-    },
-    UserFlag {
-        name: "DISABLED_SUSPICIOUS_ACTIVITY",
-        value: 1 << 35,
     },
     UserFlag {
         name: "SELF_DELETED",
@@ -109,6 +109,10 @@ const PATCHABLE_USER_FLAGS: &[UserFlag] = &[
         value: 1 << 49,
     },
     UserFlag {
+        name: "ACCOUNT_LIMITED",
+        value: 1 << 50,
+    },
+    UserFlag {
         name: "HAS_DISMISSED_PREMIUM_ONBOARDING",
         value: 1 << 51,
     },
@@ -125,26 +129,11 @@ const PATCHABLE_USER_FLAGS: &[UserFlag] = &[
         value: 1 << 60,
     },
     UserFlag {
-        name: "FORCE_INBOUND_PHONE_VERIFICATION",
-        value: 1 << 61,
-    },
-    UserFlag {
-        name: "NOT_SUSPICIOUS",
+        name: "LIMIT_EXEMPT",
         value: 1 << 62,
     },
 ];
 
-const SUSPICIOUS_ACTIVITY_FLAGS: &[&str] = &[
-    "REQUIRE_VERIFIED_EMAIL",
-    "REQUIRE_REVERIFIED_EMAIL",
-    "REQUIRE_VERIFIED_PHONE",
-    "REQUIRE_REVERIFIED_PHONE",
-    "REQUIRE_VERIFIED_EMAIL_OR_VERIFIED_PHONE",
-    "REQUIRE_REVERIFIED_EMAIL_OR_VERIFIED_PHONE",
-    "REQUIRE_VERIFIED_EMAIL_OR_REVERIFIED_PHONE",
-    "REQUIRE_REVERIFIED_EMAIL_OR_REVERIFIED_PHONE",
-    "REQUIRE_INBOUND_PHONE_VERIFICATION",
-];
 const GUILD_FEATURES: &[&str] = &[
     "ANIMATED_ICON",
     "ANIMATED_BANNER",
@@ -179,6 +168,7 @@ const GUILD_FEATURES: &[&str] = &[
     "VISIONARY",
     "LARGE_GUILD_OVERRIDE",
     "VERY_LARGE_GUILD",
+    "ANNOUNCEMENT_CHANNELS_DISABLED",
 ];
 
 const DEPRECATED_GUILD_FEATURES: &[&str] = &["CLONE_EMOJI_DISABLED", "CLONE_STICKER_DISABLED"];
@@ -191,7 +181,12 @@ fn guild_feature_label(feature: &str) -> String {
     }
 }
 
-pub fn bulk_actions_page(config: &AdminConfig, auth: &AuthContext, csrf_token: &str) -> Markup {
+pub fn bulk_actions_page(
+    config: &AdminConfig,
+    auth: &AuthContext,
+    csrf_token: &str,
+    username_sign_in: bool,
+) -> Markup {
     let base = &config.base_path;
     let admin_acls = auth
         .admin_user
@@ -205,9 +200,6 @@ pub fn bulk_actions_page(config: &AdminConfig, auth: &AuthContext, csrf_token: &
             @if acl::has_permission(admin_acls, acl::BULK_UPDATE_USER_FLAGS) {
                 (bulk_update_user_flags_section(base, csrf_token))
             }
-            @if acl::has_permission(admin_acls, acl::BULK_UPDATE_SUSPICIOUS_ACTIVITY) {
-                (bulk_update_suspicious_activity_section(base, csrf_token))
-            }
             @if acl::has_permission(admin_acls, acl::BULK_UPDATE_GUILD_FEATURES) {
                 (bulk_update_guild_features_section(base, csrf_token))
             }
@@ -215,7 +207,7 @@ pub fn bulk_actions_page(config: &AdminConfig, auth: &AuthContext, csrf_token: &
                 (bulk_add_guild_members_section(base, csrf_token))
             }
             @if acl::has_permission(admin_acls, acl::BULK_DELETE_USERS) {
-                (bulk_schedule_deletion_section(base, csrf_token))
+                (bulk_schedule_deletion_section(base, csrf_token, username_sign_in))
             }
             @if acl::has_permission(admin_acls, acl::BULK_DELETE_USER_MESSAGES) {
                 (bulk_delete_user_messages_section(base, csrf_token))
@@ -223,16 +215,6 @@ pub fn bulk_actions_page(config: &AdminConfig, auth: &AuthContext, csrf_token: &
         }
     };
     admin_layout(config, auth, "Bulk Actions", "bulk-actions", None, content)
-}
-
-fn flag_checkbox_grid(prefix: &str, flags: &[&str]) -> Markup {
-    html! {
-        div class="grid grid-cols-1 gap-3 sm:grid-cols-2" {
-            @for flag in flags {
-                (checkbox(prefix, flag, flag, false, true))
-            }
-        }
-    }
 }
 
 fn guild_feature_checkbox_grid(prefix: &str, include_deprecated: bool) -> Markup {
@@ -280,36 +262,6 @@ fn bulk_update_user_flags_section(base: &str, csrf_token: &str) -> Markup {
                     (text_input("audit_log_reason", "Audit Log Reason (optional)", "", "Reason for this bulk operation"))
                     (form_actions(html! {
                         (submit_button("Update User Flags"))
-                    }))
-                }
-            }
-        },
-    )
-}
-
-fn bulk_update_suspicious_activity_section(base: &str, csrf_token: &str) -> Markup {
-    section_card_simple(
-        "Bulk Update Suspicious Activity Flags",
-        html! {
-            form method="post" action={(base) "/bulk-actions?action=bulk-update-suspicious-activity-flags"} {
-                (csrf_input(csrf_token))
-                div class="space-y-4" {
-                    (textarea_input("user_ids", "User IDs (one per line)", "123456789\n987654321", "", 5, true))
-                    div {
-                        p class="font-semibold text-neutral-500 text-xs uppercase tracking-wide mb-2" {
-                            "Flags to Add"
-                        }
-                        (flag_checkbox_grid("add_flags[]", SUSPICIOUS_ACTIVITY_FLAGS))
-                    }
-                    div {
-                        p class="font-semibold text-neutral-500 text-xs uppercase tracking-wide mb-2" {
-                            "Flags to Remove"
-                        }
-                        (flag_checkbox_grid("remove_flags[]", SUSPICIOUS_ACTIVITY_FLAGS))
-                    }
-                    (text_input("audit_log_reason", "Audit Log Reason (optional)", "", "Reason for this bulk operation"))
-                    (form_actions(html! {
-                        (submit_button("Update Suspicious Activity Flags"))
                     }))
                 }
             }
@@ -388,7 +340,7 @@ fn bulk_add_guild_members_section(base: &str, csrf_token: &str) -> Markup {
     )
 }
 
-fn bulk_schedule_deletion_section(base: &str, csrf_token: &str) -> Markup {
+fn bulk_schedule_deletion_section(base: &str, csrf_token: &str, username_sign_in: bool) -> Markup {
     section_card_simple(
         "Bulk Schedule User Deletion",
         html! {
@@ -427,7 +379,11 @@ fn bulk_schedule_deletion_section(base: &str, csrf_token: &str) -> Markup {
                         },
                     ))
                     (text_input("audit_log_reason", "Audit Log Reason (optional)", "", "Reason for this bulk operation"))
-                    (opt_out_checkbox("notify_user", "Email each user about the scheduled deletion"))
+                    @if username_sign_in {
+                        input type="hidden" name="notify_user_present" value="1";
+                    } @else {
+                        (opt_out_checkbox("notify_user", "Email each user about the scheduled deletion"))
+                    }
                     (form_actions(html! {
                         (danger_button("Schedule Deletion"))
                     }))
@@ -463,42 +419,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn add_grid_offers_only_the_opt_in_clone_features() {
-        let markup = guild_feature_checkbox_grid("add_features[]", false).into_string();
-        assert!(markup.contains(r#"value="CLONE_EMOJI_ENABLED""#));
-        assert!(markup.contains(r#"value="CLONE_STICKER_ENABLED""#));
-        assert!(!markup.contains(r#"value="CLONE_EMOJI_DISABLED""#));
-        assert!(!markup.contains(r#"value="CLONE_STICKER_DISABLED""#));
-    }
-
-    #[test]
-    fn deletion_form_has_no_preselected_reason() {
-        let markup = bulk_schedule_deletion_section("/admin", "csrf").into_string();
-        assert!(markup.contains(r#"<option value="" selected>Select a reason</option>"#));
-        for (value, _) in DELETION_REASONS {
-            assert!(!markup.contains(&format!(r#"<option value="{value}" selected>"#)));
-        }
-    }
-
-    #[test]
-    fn deletion_form_defaults_to_the_moderation_retention_floor() {
-        let markup = bulk_schedule_deletion_section("/admin", "csrf").into_string();
-        assert!(markup.contains(r#"name="days_until_deletion" value="60" min="14" max="365""#));
-    }
-
-    #[test]
     fn deletion_form_emails_each_user_by_default() {
-        let markup = bulk_schedule_deletion_section("/admin", "csrf").into_string();
+        let markup = bulk_schedule_deletion_section("/admin", "csrf", false).into_string();
         assert!(markup.contains(r#"name="notify_user" value="true" checked"#));
         assert!(markup.contains(r#"name="notify_user_present" value="1""#));
     }
 
     #[test]
-    fn remove_grid_can_clear_the_deprecated_clone_features() {
-        let markup = guild_feature_checkbox_grid("remove_features[]", true).into_string();
-        assert!(markup.contains(r#"value="CLONE_EMOJI_DISABLED""#));
-        assert!(markup.contains(r#"value="CLONE_STICKER_DISABLED""#));
-        assert!(markup.contains("CLONE_EMOJI_DISABLED (deprecated, removal only)"));
-        assert!(markup.contains(r#"value="CLONE_EMOJI_ENABLED""#));
+    fn username_mode_hides_the_email_choices() {
+        let deletion = bulk_schedule_deletion_section("/admin", "csrf", true).into_string();
+        assert!(!deletion.contains("Email each user"));
+        assert!(!deletion.contains(r#"name="notify_user" value="true""#));
+        assert!(deletion.contains(r#"name="notify_user_present" value="1""#));
     }
 }

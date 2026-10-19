@@ -103,7 +103,8 @@ spawn_guild_connect_worker(GuildId, Attempt, SessionId, UserId, Bot, IsStaff, In
         bot => Bot,
         is_staff => IsStaff,
         initial_guild_id => maps:get(initial_guild_id, State, undefined),
-        user_data => maps:get(user_data, State, #{})
+        user_data => maps:get(user_data, State, #{}),
+        thread_channels_capable => maps:get(thread_channels_capable, State, false)
     },
     {WorkerPid, WorkerRef} = spawn_monitor(fun() ->
         do_guild_connect_with_release(Ctx)
@@ -459,8 +460,10 @@ finalize_guild_monitor(GuildId, GuildPid, Guilds0, State, ReadyFun) ->
     session_state()
 ) -> session_result().
 apply_ready_fun(GuildId, GuildPid, ReadyFun, State) ->
-    case ReadyFun(State) of
+    State1 = session_guild_health:forget(GuildId, State),
+    case ReadyFun(State1) of
         {noreply, ReadyState} ->
+            ok = guild_health:send_current(GuildPid, self()),
             ReplayedState = maybe_replay_guild_subscriptions(GuildId, GuildPid, ReadyState),
             {noreply, session_dm_partners:register_guild(GuildId, GuildPid, ReplayedState)};
         {stop, normal, ReadyState} ->

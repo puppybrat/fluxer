@@ -2,11 +2,12 @@
 
 import {requireEmailVerified} from '@app/api/auth/EmailVerificationUtils';
 import {createEmojiID, type MessageID, type UserID} from '@app/api/BrandedTypes';
-import type {IChannelRepositoryAggregate} from '@app/api/channel/repositories/IChannelRepositoryAggregate';
+import type {ChannelRepository} from '@app/api/channel/ChannelRepository';
 import type {AuthenticatedChannel} from '@app/api/channel/services/AuthenticatedChannel';
 import {dispatchChannelEvent} from '@app/api/channel/services/ChannelGatewayDispatch';
 import {MessageInteractionBase, type ParsedEmoji} from '@app/api/channel/services/interaction/MessageInteractionBase';
-import type {IGuildRepositoryAggregate} from '@app/api/guild/repositories/IGuildRepositoryAggregate';
+import {assertThreadInteractionAllowed} from '@app/api/channel/services/thread/ThreadInteractionGuards';
+import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {LimitConfigService} from '@app/api/limits/LimitConfigService';
 import {resolveLimitSafe} from '@app/api/limits/LimitConfigUtils';
@@ -14,7 +15,8 @@ import {createLimitMatchContext} from '@app/api/limits/LimitMatchContextBuilder'
 import type {Channel} from '@app/api/models/Channel';
 import type {MessageReaction} from '@app/api/models/MessageReaction';
 import type {User} from '@app/api/models/User';
-import type {IUserRepository} from '@app/api/user/IUserRepository';
+import {assertAccountNotLimited} from '@app/api/user/AccountLimit';
+import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import {mapUserToPartialResponse} from '@app/api/user/UserMappers';
 import {assertGuildMemberCanCommunicate} from '@app/api/utils/GuildCommunicationUtils';
 import {Permissions} from '@fluxer/constants/src/ChannelConstants';
@@ -38,9 +40,9 @@ const REACTION_CUSTOM_EMOJI_REGEX = /^(.+):(\d+)$/;
 export class MessageReactionService extends MessageInteractionBase {
 	constructor(
 		gatewayService: IGatewayService,
-		private channelRepository: IChannelRepositoryAggregate,
-		private userRepository: IUserRepository,
-		private guildRepository: IGuildRepositoryAggregate,
+		private channelRepository: ChannelRepository,
+		private userRepository: UserRepository,
+		private guildRepository: GuildRepository,
 		private limitConfigService: LimitConfigService,
 	) {
 		super(gatewayService);
@@ -161,6 +163,7 @@ export class MessageReactionService extends MessageInteractionBase {
 		const channel = authChannel.channel;
 		const {guild, hasPermission, checkPermission} = authChannel;
 		this.ensureTextChannel(channel);
+		assertThreadInteractionAllowed(authChannel, 'react');
 		assertGuildMemberCanCommunicate(authChannel.member);
 		await this.assertMessageHistoryAccess({authChannel, messageId});
 		if (this.isOperationDisabled(guild, GuildOperations.REACTIONS)) {
@@ -171,6 +174,7 @@ export class MessageReactionService extends MessageInteractionBase {
 		const requestingUser = await this.userRepository.findUnique(userId);
 		if (requestingUser) {
 			requireEmailVerified(requestingUser, 'reaction');
+			assertAccountNotLimited(requestingUser);
 		}
 		const guildFeatures = guild?.features ?? null;
 		const maxUsersPerReaction = this.resolveLimitForUser({
@@ -264,6 +268,7 @@ export class MessageReactionService extends MessageInteractionBase {
 		const channel = authChannel.channel;
 		const {guild, hasPermission} = authChannel;
 		this.ensureTextChannel(channel);
+		assertThreadInteractionAllowed(authChannel, 'react', {ignoreTimeout: true});
 		await this.assertMessageHistoryAccess({authChannel, messageId});
 		if (this.isOperationDisabled(guild, GuildOperations.REACTIONS)) {
 			throw new FeatureTemporarilyDisabledError();
@@ -304,6 +309,7 @@ export class MessageReactionService extends MessageInteractionBase {
 		const channel = authChannel.channel;
 		const {guild, hasPermission} = authChannel;
 		this.ensureTextChannel(channel);
+		assertThreadInteractionAllowed(authChannel, 'react', {ignoreTimeout: true});
 		await this.assertMessageHistoryAccess({authChannel, messageId});
 		if (this.isOperationDisabled(guild, GuildOperations.REACTIONS)) {
 			throw new FeatureTemporarilyDisabledError();
@@ -336,6 +342,7 @@ export class MessageReactionService extends MessageInteractionBase {
 		const channel = authChannel.channel;
 		const {guild, hasPermission} = authChannel;
 		this.ensureTextChannel(channel);
+		assertThreadInteractionAllowed(authChannel, 'react', {ignoreTimeout: true});
 		await this.assertMessageHistoryAccess({authChannel, messageId});
 		if (this.isOperationDisabled(guild, GuildOperations.REACTIONS)) {
 			throw new FeatureTemporarilyDisabledError();
@@ -345,17 +352,6 @@ export class MessageReactionService extends MessageInteractionBase {
 		await this.assertCanModerateMessageReactions({channel, hasPermission});
 		await this.channelRepository.messageInteractions.removeAllReactions(channel.id, messageId);
 		await this.dispatchMessageReactionRemoveAll({channel, messageId});
-	}
-
-	async getMessageReactions({
-		authChannel,
-		messageId,
-	}: {
-		authChannel: AuthenticatedChannel;
-		messageId: MessageID;
-	}): Promise<Array<MessageReaction>> {
-		await this.assertMessageHistoryAccess({authChannel, messageId});
-		return this.channelRepository.messageInteractions.listMessageReactions(authChannel.channel.id, messageId);
 	}
 
 	private async assertCanModerateMessageReactions({

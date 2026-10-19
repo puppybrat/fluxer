@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use crate::utils::plural::count_noun;
+use crate::utils::timestamps::format_admin_timestamp;
 use crate::{
     api::types::{GuildInfo, GuildMember, ListGuildMembersResponse},
     config::AdminConfig,
@@ -9,7 +11,7 @@ use crate::{
         media::user_avatar_url,
         page_container::card_with_header,
     },
-    utils::bigint::format_discriminator,
+    utils::{bigint::format_discriminator, user_tag::user_tag},
 };
 use maud::{Markup, html};
 
@@ -103,12 +105,14 @@ fn member_card(
     member: &GuildMember,
     csrf_token: &str,
 ) -> Markup {
-    let disc = format_discriminator(&member.user.discriminator);
+    let tag = user_tag(
+        &member.user.username,
+        &format_discriminator(&member.user.discriminator),
+        member.user.bot,
+    );
     let display = match &member.user.global_name {
-        Some(gn) if !gn.trim().is_empty() => {
-            format!("{} ({}#{})", gn, member.user.username, disc)
-        }
-        _ => format!("{}#{}", member.user.username, disc),
+        Some(gn) if !gn.trim().is_empty() => format!("{gn} ({tag})"),
+        _ => tag,
     };
     let user_url = format!("{base}/users/{}", member.user.id);
     let avatar_url = user_avatar_url(
@@ -147,11 +151,11 @@ fn member_card(
                             "ID: " (member.user.id)
                         }
                         p class="text-sm text-neutral-500" {
-                            "Joined: " (member.joined_at)
+                            "Joined: " (format_admin_timestamp(&member.joined_at))
                         }
                         @if !member.roles.is_empty() {
                             p class="text-sm text-neutral-500" {
-                                (member.roles.len()) " roles"
+                                (count_noun(member.roles.len() as u64, "role", "roles"))
                             }
                         }
                     }

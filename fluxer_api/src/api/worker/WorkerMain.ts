@@ -5,6 +5,7 @@ import {createApiContext} from '@app/api/CreateApiContext';
 import {setDatabaseQueryExecutor} from '@app/api/database/CassandraQueryExecution';
 import {ensureChannelThemeSchema} from '@app/api/database/ChannelThemeSchema';
 import {ensurePostgresKvSchema, PostgresKvQueryExecutor} from '@app/api/database/PostgresKvQueryExecutor';
+import {channelThreadsEnabled, everEnabled} from '@app/api/experiment/ChannelThreadsGate';
 import {
 	jetStreamActivityPublisher,
 	shutdownActivityEvents,
@@ -18,6 +19,7 @@ import type {InstanceConfigRepository} from '@app/api/instance/InstanceConfigRep
 import {JobLedgerRepository} from '@app/api/jobs/JobLedgerRepository';
 import {Logger} from '@app/api/Logger';
 import type {LimitConfigService} from '@app/api/limits/LimitConfigService';
+import {startContentBlocklistCaches, stopContentBlocklistCaches} from '@app/api/middleware/ContentBlocklistCaches';
 import {
 	closeOwnedKVClient,
 	createSnowflakeService,
@@ -26,6 +28,7 @@ import {
 	shutdownVoiceResources,
 } from '@app/api/middleware/ServiceRegistry';
 import {
+	getAdminArchiveService,
 	getAdminRepository,
 	getCacheService,
 	getInstanceConfigRepository,
@@ -50,11 +53,21 @@ import {createWorkerProcessErrorHandler} from '@app/api/worker/WorkerProcessErro
 import {WorkerRunner} from '@app/api/worker/WorkerRunner';
 import {WorkerService} from '@app/api/worker/WorkerService';
 import {workerTasks} from '@app/api/worker/WorkerTaskRegistry';
-import {setupGracefulShutdown} from '@fluxer/hono/src/Server';
+import {createRegisteredMetricsHandler} from '@fluxer/hono/src/middleware/Metrics';
+import {createServer, setupGracefulShutdown} from '@fluxer/hono/src/Server';
+import type {ServerType} from '@hono/node-server';
 import {BACKGROUND_READ_TIMEOUT_MS, initCassandra, shutdownCassandra} from '@pkgs/cassandra/src/Client';
 import {JetStreamConnectionManager} from '@pkgs/nats/src/JetStreamConnectionManager';
 import {getDefaultPostgresClient, initPostgres, shutdownPostgres} from '@pkgs/postgres/src/Client';
 import type {WorkerTaskHandler} from '@pkgs/worker/src/contracts/WorkerTask';
+import {Hono} from 'hono';
+import {ms} from 'itty-time';
+
+function startWorkerMetricsServer(port: number): ServerType {
+	const app = new Hono();
+	app.get('/_metrics', createRegisteredMetricsHandler());
+	return createServer(app, {port, onListen: (info) => Logger.info({port: info.port}, 'Worker metrics listening')});
+}
 
 function registerCronJobs(cron: CronScheduler, jobsStreamMaxAgeMs: number): void {
 	cron.upsert('processAssetDeletionQueue', 'processAssetDeletionQueue', {}, '0 */5 * * * *', {ledger: false});
@@ -69,8 +82,18 @@ function registerCronJobs(cron: CronScheduler, jobsStreamMaxAgeMs: number): void
 		ledger: false,
 	});
 	cron.upsert('processExpiredPremiumSweep', 'processExpiredPremiumSweep', {}, '0 0 * * * *', {ledger: false});
+	if (!Config.instance.selfHosted) {
+		cron.upsert('processStorePurchaseRefreshQueue', 'processStorePurchaseRefreshQueue', {}, '0 */5 * * * *', {
+			ledger: false,
+		});
+		cron.upsert('pollGooglePlayVoidedPurchases', 'pollGooglePlayVoidedPurchases', {}, '0 30 4 * * *', {ledger: false});
+		cron.upsert('pollAppStoreNotificationHistory', 'pollAppStoreNotificationHistory', {}, '0 45 4 * * *', {
+			ledger: false,
+		});
+	}
 	cron.upsert('processInactivityDeletions', 'processInactivityDeletions', {}, '0 0 */6 * * *', {ledger: false});
 	cron.upsert('expireAttachments', 'expireAttachments', {}, '0 0 */12 * * *', {ledger: false});
+	cron.upsert('expireReportSnapshots', 'expireReportSnapshots', {}, '0 15 5 * * *', {ledger: false});
 	if (jobsStreamMaxAgeMs > 0 && jobsStreamMaxAgeMs <= JOBS_STREAM_MAX_AGE_MS) {
 		cron.upsert('expireStaleJobs', 'expireStaleJobs', {}, '0 45 3 * * *', {ledger: false});
 	} else {
@@ -87,6 +110,10 @@ function registerCronJobs(cron: CronScheduler, jobsStreamMaxAgeMs: number): void
 	}
 	cron.upsert('flushUserActivityBuffer', 'flushUserActivityBuffer', {}, '*/10 * * * * *', {ledger: false});
 	cron.upsert('drainActivitySpool', 'drainActivitySpool', {}, '*/5 * * * * *', {ledger: false});
+	cron.upsert('archiveInactiveThreads', 'archiveInactiveThreads', {}, '0 * * * * *', {
+		ledger: false,
+		enabled: () => everEnabled() || channelThreadsEnabled(),
+	});
 	Logger.info(
 		{
 			blocklistFeeds: Config.blocklistFeeds.enabled,
@@ -107,6 +134,7 @@ export async function startWorkerMain(): Promise<void> {
 	let instanceConfigRepository: InstanceConfigRepository | null = null;
 	let dependencies: WorkerDependencies | null = null;
 	let cron: CronScheduler | null = null;
+	let metricsServer: ServerType | null = null;
 	const heartbeat = new WorkerHeartbeat({logger: Logger});
 	const runners: Array<WorkerRunner> = [];
 	let searchInitialized = false;
@@ -124,6 +152,10 @@ export async function startWorkerMain(): Promise<void> {
 		Logger.info('Shutting down worker backend...');
 		const voiceShutdown = cleanupStep('voice resources', shutdownVoiceResources);
 		await cleanupStep('heartbeat', () => heartbeat.stop());
+		await cleanupStep('metrics server', () => {
+			metricsServer?.close();
+			metricsServer = null;
+		});
 		await cleanupStep('cron', () => cron?.stop());
 		await cleanupStep('account actions', stopAccountActionConsumer);
 		await cleanupStep('runners', async () => {
@@ -140,6 +172,7 @@ export async function startWorkerMain(): Promise<void> {
 			await jsConnectionManager?.drain();
 			jsConnectionManager = null;
 		});
+		await cleanupStep('content blocklist caches', stopContentBlocklistCaches);
 		await cleanupStep('worker dependencies', () => {
 			dependencies = null;
 			clearWorkerDependencies();
@@ -261,7 +294,17 @@ export async function startWorkerMain(): Promise<void> {
 		}
 		dependencies = await initializeWorkerDependencies(snowflakeService);
 		setWorkerDependencies(dependencies);
+		await startContentBlocklistCaches({kvClient: dependencies.kvClient, storageService: dependencies.storageService});
+		Logger.info('Content blocklist caches initialised for worker backend');
 		await queueBlocklistFeedStartupJobs(dependencies.kvClient, workerService, Config.blocklistFeeds.enabled);
+		try {
+			const normalized = await getInstanceConfigRepository().normalizeStoredBrandingAssets(dependencies.storageService);
+			if (normalized > 0) {
+				Logger.info({normalized}, 'Normalised stored instance branding assets to references');
+			}
+		} catch (error) {
+			Logger.warn({err: error}, 'Failed to normalise stored instance branding assets');
+		}
 		setActivityProcessChannel('worker');
 		await startActivityEvents({
 			publisher: jetStreamActivityPublisher(jsConnectionManager.getJetStreamClient()),
@@ -271,9 +314,23 @@ export async function startWorkerMain(): Promise<void> {
 		});
 		startSharedListWatch(jsConnectionManager.getJetStreamClient());
 		if (activeWorkerLanes.some((lane) => lane.name === 'lifecycle')) {
+			const apiContext = createApiContext();
 			startAccountActionConsumer({
 				js: jsConnectionManager.getJetStreamClient(),
-				state: accountStateDepsFromContext(createApiContext(), getAdminRepository()),
+				state: accountStateDepsFromContext(
+					apiContext,
+					getAdminRepository(),
+					{
+						userCacheService: dependencies.userCacheService,
+						guildRepository: dependencies.guildRepository,
+					},
+					{
+						archives: getAdminArchiveService(),
+						messageDeletionQueue: dependencies.bulkMessageDeletionQueueService,
+						messageDeletionDelayMs: Config.automatedMessageDeletionDelayDays * ms('1 day'),
+					},
+					dependencies.channelRepository,
+				),
 			});
 			Logger.info('Account action consumer started');
 		}
@@ -313,6 +370,9 @@ export async function startWorkerMain(): Promise<void> {
 			'Worker runners started',
 		);
 		heartbeat.start();
+		if (Config.worker.metricsPort !== undefined) {
+			metricsServer = startWorkerMetricsServer(Config.worker.metricsPort);
+		}
 		setupGracefulShutdown(shutdown, {logger: Logger, timeoutMs: 30000});
 		const handleProcessError = createWorkerProcessErrorHandler({
 			logger: Logger,

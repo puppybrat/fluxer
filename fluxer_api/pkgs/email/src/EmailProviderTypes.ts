@@ -4,8 +4,14 @@ export interface EmailConfig {
 	enabled: boolean;
 	fromEmail: string;
 	fromName: string;
+	replyTo?: string | null;
 	appBaseUrl: string;
-	marketingBaseUrl: string;
+	termsUrl: string | null;
+	guidelinesUrl: string | null;
+	appealsEmail: string | null;
+	safetyEmail: string | null;
+	supportEmail: string | null;
+	productName: string;
 }
 
 export interface EmailMessage {
@@ -14,6 +20,7 @@ export interface EmailMessage {
 		email: string;
 		name: string;
 	};
+	replyTo?: string;
 	subject: string;
 	text: string;
 }

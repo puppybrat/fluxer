@@ -4,10 +4,11 @@ import {
 	cloneTextareaSelectionSnapshot,
 	type TextareaSelectionSnapshot,
 } from '@app/features/messaging/utils/TextareaSelectionUtils';
+import {AccountScopedWork} from '@app/features/platform/state/AccountScopedWork';
 
 class TextareaSelection {
-	private readonly channelSelections: Record<string, TextareaSelectionSnapshot> = {};
-	private readonly editingSelections: Record<string, TextareaSelectionSnapshot> = {};
+	private channelSelections: Record<string, TextareaSelectionSnapshot> = {};
+	private editingSelections: Record<string, TextareaSelectionSnapshot> = {};
 
 	setChannelSelection(channelId: string, snapshot: TextareaSelectionSnapshot): void {
 		this.channelSelections[channelId] = cloneTextareaSelectionSnapshot(snapshot);
@@ -22,10 +23,6 @@ class TextareaSelection {
 		delete this.channelSelections[channelId];
 	}
 
-	setEditingSelection(channelId: string, messageId: string, snapshot: TextareaSelectionSnapshot): void {
-		this.editingSelections[this.getEditingKey(channelId, messageId)] = cloneTextareaSelectionSnapshot(snapshot);
-	}
-
 	getEditingSelection(channelId: string, messageId: string): TextareaSelectionSnapshot | null {
 		const snapshot = this.editingSelections[this.getEditingKey(channelId, messageId)];
 		return snapshot ? cloneTextareaSelectionSnapshot(snapshot) : null;
@@ -35,9 +32,18 @@ class TextareaSelection {
 		delete this.editingSelections[this.getEditingKey(channelId, messageId)];
 	}
 
+	reset(): void {
+		this.channelSelections = {};
+		this.editingSelections = {};
+	}
+
 	private getEditingKey(channelId: string, messageId: string): string {
 		return `${channelId}:${messageId}`;
 	}
 }
 
-export default new TextareaSelection();
+const textareaSelection = new TextareaSelection();
+
+AccountScopedWork.registerCancellation(() => textareaSelection.reset());
+
+export default textareaSelection;

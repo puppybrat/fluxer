@@ -50,6 +50,7 @@ const processStripeWebhook: WorkerTaskHandler = async (payload, helpers) => {
 		productRegistry,
 		deps.cacheService,
 		deps.gatewayService,
+		deps.storeEntitlementService,
 	);
 	const giftService = new StripeGiftService(
 		stripe,
@@ -59,6 +60,7 @@ const processStripeWebhook: WorkerTaskHandler = async (payload, helpers) => {
 		checkoutService,
 		premiumService,
 		subscriptionService,
+		deps.storeEntitlementService,
 	);
 	const ageVerificationService = new AgeVerificationService(
 		stripe,
@@ -69,7 +71,6 @@ const processStripeWebhook: WorkerTaskHandler = async (payload, helpers) => {
 	const refundService = new StripeRefundService(stripe, deps.userRepository, subscriptionService);
 	const webhookService = new StripeWebhookService(
 		stripe,
-		checkoutService,
 		deps.userRepository,
 		deps.userCacheService,
 		sessionTerminator,
@@ -87,6 +88,7 @@ const processStripeWebhook: WorkerTaskHandler = async (payload, helpers) => {
 		deps.snowflakeService,
 		deps.billingRepository,
 		refundService,
+		deps.storeEntitlementService,
 	);
 	await webhookService.handleWebhook({body, signature});
 };

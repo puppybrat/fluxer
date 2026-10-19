@@ -4,6 +4,7 @@ import {PASSWORD_MANAGER_IGNORE_ATTRIBUTES} from '@app/features/platform/utils/P
 import styles from '@app/features/ui/components/form/FormCombobox.module.css';
 import {Scroller} from '@app/features/ui/components/Scroller';
 import FocusRing from '@app/features/ui/focus_ring/FocusRing';
+import {usePortalHost} from '@app/features/ui/overlay/PortalHostContext';
 import {Combobox as BaseCombobox, type ComboboxPortalProps} from '@base-ui/react/combobox';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
@@ -22,13 +23,26 @@ export interface ComboboxOption<V extends Primitive = string> {
 	isDisabled?: boolean;
 }
 
+export function resolveNearestNumericOption(
+	inputValue: string,
+	options: ReadonlyArray<ComboboxOption<number>>,
+): number | undefined {
+	const numericMatch = inputValue.trim().match(/([0-9]+(?:\.[0-9]+)?)/);
+	if (!numericMatch) return undefined;
+	const parsedValue = Number(numericMatch[1]);
+	if (!Number.isFinite(parsedValue)) return undefined;
+	return options.reduce((nearest, option) =>
+		Math.abs(option.value - parsedValue) < Math.abs(nearest.value - parsedValue) ? option : nearest,
+	).value;
+}
+
 export interface ComboboxFilterOption<O> {
 	label: string;
 	value: string;
 	data: O;
 }
 
-export type ComboboxInputValueResolver<V extends Primitive, O extends ComboboxOption<V>> = (
+type ComboboxInputValueResolver<V extends Primitive, O extends ComboboxOption<V>> = (
 	inputValue: string,
 	options: ReadonlyArray<O>,
 ) => V | undefined;
@@ -68,6 +82,7 @@ export interface ComboboxProps<
 	renderValue?: (option: IsMulti extends true ? Array<O> : O | null) => React.ReactNode;
 	portalProps?: ComboboxPortalProps;
 	density?: 'default' | 'compact' | 'compactOverlay';
+	dir?: 'ltr' | 'rtl';
 	'aria-label'?: string;
 	'data-flx'?: string;
 }
@@ -168,15 +183,18 @@ export const Combobox = observer(function Combobox<
 	renderValue,
 	portalProps,
 	density = 'default',
+	dir,
 	'aria-label': ariaLabel,
 	'data-flx': dataFlx,
 }: ComboboxProps<V, IsMulti, O>) {
 	const {i18n} = useLingui();
+	const portalHost = usePortalHost();
 	const generatedId = useId();
 	const inputId = id ?? generatedId;
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	const controlRef = useRef<HTMLDivElement | null>(null);
 	const [open, setOpen] = useState(false);
+	const [isTyping, setIsTyping] = useState(false);
 	const selectedOptions = useMemo(() => {
 		if (isMulti) {
 			if (!Array.isArray(value)) return [];
@@ -246,9 +264,20 @@ export const Combobox = observer(function Combobox<
 		},
 		[autoSelectExactMatch, autoSelectValueFromInput, isMulti, onChange, resolveInputValue],
 	);
+	const selectSelectedLabel = useCallback(() => {
+		if (!isSearchable || isMulti || isTyping) return;
+		inputRef.current?.select();
+	}, [isMulti, isSearchable, isTyping]);
 	const handleFocus = useCallback(() => {
 		if (openMenuOnFocus && !disabled) setOpen(true);
-	}, [disabled, openMenuOnFocus]);
+		selectSelectedLabel();
+	}, [disabled, openMenuOnFocus, selectSelectedLabel]);
+	const handleInputValueChange = useCallback(
+		(_inputValue: string, eventDetails: BaseCombobox.Root.ChangeEventDetails) => {
+			if (eventDetails.reason === 'input-change') setIsTyping(true);
+		},
+		[],
+	);
 	const handleInputPointerDown = useCallback(
 		(event: React.PointerEvent<HTMLInputElement>) => {
 			if (isSearchable || disabled) return;
@@ -264,6 +293,7 @@ export const Combobox = observer(function Combobox<
 				eventDetails.cancel();
 				return;
 			}
+			if (!nextOpen) setIsTyping(false);
 			setOpen(nextOpen);
 		},
 		[closeMenuOnSelect],
@@ -310,7 +340,8 @@ export const Combobox = observer(function Combobox<
 		if (renderValue) return renderValue(selectedOption as IsMulti extends true ? Array<O> : O | null);
 		return null;
 	}, [i18n.locale, isMulti, renderValue, selectedOption, selectedOptionArray]);
-	const shouldShowValueOverlay = Boolean(renderedValue) && (!open || !isSearchable || Boolean(renderValue));
+	const shouldShowValueOverlay =
+		Boolean(renderedValue) && (!open || !isSearchable || (Boolean(renderValue) && !isTyping));
 	const hasSelectedValue = isMulti ? selectedOptionArray.length > 0 : selectedOption != null;
 	const emptyMessage = isLoading ? i18n._(LOADING_DESCRIPTOR) : i18n._(NO_RESULTS_FOUND_DESCRIPTOR);
 	return (
@@ -332,6 +363,7 @@ export const Combobox = observer(function Combobox<
 					onValueChange={handleValueChange}
 					open={open}
 					onOpenChange={handleOpenChange}
+					onInputValueChange={handleInputValueChange}
 					multiple={isMulti}
 					disabled={disabled}
 					filter={isSearchable ? comboboxFilter : null}
@@ -379,6 +411,7 @@ export const Combobox = observer(function Combobox<
 								tabIndex={tabIndex}
 								onBlur={handleBlur}
 								onFocus={handleFocus}
+								onClick={selectSelectedLabel}
 								onPointerDown={handleInputPointerDown}
 								aria-label={ariaLabel}
 								{...PASSWORD_MANAGER_IGNORE_ATTRIBUTES}
@@ -432,7 +465,7 @@ export const Combobox = observer(function Combobox<
 							</div>
 						</BaseCombobox.InputGroup>
 					</FocusRing>
-					<BaseCombobox.Portal {...portalProps} data-flx="ui.form.combobox.portal">
+					<BaseCombobox.Portal container={portalHost ?? undefined} {...portalProps} data-flx="ui.form.combobox.portal">
 						<BaseCombobox.Positioner
 							className={styles.positioner}
 							positionMethod="fixed"
@@ -445,6 +478,7 @@ export const Combobox = observer(function Combobox<
 								align: 'shift',
 								fallbackAxisSide: 'none',
 							}}
+							dir={dir}
 							data-flx="ui.form.combobox.positioner"
 						>
 							<BaseCombobox.Popup
@@ -461,6 +495,7 @@ export const Combobox = observer(function Combobox<
 									overflow="auto"
 									fade={false}
 									scrollbarTrackMode="overlay"
+									dir={dir}
 									data-flx="ui.form.combobox.list-scroller"
 								>
 									<BaseCombobox.List className={styles.list} data-flx="ui.form.combobox.list">

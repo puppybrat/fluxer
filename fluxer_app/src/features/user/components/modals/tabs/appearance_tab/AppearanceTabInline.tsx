@@ -1,29 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {SettingsSection} from '@app/features/app/components/dialogs/shared/SettingsSection';
-import {APP_ZOOM_LEVEL_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
+import {APP_ZOOM_LEVEL_DESCRIPTOR, THEME_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {ActiveNowTabContent} from '@app/features/user/components/modals/tabs/appearance_tab/ActiveNowTab';
 import {
 	HdrTabContent,
 	shouldShowHdrSettings,
 } from '@app/features/user/components/modals/tabs/appearance_tab/AppearanceTabHdrTab';
-import styles from '@app/features/user/components/modals/tabs/appearance_tab/AppearanceTabInline.module.css';
 import {ChannelListTabContent} from '@app/features/user/components/modals/tabs/appearance_tab/ChannelListTab';
 import {InterfaceTabContent} from '@app/features/user/components/modals/tabs/appearance_tab/InterfaceTab';
 import {MessagesTabContent} from '@app/features/user/components/modals/tabs/appearance_tab/MessagesTab';
 import {AppZoomLevelTabContent} from '@app/features/user/components/modals/tabs/appearance_tab/ScalingTab';
 import {StreamerModeTabContent} from '@app/features/user/components/modals/tabs/appearance_tab/StreamerModeTab';
 import {ThemeTabContent} from '@app/features/user/components/modals/tabs/appearance_tab/theme/ThemeTabContent';
+import styles from '@app/features/user/components/modals/tabs/TabInline.module.css';
 import {shouldShowAppZoomLevel} from '@app/features/user/components/settings_utils/AppZoomLevelUtils';
 import {msg} from '@lingui/core/macro';
 import {useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
 import type React from 'react';
 
-const THEME_DESCRIPTOR = msg({
-	message: 'Theme',
-	comment: 'Short label in the inline. Keep it concise.',
-});
 const HIGH_DYNAMIC_RANGE_DESCRIPTOR = msg({
 	message: 'High dynamic range',
 	comment: 'Short label in the inline. Keep it concise.',

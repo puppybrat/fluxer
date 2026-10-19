@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {IS_DEV} from '@app/features/platform/types/Env';
-import LocalPresence from '@app/features/presence/state/LocalPresence';
 import {makeAutoObservable} from 'mobx';
 
 const IDLE_DURATION_MS = 1000 * (IS_DEV ? 10 : 60 * 10);
@@ -30,6 +29,8 @@ function normalizeIdleTimeMs(value: number): number | null {
 
 class Idle {
 	idle = false;
+	afk = false;
+	private afkThresholdMs = IDLE_DURATION_MS;
 	private lastLocalActivityTime = Date.now();
 	private lastSystemActivityTime = 0;
 	private checkInterval: NodeJS.Timeout | null = null;
@@ -57,19 +58,21 @@ class Idle {
 
 	recordActivity(): void {
 		this.lastLocalActivityTime = Date.now();
-		if (this.idle) {
-			this.applyIdleState(false);
-		}
-	}
-
-	markBackground(): void {
-		this.lastLocalActivityTime = 0;
-		this.lastSystemActivityTime = 0;
-		this.applyIdleState(true);
+		this.applyInactiveDuration(0);
 	}
 
 	isIdle(): boolean {
 		return this.idle;
+	}
+
+	isAfk(): boolean {
+		return this.afk;
+	}
+
+	setAfkTimeoutMs(afkThresholdMs: number): void {
+		if (afkThresholdMs === this.afkThresholdMs) return;
+		this.afkThresholdMs = afkThresholdMs;
+		this.updateIdleStateFromLocalActivity();
 	}
 
 	getIdleSince(): number {
@@ -98,8 +101,7 @@ class Idle {
 	}
 
 	private updateIdleStateFromLocalActivity(): void {
-		const now = Date.now();
-		this.applyIdleState(this.getInactiveDurationMs(now) >= IDLE_DURATION_MS);
+		this.applyInactiveDuration(this.getInactiveDurationMs());
 	}
 
 	private async updateIdleStateFromSystem(desktopIdleApi: Required<DesktopIdleApi>): Promise<void> {
@@ -119,11 +121,9 @@ class Idle {
 		this.updateIdleStateFromLocalActivity();
 	}
 
-	private applyIdleState(idle: boolean): void {
-		if (idle !== this.idle) {
-			this.idle = idle;
-			LocalPresence.updatePresence();
-		}
+	private applyInactiveDuration(inactiveDurationMs: number): void {
+		this.idle = inactiveDurationMs >= IDLE_DURATION_MS;
+		this.afk = inactiveDurationMs >= this.afkThresholdMs;
 	}
 }
 

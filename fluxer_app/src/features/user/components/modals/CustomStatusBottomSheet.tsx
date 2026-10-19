@@ -23,8 +23,9 @@ import {Input} from '@app/features/ui/components/form/FormInput';
 import FocusRing from '@app/features/ui/focus_ring/FocusRing';
 import * as UserSettingsCommands from '@app/features/user/commands/UserSettingsCommands';
 import styles from '@app/features/user/components/modals/CustomStatusBottomSheet.module.css';
-import {type CustomStatus, normalizeCustomStatus} from '@app/features/user/state/CustomStatus';
+import {buildDraftStatus, normalizeCustomStatus} from '@app/features/user/state/CustomStatus';
 import Users from '@app/features/user/state/Users';
+import {handleAccountLimitedError} from '@app/features/user/utils/AccountLimitUtils';
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {SmileyIcon, XIcon} from '@phosphor-icons/react';
@@ -66,19 +67,6 @@ interface CustomStatusBottomSheetProps {
 	onClose: () => void;
 }
 
-const buildDraftStatus = (params: {
-	text: string;
-	emojiId: string | null;
-	emojiName: string | null;
-	expiresAt: string | null;
-}): CustomStatus | null => {
-	return normalizeCustomStatus({
-		text: params.text || null,
-		emojiId: params.emojiId,
-		emojiName: params.emojiName,
-		expiresAt: params.expiresAt,
-	});
-};
 export const CustomStatusBottomSheet = observer(({isOpen, onClose}: CustomStatusBottomSheetProps) => {
 	const {i18n} = useLingui();
 	const currentUser = Users.getCurrentUser();
@@ -159,6 +147,8 @@ export const CustomStatusBottomSheet = observer(({isOpen, onClose}: CustomStatus
 			});
 			await UserSettingsCommands.update({customStatus: statusToSave});
 			onClose();
+		} catch (error) {
+			if (!handleAccountLimitedError(error)) throw error;
 		} finally {
 			setIsSaving(false);
 		}

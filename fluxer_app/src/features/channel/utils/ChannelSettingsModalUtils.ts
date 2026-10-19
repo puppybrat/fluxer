@@ -24,6 +24,9 @@ export function getAvailableTabs(i18n: I18n, channelId: string): Array<ChannelSe
 		// A link channel carries no messages, so webhooks do not apply to it.
 		filteredTabs = filteredTabs.filter((tab) => tab.type !== 'webhooks');
 	}
+	if (channel.isThreadOnly()) {
+		filteredTabs = filteredTabs.filter((tab) => tab.type !== 'invites');
+	}
 	const permissionContext = {channelId: channel.id, guildId: channel.guildId};
 	const canUpdateRtcRegion =
 		channel.type === ChannelTypes.GUILD_VOICE && Permission.can(Permissions.UPDATE_RTC_REGION, permissionContext);

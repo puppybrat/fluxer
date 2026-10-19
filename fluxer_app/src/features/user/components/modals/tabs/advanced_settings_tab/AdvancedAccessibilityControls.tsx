@@ -3,22 +3,18 @@
 import * as AccessibilityCommands from '@app/features/accessibility/commands/AccessibilityCommands';
 import Accessibility from '@app/features/accessibility/state/Accessibility';
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
-import {PRODUCT_NAME} from '@app/features/app/config/I18nDisplayConstants';
+import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
 import {Switch} from '@app/features/ui/components/form/FormSwitch';
 import MobileLayout from '@app/features/ui/state/MobileLayout';
-import {
-	getCachedDesktopWindowBehaviorSettings,
-	getDesktopWindowBehaviorSettings,
-	relaunchDesktopApp,
-	setDesktopWindowBehaviorSettings,
-} from '@app/features/ui/utils/DesktopWindowBehaviorUtils';
+import {relaunchDesktopApp} from '@app/features/ui/utils/DesktopWindowBehaviorUtils';
+import {useDesktopWindowBehaviorSettings} from '@app/features/user/components/modals/tabs/advanced_settings_tab/AdvancedDesktopControls';
 import type {DesktopWindowBehaviorSettings} from '@app/types/electron.d';
-import {msg} from '@lingui/core/macro';
+import {msg, ph} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {observer} from 'mobx-react-lite';
-import {useCallback, useLayoutEffect, useState} from 'react';
+import {useCallback} from 'react';
 
 const ENABLE_TEXT_SELECTION_DESCRIPTOR = msg({
 	message: 'Enable text selection',
@@ -61,55 +57,17 @@ function hasDesktopMiddleClickAutoscrollPendingRestart(settings: DesktopWindowBe
 	return settings !== null && settings.middleClickAutoscroll !== settings.activeMiddleClickAutoscroll;
 }
 
-function useDesktopWindowBehaviorSettings() {
-	const cachedDesktopWindowBehavior = getCachedDesktopWindowBehaviorSettings();
-	const [desktopWindowBehavior, setDesktopWindowBehavior] = useState<DesktopWindowBehaviorSettings | null>(
-		cachedDesktopWindowBehavior,
-	);
-	const [desktopWindowBehaviorBusy, setDesktopWindowBehaviorBusy] = useState(cachedDesktopWindowBehavior === null);
-	useLayoutEffect(() => {
-		let mounted = true;
-		if (getCachedDesktopWindowBehaviorSettings() !== null) {
-			setDesktopWindowBehaviorBusy(false);
-			return () => {
-				mounted = false;
-			};
-		}
-		const initDesktopWindowBehavior = async () => {
-			const settings = await getDesktopWindowBehaviorSettings();
-			if (!mounted) return;
-			if (settings !== null) {
-				setDesktopWindowBehavior(settings);
-			}
-			setDesktopWindowBehaviorBusy(false);
-		};
-		void initDesktopWindowBehavior();
-		return () => {
-			mounted = false;
-		};
-	}, []);
-	const updateDesktopWindowBehavior = useCallback(async (settings: Partial<DesktopWindowBehaviorSettings>) => {
-		setDesktopWindowBehaviorBusy(true);
-		const nextSettings = await setDesktopWindowBehaviorSettings(settings);
-		if (nextSettings !== null) {
-			setDesktopWindowBehavior(nextSettings);
-		}
-		setDesktopWindowBehaviorBusy(false);
-		return nextSettings;
-	}, []);
-	return {desktopWindowBehavior, desktopWindowBehaviorBusy, updateDesktopWindowBehavior};
-}
-
 function useChromiumScrollingRestartModal() {
 	const {i18n} = useLingui();
 	return useCallback(() => {
 		ModalCommands.push(
 			modal(() => (
 				<ConfirmModal
-					title={i18n._(RESTART_PRODUCT_DESCRIPTOR, {productName: PRODUCT_NAME})}
+					title={i18n._(RESTART_PRODUCT_DESCRIPTOR, {productName: RuntimeConfig.productName})}
 					description={
 						<Trans>
-							{PRODUCT_NAME} needs to restart before Chromium's native scrolling settings change how scrolling works.
+							{ph({PRODUCT_NAME: RuntimeConfig.productName})} needs to restart before Chromium's native scrolling
+							settings change how scrolling works.
 						</Trans>
 					}
 					primaryText={i18n._(RESTART_NOW_DESCRIPTOR)}

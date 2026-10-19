@@ -10,7 +10,6 @@ import {
 import {resetSharedListsForTests} from '@app/api/infrastructure/activity/SharedLists';
 import {NullSearchProvider} from '@app/api/infrastructure/NullSearchProvider';
 import {ipBanCache} from '@app/api/middleware/IpBanMiddleware';
-import {setInjectedIpInfoService} from '@app/api/middleware/ServiceMiddleware';
 import {
 	setInjectedBlueskyOAuthService,
 	setInjectedGatewayService,
@@ -58,6 +57,7 @@ export interface ApiTestHarness {
 
 interface CreateApiTestHarnessOptions {
 	search?: 'disabled' | 'enabled';
+	registerRoutes?: (routes: HonoApp) => void;
 }
 
 export async function createApiTestHarness(options: CreateApiTestHarnessOptions = {}): Promise<ApiTestHarness> {
@@ -93,6 +93,7 @@ export async function createApiTestHarness(options: CreateApiTestHarnessOptions 
 	} = await createAPIApp({
 		config: Config,
 		logger: harnessLogger,
+		registerRoutes: options.registerRoutes,
 	});
 	try {
 		await initializeApp();
@@ -106,7 +107,6 @@ export async function createApiTestHarness(options: CreateApiTestHarnessOptions 
 		getInstanceConfigRepository().clearCacheForTesting();
 		kvProvider.reset();
 		mockBlueskyOAuthService.reset();
-		setInjectedIpInfoService(undefined);
 		setInjectedUnfurlerService(undefined);
 		resetSharedListsForTests();
 	}
@@ -134,7 +134,6 @@ export async function createApiTestHarness(options: CreateApiTestHarnessOptions 
 		setInjectedWorkerService(new NoopWorkerService());
 		setInjectedGatewayService(new NoopGatewayService());
 		setInjectedKVProvider(new MockKVProvider());
-		setInjectedIpInfoService(undefined);
 		setInjectedUnfurlerService(undefined);
 		resetSharedListsForTests();
 		const fallbackStorageService = new MockStorageService();

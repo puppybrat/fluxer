@@ -38,6 +38,10 @@ export interface MacScreenCaptureSource {
 
 export declare function listSources(): Promise<Array<MacScreenCaptureSource>>;
 
+export type MacScreenRecordingProbeResult = 'granted' | 'denied' | 'timeout' | 'unsupported';
+
+export declare function probeScreenRecordingAccess(): Promise<MacScreenRecordingProbeResult>;
+
 export interface ScreenCaptureRect {
 	x: number;
 	y: number;
@@ -75,8 +79,6 @@ export interface FrameSinkDiagnostics {
 }
 
 export declare const loadError: Error | null;
-
-export declare function __setBindingForTests(binding: unknown): void;
 
 export declare interface ScreenCapture {
 	on(event: 'error', listener: (err: Error) => void): this;

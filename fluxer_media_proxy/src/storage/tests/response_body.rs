@@ -2,19 +2,16 @@
 
 use crate::{
     byte_budget::ByteBudget,
-    range::ByteRange,
     storage::{
         StorageError,
         response_body::{
-            ByteStream, LocalStreamBufferPool, StreamResponseValidation, exact_byte_stream,
-            exact_response_stream, local_reader_stream, read_exact_bytes, read_response_bytes,
-            validate_stream_response,
+            ByteStream, LocalStreamBufferPool, exact_byte_stream, exact_response_stream,
+            local_reader_stream, read_exact_bytes, read_response_bytes,
         },
     },
 };
 use bytes::Bytes;
 use futures_util::{TryStreamExt as _, stream};
-use http::{HeaderMap, HeaderValue, StatusCode, header};
 
 fn byte_stream(chunks: Vec<Result<Bytes, std::io::Error>>) -> ByteStream {
     Box::pin(stream::iter(chunks))
@@ -161,67 +158,6 @@ async fn exact_stream_rejects_short_long_and_erroring_sources() {
     assert_eq!(error.kind(), std::io::ErrorKind::Other);
 }
 
-#[test]
-fn stream_response_validation_requires_exact_headers_status_and_range() {
-    let mut full_headers = HeaderMap::new();
-    full_headers.insert(header::CONTENT_LENGTH, HeaderValue::from_static("10"));
-    assert!(
-        validate_stream_response(StreamResponseValidation {
-            status: StatusCode::OK,
-            headers: &full_headers,
-            total_length: 10,
-            expected_length: 10,
-            byte_range: None,
-        })
-        .is_ok()
-    );
-
-    let range = ByteRange { start: 2, end: 5 };
-    let mut partial_headers = HeaderMap::new();
-    partial_headers.insert(header::CONTENT_LENGTH, HeaderValue::from_static("4"));
-    partial_headers.insert(
-        header::CONTENT_RANGE,
-        HeaderValue::from_static("bytes 2-5/10"),
-    );
-    assert!(
-        validate_stream_response(StreamResponseValidation {
-            status: StatusCode::PARTIAL_CONTENT,
-            headers: &partial_headers,
-            total_length: 10,
-            expected_length: 4,
-            byte_range: Some(range),
-        })
-        .is_ok()
-    );
-
-    partial_headers.insert(
-        header::CONTENT_RANGE,
-        HeaderValue::from_static("bytes 3-6/10"),
-    );
-    assert!(matches!(
-        validate_stream_response(StreamResponseValidation {
-            status: StatusCode::PARTIAL_CONTENT,
-            headers: &partial_headers,
-            total_length: 10,
-            expected_length: 4,
-            byte_range: Some(range),
-        }),
-        Err(StorageError::ObjectChanged)
-    ));
-
-    full_headers.insert(header::CONTENT_LENGTH, HeaderValue::from_static("9"));
-    assert!(matches!(
-        validate_stream_response(StreamResponseValidation {
-            status: StatusCode::OK,
-            headers: &full_headers,
-            total_length: 10,
-            expected_length: 10,
-            byte_range: None,
-        }),
-        Err(StorageError::ObjectChanged)
-    ));
-}
-
 #[tokio::test]
 async fn provider_response_readers_hold_the_declared_length_and_the_byte_budget() {
     let budget = ByteBudget::new(1 << 20);
@@ -281,4 +217,51 @@ async fn exact_stream_accepts_small_transport_chunks_and_bounds_empty_ones() {
         .await
         .expect_err("empty chunk flood");
     assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+}
+
+fn chunked_provider_response(chunks: Vec<Bytes>) -> reqwest::Response {
+    let body = reqwest::Body::wrap_stream(stream::iter(
+        chunks.into_iter().map(Ok::<Bytes, std::io::Error>),
+    ));
+    reqwest::Response::from(http::Response::new(body))
+}
+
+#[tokio::test]
+async fn response_reader_accepts_transport_chunks_of_any_size_within_the_length() {
+    const LARGE_CHUNK_BYTES: usize =
+        crate::response_body_limit::RESPONSE_BODY_TRANSPORT_CHUNK_BYTES_MAX + 155_648;
+    let budget = ByteBudget::new(4 * LARGE_CHUNK_BYTES);
+    let large = read_response_bytes(
+        provider_response(vec![7u8; LARGE_CHUNK_BYTES]),
+        LARGE_CHUNK_BYTES,
+        &budget,
+    )
+    .await
+    .expect("a transport chunk larger than the reserved allowance");
+    assert_eq!(large.as_ref().len(), LARGE_CHUNK_BYTES);
+
+    const SMALL_CHUNK_BYTES: usize = 1448;
+    const SMALL_CHUNKS: usize = 512;
+    let small = read_response_bytes(
+        chunked_provider_response(
+            (0..SMALL_CHUNKS)
+                .map(|_| Bytes::from(vec![9u8; SMALL_CHUNK_BYTES]))
+                .collect(),
+        ),
+        SMALL_CHUNK_BYTES * SMALL_CHUNKS,
+        &budget,
+    )
+    .await
+    .expect("packet-sized transport chunks");
+    assert_eq!(small.as_ref().len(), SMALL_CHUNK_BYTES * SMALL_CHUNKS);
+
+    assert!(matches!(
+        read_response_bytes(
+            chunked_provider_response((0..4096).map(|_| Bytes::new()).collect()),
+            4,
+            &budget,
+        )
+        .await,
+        Err(StorageError::ObjectStorage(_))
+    ));
 }

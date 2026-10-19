@@ -8,19 +8,14 @@
 
 -export([
     start_link/0,
-    lookup/1,
-    lookup_async/2,
     start_or_lookup/1,
     dispatch_to_user/3,
-    terminate_all_sessions/1,
     handoff_for_drain/0,
-    call_via_manager/2,
     call_via_manager_local/2,
     track_shard_user/2,
     untrack_shard_user/2,
     ensure_shard_user_table/0,
     delete_shard_user_table/0,
-    get_shard_user_ids/1,
     clear_shard_user_ids/1
 ]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -38,15 +33,6 @@
 start_link() ->
     normalize_start_link(gen_server:start_link({local, ?MODULE}, ?MODULE, [], [])).
 
--spec lookup(user_id()) -> {ok, pid()} | {error, not_found}.
-lookup(UserId) ->
-    case presence_manager_cache:lookup(UserId) of
-        {hit, Pid} ->
-            {ok, Pid};
-        miss ->
-            lookup_and_cache(UserId)
-    end.
-
 -spec start_or_lookup(map()) -> {ok, pid()} | {error, term()}.
 start_or_lookup(Request) when is_map(Request) ->
     case request_user_id(Request) of
@@ -55,21 +41,6 @@ start_or_lookup(Request) when is_map(Request) ->
         UserId ->
             start_or_lookup_for_user(UserId, Request)
     end.
-
--spec lookup_async(user_id(), term()) -> ok.
-lookup_async(UserId, Message) ->
-    _ =
-        case presence_manager_cache:lookup(UserId) of
-            {hit, Pid} ->
-                _ = gen_server:cast(Pid, Message);
-            miss ->
-                spawn_lookup_and_cast(UserId, Message)
-        end,
-    ok.
-
--spec spawn_lookup_and_cast(user_id(), term()) -> pid().
-spawn_lookup_and_cast(UserId, Message) ->
-    spawn(fun() -> lookup_and_cast(UserId, Message) end).
 
 -spec request_user_id(map()) -> user_id() | undefined.
 request_user_id(#{user_id := UserId}) when is_integer(UserId) ->
@@ -92,41 +63,6 @@ start_or_lookup_for_user(UserId, Request) ->
         _ ->
             {error, unavailable}
     end.
-
--spec lookup_and_cache(user_id()) -> {ok, pid()} | {error, not_found}.
-lookup_and_cache(UserId) ->
-    case
-        presence_manager_routing:call_owner_manager(
-            UserId, {lookup, UserId}, ?DEFAULT_GEN_SERVER_TIMEOUT
-        )
-    of
-        {ok, Pid} when is_pid(Pid) ->
-            presence_manager_cache:put_if_local(UserId, Pid),
-            {ok, Pid};
-        _ ->
-            {error, not_found}
-    end.
-
--spec lookup_and_cast(user_id(), term()) -> ok.
-lookup_and_cast(UserId, Message) ->
-    case
-        presence_manager_routing:call_owner_manager(
-            UserId, {lookup, UserId}, ?DEFAULT_GEN_SERVER_TIMEOUT
-        )
-    of
-        {ok, Pid} when is_pid(Pid) ->
-            presence_manager_cache:put_if_local(UserId, Pid),
-            gen_server:cast(Pid, Message);
-        _ ->
-            ok
-    end.
-
--spec terminate_all_sessions(user_id()) -> ok | {error, term()}.
-terminate_all_sessions(UserId) ->
-    Reply = presence_manager_routing:call_owner_manager(
-        UserId, {terminate_all_sessions, UserId}, ?DEFAULT_GEN_SERVER_TIMEOUT
-    ),
-    normalize_ok_reply(Reply).
 
 -spec handoff_for_drain() -> ok.
 handoff_for_drain() ->
@@ -193,11 +129,6 @@ handle_call({lookup, UserId}, _From, State) when is_integer(UserId) ->
 handle_call({dispatch, UserId, Event, Data}, _From, State) when is_integer(UserId) ->
     {Reply, NewState} = presence_manager_shards:forward_call(
         UserId, {dispatch, UserId, Event, Data}, State
-    ),
-    {reply, Reply, NewState};
-handle_call({terminate_all_sessions, UserId}, _From, State) when is_integer(UserId) ->
-    {Reply, NewState} = presence_manager_shards:forward_call(
-        UserId, {terminate_all_sessions, UserId}, State
     ),
     {reply, Reply, NewState};
 handle_call({start_or_lookup, _} = Request, _From, State) ->
@@ -272,10 +203,6 @@ safe_stop_shard(Pid) when is_pid(Pid) ->
         exit:_ -> ok
     end.
 
--spec call_via_manager(term(), pos_integer()) -> term().
-call_via_manager(Request, Timeout) ->
-    presence_manager_routing:call_via_manager(Request, Timeout).
-
 -spec call_via_manager_local(term(), pos_integer()) -> term().
 call_via_manager_local(Request, Timeout) ->
     presence_manager_routing:call_via_manager_local(Request, Timeout).
@@ -293,14 +220,6 @@ handle_start_or_lookup_call(Request, State) ->
 -spec extract_user_id(term()) -> user_id() | undefined.
 extract_user_id({start_or_lookup, #{user_id := UserId}}) when is_integer(UserId) -> UserId;
 extract_user_id(_) -> undefined.
-
--spec normalize_ok_reply(term()) -> ok | {error, term()}.
-normalize_ok_reply(ok) ->
-    ok;
-normalize_ok_reply({error, Reason}) ->
-    {error, Reason};
-normalize_ok_reply(_) ->
-    {error, unavailable}.
 
 -spec normalize_start_link(gen_server:start_ret()) -> {ok, pid()} | {error, term()}.
 normalize_start_link({ok, Pid}) ->
@@ -429,8 +348,5 @@ safe_cast_presence_rejoin_tolerates_dead_pid_test() ->
     Pid = spawn(fun() -> ok end),
     ok = gateway_retry_timer:wait(50),
     ?assertEqual(ok, safe_cast_presence_rejoin(Pid)).
-
-trigger_presence_rejoin_empty_list_is_ok_test() ->
-    ?assertEqual(ok, trigger_presence_rejoin([])).
 
 -endif.

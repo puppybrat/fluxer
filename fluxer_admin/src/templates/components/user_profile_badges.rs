@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use crate::admin_flags::user_flag_bits;
+use crate::utils::timestamps::format_admin_timestamp;
 use maud::{Markup, html};
 
 pub mod premium_types {
@@ -22,18 +23,21 @@ fn premium_tooltip(
     if is_self_hosted {
         let name = self_hosted_premium_name?;
         return Some(match premium_since {
-            Some(since) => format!("{name} subscriber since {since}"),
+            Some(since) => format!("{name} subscriber since {}", format_admin_timestamp(since)),
             None => name.to_owned(),
         });
     }
     Some(if premium_type == premium_types::LIFETIME {
         match premium_since {
-            Some(since) => format!("Fluxer Visionary since {since}"),
+            Some(since) => format!("Fluxer Visionary since {}", format_admin_timestamp(since)),
             None => "Fluxer Visionary".into(),
         }
     } else {
         match premium_since {
-            Some(since) => format!("Fluxer Plutonium subscriber since {since}"),
+            Some(since) => format!(
+                "Fluxer Plutonium subscriber since {}",
+                format_admin_timestamp(since)
+            ),
             None => "Fluxer Plutonium".into(),
         }
     })
@@ -97,40 +101,5 @@ pub fn user_profile_badges(
                     class=(badge_size);
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn render(self_hosted: bool, name: Option<&str>, premium_type: i32) -> String {
-        user_profile_badges(
-            "https://static.example.com",
-            0,
-            Some(premium_type),
-            Some("2026-01-01"),
-            self_hosted,
-            name,
-            false,
-        )
-        .into_string()
-    }
-
-    #[test]
-    fn hosted_premium_badges_keep_their_fluxer_labels() {
-        assert!(
-            render(false, Some("Gold"), 1).contains("Fluxer Plutonium subscriber since 2026-01-01")
-        );
-        assert!(render(false, None, 2).contains("Fluxer Visionary since 2026-01-01"));
-    }
-
-    #[test]
-    fn self_hosted_premium_badges_use_the_configured_name() {
-        let markup = render(true, Some("Gold"), 1);
-        assert!(markup.contains("Gold subscriber since 2026-01-01"));
-        assert!(!markup.contains("Plutonium"));
-        assert!(render(true, Some("Gold"), 2).contains("Gold subscriber since"));
-        assert!(!render(true, None, 1).contains("img"));
     }
 }

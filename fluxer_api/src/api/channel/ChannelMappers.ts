@@ -99,6 +99,17 @@ function serializeGuildTextChannel(channel: Channel, ctx: ContentWarningCtx): Ch
 	};
 }
 
+function serializeThreadOnlyChannel(channel: Channel, ctx: ContentWarningCtx): ChannelResponse {
+	return {
+		...serializeBaseChannelFields(channel),
+		...serializeMessageableFields(channel),
+		...serializePositionableGuildChannelFields(channel),
+		topic: channel.topic,
+		...serializeContentWarningFields(channel, ctx),
+		rate_limit_per_user: channel.rateLimitPerUser,
+	};
+}
+
 function serializeGuildVoiceChannel(channel: Channel, ctx: ContentWarningCtx): ChannelResponse {
 	return {
 		...serializeBaseChannelFields(channel),
@@ -109,6 +120,7 @@ function serializeGuildVoiceChannel(channel: Channel, ctx: ContentWarningCtx): C
 		user_limit: channel.userLimit,
 		voice_connection_limit: channel.voiceConnectionLimit,
 		rtc_region: channel.rtcRegion,
+		rtc_p2p: channel.rtcP2p,
 		...serializeContentWarningFields(channel, ctx),
 		rate_limit_per_user: channel.rateLimitPerUser,
 	};
@@ -155,6 +167,7 @@ function serializeGroupDMChannel(channel: Channel): ChannelResponse {
 		icon: channel.iconHash ?? null,
 		owner_id: channel.ownerId ? channel.ownerId.toString() : null,
 		nicks: nicknameMap.size > 0 ? nicks : undefined,
+		nsfw: channel.isNsfw,
 	};
 }
 
@@ -197,10 +210,15 @@ export async function mapChannelToResponse(params: MapChannelToResponseParams): 
 	let response: ChannelResponse;
 	switch (channel.type) {
 		case ChannelTypes.GUILD_TEXT:
+		case ChannelTypes.GUILD_ANNOUNCEMENT:
 			response = serializeGuildTextChannel(channel, ctx);
 			break;
 		case ChannelTypes.GUILD_VOICE:
 			response = serializeGuildVoiceChannel(channel, ctx);
+			break;
+		case ChannelTypes.GUILD_FORUM:
+		case ChannelTypes.GUILD_MEDIA:
+			response = serializeThreadOnlyChannel(channel, ctx);
 			break;
 		case ChannelTypes.GUILD_CATEGORY:
 			response = serializeGuildCategoryChannel(channel, ctx);

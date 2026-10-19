@@ -2,6 +2,7 @@
 
 import {showDmActionErrorModal} from '@app/features/app/components/alerts/DmActionErrorModal';
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
+import {UserSettingsModal} from '@app/features/app/components/dialogs/LoadableSettingsModals';
 import * as Modal from '@app/features/app/components/dialogs/Modal';
 import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
 import Authentication from '@app/features/auth/state/Authentication';
@@ -16,8 +17,11 @@ import {
 	START_VOICE_CALL_DESCRIPTOR,
 } from '@app/features/i18n/utils/CommonMessageDescriptors';
 import GuildMembers from '@app/features/member/state/GuildMembers';
-import {BLOCK_DESCRIPTOR, REPORT_USER_DESCRIPTOR} from '@app/features/moderation/utils/ModerationMessageDescriptors';
-import {openReportUserModal} from '@app/features/moderation/utils/ReportActionUtils';
+import {
+	BLOCK_DESCRIPTOR,
+	REPORT_USER_PROFILE_DESCRIPTOR,
+} from '@app/features/moderation/utils/ModerationMessageDescriptors';
+import {openReportUserProfileModal} from '@app/features/moderation/utils/ReportActionUtils';
 import {Logger} from '@app/features/platform/utils/AppLogger';
 import MemberPresenceSubscription from '@app/features/presence/state/MemberPresenceSubscription';
 import Relationships from '@app/features/relationship/state/Relationships';
@@ -46,7 +50,6 @@ import * as TextCopyCommands from '@app/features/ui/commands/TextCopyCommands';
 import ContextMenu from '@app/features/ui/state/ContextMenu';
 import {Tooltip} from '@app/features/ui/tooltip/Tooltip';
 import userProfileModalStyles from '@app/features/user/components/modals/UserProfileModal.module.css';
-import {UserSettingsModal} from '@app/features/user/components/modals/UserSettingsModal';
 import {ProfileModalContent} from '@app/features/user/components/modals/user_profile_modal/ProfileModalContent';
 import {UserProfileLoadingSkeleton} from '@app/features/user/components/profile/UserProfileLoadingSkeleton';
 import {useUserProfileSurfaceState} from '@app/features/user/hooks/useUserProfileSurfaceState';
@@ -129,7 +132,7 @@ const SEND_FRIEND_REQUEST_DESCRIPTOR = msg({
 });
 const logger = new Logger('UserProfileModal');
 
-export interface UserProfileModalProps {
+interface UserProfileModalProps {
 	userId: string;
 	guildId?: string;
 	autoFocusNote?: boolean;
@@ -257,12 +260,15 @@ export const UserProfileModal: UserProfileModalComponent = observer(
 		const handleEditProfile = () => {
 			ModalCommands.pop();
 			ModalCommands.push(
-				modal(() => (
-					<UserSettingsModal
-						initialTab="my_profile"
-						data-flx="user.user-profile-modal.handle-edit-profile.user-settings-modal"
-					/>
-				)),
+				modal(
+					() => (
+						<UserSettingsModal
+							initialTab="my_profile"
+							data-flx="user.user-profile-modal.handle-edit-profile.user-settings-modal"
+						/>
+					),
+					'user-settings',
+				),
 			);
 		};
 		const handleMessage = async () => {
@@ -336,11 +342,11 @@ export const UserProfileModal: UserProfileModalComponent = observer(
 				showDmActionErrorModal(error);
 			}
 		};
-		const handleReportUser = () => {
-			openReportUserModal({i18n, user: displayUser, guildId});
+		const handleReportUserProfile = () => {
+			openReportUserProfileModal({user: displayUser, guildId});
 		};
 		const handleCopyFluxerTag = () => {
-			TextCopyCommands.copy(i18n, `${displayUser.username}#${displayUser.discriminator}`, true);
+			TextCopyCommands.copy(i18n, displayUser.tag, true);
 		};
 		const handleCopyUserId = () => {
 			TextCopyCommands.copy(i18n, displayUser.id, true);
@@ -488,13 +494,13 @@ export const UserProfileModal: UserProfileModalComponent = observer(
 							<MenuItem
 								icon={<FlagIcon data-flx="user.user-profile-modal.open-more-options-menu.flag-icon" />}
 								onClick={() => {
-									handleReportUser();
+									handleReportUserProfile();
 									props.onClose();
 								}}
 								danger
-								data-flx="user.user-profile-modal.open-more-options-menu.menu-item.report-user"
+								data-flx="user.user-profile-modal.open-more-options-menu.menu-item.report-user-profile"
 							>
-								{i18n._(REPORT_USER_DESCRIPTOR)}
+								{i18n._(REPORT_USER_PROFILE_DESCRIPTOR)}
 							</MenuItem>
 							{renderBlockMenuItem(props.onClose)}
 						</MenuGroup>

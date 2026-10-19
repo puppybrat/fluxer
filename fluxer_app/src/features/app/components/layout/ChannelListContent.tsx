@@ -55,6 +55,8 @@ import {useLocation} from '@app/features/platform/components/router/RouterReact'
 import {failureCode} from '@app/features/platform/utils/ResponseInspection';
 import ReadStates from '@app/features/read_state/state/ReadStates';
 import {remFromPx} from '@app/features/theme/layout/RemFromPx';
+import {SidebarThreadList} from '@app/features/threads/components/SidebarThreadList';
+import ThreadGuilds from '@app/features/threads/state/ThreadGuilds';
 import {ChannelListContextMenu} from '@app/features/ui/action_menu/ChannelListContextMenu';
 import * as ContextMenuCommands from '@app/features/ui/commands/ContextMenuCommands';
 import * as DimensionCommands from '@app/features/ui/commands/DimensionCommands';
@@ -180,6 +182,7 @@ interface ChannelListContentProps {
 	readonly banner: GuildBannerPresentation;
 }
 export const ChannelListContent = observer(({guild, scrollY, banner}: ChannelListContentProps) => {
+	const threadsActive = ThreadGuilds.isActive(guild.id);
 	const {i18n} = useLingui();
 	const channels = Channels.getGuildChannels(guild.id);
 	const location = useLocation();
@@ -571,18 +574,28 @@ export const ChannelListContent = observer(({guild, scrollY, banner}: ChannelLis
 				)}
 				{showTextChannels &&
 					visibleTextChannels.map((entry) => (
-						<ChannelItem
-							key={entry.channel.id}
-							guild={guild}
-							channel={entry.channel}
-							isDraggingAnything={isDraggingAnything}
-							activeDragItem={activeDragItem}
-							onChannelDrop={handleChannelDrop}
-							onDragStateChange={setActiveDragItem}
-							isSelectedByPath={selectedChannelInGuildId === entry.channel.id}
-							isOnNonChannelRoute={isOnNonChannelRoute}
-							data-flx="app.channel-list-content.channel-item--2"
-						/>
+						<React.Fragment key={entry.channel.id}>
+							<ChannelItem
+								guild={guild}
+								channel={entry.channel}
+								isDraggingAnything={isDraggingAnything}
+								activeDragItem={activeDragItem}
+								onChannelDrop={handleChannelDrop}
+								onDragStateChange={setActiveDragItem}
+								isSelectedByPath={selectedChannelInGuildId === entry.channel.id}
+								isOnNonChannelRoute={isOnNonChannelRoute}
+								data-flx="app.channel-list-content.channel-item--2"
+							/>
+							{/* As upstream: under a collapsed category only the selected thread stays visible. */}
+							{threadsActive && (
+								<SidebarThreadList
+									guildId={guild.id}
+									parentId={entry.channel.id}
+									onlySelected={isCollapsed}
+									data-flx="app.channel-list-content.sidebar-thread-list"
+								/>
+							)}
+						</React.Fragment>
 					))}
 				{showVoiceChannels &&
 					visibleVoiceChannels.map((entry) => {

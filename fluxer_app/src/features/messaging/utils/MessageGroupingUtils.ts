@@ -35,7 +35,7 @@ export interface ChannelStreamItem {
 	showUnreadDividerBefore?: boolean;
 }
 
-export const MESSAGE_GROUP_TIMEOUT = 7 * 60 * 1000;
+const MESSAGE_GROUP_TIMEOUT = 7 * 60 * 1000;
 
 // A message without cast attribution compares as `[]`, the same value MessagingMessage assigns to every
 // out-of-character message, so partially-built messages (e.g. test doubles) group like OOC ones.
@@ -65,6 +65,9 @@ export function isNewMessageGroup(
 		return true;
 	}
 	if (currentMessage.type === MessageTypes.REPLY) {
+		return true;
+	}
+	if (currentMessage.isCrosspostCopy) {
 		return true;
 	}
 	const currentIsDisplaySystem =
@@ -126,7 +129,7 @@ export function getCollapsedGroupType(
 	message: Message,
 	treatSpam: boolean,
 ): ChannelStreamType | null {
-	if (message.blocked) {
+	if (message.blocked && message.isUserMessage()) {
 		return ChannelStreamType.MESSAGE_GROUP_BLOCKED;
 	}
 	if (

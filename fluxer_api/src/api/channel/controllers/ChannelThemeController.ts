@@ -99,7 +99,7 @@ function serializeAppearance(row: ChannelAppearance) {
  * both users are permanent MANAGE_GUILD admins and are the only recipients of that DM.
  */
 async function authorizeChannelAppearance(ctx: Context<HonoEnv>, channelId: ChannelID): Promise<void> {
-	const channel = await ctx.get('channelRepository').findUnique(channelId);
+	const channel = await ctx.get('channelRepository').channelData.findUnique(channelId);
 	if (!channel) {
 		throw new UnknownChannelError();
 	}

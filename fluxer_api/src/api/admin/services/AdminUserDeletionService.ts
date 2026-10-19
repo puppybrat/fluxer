@@ -6,6 +6,7 @@ import type {AdminAuditService} from '@app/api/admin/services/AdminAuditService'
 import type {AdminBanManagementService} from '@app/api/admin/services/AdminBanManagementService';
 import {trySendAdminNotification} from '@app/api/admin/services/AdminNotification';
 import type {AdminUserUpdatePropagator} from '@app/api/admin/services/AdminUserUpdatePropagator';
+import {type ReporterResolutionNotifier, wasReporterNotified} from '@app/api/admin/services/ReporterResolutionNotifier';
 import * as AuthSession from '@app/api/auth/AuthSession';
 import {createReportID, createUserID, type UserID} from '@app/api/BrandedTypes';
 import type {BillingRepository} from '@app/api/billing/repositories/BillingRepository';
@@ -14,9 +15,12 @@ import type {KVAccountDeletionQueueService} from '@app/api/infrastructure/KVAcco
 import {Logger} from '@app/api/Logger';
 import type {User} from '@app/api/models/User';
 import type {OAuth2TokenRepository} from '@app/api/oauth/repositories/OAuth2TokenRepository';
-import {ReportStatus} from '@app/api/report/IReportRepository';
+import {type IARSubmission, ReportStatus} from '@app/api/report/ReportModels';
 import type {ReportService} from '@app/api/report/ReportService';
 import {getReportSearchService} from '@app/api/SearchFactory';
+import type {StoreEntitlementService} from '@app/api/store_billing/StoreEntitlementService';
+import {clearNewConversationLimit} from '@app/api/user/NewConversationLimit';
+import {isEnforcementDeletionReason} from '@app/api/user/ProfileVisibility';
 import {clearPendingDeletion, reschedulePendingDeletion} from '@app/api/user/services/PendingDeletionCoordinator';
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
 import {DeletionReasons} from '@fluxer/constants/src/Core';
@@ -41,10 +45,38 @@ interface AdminUserDeletionServiceDeps {
 	stripe: Stripe | null;
 	billingRepository: BillingRepository;
 	oauth2Tokens: Pick<OAuth2TokenRepository, 'deleteAllAccessTokensForUser' | 'deleteAllRefreshTokensForUser'>;
+	storeEntitlementService: StoreEntitlementService;
+	reporterResolutionNotifier: ReporterResolutionNotifier;
+}
+
+type AutoResolveOutcome = 'completed' | 'search_unavailable' | 'enumeration_failed';
+
+interface AutoResolveSummary {
+	outcome: AutoResolveOutcome;
+	foundCount: number;
+	resolvedCount: number;
+	failedCount: number;
+	notifiedCount: number;
 }
 
 const minUserRequestedDeletionDays = 14;
 const minStandardDeletionDays = 60;
+
+const reportResolvingDeletionReasons: ReadonlySet<number> = new Set([
+	DeletionReasons.SPAM,
+	DeletionReasons.CHEATING_OR_EXPLOITATION,
+	DeletionReasons.COORDINATED_RAIDING,
+	DeletionReasons.AUTOMATION_OR_SELFBOT,
+	DeletionReasons.SCAM_OR_SOCIAL_ENGINEERING,
+	DeletionReasons.HARASSMENT_OR_BULLYING,
+	DeletionReasons.BAN_EVASION,
+	DeletionReasons.TOKEN_OR_CREDENTIAL_SCAM,
+	DeletionReasons.HATE_SPEECH_OR_EXTREMIST_CONTENT,
+	DeletionReasons.MALICIOUS_LINKS_OR_MALWARE,
+	DeletionReasons.IMPERSONATION_OR_FAKE_IDENTITY,
+]);
+
+const manuallyResolvedReportCategories: ReadonlySet<string> = new Set(['child_safety', 'underage_user', 'self_harm']);
 
 function describePendingDeletion(user: User, prefix: string): Array<[string, string]> {
 	if (!user.pendingDeletionAt) return [];
@@ -206,6 +238,7 @@ export class AdminUserDeletionService {
 				);
 			}
 		}
+		await this.deps.storeEntitlementService.revokeForBannedUser(userId);
 		const email = user.email;
 		const notificationTemplate = scheduledDeletionEmailTemplate(data.reason_code);
 		const notificationAttempted = Boolean(data.notify_user && email);
@@ -242,7 +275,9 @@ export class AdminUserDeletionService {
 		let knownIps: ReadonlySet<string> = new Set();
 		if (data.reason_code !== DeletionReasons.USER_REQUESTED) {
 			knownIps = await this.banIdentifiersForScheduledDeletion({user, adminUserId, auditLogReason});
-			await this.resolvePendingReportsAgainstUser({user, adminUserId});
+		}
+		if (reportResolvingDeletionReasons.has(data.reason_code)) {
+			await this.resolvePendingReportsAgainstUser({user, adminUserId, reasonCode: data.reason_code});
 		}
 		await emitAdminAction(adminUserId, userId, 'schedule_deletion', {reasonCode: data.reason_code, ips: knownIps});
 		await updatePropagator.propagateUserUpdate({userId, oldUser: user, updatedUser: updatedUser});
@@ -323,6 +358,7 @@ export class AdminUserDeletionService {
 				['notification_sent', notificationSent ? 'true' : 'false'],
 			]),
 		});
+		await clearNewConversationLimit(userId, {cache: cacheService});
 		await emitAdminAction(adminUserId, userId, 'cancel_deletion');
 		return {
 			user: await mapUserToAdminResponse(updatedUser, cacheService, acls),
@@ -376,21 +412,34 @@ export class AdminUserDeletionService {
 		return knownIps;
 	}
 
-	private async resolvePendingReportsAgainstUser(params: {user: User; adminUserId: UserID}): Promise<void> {
-		const {user, adminUserId} = params;
-		const {reportService, auditService} = this.deps;
+	private async resolvePendingReportsAgainstUser(params: {
+		user: User;
+		adminUserId: UserID;
+		reasonCode: number;
+	}): Promise<void> {
+		const {user, adminUserId, reasonCode} = params;
+		const outcome = isEnforcementDeletionReason(reasonCode) ? 'actioned' : 'auto_resolved';
+		const {reportService, reporterResolutionNotifier} = this.deps;
+		const auditLogReason = 'auto-resolved on scheduled deletion of reported user';
+		const summary: AutoResolveSummary = {
+			outcome: 'completed',
+			foundCount: 0,
+			resolvedCount: 0,
+			failedCount: 0,
+			notifiedCount: 0,
+		};
 		const reportSearchService = getReportSearchService();
 		if (!reportSearchService) {
 			Logger.warn(
 				{userId: user.id.toString()},
 				'Report search is unavailable; pending reports were not auto-resolved on scheduled deletion',
 			);
+			summary.outcome = 'search_unavailable';
+			await this.recordAutoResolveSummary({user, adminUserId, auditLogReason, summary});
 			return;
 		}
-		const auditLogReason = 'auto-resolved on scheduled deletion of reported user';
 		const pageSize = 100;
 		const pendingReportIds = new Set<string>();
-		let resolvedCount = 0;
 		let offset = 0;
 		try {
 			while (true) {
@@ -404,46 +453,73 @@ export class AdminUserDeletionService {
 				);
 				if (hits.length === 0) break;
 				for (const hit of hits) {
+					if (manuallyResolvedReportCategories.has(hit.category)) continue;
 					pendingReportIds.add(hit.id);
 				}
 				offset += hits.length;
 				if (hits.length < pageSize) break;
 			}
 		} catch (error) {
+			summary.outcome = 'enumeration_failed';
 			Logger.warn(
 				{error, userId: user.id.toString()},
 				'Failed to enumerate pending reports for auto-resolution on scheduled deletion',
 			);
 		}
+		summary.foundCount = pendingReportIds.size;
 		for (const hitId of pendingReportIds) {
 			const reportId = createReportID(BigInt(hitId));
+			let resolvedReport: IARSubmission;
 			try {
-				await reportService.resolveReport(reportId, adminUserId, null, auditLogReason);
-				resolvedCount++;
+				resolvedReport = await reportService.resolveReport(reportId, adminUserId, null, auditLogReason, {
+					outcome,
+					resolvedBy: 'system',
+				});
 			} catch (error) {
 				if (error instanceof ReportAlreadyResolvedError) continue;
+				summary.failedCount++;
 				Logger.warn(
 					{error, userId: user.id.toString(), reportId: reportId.toString()},
 					'Failed to auto-resolve report on scheduled deletion',
 				);
+				continue;
+			}
+			summary.resolvedCount++;
+			const notice = await reporterResolutionNotifier.notifyReporterOfResolution(resolvedReport, null);
+			if (wasReporterNotified(notice)) {
+				summary.notifiedCount++;
 			}
 		}
-		if (resolvedCount > 0) {
-			await auditService
-				.createAuditLog({
-					adminUserId,
-					targetType: 'user',
-					targetId: BigInt(user.id),
-					action: 'auto_resolve_reports_on_deletion',
-					auditLogReason,
-					metadata: new Map([['resolved_count', resolvedCount.toString()]]),
-				})
-				.catch((error) => {
-					Logger.warn(
-						{error, userId: user.id.toString(), resolvedCount},
-						'Failed to write audit log for auto-resolved reports on scheduled deletion',
-					);
-				});
-		}
+		await this.recordAutoResolveSummary({user, adminUserId, auditLogReason, summary});
+	}
+
+	private async recordAutoResolveSummary(params: {
+		user: User;
+		adminUserId: UserID;
+		auditLogReason: string;
+		summary: AutoResolveSummary;
+	}): Promise<void> {
+		const {user, adminUserId, auditLogReason, summary} = params;
+		await this.deps.auditService
+			.createAuditLog({
+				adminUserId,
+				targetType: 'user',
+				targetId: BigInt(user.id),
+				action: 'auto_resolve_reports_on_deletion',
+				auditLogReason,
+				metadata: new Map([
+					['outcome', summary.outcome],
+					['found_count', summary.foundCount.toString()],
+					['resolved_count', summary.resolvedCount.toString()],
+					['failed_count', summary.failedCount.toString()],
+					['notified_count', summary.notifiedCount.toString()],
+				]),
+			})
+			.catch((error) => {
+				Logger.warn(
+					{error, userId: user.id.toString(), ...summary},
+					'Failed to write audit log for auto-resolved reports on scheduled deletion',
+				);
+			});
 	}
 }

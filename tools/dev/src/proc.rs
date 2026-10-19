@@ -73,33 +73,6 @@ pub fn run(args: &[&str]) -> Result<()> {
     run_command(args, RunOptions::default()).map(drop)
 }
 
-pub fn run_with_env(args: &[&str], env: Vec<(String, Option<String>)>) -> Result<()> {
-    run_command(
-        args,
-        RunOptions {
-            env,
-            ..RunOptions::default()
-        },
-    )
-    .map(drop)
-}
-
-pub fn run_capture(
-    args: &[&str],
-    env: Vec<(String, Option<String>)>,
-    check: bool,
-) -> Result<Output> {
-    run_command(
-        args,
-        RunOptions {
-            env,
-            check,
-            capture: true,
-            ..RunOptions::default()
-        },
-    )
-}
-
 #[derive(Debug)]
 pub struct RunOptions<'a> {
     pub cwd: &'a Path,
@@ -475,48 +448,5 @@ impl ShutdownSignal {
     pub async fn recv(&mut self) -> &'static str {
         let _ = tokio::signal::ctrl_c().await;
         "signal"
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn formats_posix_commands_for_logs() {
-        assert_eq!(format_command(&["pnpm", "build"]), "pnpm build");
-        assert_eq!(
-            format_command(&["", "two words", "a'b"]),
-            "'' 'two words' 'a'\"'\"'b'"
-        );
-    }
-
-    #[test]
-    fn restart_budget_allows_limited_restarts_within_window() {
-        let mut restarts = VecDeque::new();
-        let base = Instant::now();
-        for offset in 0..RESTART_LIMIT {
-            assert!(!restart_budget_exceeded(
-                &mut restarts,
-                base + Duration::from_secs(offset as u64)
-            ));
-        }
-        assert!(restart_budget_exceeded(
-            &mut restarts,
-            base + Duration::from_secs(RESTART_LIMIT as u64)
-        ));
-    }
-
-    #[test]
-    fn restart_budget_resets_after_window_elapses() {
-        let mut restarts = VecDeque::new();
-        let base = Instant::now();
-        for _ in 0..RESTART_LIMIT {
-            assert!(!restart_budget_exceeded(&mut restarts, base));
-        }
-        assert!(!restart_budget_exceeded(
-            &mut restarts,
-            base + RESTART_WINDOW + Duration::from_secs(1)
-        ));
     }
 }

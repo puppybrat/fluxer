@@ -6,6 +6,7 @@ import Channels from '@app/features/channel/state/Channels';
 import ChannelThemes from '@app/features/channel/state/ChannelThemes';
 import Guilds from '@app/features/guild/state/Guilds';
 import {useParams} from '@app/features/platform/components/router/RouterReact';
+import {useThreadFetchOnMiss} from '@app/features/threads/hooks/useThreadFetchOnMiss';
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {SmileySadIcon} from '@phosphor-icons/react';
@@ -32,6 +33,10 @@ export const ChannelLayout = observer(({children}: ChannelLayoutProps) => {
 	const channel = Channels.getChannel(channelId);
 	const guildId = routeGuildId || channel?.guildId;
 	const guild = guildId ? Guilds.getGuild(guildId) : null;
+	const threadLookupPending = useThreadFetchOnMiss(guild ? guildId : undefined, channel ? undefined : channelId);
+	if (guild && !channel && threadLookupPending) {
+		return null;
+	}
 	if (guild && !channel) {
 		return (
 			<main

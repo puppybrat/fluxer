@@ -12,16 +12,16 @@ const MAX_ANIMATED_FRAME_SEARCH_STEPS = 10;
 const VIDEO_FIRST_FRAME_TIMEOUT_MS = 8_000;
 const VIDEO_LEASE_RELEASE_TIMEOUT_MS = 1_000;
 
-export const WebCameraEffectCustomFrameSourceKind = Object.freeze({
+const WebCameraEffectCustomFrameSourceKind = Object.freeze({
 	STATIC: 'static',
 	ANIMATED: 'animated',
 	VIDEO: 'video',
 } as const);
 
-export type WebCameraEffectCustomFrameSourceKind =
+type WebCameraEffectCustomFrameSourceKind =
 	(typeof WebCameraEffectCustomFrameSourceKind)[keyof typeof WebCameraEffectCustomFrameSourceKind];
 
-export type WebCameraEffectCustomFrameImage = ImageBitmap | VideoFrame;
+type WebCameraEffectCustomFrameImage = ImageBitmap | VideoFrame;
 
 export interface WebCameraEffectCustomFrame {
 	readonly image: WebCameraEffectCustomFrameImage;
@@ -30,7 +30,7 @@ export interface WebCameraEffectCustomFrame {
 	readonly index: number;
 }
 
-export interface WebCameraEffectCustomFrameLease {
+interface WebCameraEffectCustomFrameLease {
 	readonly frame: WebCameraEffectCustomFrame;
 	release(): void;
 }
@@ -476,7 +476,7 @@ function closeFrameImages(images: ReadonlyArray<WebCameraEffectCustomFrameImage>
 	return failures;
 }
 
-function throwCleanupFailures(failures: ReadonlyArray<unknown>, message: string): void {
+export function throwCleanupFailures(failures: ReadonlyArray<unknown>, message: string): void {
 	if (failures.length === 0) return;
 	if (failures.length === 1) throw failures[0];
 	throw new AggregateError(failures, message);
@@ -496,7 +496,7 @@ async function settledFailures(promises: ReadonlyArray<Promise<unknown>>): Promi
 	return failures;
 }
 
-function waitForAbortablePromise<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+export function waitForAbortablePromise<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 	if (signal.aborted) return Promise.reject(signal.reason);
 	return new Promise<T>((resolve, reject) => {
 		const handleAbort = (): void => reject(signal.reason);

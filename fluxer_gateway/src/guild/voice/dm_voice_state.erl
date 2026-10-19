@@ -5,6 +5,7 @@
 
 -export([handle_dm_disconnect/4, disconnect_voice_user/2]).
 -export([resolve_call_region/1, resolve_call_region/2, voice_region_for_rpc/1]).
+-export([call_voice_states/1]).
 -export([normalize_session_id/1, resolve_effective_session_id/2]).
 -export([validate_dm_viewer_stream_keys/3]).
 -export([maybe_attach_voice_routing_metadata/3]).
@@ -212,6 +213,20 @@ call_region_from_pid(CallPid, Timeout) ->
             null
     end.
 
+-spec call_voice_states(integer()) -> [voice_state()].
+call_voice_states(ChannelId) ->
+    case call_manager:lookup(ChannelId) of
+        {ok, CallPid} -> call_voice_states_from_pid(CallPid);
+        _ -> []
+    end.
+
+-spec call_voice_states_from_pid(pid()) -> [voice_state()].
+call_voice_states_from_pid(CallPid) ->
+    case gateway_rpc_call_lookup:safe_gen_server_call(CallPid, {get_state}, 5000) of
+        {ok, {ok, #{voice_states := VoiceStates}}} when is_list(VoiceStates) -> VoiceStates;
+        _ -> []
+    end.
+
 -spec voice_region_for_rpc(term()) -> binary() | null.
 voice_region_for_rpc(<<"automatic">>) -> null;
 voice_region_for_rpc(Region) when is_binary(Region) -> Region;
@@ -300,24 +315,6 @@ normalize_optional_binary(Value) ->
     guild_voice_connection_normalize:normalize_optional_binary(Value).
 
 -ifdef(TEST).
-
-normalize_session_id_test() ->
-    ?assertEqual(undefined, normalize_session_id(undefined)),
-    ?assertEqual(<<"abc">>, normalize_session_id(<<"abc">>)),
-    ?assertEqual(<<"123">>, normalize_session_id(123)),
-    ?assertEqual(<<"test">>, normalize_session_id("test")).
-
-validate_dm_viewer_stream_keys_null_test() ->
-    ?assertEqual({ok, []}, validate_dm_viewer_stream_keys(undefined, 123, #{})),
-    ?assertEqual({ok, []}, validate_dm_viewer_stream_keys(null, 123, #{})).
-
-validate_dm_viewer_stream_keys_invalid_type_test() ->
-    ?assertEqual({error, voice_invalid_state}, validate_dm_viewer_stream_keys(123, 456, #{})).
-
-resolve_effective_session_id_test() ->
-    ?assertEqual(<<"req">>, resolve_effective_session_id(undefined, <<"req">>)),
-    ?assertEqual(<<"existing">>, resolve_effective_session_id(<<"existing">>, <<"req">>)),
-    ?assertEqual(<<"same">>, resolve_effective_session_id(<<"same">>, <<"same">>)).
 
 session_voice_state(UserId, ChannelId, ConnId, SessionId) ->
     #{

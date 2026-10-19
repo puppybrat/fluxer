@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {highlightCodeInWorker} from '@app/features/code_highlighting/utils/ArboriumHighlightWorkerClient';
+import {
+	highlightCodeInWorker,
+	isSignalAborted,
+} from '@app/features/code_highlighting/utils/ArboriumHighlightWorkerClient';
 import {Logger} from '@app/features/platform/utils/AppLogger';
 import {MAX_CODE_HIGHLIGHT_SOURCE_LENGTH} from '@fluxer/constants/src/LimitConstants';
 import {useEffect, useMemo, useState} from 'react';
@@ -170,16 +173,12 @@ function loadArborium(): Promise<ArboriumModule> {
 	return arboriumPromise;
 }
 
-export async function _preloadArboriumForTests(): Promise<void> {
-	await loadArborium();
-}
-
 export interface HighlightLanguageOption {
 	canonicalCode: string;
 	code: string;
 }
 
-export let HIGHLIGHT_LANGUAGE_OPTIONS: ReadonlyArray<HighlightLanguageOption> = [
+let HIGHLIGHT_LANGUAGE_OPTIONS: ReadonlyArray<HighlightLanguageOption> = [
 	{canonicalCode: AUTO_DETECT_LANGUAGE_CODE, code: AUTO_DETECT_LANGUAGE_CODE},
 	{canonicalCode: PLAIN_TEXT_LANGUAGE, code: PLAIN_TEXT_LANGUAGE},
 	{canonicalCode: PLAIN_TEXT_LANGUAGE, code: 'plaintext'},
@@ -318,13 +317,6 @@ function subscribeToHighlightCacheEntry(cacheKey: string, entry: HighlightCacheE
 	void entry.promise.then(release, release);
 }
 
-function isSignalAborted(signal: AbortSignal | undefined): boolean {
-	if (signal === undefined) {
-		return false;
-	}
-	return signal.aborted;
-}
-
 function loadHighlightedHtml(language: string, source: string, signal?: AbortSignal): Promise<string | null> {
 	if (isSignalAborted(signal)) {
 		return Promise.resolve(null);
@@ -389,11 +381,11 @@ function getLanguageToken(language?: string | null): string | null {
 	return primaryLanguage ? primaryLanguage.toLowerCase() : null;
 }
 
-export function escapeCodeHtml(value: string): string {
+function escapeCodeHtml(value: string): string {
 	return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-export function normalizeHighlightLanguage(language?: string | null): string | null {
+function normalizeHighlightLanguage(language?: string | null): string | null {
 	const languageToken = getLanguageToken(language);
 	if (!languageToken || languageToken.length > MAX_HIGHLIGHT_LANGUAGE_LENGTH) {
 		return null;
@@ -434,7 +426,7 @@ function resolveHighlightLanguage(language?: string | null): string | null {
 	return normalizeHighlightLanguage(languageToken);
 }
 
-export async function highlightCodeHtml(
+async function highlightCodeHtml(
 	language?: string | null,
 	source?: string | null,
 	signal?: AbortSignal,

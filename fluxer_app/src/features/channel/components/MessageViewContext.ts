@@ -10,7 +10,7 @@ interface MessagePreviewOverrides {
 	displayName?: string;
 }
 
-export interface MessagePreviewPermissions {
+interface MessagePreviewPermissions {
 	isDM: boolean;
 	canSendMessages: boolean;
 	canAddReactions: boolean;
@@ -19,6 +19,7 @@ export interface MessagePreviewPermissions {
 	canDeleteAttachment: boolean;
 	canPinMessage: boolean;
 	canForwardMessage: boolean;
+	canCrosspostMessage: boolean;
 	canSuppressEmbeds: boolean;
 	shouldRenderSuppressEmbeds: boolean;
 }

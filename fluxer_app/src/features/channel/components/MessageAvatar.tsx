@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {openCharacterImageViewer} from '@app/features/cast/utils/CharacterImageViewer';
+import {CrosspostCommunityPopout} from '@app/features/channel/components/CrosspostCommunityPopout';
 import styles from '@app/features/channel/components/MessageAvatar.module.css';
 import {useMaybeMessageViewContext} from '@app/features/channel/components/MessageViewContext';
 import {PreloadableUserPopout} from '@app/features/channel/components/PreloadableUserPopout';
@@ -45,6 +46,32 @@ export const MessageAvatar = observer(
 				openCharacterImageViewer(characterImageUrl);
 			}
 		}, [characterImageUrl]);
+
+		// A crosspost copy keeps upstream's source-community popout even when it is in-character (D8, step 5a):
+		// the copy's author is the source, and copies are sent out-of-character anyway.
+		if (message.isCrosspostCopy) {
+			return (
+				<CrosspostCommunityPopout
+					message={message}
+					onPopoutOpen={handlePopoutOpen}
+					onPopoutClose={handlePopoutClose}
+					data-flx="channel.message-avatar.crosspost-community-popout"
+				>
+					<FocusRing data-flx="channel.message-avatar.focus-ring--2">
+						<Avatar
+							user={user}
+							size={size}
+							className={className}
+							forceAnimate={isHovering}
+							guildId={guildId}
+							data-user-id={user.id}
+							data-guild-id={guildId}
+							data-flx="channel.message-avatar.crosspost-author-avatar"
+						/>
+					</FocusRing>
+				</CrosspostCommunityPopout>
+			);
+		}
 
 		// In-character avatars open the character's image in the viewer rather than the user popout.
 		// The grid-area class must sit on the direct grid child, so the button carries it and the

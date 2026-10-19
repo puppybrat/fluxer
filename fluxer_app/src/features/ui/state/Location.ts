@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {makePersistent} from '@app/features/platform/utils/MobXPersistence';
+import {initializeStore} from '@app/features/platform/utils/StoreInitialization';
 import {makeAutoObservable} from 'mobx';
 
 interface MobileLayoutState {
@@ -15,7 +16,7 @@ class Location {
 
 	constructor() {
 		makeAutoObservable(this, {}, {autoBind: true});
-		void this.initPersistence();
+		initializeStore(this, () => this.initPersistence());
 	}
 
 	private async initPersistence(): Promise<void> {
@@ -27,23 +28,10 @@ class Location {
 		return this.lastLocation;
 	}
 
-	getLastMobileLayoutState(): MobileLayoutState | null {
-		return this.lastMobileLayoutState;
-	}
-
 	saveLocation(location: string): void {
 		if (location && location !== this.lastLocation) {
 			this.lastLocation = location;
 		}
-	}
-
-	saveMobileLayoutState(mobileLayoutState: MobileLayoutState): void {
-		this.lastMobileLayoutState = mobileLayoutState;
-	}
-
-	saveLocationAndMobileState(location: string, mobileLayoutState: MobileLayoutState): void {
-		this.lastLocation = location;
-		this.lastMobileLayoutState = mobileLayoutState;
 	}
 
 	clearLastLocation(): void {

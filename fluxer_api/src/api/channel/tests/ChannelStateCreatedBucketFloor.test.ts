@@ -36,7 +36,7 @@ describe('channel_state.created_bucket floor', () => {
 		const backfilledId = createMessageID((BigInt(channelBucket - 40) * 864000000n) << 22n);
 		const backfilledBucket = BucketUtils.makeBucket(backfilledId);
 		expect(backfilledBucket).toBeLessThan(channelBucket);
-		await channelRepository.upsertMessage({
+		await channelRepository.messages.upsertMessage({
 			channel_id: channelId,
 			bucket: backfilledBucket,
 			message_id: backfilledId,
@@ -63,14 +63,14 @@ describe('channel_state.created_bucket floor', () => {
 			version: 1,
 		});
 
-		const beforeSend = await channelRepository.listMessages(channelId, undefined, 100);
+		const beforeSend = await channelRepository.messages.listMessages(channelId, undefined, 100);
 		expect(beforeSend.map((m) => m.id.toString())).toContain(backfilledId.toString());
 
 		// The regression: this send used to reset created_bucket back up to the
 		// channel's own creation bucket, dropping the imported history out of scan range.
 		await sendChannelMessage(harness, owner.token, systemChannel.id, 'live message after backfill');
 
-		const afterSend = await channelRepository.listMessages(channelId, undefined, 100);
+		const afterSend = await channelRepository.messages.listMessages(channelId, undefined, 100);
 		expect(afterSend.map((m) => m.id.toString())).toContain(backfilledId.toString());
 	});
 });

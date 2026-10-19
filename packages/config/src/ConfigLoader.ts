@@ -11,9 +11,17 @@ import {
 	parsePublicOrigin,
 	parseWebOrigin,
 } from '@fluxer/config/src/EndpointDerivation';
-import {CACHE_PURGE_ADAPTER_NAMES, type MasterConfig} from '@fluxer/config/src/MasterConfig';
+import {
+	ACCOUNT_IDENTITY_MODE_NAMES,
+	CACHE_PURGE_ADAPTER_NAMES,
+	type MasterConfig,
+	STORE_PRODUCT_SLOT_NAMES,
+	TAG_STYLE_NAMES,
+} from '@fluxer/config/src/MasterConfig';
 
 let cachedConfig: MasterConfig | null = null;
+
+const MAX_REPORT_RETENTION_DAYS = 36_500;
 
 const DEFAULT_PASSKEY_ORIGINS = [
 	'https://fluxer.app',
@@ -96,8 +104,10 @@ function defaultConfig(): MasterConfig {
 				headers_timeout_ms: 30_000,
 				request_timeout_ms: 120_000,
 				max_inflight_requests: 512,
+				automated_message_deletion_delay_days: 7,
 				ip_ban_exempt_ips: [],
 				donation_proxy_key: '',
+				trusted_callers: [],
 				presigned_attachment_uploads_enabled: false,
 				presigned_harvest_downloads_enabled: true,
 				unfurl_ignored_hosts: [],
@@ -136,6 +146,7 @@ function defaultConfig(): MasterConfig {
 		auth: {
 			sudo_mode_secret: '',
 			connection_initiation_secret: '',
+			profile_pseudonym_secret: '',
 			sso_allow_private_addresses: false,
 			passkeys: {
 				rp_name: 'Fluxer',
@@ -162,7 +173,8 @@ function defaultConfig(): MasterConfig {
 				enabled: false,
 				provider: 'none',
 				from_email: '',
-				from_name: 'Fluxer',
+				from_name: '',
+				reply_to_email: '',
 				app_base_url: '',
 			},
 			voice: {
@@ -186,12 +198,6 @@ function defaultConfig(): MasterConfig {
 				webhook_secret: '',
 				prices: {},
 				legacy_prices: {},
-			},
-			ncmec: {
-				enabled: false,
-				base_url: '',
-				username: '',
-				password: '',
 			},
 			clamav: {
 				enabled: false,
@@ -219,14 +225,26 @@ function defaultConfig(): MasterConfig {
 			},
 			blocklist_feeds: {},
 			breached_password_check: {},
-			ipinfo: {
-				api_key: '',
-			},
 			push: {
 				apns: {
 					enabled: false,
 					apps: [],
 				},
+			},
+			app_store: {
+				enabled: false,
+				apps: [],
+				products: {},
+			},
+			google_play: {
+				enabled: false,
+				packages: [],
+				token_uri: 'https://oauth2.googleapis.com/token',
+				products: {},
+			},
+			store_billing: {
+				sandbox_user_ids: [],
+				sandbox_entitles_all: false,
 			},
 		},
 		instance: {
@@ -237,6 +255,8 @@ function defaultConfig(): MasterConfig {
 			setup: {
 				configured: false,
 			},
+			account_identity: null,
+			tag_style: null,
 		},
 		dev: {
 			relax_registration_rate_limits: false,
@@ -257,6 +277,11 @@ function defaultConfig(): MasterConfig {
 		attachment_decay_enabled: true,
 		deletion_grace_period_hours: 336,
 		inactivity_deletion_threshold_days: 365,
+		report_retention: {
+			days: 365,
+			resolved_days: null,
+			dry_run: false,
+		},
 	};
 }
 
@@ -281,6 +306,24 @@ function assertOneOf<T extends string>(value: string, allowed: ReadonlyArray<T>,
 function requireString(value: string | undefined, envName: string): void {
 	if (!value || value.trim().length === 0) {
 		throw new Error(`${envName} is required`);
+	}
+}
+
+const DEVELOPMENT_PROFILE_PSEUDONYM_SECRET = 'fluxer-dev-profile-pseudonym-secret';
+
+function applyProfilePseudonymSecret(config: MasterConfig): void {
+	if (config.auth.profile_pseudonym_secret.trim().length > 0) {
+		return;
+	}
+	if (config.env === 'production') {
+		throw new Error('FLUXER_PROFILE_PSEUDONYM_SECRET is required');
+	}
+	config.auth.profile_pseudonym_secret = DEVELOPMENT_PROFILE_PSEUDONYM_SECRET;
+}
+
+function validateReplyToEmail(value: string): void {
+	if (value !== '' && !/^[^\s@<>,;"]+@[^\s@<>,;"]+$/.test(value)) {
+		throw new Error('FLUXER_EMAIL_REPLY_TO_EMAIL must be a single email address such as support@example.com');
 	}
 }
 
@@ -397,11 +440,25 @@ function validateApiWorkerConfig(config: MasterConfig): void {
 		assertOneOf(worker.mode, ['all_lanes', 'single_lane', 'single_task'], 'FLUXER_API_WORKER_MODE');
 	}
 	if (worker.lane !== undefined) {
-		assertOneOf(worker.lane, ['realtime', 'unfurl', 'lifecycle', 'batch'], 'FLUXER_API_WORKER_LANE');
+		assertOneOf(worker.lane, ['realtime', 'unfurl', 'lifecycle', 'batch', 'crosspost'], 'FLUXER_API_WORKER_LANE');
 	}
 	if (worker.mode === 'single_task') {
 		requireString(worker.task, 'FLUXER_API_WORKER_TASK');
 	}
+}
+
+function validateReportRetentionConfig(config: MasterConfig): void {
+	const retention = config.report_retention;
+	assertIntegerInRange(retention.days, 'FLUXER_REPORT_RETENTION_DAYS', 1, MAX_REPORT_RETENTION_DAYS);
+	if (retention.resolved_days !== null) {
+		assertIntegerInRange(
+			retention.resolved_days,
+			'FLUXER_RESOLVED_REPORT_RETENTION_DAYS',
+			1,
+			MAX_REPORT_RETENTION_DAYS,
+		);
+	}
+	assertBoolean(retention.dry_run, 'FLUXER_REPORT_RETENTION_DRY_RUN');
 }
 
 function validateStorageChangeFeedConfig(config: MasterConfig): void {
@@ -451,6 +508,50 @@ function validateCachePurgeConfig(config: MasterConfig): void {
 		throw new Error('FLUXER_CACHE_PURGE_HTTP_TOKEN must contain only visible ASCII characters');
 	}
 	assertIntegerInRange(cachePurge.http.timeout_ms, 'FLUXER_CACHE_PURGE_HTTP_TIMEOUT_MS', 1_000, 10_000);
+}
+
+function validateStoreProductSlots(
+	products: Record<string, string> | undefined,
+	envName: string,
+	isValidKey: (productKey: string, slot: string) => boolean,
+): void {
+	for (const [productKey, slot] of Object.entries(products ?? {})) {
+		assertOneOf(slot, STORE_PRODUCT_SLOT_NAMES, `${envName} slot for ${productKey}`);
+		if (!isValidKey(productKey, slot)) {
+			throw new Error(`${envName} key ${productKey} does not match its ${slot} slot`);
+		}
+	}
+}
+
+function validateStoreBillingConfig(config: MasterConfig): void {
+	const appStore = config.integrations.app_store;
+	for (const [index, app] of (appStore.apps ?? []).entries()) {
+		if (!isConfigObject(app) || typeof app.bundle_id !== 'string' || app.bundle_id.trim().length === 0) {
+			throw new Error(`FLUXER_APP_STORE_APPS entry ${index + 1} must have a bundle_id`);
+		}
+		if (typeof app.app_apple_id !== 'number' || !Number.isSafeInteger(app.app_apple_id) || app.app_apple_id <= 0) {
+			throw new Error(`FLUXER_APP_STORE_APPS entry ${index + 1} must have a numeric app_apple_id`);
+		}
+	}
+	validateStoreProductSlots(appStore.products, 'FLUXER_APP_STORE_PRODUCTS', (productKey) => productKey.length > 0);
+	validateStoreProductSlots(
+		config.integrations.google_play.products,
+		'FLUXER_GOOGLE_PLAY_PRODUCTS',
+		(productKey, slot) => {
+			const parts = productKey.split(':');
+			const isSubscription = slot === 'monthly' || slot === 'yearly';
+			if (isSubscription) {
+				return parts.length === 2 && parts.every((part) => part.length > 0);
+			}
+			return parts.length === 1 && productKey.length > 0;
+		},
+	);
+	for (const userId of config.integrations.store_billing.sandbox_user_ids ?? []) {
+		if (!/^\d+$/.test(userId)) {
+			throw new Error('FLUXER_STORE_BILLING_SANDBOX_USER_IDS must be a comma separated list of user ids');
+		}
+	}
+	assertBoolean(config.integrations.store_billing.sandbox_entitles_all, 'FLUXER_STORE_BILLING_SANDBOX_ENTITLES_ALL');
 }
 
 function validateDomain(value: string, envName: string): void {
@@ -509,12 +610,27 @@ function normalizeConfig(config: MasterConfig): MasterConfig {
 	assertOneOf(config.integrations.email.provider, ['smtp', 'none'], 'FLUXER_EMAIL_PROVIDER');
 	assertOneOf(config.integrations.search.engine, ['elasticsearch', 'meilisearch'], 'FLUXER_SEARCH_ENGINE');
 	assertOneOf(config.integrations.cache_purge.adapter, CACHE_PURGE_ADAPTER_NAMES, 'FLUXER_CACHE_PURGE_ADAPTER');
+	if (config.instance.tag_style !== null) {
+		assertOneOf(config.instance.tag_style, TAG_STYLE_NAMES, 'FLUXER_TAG_STYLE');
+	}
+	if (config.instance.account_identity !== null) {
+		assertOneOf(config.instance.account_identity, ACCOUNT_IDENTITY_MODE_NAMES, 'FLUXER_ACCOUNT_IDENTITY');
+	}
 	validatePostgresConfig(config);
 	validateApiWorkerConfig(config);
 	validateStorageChangeFeedConfig(config);
+	validateReportRetentionConfig(config);
 	validateCachePurgeConfig(config);
+	validateStoreBillingConfig(config);
+	validateReplyToEmail(config.integrations.email.reply_to_email);
 	normalizeAppOriginAliases(config);
 	assertIntegerInRange(config.services.api.max_inflight_requests, 'FLUXER_API_MAX_INFLIGHT_REQUESTS', 1, 100_000);
+	assertIntegerInRange(
+		config.services.api.automated_message_deletion_delay_days,
+		'FLUXER_API_AUTOMATED_MESSAGE_DELETION_DELAY_DAYS',
+		1,
+		365,
+	);
 	assertIntegerInRange(config.services.api.headers_timeout_ms, 'FLUXER_API_HEADERS_TIMEOUT_MS', 1_000, 3_600_000);
 	assertIntegerInRange(config.services.api.request_timeout_ms, 'FLUXER_API_REQUEST_TIMEOUT_MS', 1_000, 3_600_000);
 	assertIntegerInRange(config.domain.public_port, 'FLUXER_PUBLIC_PORT', 1, 65_535);
@@ -524,6 +640,7 @@ function normalizeConfig(config: MasterConfig): MasterConfig {
 	}
 	requireString(config.auth.sudo_mode_secret, 'FLUXER_SUDO_MODE_SECRET');
 	requireString(config.auth.connection_initiation_secret, 'FLUXER_CONNECTION_INITIATION_SECRET');
+	applyProfilePseudonymSecret(config);
 	validateVapidConfig(config);
 	requireString(config.s3?.access_key_id, 'FLUXER_S3_ACCESS_KEY_ID');
 	requireString(config.s3?.secret_access_key, 'FLUXER_S3_SECRET_ACCESS_KEY');
@@ -669,13 +786,6 @@ export async function loadConfig(): Promise<MasterConfig> {
 		readEnvValue(process.env, 'FLUXER_PASSKEY_ADDITIONAL_ALLOWED_ORIGINS') === undefined,
 	);
 	cachedConfig = withPublicPort;
-	return cachedConfig;
-}
-
-export function getConfig(): MasterConfig {
-	if (!cachedConfig) {
-		throw new Error('Config not loaded. Call loadConfig() first.');
-	}
 	return cachedConfig;
 }
 

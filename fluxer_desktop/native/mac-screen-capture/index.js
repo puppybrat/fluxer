@@ -88,9 +88,9 @@ function listSources() {
 	return binding.listSources();
 }
 
-function __setBindingForTests(nextBinding) {
-	binding = nextBinding;
-	loadError = null;
+function probeScreenRecordingAccess() {
+	if (!binding || typeof binding.probeScreenRecordingAccess !== 'function') return Promise.resolve('unsupported');
+	return Promise.resolve(binding.probeScreenRecordingAccess());
 }
 
 class ScreenCapture extends EventEmitter {
@@ -229,5 +229,5 @@ module.exports = {
 	getBackendInfo,
 	listSources,
 	loadError,
-	__setBindingForTests,
+	probeScreenRecordingAccess,
 };

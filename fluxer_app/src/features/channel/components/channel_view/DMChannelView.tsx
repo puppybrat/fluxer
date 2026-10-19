@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+	AccountLimitedBarrier,
 	BlockedUserBarrier,
 	SystemDmBarrier,
 	UnclaimedDMBarrier,
@@ -37,8 +38,7 @@ import {useChannelSearchState} from '@app/features/channel/components/channel_vi
 import {useVoiceCallChromePinState} from '@app/features/channel/components/channel_view/useVoiceCallChromePinState';
 import dmStyles from '@app/features/channel/components/direct_message/DMChannelView.module.css';
 import {useMessagesBottomBarVisibility} from '@app/features/channel/components/MessagesBottomBarVisibility';
-import {useChannelMemberListVisibility} from '@app/features/channel/hooks/useChannelMemberListVisibility';
-import {useChannelSearchVisibility} from '@app/features/channel/hooks/useChannelSearchVisibility';
+import {useChannelPanelVisibility} from '@app/features/channel/hooks/useChannelPanelVisibility';
 import Channels from '@app/features/channel/state/Channels';
 // LOCAL-ONLY: ChannelThemes is a local-only addition — exclude from upstream sync.
 import ChannelThemes from '@app/features/channel/state/ChannelThemes';
@@ -96,6 +96,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 	const recipient = recipientId ? Users.getUser(recipientId) : null;
 	const isRecipientBlocked = recipientId ? Relationships.isBlocked(recipientId) : false;
 	const isCurrentUserUnclaimed = !Users.currentUser?.isClaimed();
+	const isCurrentUserLimited = Users.currentUser?.accountLimited === true;
 	const isSystemDm = channel ? ChannelUtils.isSystemDmChannel(channel) : false;
 	const isDM = channel?.type === ChannelTypes.DM;
 	const isGroupDM = channel?.type === ChannelTypes.GROUP_DM;
@@ -121,7 +122,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 	const {onBottomBarVisibilityChange} = useMessagesBottomBarVisibility(channelId);
 	const {enabled: isMobileLayout} = MobileLayout;
 	const isSearchPanelVisible = isSearchActive && !isMobileLayout;
-	useChannelSearchVisibility(channelId, isSearchPanelVisible);
+	useChannelPanelVisibility(channelId, isSearchPanelVisible);
 	const displayName = channel ? ChannelUtils.getDMDisplayName(channel) : null;
 	const title = isDM && displayName ? `@${displayName}` : displayName;
 	useFluxerDocumentTitle(title);
@@ -134,7 +135,7 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 		channelId: currentChannelId,
 		defaultHiddenForChannel: memberListDefaultHiddenForChannel,
 	});
-	useChannelMemberListVisibility(channelId, isMemberListVisible);
+	useChannelPanelVisibility(channelId, isMemberListVisible);
 	const callExistsAndOngoing = callHeaderState.callExistsAndOngoing;
 	const controlsVariant = callHeaderState.controlsVariant;
 	const showCallBackground = callExistsAndOngoing && controlsVariant !== 'hidden';
@@ -541,6 +542,8 @@ export const DMChannelView = observer(({channelId}: DMChannelViewProps) => {
 									username={NicknameUtils.getNickname(recipient, null)}
 									data-flx="channel.channel-view.dm-channel-view.blocked-user-barrier"
 								/>
+							) : isCurrentUserLimited && !isPersonalNotes ? (
+								<AccountLimitedBarrier data-flx="channel.channel-view.dm-channel-view.account-limited-barrier" />
 							) : isCurrentUserUnclaimed && isDM && !isPersonalNotes && !isGroupDM ? (
 								<UnclaimedDMBarrier data-flx="channel.channel-view.dm-channel-view.unclaimed-dm-barrier" />
 							) : (

@@ -38,6 +38,7 @@ import {
 import {DomainMigrationConfigSchema} from '@fluxer/schema/src/domains/admin/DomainMigrationSchemas';
 import {GatewayRolloutConfigSchema} from '@fluxer/schema/src/domains/admin/GatewayRolloutSchemas';
 import type {PushRelayConfig, PushRelayConfigUpdateRequest} from '@fluxer/schema/src/domains/admin/PushRelaySchemas';
+import {VoiceP2pConfigSchema} from '@fluxer/schema/src/domains/admin/VoiceP2pSchemas';
 import {UserIdParam} from '@fluxer/schema/src/domains/common/CommonParamSchemas';
 import {ExperimentDeliveryConfigSchema} from '@fluxer/schema/src/domains/experiment/ExperimentSchemas';
 import type {InstanceBranding} from '@fluxer/schema/src/domains/instance/InstanceSchemas';
@@ -66,6 +67,7 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 		gatewayRollout,
 		pushRelay,
 		domainMigration,
+		voiceP2p,
 		captcha,
 		experimentDelivery,
 		registrationConfig,
@@ -76,20 +78,24 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 		instanceConfigRepository.getGatewayRolloutConfig(),
 		instanceConfigRepository.getPushRelayConfig(),
 		instanceConfigRepository.getDomainMigrationConfig(),
+		instanceConfigRepository.getVoiceP2pConfig(),
 		instanceConfigRepository.getCaptchaConfig(),
 		instanceConfigRepository.getExperimentDeliveryConfig(),
 		instanceConfigRepository.getRegistrationConfig(),
 		instanceConfigRepository.getRegistrationUrlsForAdmin(),
 		instanceConfigRepository.getPendingRegistrations(),
 	]);
-	const [appPublic, policy, resolvedServices, integrations, media, billing] = await Promise.all([
-		instanceConfigRepository.getAppPublicConfig(),
-		instanceConfigRepository.getInstancePolicyConfig(),
-		instanceConfigRepository.getResolvedServicesConfig(),
-		instanceConfigRepository.getInstanceIntegrationsAdminConfig(),
-		instanceConfigRepository.getInstanceMediaAdminConfig(),
-		instanceConfigRepository.getInstanceBillingAdminConfig(),
-	]);
+	const [appPublic, policy, resolvedServices, integrations, media, billing, accountIdentity, accountIdentityLocked] =
+		await Promise.all([
+			instanceConfigRepository.getAppPublicConfig(),
+			instanceConfigRepository.getInstancePolicyConfig(),
+			instanceConfigRepository.getResolvedServicesConfig(),
+			instanceConfigRepository.getInstanceIntegrationsAdminConfig(),
+			instanceConfigRepository.getInstanceMediaAdminConfig(),
+			instanceConfigRepository.getInstanceBillingAdminConfig(),
+			instanceConfigRepository.getAccountIdentity(),
+			instanceConfigRepository.isAccountIdentityLocked(),
+		]);
 	return {
 		sso: {
 			enabled: ssoConfig.enabled,
@@ -110,6 +116,7 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 		gateway_rollout: gatewayRollout,
 		push_relay: pushRelay,
 		domain_migration: domainMigration,
+		voice_p2p: voiceP2p,
 		captcha,
 		experiment_delivery: experimentDelivery,
 		registration: {
@@ -118,12 +125,18 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 			pending_registrations: pendingRegistrations,
 		},
 		self_hosted: Config.instance.selfHosted,
+		account_identity: {
+			mode: accountIdentity.mode,
+			locked: accountIdentityLocked,
+			tag_style: accountIdentity.tagStyle,
+		},
 		app_public: appPublic,
 		policy: {
 			single_community_enabled: policy.single_community_enabled,
 			single_community_guild_id: policy.single_community_guild_id,
 			direct_messages_disabled: policy.direct_messages_disabled,
 			direct_messages_locked: policy.direct_messages_locked,
+			guild_create_access: policy.guild_create_access,
 			premium_mode: policy.premium_mode,
 			services: {
 				gif_enabled: policy.gif_enabled,
@@ -387,6 +400,18 @@ export function InstanceConfigAdminController(app: HonoApp) {
 					);
 				}
 			}
+			if (data.voice_p2p) {
+				const patch = omitUndefinedFields(data.voice_p2p);
+				if (Object.keys(patch).length > 0) {
+					await instanceConfigRepository.updateVoiceP2pConfig((current) =>
+						VoiceP2pConfigSchema.parse({
+							...current,
+							...patch,
+							config_version: current.config_version + 1,
+						}),
+					);
+				}
+			}
 			if (data.captcha) {
 				const patch = omitUndefinedFields(data.captcha);
 				if (Object.keys(patch).length > 0) {
@@ -470,6 +495,7 @@ export function InstanceConfigAdminController(app: HonoApp) {
 						? omitUndefinedFields({
 								terms_url: readOptionalField(data.app_public.legal, 'terms_url'),
 								privacy_url: readOptionalField(data.app_public.legal, 'privacy_url'),
+								guidelines_url: readOptionalField(data.app_public.legal, 'guidelines_url'),
 							})
 						: undefined,
 					registration: data.app_public.registration
@@ -830,6 +856,9 @@ function planInstancePolicyPatch(
 		if (!policy.direct_messages_disabled) {
 			patch.direct_messages_locked = true;
 		}
+	}
+	if (policy.guild_create_access !== undefined && policy.guild_create_access !== current.guild_create_access) {
+		patch.guild_create_access = policy.guild_create_access;
 	}
 	if (policy.services) {
 		if (policy.services.gif_enabled !== undefined) {

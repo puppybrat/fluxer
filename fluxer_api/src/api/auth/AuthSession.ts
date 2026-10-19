@@ -14,6 +14,7 @@ import {getKVAccountDeletionQueue} from '@app/api/middleware/ServiceSingletons';
 import type {AuthSession} from '@app/api/models/AuthSession';
 import type {User} from '@app/api/models/User';
 import {lookupGeoip} from '@app/api/utils/IpUtils';
+import {requireConfiguredClientIp} from '@app/api/utils/RequestClientIp';
 import {isFluxerNativeUserAgent, parseReportedClientOs} from '@app/api/utils/SessionClientIdentity';
 import {BotUserAuthSessionCreationDeniedError} from '@fluxer/errors/src/domains/auth/BotUserAuthSessionCreationDeniedError';
 import {RegistrationPendingApprovalError} from '@fluxer/errors/src/domains/auth/RegistrationPendingApprovalError';
@@ -21,7 +22,6 @@ import {RegistrationRejectedError} from '@fluxer/errors/src/domains/auth/Registr
 import {SessionTokenMismatchError} from '@fluxer/errors/src/domains/auth/SessionTokenMismatchError';
 import {InvalidTokenError} from '@fluxer/errors/src/domains/core/InvalidTokenError';
 import {UnknownUserError} from '@fluxer/errors/src/domains/user/UnknownUserError';
-import {requireClientIp} from '@fluxer/ip_utils/src/ClientIp';
 import type {AuthSessionResponse} from '@fluxer/schema/src/domains/auth/AuthSchemas';
 
 export interface SessionOrigin {
@@ -44,7 +44,6 @@ interface DispatchAuthSessionChangeParams {
 	userId: UserID;
 	oldAuthSessionIdHash: string;
 	newAuthSessionIdHash: string;
-	newToken: string;
 }
 
 interface ReplaceCurrentAuthSessionParams {
@@ -68,10 +67,7 @@ interface CreateAdditionalAuthSessionFromTokenParams {
 
 export function resolveSessionOrigin(ctx: ApiContext, request: Request): SessionOrigin {
 	const {config} = ctx.services;
-	const ip = requireClientIp(request, {
-		trustClientIpHeader: config.proxy.trust_client_ip_header,
-		clientIpHeaderName: config.proxy.client_ip_header,
-	});
+	const ip = requireConfiguredClientIp(request, config.proxy);
 	const userAgent = request.headers.get('user-agent')?.trim() || null;
 	const clientOs = isFluxerNativeUserAgent(userAgent)
 		? parseReportedClientOs(request.headers.get('x-fluxer-client-properties'))
@@ -192,13 +188,12 @@ export async function replaceCurrentAuthSession(
 	await deleteAndTerminateAuthSessions(ctx, user.id, otherAuthSessions);
 	const [newToken, newAuthSession] = await createAuthSession(ctx, {user, origin: resolveSessionOrigin(ctx, request)});
 	const newAuthSessionIdHash = encodeSessionIdHash(newAuthSession.sessionIdHash);
+	await deleteAndTerminateAuthSessions(ctx, user.id, [currentAuthSession]);
 	await dispatchAuthSessionChange(ctx, {
 		userId: user.id,
 		oldAuthSessionIdHash,
 		newAuthSessionIdHash,
-		newToken,
 	});
-	await deleteAndTerminateAuthSessions(ctx, user.id, [currentAuthSession]);
 	return {
 		token: newToken,
 		authSession: newAuthSession,
@@ -231,14 +226,13 @@ function encodeSessionIdHash(sessionIdHash: Uint8Array): string {
 
 async function dispatchAuthSessionChange(ctx: ApiContext, params: DispatchAuthSessionChangeParams): Promise<void> {
 	const {gateway} = ctx.services;
-	const {userId, oldAuthSessionIdHash, newAuthSessionIdHash, newToken} = params;
+	const {userId, oldAuthSessionIdHash, newAuthSessionIdHash} = params;
 	await gateway.dispatchPresence({
 		userId,
 		event: 'AUTH_SESSION_CHANGE',
 		data: {
 			old_auth_session_id_hash: oldAuthSessionIdHash,
 			new_auth_session_id_hash: newAuthSessionIdHash,
-			new_token: newToken,
 		},
 	});
 }

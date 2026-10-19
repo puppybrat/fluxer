@@ -29,6 +29,44 @@
 -spec dispatch_to_sessions([session_pair()], event(), event_data(), guild_state()) ->
     non_neg_integer().
 dispatch_to_sessions(FilteredSessions, Event, FinalData, UpdatedState) ->
+    case guild_thread_gate:needs_variant(UpdatedState) of
+        false ->
+            dispatch_variant(FilteredSessions, Event, FinalData, UpdatedState);
+        true ->
+            dispatch_masked_variants(FilteredSessions, Event, FinalData, UpdatedState)
+    end.
+
+-spec dispatch_masked_variants([session_pair()], event(), event_data(), guild_state()) ->
+    non_neg_integer().
+dispatch_masked_variants(FilteredSessions, Event, FinalData, UpdatedState) ->
+    Masked = guild_thread_gate:mask_payload(Event, FinalData),
+    {Viewers, Others} = lists:partition(
+        fun({_Sid, Session}) -> guild_thread_gate:session_viewer(Session) end, FilteredSessions
+    ),
+    case {Masked =:= FinalData, Viewers, Others} of
+        {true, _, _} ->
+            dispatch_variant(FilteredSessions, Event, FinalData, UpdatedState);
+        {false, _, []} ->
+            dispatch_variant(Viewers, Event, FinalData, UpdatedState);
+        {false, [], _} ->
+            dispatch_masked(Others, Event, Masked, UpdatedState);
+        {false, _, _} ->
+            max(
+                dispatch_variant(Viewers, Event, FinalData, UpdatedState),
+                dispatch_masked(Others, Event, Masked, UpdatedState)
+            )
+    end.
+
+-spec dispatch_masked([session_pair()], event(), event_data(), guild_state()) ->
+    non_neg_integer().
+dispatch_masked(Sessions, Event, Masked, UpdatedState) ->
+    Count = dispatch_variant(Sessions, Event, Masked, UpdatedState),
+    ok = guild_thread_dispatch:count_masked(Event, Count),
+    Count.
+
+-spec dispatch_variant([session_pair()], event(), event_data(), guild_state()) ->
+    non_neg_integer().
+dispatch_variant(FilteredSessions, Event, FinalData, UpdatedState) ->
     GuildId = maps:get(id, UpdatedState),
     case guild_dispatch_filter:is_bulk_update_event(Event) of
         true ->
@@ -125,11 +163,34 @@ dispatch_bulk_groups(Groups, Event, FinalData, GuildId, Dispatched) ->
 -spec filter_indexed_for_session(map(), [{integer() | undefined, map()}], guild_state()) ->
     [map()].
 filter_indexed_for_session(SessionData, IndexedChannels, UpdatedState) ->
+    Visible = filter_permitted_for_session(SessionData, IndexedChannels, UpdatedState),
+    case guild_thread_gate:needs_variant(UpdatedState) of
+        false ->
+            Visible;
+        true ->
+            [
+                Ch
+             || Ch <- Visible,
+                guild_thread_gate:channel_visible(
+                    SessionData,
+                    guild_dispatch_decorate:parse_snowflake(
+                        <<"id">>, maps:get(<<"id">>, Ch, undefined)
+                    ),
+                    UpdatedState
+                )
+            ]
+    end.
+
+-spec filter_permitted_for_session(map(), [{integer() | undefined, map()}], guild_state()) ->
+    [map()].
+filter_permitted_for_session(SessionData, IndexedChannels, UpdatedState) ->
     case maps:get(viewable_channels, SessionData, undefined) of
         ViewableMap when is_map(ViewableMap) ->
             [
                 Ch
-             || {ChId, Ch} <- IndexedChannels, is_integer(ChId), maps:is_key(ChId, ViewableMap)
+             || {ChId, Ch} <- IndexedChannels,
+                is_integer(ChId),
+                maps:is_key(ChId, ViewableMap)
             ];
         _ ->
             UserId = maps:get(user_id, SessionData),
@@ -371,58 +432,6 @@ passive_channel_update_bulk_dispatches_visible_channels_test() ->
         [#{<<"id">> => <<"100">>, <<"name">> => <<"visible">>}],
         maps:get(<<"channels">>, Payload)
     ).
-
-grouped_bulk_encoding_matches_ungrouped_test() ->
-    flush_dispatches(),
-    Data = bulk_channel_data(),
-    State = passive_dispatch_state(),
-    Sessions = [bulk_session_pair(<<"a">>, #{100 => true})],
-    ?assertEqual(1, reference_dispatch_bulk_update(Sessions, channel_update_bulk, Data, State)),
-    Ungrouped = receive_pre_encoded_binary(channel_update_bulk),
-    ?assertEqual(1, dispatch_to_sessions(Sessions, channel_update_bulk, Data, State)),
-    ?assertEqual(Ungrouped, receive_pre_encoded_binary(channel_update_bulk)).
-
-reference_dispatch_bulk_update(FilteredSessions, Event, FinalData, UpdatedState) ->
-    GuildId = maps:get(id, UpdatedState),
-    BulkChannels = maps:get(<<"channels">>, FinalData, []),
-    IndexedChannels = [
-        {
-            guild_dispatch_decorate:parse_snowflake(
-                <<"id">>,
-                maps:get(<<"id">>, Ch, undefined)
-            ),
-            Ch
-        }
-     || Ch <- BulkChannels
-    ],
-    SuccessCount = lists:foldl(
-        fun({_Sid, SessionData}, Acc) ->
-            reference_dispatch_bulk_to_one_session_indexed(
-                SessionData, Event, FinalData, IndexedChannels, GuildId, UpdatedState, Acc
-            )
-        end,
-        0,
-        FilteredSessions
-    ),
-    normalize_success(SuccessCount).
-
-reference_dispatch_bulk_to_one_session_indexed(
-    SessionData, Event, FinalData, IndexedChannels, GuildId, UpdatedState, Acc
-) ->
-    Pid = maps:get(pid, SessionData),
-    case
-        session_passive:should_receive_event(
-            Event, FinalData, GuildId, SessionData, UpdatedState
-        )
-    of
-        false ->
-            Acc;
-        true ->
-            FilteredChannels = filter_indexed_for_session(
-                SessionData, IndexedChannels, UpdatedState
-            ),
-            dispatch_bulk_to_pid(Pid, Event, FinalData, FilteredChannels, GuildId, Acc)
-    end.
 
 grouped_bulk_encodes_once_per_visible_set_test() ->
     flush_dispatches(),

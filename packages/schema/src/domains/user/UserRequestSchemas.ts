@@ -31,6 +31,7 @@ import {
 	createBitflagInt32Type,
 	createNamedStringLiteralUnion,
 	createStringType,
+	Int32Type,
 	SnowflakeStringType,
 	SnowflakeType,
 	withFieldDescription,
@@ -180,6 +181,14 @@ export const PasswordChangeCompleteRequest = PasswordChangeTicketRequest.extend(
 });
 
 export type PasswordChangeCompleteRequest = z.infer<typeof PasswordChangeCompleteRequest>;
+
+export const UserPasswordUpdateRequest = z
+	.object({
+		new_password: PasswordType.describe('The new password to set'),
+	})
+	.extend(SudoVerificationSchema.shape);
+
+export type UserPasswordUpdateRequest = z.infer<typeof UserPasswordUpdateRequest>;
 
 export const FriendRequestByTagRequest = z.object({
 	username: UsernameType.describe('Username of the user to send friend request'),
@@ -385,6 +394,14 @@ export const UserSettingsUpdateRequest = z
 		default_share_voice_activity: z
 			.boolean()
 			.describe('Default share_voice_activity applied to new friend relationships'),
+		privacy_setup_version: z
+			.number()
+			.int()
+			.min(1)
+			.max(1000)
+			.describe(
+				'Version of the privacy setup the user just reviewed. The server also records privacy_setup_completed_at as the current time.',
+			),
 		synced_preferences: z
 			.string()
 			.max(SYNCED_PREFERENCES_MAX_ENCODED_LENGTH)
@@ -406,6 +423,16 @@ const MuteConfigSchema = z
 		selected_time_window: z.number().int().describe('Selected mute duration'),
 	})
 	.nullish();
+export const ThreadMemberSettingsRequest = z.object({
+	flags: Int32Type.optional().describe(
+		'Thread member notification flags (ALL_MESSAGES 1<<1, ONLY_MENTIONS 1<<2, NO_MESSAGES 1<<3)',
+	),
+	muted: z.boolean().optional().describe('Whether the thread is muted'),
+	mute_config: MuteConfigSchema.describe('Thread mute configuration'),
+});
+
+export type ThreadMemberSettingsRequest = z.infer<typeof ThreadMemberSettingsRequest>;
+
 const ChannelOverrideSchema = z.object({
 	collapsed: z.boolean().describe('Channel category collapsed'),
 	message_notifications: withFieldDescription(UserNotificationSettingsSchema, 'Channel notification level'),
@@ -414,6 +441,9 @@ const ChannelOverrideSchema = z.object({
 	unread_badges: withFieldDescription(UserNotificationSettingsSchema, 'Unread badges level override for this channel')
 		.nullish()
 		.describe('Unread badges level override for this channel (null = inherit)'),
+	flags: Int32Type.optional().describe(
+		'Channel override flags (NEW_FORUM_THREADS_OFF 1<<13, NEW_FORUM_THREADS_ON 1<<14)',
+	),
 });
 export const UserGuildSettingsUpdateRequest = z
 	.object({

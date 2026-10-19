@@ -8,8 +8,10 @@ import {applyPatchToRow, buildPatchFromData, executeVersionedUpdate} from '@app/
 import type {UserRow} from '@app/api/database/types/UserTypes';
 import {EMPTY_USER_ROW, USER_COLUMNS} from '@app/api/database/types/UserTypes';
 import {emitAccountChangedIfRelevant} from '@app/api/infrastructure/activity/AccountChangeEvents';
+import {getInstanceProductName} from '@app/api/instance/ProductName';
 import {User} from '@app/api/models/User';
 import {Users} from '@app/api/Tables';
+import {shiftGiftExtensionPastPremiumUntil} from '@app/api/user/GiftExtensionShift';
 import {isPendingDeletionBlocked} from '@app/api/user/services/PendingDeletionCoordinator';
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
 import {DELETED_USER_ID, UserFlags} from '@fluxer/constants/src/UserConstants';
@@ -31,16 +33,6 @@ const FETCH_ACTIVITY_TRACKING_CQL = Users.selectCql({
 	where: Users.where.eq('user_id'),
 	limit: 1,
 });
-
-function createFetchAllUsersFirstPageQuery(limit: number) {
-	return Users.select({limit});
-}
-
-const createFetchAllUsersPaginatedQuery = (limit: number) =>
-	Users.select({
-		where: Users.where.tokenGt('user_id', 'last_user_id'),
-		limit,
-	});
 
 type UserPatch = Partial<{
 	[K in Exclude<keyof UserRow, 'user_id'> & string]: DbOp<UserRow[K]>;
@@ -66,7 +58,7 @@ export class UserDataRepository {
 			return new User({
 				...EMPTY_USER_ROW,
 				user_id: createUserID(FLUXER_BOT_USER_ID),
-				username: 'Fluxer',
+				username: getInstanceProductName(),
 				discriminator: 0,
 				bot: true,
 				system: true,
@@ -93,18 +85,6 @@ export class UserDataRepository {
 			throw new UnknownUserError();
 		}
 		return user;
-	}
-
-	async listAllUsersPaginated(limit: number, lastUserId?: UserID): Promise<Array<User>> {
-		let users: Array<UserRow>;
-		if (lastUserId) {
-			const query = createFetchAllUsersPaginatedQuery(limit);
-			users = await fetchMany<UserRow>(query.bind({last_user_id: lastUserId}));
-		} else {
-			const query = createFetchAllUsersFirstPageQuery(limit);
-			users = await fetchMany<UserRow>(query.bind({}));
-		}
-		return users.map((user) => new User(user));
 	}
 
 	async scanAllUsersPage(
@@ -232,28 +212,21 @@ export class UserDataRepository {
 		return {finalVersion, previousData, updatedData};
 	}
 
-	async compareAndSetSuspiciousFlags(
-		user: User,
-		suspiciousFlags: number,
-	): Promise<{previousData: UserRow; updatedData: UserRow} | null> {
+	async compareAndSetFlags(user: User, flags: bigint): Promise<{previousData: UserRow; updatedData: UserRow} | null> {
 		assertWritableUserId(user.id);
 		const previousData = user.toRow();
 		const version = nextVersion(user.version);
-		const expected = previousData.suspicious_activity_flags ?? 0;
-		const conditions: Array<Partial<UserRow>> = [{suspicious_activity_flags: expected}];
-		if (expected === 0 && previousData.version != null) {
-			conditions.push({suspicious_activity_flags: null, version: previousData.version});
+		const expected = previousData.flags ?? 0n;
+		const conditions: Array<Partial<UserRow>> = [{flags: expected}];
+		if (expected === 0n && previousData.version != null) {
+			conditions.push({flags: null, version: previousData.version});
 		}
 		for (const condition of conditions) {
 			const applied = await executeConditional(
-				Users.conditionalPatchByPk(
-					{user_id: user.id},
-					{suspicious_activity_flags: Db.set(suspiciousFlags), version: Db.set(version)},
-					condition,
-				),
+				Users.conditionalPatchByPk({user_id: user.id}, {flags: Db.set(flags), version: Db.set(version)}, condition),
 			);
 			if (!applied) continue;
-			const updatedData = {...previousData, suspicious_activity_flags: suspiciousFlags, version};
+			const updatedData = {...previousData, flags, version};
 			await emitAccountChangedIfRelevant(previousData, updatedData);
 			return {previousData, updatedData};
 		}
@@ -327,6 +300,7 @@ export class UserDataRepository {
 		updates: {
 			premiumWillCancel: boolean;
 			computedPremiumUntil: Date | null;
+			periodStart: Date | null;
 		},
 	): Promise<{
 		finalVersion: number | null;
@@ -336,12 +310,24 @@ export class UserDataRepository {
 			async () => {
 				return fetchOne<UserRow>(FETCH_USER_BY_ID_CQL, {user_id: userId});
 			},
-			(_current) => {
+			(current) => {
 				const computedPremiumUntil = updates.computedPremiumUntil;
 				const patch: UserPatch = {
 					premium_will_cancel: Db.set(updates.premiumWillCancel),
 					premium_until: computedPremiumUntil ? Db.set(computedPremiumUntil) : Db.clear(),
 				};
+				const giftEnd = current?.premium_gift_extension_ends_at ?? null;
+				if (computedPremiumUntil && giftEnd) {
+					const shiftedGiftEnd = shiftGiftExtensionPastPremiumUntil(
+						{premiumUntil: current?.premium_until, giftEnd},
+						computedPremiumUntil,
+						new Date(),
+						updates.periodStart,
+					);
+					if (shiftedGiftEnd && shiftedGiftEnd.getTime() !== giftEnd.getTime()) {
+						patch.premium_gift_extension_ends_at = Db.set(shiftedGiftEnd);
+					}
+				}
 				return {
 					pk: {user_id: userId},
 					patch,

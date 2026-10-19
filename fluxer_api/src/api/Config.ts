@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {APIConfig, BlueskyOAuthConfig} from '@app/api/config/APIConfig';
+import type {APIConfig, BlueskyOAuthConfig, TrustedCallerConfig} from '@app/api/config/APIConfig';
+import {DonationRateLimitConfigs} from '@app/api/rate_limit_configs/DonationRateLimitConfig';
 import {parseIpBanEntry} from '@app/api/utils/IpRangeUtils';
 import type {WorkerTaskName} from '@app/api/worker/WorkerLaneConfig';
 import type {MasterConfig} from '@fluxer/config/src/MasterConfig';
@@ -78,25 +79,50 @@ function normalizeIpBanExemptIps(values: Array<string>): Array<string> {
 	return Array.from(normalized);
 }
 
-function mapApnsApps(
-	apps:
-		| Array<{
-				app_id?: string;
-				topic?: string;
-				environment?: 'production' | 'development';
-		  }>
-		| undefined,
-): APIConfig['push']['apns']['apps'] {
-	return (apps ?? []).map((app) => {
-		if (!app.app_id) {
-			throw new Error('FLUXER_PUSH_APNS_APPS contains an entry with no app_id');
-		}
-		return {
-			appId: app.app_id,
-			topic: app.topic,
-			environment: app.environment,
-		};
-	});
+const TRUSTED_CALLER_MIN_KEY_LENGTH = 32;
+
+function parseTrustedCaller(entry: unknown, index: number): TrustedCallerConfig {
+	const label = `FLUXER_API_TRUSTED_CALLERS entry ${index + 1}`;
+	if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+		throw new Error(`${label} must be a JSON object`);
+	}
+	const name = Reflect.get(entry, 'name');
+	if (typeof name !== 'string' || name.trim().length === 0) {
+		throw new Error(`${label} must have a name`);
+	}
+	const key = Reflect.get(entry, 'key');
+	if (typeof key !== 'string' || key.trim().length < TRUSTED_CALLER_MIN_KEY_LENGTH) {
+		throw new Error(`${label} key must be at least ${TRUSTED_CALLER_MIN_KEY_LENGTH} characters`);
+	}
+	const buckets = Reflect.get(entry, 'buckets');
+	if (
+		!Array.isArray(buckets) ||
+		buckets.length === 0 ||
+		!buckets.every((bucket) => typeof bucket === 'string' && bucket.trim().length > 0)
+	) {
+		throw new Error(`${label} buckets must be a non-empty list of bucket names`);
+	}
+	return {
+		name: name.trim(),
+		key: key.trim(),
+		buckets: buckets.map((bucket: string) => bucket.trim()),
+	};
+}
+
+function buildTrustedCallers(master: MasterConfig): Array<TrustedCallerConfig> {
+	const trustedCallers = (master.services.api.trusted_callers ?? []).map(parseTrustedCaller);
+	const donationProxyKey = (master.services.api.donation_proxy_key ?? '').trim();
+	if (donationProxyKey.length > 0 && donationProxyKey.length < TRUSTED_CALLER_MIN_KEY_LENGTH) {
+		throw new Error(`FLUXER_API_DONATION_PROXY_KEY must be at least ${TRUSTED_CALLER_MIN_KEY_LENGTH} characters`);
+	}
+	if (donationProxyKey.length > 0) {
+		trustedCallers.push({
+			name: 'donation',
+			key: donationProxyKey,
+			buckets: Object.values(DonationRateLimitConfigs).map((routeConfig) => routeConfig.bucket),
+		});
+	}
+	return trustedCallers;
 }
 
 export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
@@ -118,10 +144,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 	if (Buffer.from(uploadRelaySecretBase64, 'base64').length < 32) {
 		throw new Error('FLUXER_MEDIA_PROXY_UPLOAD_RELAY_SECRET_BASE64 must decode to at least 32 bytes');
 	}
-	const donationProxyKey = (master.services.api.donation_proxy_key ?? '').trim();
-	if (donationProxyKey.length > 0 && donationProxyKey.length < 32) {
-		throw new Error('FLUXER_API_DONATION_PROXY_KEY must be at least 32 characters');
-	}
+	const trustedCallers = buildTrustedCallers(master);
 	if (!s3Config) {
 		throw new Error('S3 configuration is required for the API');
 	}
@@ -143,6 +166,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		headersTimeoutMs: master.services.api.headers_timeout_ms,
 		requestTimeoutMs: master.services.api.request_timeout_ms,
 		maxInflightRequests: master.services.api.max_inflight_requests,
+		automatedMessageDeletionDelayDays: master.services.api.automated_message_deletion_delay_days,
 		ipBanExemptIps: normalizeIpBanExemptIps(master.services.api.ip_ban_exempt_ips),
 		cassandra: {
 			hosts: cassandraSource?.hosts.join(',') ?? '',
@@ -227,7 +251,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		},
 		internal: {
 			gatewayRpcAuthToken: master.services.gateway.rpc_auth_token ?? '',
-			donationProxyKey,
+			trustedCallers,
 		},
 		hosts: {
 			marketing: extractHostname(master.endpoints.marketing),
@@ -248,6 +272,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			webhookSecret: master.integrations.email.webhook_secret ?? undefined,
 			fromEmail: master.integrations.email.from_email,
 			fromName: master.integrations.email.from_name,
+			replyToEmail: master.integrations.email.reply_to_email,
 			appBaseUrl: resolveEmailAppBaseUrl(master),
 			smtp: master.integrations.email.smtp
 				? {
@@ -258,9 +283,6 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 						secure: master.integrations.email.smtp.secure ?? true,
 					}
 				: undefined,
-		},
-		ipinfo: {
-			apiKey: master.integrations.ipinfo.api_key || undefined,
 		},
 		blocklistFeeds: {
 			enabled: master.integrations.blocklist_feeds.enabled ?? !master.instance.self_hosted,
@@ -275,6 +297,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			url: master.integrations.voice.url,
 			internalUrl: master.integrations.voice.internal_url,
 			defaultRegion: master.integrations.voice.default_region,
+			p2pStunUrls: master.integrations.voice.p2p_stun_urls,
 		},
 		stripe: {
 			enabled: master.integrations.stripe.enabled,
@@ -287,6 +310,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 						monthlyBrl: master.integrations.stripe.prices.monthly_brl,
 						monthlyDkk: master.integrations.stripe.prices.monthly_dkk,
 						monthlyInr: master.integrations.stripe.prices.monthly_inr,
+						monthlyIsk: master.integrations.stripe.prices.monthly_isk,
 						monthlyNok: master.integrations.stripe.prices.monthly_nok,
 						monthlyPln: master.integrations.stripe.prices.monthly_pln,
 						monthlySek: master.integrations.stripe.prices.monthly_sek,
@@ -296,6 +320,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 						yearlyBrl: master.integrations.stripe.prices.yearly_brl,
 						yearlyDkk: master.integrations.stripe.prices.yearly_dkk,
 						yearlyInr: master.integrations.stripe.prices.yearly_inr,
+						yearlyIsk: master.integrations.stripe.prices.yearly_isk,
 						yearlyNok: master.integrations.stripe.prices.yearly_nok,
 						yearlyPln: master.integrations.stripe.prices.yearly_pln,
 						yearlySek: master.integrations.stripe.prices.yearly_sek,
@@ -308,6 +333,8 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 						gift1YearDkk: master.integrations.stripe.prices.gift_1_year_dkk,
 						gift1MonthNok: master.integrations.stripe.prices.gift_1_month_nok,
 						gift1YearNok: master.integrations.stripe.prices.gift_1_year_nok,
+						gift1MonthIsk: master.integrations.stripe.prices.gift_1_month_isk,
+						gift1YearIsk: master.integrations.stripe.prices.gift_1_year_isk,
 						gift1MonthBrl: master.integrations.stripe.prices.gift_1_month_brl,
 						gift1MonthInr: master.integrations.stripe.prices.gift_1_month_inr,
 						gift1MonthPln: master.integrations.stripe.prices.gift_1_month_pln,
@@ -336,29 +363,18 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			port: master.integrations.clamav.port,
 			failOpen: master.integrations.clamav.fail_open,
 		},
-		ncmec: {
-			enabled: master.integrations.ncmec.enabled,
-			baseUrl: master.integrations.ncmec.base_url,
-			username: master.integrations.ncmec.username,
-			password: master.integrations.ncmec.password,
-			reporterEmail: master.integrations.ncmec.reporter_email ?? '',
-		},
 		admin: {
 			oauthClientSecret: master.services.admin.oauth_client_secret,
 		},
 		auth: {
 			sudoModeSecret: master.auth.sudo_mode_secret,
 			connectionInitiationSecret: master.auth.connection_initiation_secret,
+			profilePseudonymSecret: master.auth.profile_pseudonym_secret,
 			ssoAllowPrivateAddresses: master.auth.sso_allow_private_addresses,
 			passkeys: {
 				rpName: master.auth.passkeys.rp_name,
 				rpId: master.auth.passkeys.rp_id,
 				allowedOrigins: master.auth.passkeys.additional_allowed_origins,
-			},
-			vapid: {
-				publicKey: master.auth.vapid.public_key,
-				privateKey: master.auth.vapid.private_key,
-				email: master.auth.vapid.email,
 			},
 			bluesky: master.auth.bluesky as BlueskyOAuthConfig,
 		},
@@ -374,6 +390,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		},
 		instance: {
 			selfHosted: master.instance.self_hosted,
+			baseDomain: master.domain.base_domain,
 			autoJoinInviteCode: master.instance.auto_join_invite_code,
 			visionariesGuildId: master.instance.visionaries_guild_id,
 			visionariesGuildVisionaryRoleId: master.instance.visionaries_guild_visionary_role_id,
@@ -391,6 +408,8 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			setup: {
 				configured: master.instance.setup.configured,
 			},
+			accountIdentity: master.instance.account_identity,
+			tagStyle: master.instance.tag_style,
 		},
 		discovery: {
 			enabled: master.discovery.enabled,
@@ -408,27 +427,54 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		attachmentDecayEnabled: master.attachment_decay_enabled,
 		deletionGracePeriodHours: master.dev.test_mode_enabled ? 0.01 : master.deletion_grace_period_hours,
 		inactivityDeletionThresholdDays: master.inactivity_deletion_threshold_days,
+		reportRetention: {
+			days: master.report_retention.days,
+			resolvedDays: master.report_retention.resolved_days,
+			dryRun: master.report_retention.dry_run,
+		},
 		push: {
 			publicVapidKey: master.auth.vapid.public_key,
-			apns: {
-				enabled: master.integrations.push.apns.enabled,
-				teamId: master.integrations.push.apns.team_id,
-				keyId: master.integrations.push.apns.key_id,
-				privateKey: master.integrations.push.apns.private_key,
-				privateKeyPath: master.integrations.push.apns.private_key_path,
-				apps: mapApnsApps(master.integrations.push.apns.apps),
-			},
+		},
+		appStore: {
+			enabled: master.integrations.app_store.enabled,
+			issuerId: master.integrations.app_store.issuer_id,
+			keyId: master.integrations.app_store.key_id,
+			privateKey: master.integrations.app_store.private_key,
+			privateKeyPath: master.integrations.app_store.private_key_path,
+			apps: (master.integrations.app_store.apps ?? []).map((app) => ({
+				bundleId: app.bundle_id,
+				appAppleId: app.app_apple_id,
+			})),
+			products: master.integrations.app_store.products ?? {},
+		},
+		googlePlay: {
+			enabled: master.integrations.google_play.enabled,
+			packages: master.integrations.google_play.packages ?? [],
+			clientEmail: master.integrations.google_play.client_email,
+			privateKey: master.integrations.google_play.private_key,
+			privateKeyPath: master.integrations.google_play.private_key_path,
+			serviceAccountJsonPath: master.integrations.google_play.service_account_json_path,
+			tokenUri: master.integrations.google_play.token_uri ?? 'https://oauth2.googleapis.com/token',
+			products: master.integrations.google_play.products ?? {},
+			pushAudience: master.integrations.google_play.push_audience,
+			pushServiceAccountEmail: master.integrations.google_play.push_service_account_email,
+		},
+		storeBilling: {
+			sandboxUserIds: master.integrations.store_billing.sandbox_user_ids ?? [],
+			sandboxEntitlesAll: master.integrations.store_billing.sandbox_entitles_all,
 		},
 		worker: {
 			mode: apiWorkerConfig?.mode ?? 'all_lanes',
 			laneName: apiWorkerConfig?.lane,
 			taskName: apiWorkerConfig?.task as WorkerTaskName | undefined,
 			enableCronScheduler: apiWorkerConfig?.enable_cron_scheduler,
+			metricsPort: apiWorkerConfig?.metrics_port,
 			laneConcurrencyOverrides: {
 				realtime: apiWorkerConfig?.lane_concurrency_overrides?.realtime,
 				unfurl: apiWorkerConfig?.lane_concurrency_overrides?.unfurl,
 				lifecycle: apiWorkerConfig?.lane_concurrency_overrides?.lifecycle,
 				batch: apiWorkerConfig?.lane_concurrency_overrides?.batch,
+				crosspost: apiWorkerConfig?.lane_concurrency_overrides?.crosspost,
 			},
 		},
 	};

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {ResettableStates} from '@app/features/app/state/ResettableStates';
 import {http} from '@app/features/platform/transport/RestTransport';
 import type {RestResponse} from '@app/features/platform/types/TransportTypes';
 import {Logger} from '@app/features/platform/utils/AppLogger';
@@ -17,9 +18,9 @@ const logger = new Logger('ExperimentAssignments');
 
 export const EXPERIMENT_ASSIGNMENTS_PATH = '/experiments';
 
-export const EXPERIMENT_ASSIGNMENTS_VISIBILITY_REFRESH_MIN_INTERVAL_MS = 30 * MS_PER_SECOND;
-export const EXPERIMENT_ASSIGNMENTS_HIDDEN_POLL_INTERVAL_MULTIPLIER = 4;
-export const EXPERIMENT_ASSIGNMENTS_MAX_NOT_FOUND_STREAK = 3;
+const EXPERIMENT_ASSIGNMENTS_VISIBILITY_REFRESH_MIN_INTERVAL_MS = 30 * MS_PER_SECOND;
+const EXPERIMENT_ASSIGNMENTS_HIDDEN_POLL_INTERVAL_MULTIPLIER = 4;
+const EXPERIMENT_ASSIGNMENTS_MAX_NOT_FOUND_STREAK = 3;
 
 const MAX_BACKOFF_DOUBLINGS = 2;
 const EXPERIMENT_ASSIGNMENTS_MIN_POLL_DELAY_MS = (EXPERIMENT_MIN_POLL_INTERVAL_SECONDS * MS_PER_SECOND) / 2;
@@ -332,5 +333,7 @@ class ExperimentAssignmentsStore {
 }
 
 export const ExperimentAssignments = new ExperimentAssignmentsStore();
+
+ResettableStates.register(ExperimentAssignments, ExperimentAssignments.reset);
 
 export default ExperimentAssignments;

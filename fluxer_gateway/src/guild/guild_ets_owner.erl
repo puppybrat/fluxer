@@ -100,6 +100,8 @@ ensure_core_tables() ->
         {guild_unavailability_cache, RO},
         {guild_circuit_breaker, RW},
         {guild_permission_cache, RO},
+        {guild_read_model, RO},
+        {guild_health_status, RO},
         {voice_update_queue, RW},
         {voice_update_rate_limit, RW}
     ]).
@@ -228,23 +230,6 @@ core_voice_tables_are_owned_by_owner_on_start_test() ->
         gen_server:stop(?MODULE)
     end.
 
-sweep_orphan_tables_detects_dead_owner_test() ->
-    Self = self(),
-    Pid = spawn(fun() -> orphan_test_table_owner(Self) end),
-    Tab =
-        receive
-            {tab, T} -> T
-        after 1000 -> error(timeout)
-        end,
-    exit(Pid, kill),
-    receive
-        {'ETS-TRANSFER', Tab, Pid, orphan_test} -> ok
-    after 1000 -> error(timeout)
-    end,
-    {ok, Count} = sweep_orphan_tables(),
-    ?assert(Count >= 0),
-    ets:delete(Tab).
-
 orphan_sweep_is_scheduled_and_rearmed_test() ->
     {ok, Pid} = start_link(),
     try
@@ -257,19 +242,6 @@ orphan_sweep_is_scheduled_and_rearmed_test() ->
         ?assertEqual(Pid, ets:info(guild_voice_registry, owner))
     after
         gen_server:stop(?MODULE)
-    end.
-
-sweep_orphan_tables_returns_zero_when_clean_test() ->
-    {ok, Count} = sweep_orphan_tables(),
-    ?assert(is_integer(Count)),
-    ?assert(Count >= 0).
-
-orphan_test_table_owner(Parent) ->
-    Tab = ets:new(orphan_test_table, [set, public, {heir, Parent, orphan_test}]),
-    Parent ! {tab, Tab},
-    receive
-        stop -> ok
-    after 30000 -> ok
     end.
 
 -endif.

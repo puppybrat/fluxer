@@ -12,11 +12,18 @@ import {http} from '@app/features/platform/transport/RestTransport';
 import {Logger} from '@app/features/platform/utils/AppLogger';
 import Users from '@app/features/user/state/Users';
 import type {Message as WireMessage} from '@fluxer/schema/src/domains/message/MessageResponseSchemas';
-import type {HarvestStatusResponse} from '@fluxer/schema/src/domains/user/UserHarvestSchemas';
+import type {
+	HarvestDownloadUrlResponse,
+	HarvestStatusResponse,
+} from '@fluxer/schema/src/domains/user/UserHarvestSchemas';
 import type {
 	BackupCode,
+	EmailChangeRequestNewResponse,
+	EmailChangeVerifyOriginalResponse,
 	PasswordChangeCompleteResponse,
-	PhoneGateEscapePreviewResponse,
+	PasswordChangeStartResponse,
+	PasswordChangeVerifyResponse,
+	UserPasswordUpdateResponse,
 	UserPrivate,
 } from '@fluxer/schema/src/domains/user/UserResponseSchemas';
 import type {PublicKeyCredentialCreationOptionsJSON, RegistrationResponseJSON} from '@simplewebauthn/browser';
@@ -42,28 +49,6 @@ interface FluxerTagAvailabilityResponse {
 	taken: boolean;
 }
 
-interface PhoneVerifyResult {
-	verified: true;
-}
-
-export interface InboundPhoneChallengeResponse {
-	challenge_code: string;
-	our_number: string;
-	expires_at: string;
-}
-
-export interface PhoneSendVerificationInboundChallengeResponse extends InboundPhoneChallengeResponse {
-	channel: 'inbound_challenge';
-}
-
-export type PhoneVerificationSendChannel = 'sms' | 'inbound_challenge';
-export type PhoneSendVerificationResult =
-	| {
-			channel: 'sms';
-	  }
-	| PhoneSendVerificationInboundChallengeResponse;
-type PhoneSendVerificationApiResponse = PhoneSendVerificationResult;
-
 interface EmailChangeStartResponse {
 	ticket: string;
 	require_original: boolean;
@@ -72,29 +57,8 @@ interface EmailChangeStartResponse {
 	resend_available_at?: string | null;
 }
 
-interface EmailChangeVerifyOriginalResponse {
-	original_proof: string;
-}
-
-interface EmailChangeRequestNewResponse {
-	ticket: string;
-	new_email: string;
-	new_code_expires_at: string;
-	resend_available_at: string | null;
-}
-
 interface EmailChangeVerifyNewResponse {
 	email_token: string;
-}
-
-interface PasswordChangeStartResponse {
-	ticket: string;
-	code_expires_at: string;
-	resend_available_at: string | null;
-}
-
-interface PasswordChangeVerifyResponse {
-	verification_proof: string;
 }
 
 type UserUpdatePayload = Partial<UserPrivate> & {
@@ -113,6 +77,7 @@ type UserUpdatePayload = Partial<UserPrivate> & {
 };
 type UserUpdateResponse = UserPrivate & {
 	token?: string;
+	auth_session_id_hash?: string;
 };
 
 interface HarvestRequestResponse {
@@ -135,17 +100,6 @@ function updatedUserFields(user: UserUpdatePayload): Array<string> {
 async function requestUserUpdate(user: UserUpdatePayload): Promise<UserUpdateResponse> {
 	const response = await http.patch<UserUpdateResponse>(Endpoints.USER_ME, {body: user});
 	return response.body;
-}
-
-function phoneVerificationRequest(
-	phone: string,
-	channel?: PhoneVerificationSendChannel,
-): {phone: string; channel?: PhoneVerificationSendChannel} {
-	return channel ? {phone, channel} : {phone};
-}
-
-function phoneCodeRequest(phone: string, code: string): {phone: string; code: string} {
-	return {phone, code};
 }
 
 function emailTicketRequest(ticket: string): {ticket: string} {
@@ -194,22 +148,6 @@ function completePasswordChangeBody(
 	};
 }
 
-async function emailApplySudoPayload(): Promise<SudoVerificationPayload> {
-	return Sudo.hasValidToken()
-		? {}
-		: await SudoPrompt.requestVerification({
-				method: 'POST',
-				path: Endpoints.USER_EMAIL_CHANGE_APPLY,
-			});
-}
-
-async function requestEmailApply(emailToken: string): Promise<UserUpdateResponse> {
-	const response = await http.post<UserUpdateResponse>(Endpoints.USER_EMAIL_CHANGE_APPLY, {
-		body: {email_token: emailToken, ...(await emailApplySudoPayload())},
-	});
-	return response.body;
-}
-
 function webAuthnRegistrationBody(
 	response: RegistrationResponseJSON,
 	challenge: string,
@@ -253,6 +191,11 @@ export async function update(user: UserUpdatePayload): Promise<UserUpdateRespons
 			logger.debug(`Updated fields: ${updatedFields.join(', ')}`);
 		}
 		if (userData.token) {
+			SessionManager.setToken(userData.token);
+			GatewayConnection.setToken(userData.token);
+			if (userData.auth_session_id_hash) {
+				AuthSession.handleAuthSessionChange(userData.auth_session_id_hash);
+			}
 			logger.debug('Authentication token was refreshed');
 		}
 		return userData;
@@ -277,76 +220,6 @@ export async function checkFluxerTagAvailability({
 		return response.body.taken;
 	} catch (error) {
 		logger.error('Failed to check FluxerTag availability:', error);
-		throw error;
-	}
-}
-
-export async function getPhoneGateEscapePreview(): Promise<PhoneGateEscapePreviewResponse> {
-	try {
-		logger.debug('Fetching phone gate escape preview');
-		const response = await http.get<PhoneGateEscapePreviewResponse>(Endpoints.USER_REQUIRED_ACTION_PHONE_GATE_ESCAPE);
-		return response.body;
-	} catch (error) {
-		logger.error('Failed to fetch phone gate escape preview', error);
-		throw error;
-	}
-}
-
-export async function executePhoneGateEscape(): Promise<UserPrivate> {
-	try {
-		logger.debug('Setting the phone gate check aside');
-		const response = await http.post<UserPrivate>(Endpoints.USER_REQUIRED_ACTION_PHONE_GATE_ESCAPE, {body: {}});
-		logger.debug('Phone gate check set aside');
-		return response.body;
-	} catch (error) {
-		logger.error('Failed to set the phone gate check aside', error);
-		throw error;
-	}
-}
-
-export async function startInboundPhoneChallenge(): Promise<InboundPhoneChallengeResponse> {
-	try {
-		logger.debug('Starting inbound phone challenge');
-		const response = await http.post<InboundPhoneChallengeResponse>(Endpoints.USER_PHONE_INBOUND_CHALLENGE, {
-			body: {},
-		});
-		logger.debug('Inbound phone challenge started');
-		return response.body;
-	} catch (error) {
-		logger.error('Failed to start inbound phone challenge', error);
-		throw error;
-	}
-}
-
-export async function sendPhoneVerification(
-	phone: string,
-	channel?: PhoneVerificationSendChannel,
-): Promise<PhoneSendVerificationResult> {
-	try {
-		logger.debug('Sending phone verification code');
-		const response = await http.post<PhoneSendVerificationApiResponse | undefined>(
-			Endpoints.USER_PHONE_SEND_VERIFICATION,
-			{body: phoneVerificationRequest(phone, channel)},
-		);
-		logger.debug('Phone verification code sent');
-		if (!response.body) return {channel: 'sms'};
-		return response.body;
-	} catch (error) {
-		logger.error('Failed to send phone verification code', error);
-		throw error;
-	}
-}
-
-export async function verifyPhone(phone: string, code: string): Promise<PhoneVerifyResult> {
-	try {
-		logger.debug('Verifying phone code');
-		const response = await http.post<PhoneVerifyResult>(Endpoints.USER_PHONE_VERIFY, {
-			body: phoneCodeRequest(phone, code),
-		});
-		logger.debug('Phone code verified');
-		return response.body;
-	} catch (error) {
-		logger.error('Failed to verify phone code', error);
 		throw error;
 	}
 }
@@ -439,20 +312,6 @@ export async function verifyEmailChangeNew(
 	}
 }
 
-export async function applyEmailChange(emailToken: string): Promise<
-	UserPrivate & {
-		token?: string;
-	}
-> {
-	try {
-		logger.debug('Applying verified email change');
-		return await requestEmailApply(emailToken);
-	} catch (error) {
-		logger.error('Failed to apply email change', error);
-		throw error;
-	}
-}
-
 export async function requestBouncedEmailChangeNew(newEmail: string): Promise<EmailChangeRequestNewResponse> {
 	try {
 		logger.debug('Requesting bounced email replacement code');
@@ -539,12 +398,28 @@ export async function completePasswordChange(
 		const response = await http.post<PasswordChangeCompleteResponse>(Endpoints.USER_PASSWORD_CHANGE_COMPLETE, {
 			body: completePasswordChangeBody(ticket, verificationProof, newPassword),
 		});
-		SessionManager.setToken(response.body.token);
+		await SessionManager.setToken(response.body.token);
 		GatewayConnection.setToken(response.body.token);
 		AuthSession.handleAuthSessionChange(response.body.auth_session_id_hash);
 		logger.info('Password changed successfully');
 	} catch (error) {
 		logger.error('Failed to complete password change', error);
+		throw error;
+	}
+}
+
+export async function updatePasswordWithSudo(newPassword: string): Promise<void> {
+	try {
+		logger.debug('Updating password with sudo verification');
+		const response = await http.post<UserPasswordUpdateResponse>(Endpoints.USER_PASSWORD, {
+			body: {new_password: newPassword},
+		});
+		SessionManager.setToken(response.body.token);
+		GatewayConnection.setToken(response.body.token);
+		AuthSession.handleAuthSessionChange(response.body.auth_session_id_hash);
+		logger.info('Password changed successfully');
+	} catch (error) {
+		logger.error('Failed to update password', error);
 		throw error;
 	}
 }
@@ -713,13 +588,13 @@ export async function getLatestHarvest(): Promise<HarvestStatusResponse | null> 
 	}
 }
 
-export async function getHarvestStatus(harvestId: string): Promise<HarvestStatusResponse> {
+export async function getHarvestDownloadUrl(harvestId: string): Promise<HarvestDownloadUrlResponse> {
 	try {
-		logger.debug('Fetching harvest status', {harvestId});
-		const response = await http.get<HarvestStatusResponse>(Endpoints.USER_HARVEST_STATUS(harvestId));
+		logger.debug('Fetching harvest download URL', {harvestId});
+		const response = await http.get<HarvestDownloadUrlResponse>(Endpoints.USER_HARVEST_DOWNLOAD(harvestId));
 		return response.body;
 	} catch (error) {
-		logger.error('Failed to fetch harvest status', error);
+		logger.error('Failed to fetch harvest download URL', error);
 		throw error;
 	}
 }

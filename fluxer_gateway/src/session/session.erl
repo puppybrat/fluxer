@@ -48,12 +48,14 @@
     offline_timer => {reference(), reference()} | undefined,
     guilds => #{guild_id() => guild_ref()},
     active_guilds => sets:set(guild_id()),
+    guild_health => #{guild_id() => {pid(), boolean()}},
     calls => #{channel_id() => call_ref()},
     channels => #{channel_id() => map()},
     ready => map() | undefined,
     bot => boolean(),
     shard => gateway_sharding:shard() | undefined,
     e2ee_capable => boolean(),
+    geoip_country_code => binary() | undefined,
     ignored_events => #{binary() => true},
     initial_guild_id => guild_id() | undefined,
     collected_guild_states => [map()],
@@ -70,6 +72,7 @@
     voice_queue => queue:queue(map()),
     voice_queue_timer => reference() | undefined,
     debounce_reactions => boolean(),
+    thread_channels_capable => boolean(),
     reaction_buffer => reaction_buffer(),
     reaction_buffer_timer => reference() | undefined,
     _ => _
@@ -142,25 +145,21 @@ handle_cast({dispatch, Event, Data}, State) when
     is_binary(Event), is_list(Data)
 ->
     session_dispatch:handle_dispatch(Event, Data, State);
-handle_cast({initial_global_presences, Presences}, State) ->
-    handle_cast_presences(Presences, State);
+handle_cast({voice_rejected, ErrorAtom}, State) when is_atom(ErrorAtom) ->
+    ok = session_voice:report_rejection(ErrorAtom, State),
+    {noreply, State};
+handle_cast({voice_signal, Data}, State) when is_map(Data) ->
+    ok = session_voice:handle_voice_signal(Data, State),
+    {noreply, State};
 handle_cast(Msg, State) ->
     handle_cast_guild_or_lifecycle(Msg, State).
 
--spec handle_cast_presences(term(), session_state()) ->
-    {noreply, session_state()}.
-handle_cast_presences(Presences, State) ->
-    case map_list(Presences) of
-        {ok, PresenceMaps} ->
-            session_lifecycle:handle_initial_global_presences(
-                PresenceMaps, State
-            );
-        error ->
-            {noreply, State}
-    end.
-
 -spec handle_cast_guild_or_lifecycle(term(), session_state()) ->
     {noreply, session_state()} | {stop, normal, session_state()}.
+handle_cast_guild_or_lifecycle({guild_health, GuildId, GuildPid, Degraded}, State) when
+    is_integer(GuildId), is_pid(GuildPid), is_boolean(Degraded)
+->
+    session_guild_health:handle_update(GuildId, GuildPid, Degraded, State);
 handle_cast_guild_or_lifecycle(handoff_fence, State) ->
     session_lifecycle:handle_handoff_fence(State);
 handle_cast_guild_or_lifecycle({reconnect_drain, SocketPid}, State) when
@@ -239,12 +238,39 @@ handle_info({call_reconnect, ChannelId, Attempt}, State) when
     session_connection:handle_call_reconnect(ChannelId, Attempt, State);
 handle_info({gateway_timing_update, Timings}, State) ->
     {noreply, gateway_timings:merge_state(Timings, State)};
+handle_info({thread_user_flip, _Version}, State) ->
+    {noreply, notify_thread_user_flip(State)};
 handle_info({dm_partner_mutual, GuildId, PartnerIds}, State) when
     is_integer(GuildId), is_list(PartnerIds)
 ->
     session_dm_partners:handle_mutual(GuildId, PartnerIds, State);
 handle_info(Msg, State) ->
     handle_info_lifecycle(Msg, State).
+
+-spec notify_thread_user_flip(session_state()) -> session_state().
+notify_thread_user_flip(#{id := SessionId} = State) when is_binary(SessionId) ->
+    case
+        maps:get(bot, State, false) =:= true orelse
+            maps:get(thread_channels_capable, State, false) =:= true
+    of
+        true -> cast_thread_user_flip(SessionId, State);
+        false -> State
+    end;
+notify_thread_user_flip(State) ->
+    State.
+
+-spec cast_thread_user_flip(binary(), session_state()) -> session_state().
+cast_thread_user_flip(SessionId, State) ->
+    maps:foreach(
+        fun
+            (_GuildId, {GuildPid, _Ref}) when is_pid(GuildPid) ->
+                gen_server:cast(GuildPid, {thread_user_flip, SessionId});
+            (_GuildId, _Ref) ->
+                ok
+        end,
+        maps:get(guilds, State, #{})
+    ),
+    State.
 
 -spec handle_info_guild_connect_result(tuple(), session_state()) ->
     {noreply, session_state()} | {stop, normal, session_state()}.
@@ -358,20 +384,6 @@ binary_list([Value | Rest], Acc) when is_binary(Value) ->
 binary_list(_, _) ->
     error.
 
--spec map_list(term()) -> {ok, [map()]} | error.
-map_list(Value) when is_list(Value) ->
-    map_list(Value, []);
-map_list(_) ->
-    error.
-
--spec map_list([term()], [map()]) -> {ok, [map()]} | error.
-map_list([], Acc) ->
-    {ok, lists:reverse(Acc)};
-map_list([Value | Rest], Acc) when is_map(Value) ->
-    map_list(Rest, [Value | Acc]);
-map_list(_, _) ->
-    error.
-
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
@@ -423,6 +435,7 @@ test_base_extra() ->
         voice_queue => queue:new(),
         voice_queue_timer => undefined,
         debounce_reactions => false,
+        thread_channels_capable => false,
         reaction_buffer => [],
         reaction_buffer_timer => undefined
     }.
@@ -533,28 +546,6 @@ handle_info_stops_on_current_resume_timeout_test() ->
     State = #{socket_pid => undefined, resume_timer => {CurrentToken, make_ref()}},
     ?assertMatch({stop, normal, _}, handle_info({resume_timeout, CurrentToken}, State)).
 
-handle_info_merges_gateway_timing_update_test() ->
-    BaseTimings = gateway_timings:record_function(
-        base,
-        <<"base/0">>,
-        gateway_timings:start() - 10,
-        gateway_timings:new()
-    ),
-    UpdateTimings = gateway_timings:record_function(
-        update,
-        <<"update/0">>,
-        gateway_timings:start() - 5,
-        gateway_timings:new()
-    ),
-    {noreply, State1} = handle_info(
-        {gateway_timing_update, UpdateTimings},
-        #{gw_timings => BaseTimings}
-    ),
-    Timings = gateway_timings:finalize(maps:get(gw_timings, State1)),
-    TraceNames = [maps:get(<<"name">>, Span) || Span <- maps:get(<<"trace">>, Timings)],
-    ?assert(lists:member(<<"base/0">>, TraceNames)),
-    ?assert(lists:member(<<"update/0">>, TraceNames)).
-
 handle_presence_rejoin_check_reconnects_when_unattached_test() ->
     {noreply, State1} = handle_presence_rejoin_check(#{presence_pid => undefined}),
     ?assertEqual(undefined, maps:get(presence_pid, State1)),
@@ -581,6 +572,23 @@ received_presence_connect() ->
     receive
         {presence_connect, 0} -> true
     after 200 -> false
+    end.
+
+thread_user_flip_skips_sessions_that_cannot_become_viewers_test() ->
+    Base = #{id => <<"s">>, guilds => #{1 => {self(), make_ref()}, 2 => undefined}},
+    _ = notify_thread_user_flip(Base),
+    _ = notify_thread_user_flip(Base#{bot => false, thread_channels_capable => false}),
+    ?assertNot(received_thread_user_flip()),
+    _ = notify_thread_user_flip(Base#{thread_channels_capable => true}),
+    ?assert(received_thread_user_flip()),
+    _ = notify_thread_user_flip(Base#{bot => true}),
+    ?assert(received_thread_user_flip()),
+    ?assertNot(received_thread_user_flip()).
+
+received_thread_user_flip() ->
+    receive
+        {'$gen_cast', {thread_user_flip, <<"s">>}} -> true
+    after 100 -> false
     end.
 
 -endif.

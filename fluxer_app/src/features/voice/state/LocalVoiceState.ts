@@ -3,6 +3,7 @@
 import MediaPermission from '@app/features/permissions/system/state/MediaPermission';
 import {Logger} from '@app/features/platform/utils/AppLogger';
 import {makePersistent} from '@app/features/platform/utils/MobXPersistence';
+import {initializeStore} from '@app/features/platform/utils/StoreInitialization';
 import VoiceDevicePermissionState from '@app/features/voice/engine/VoiceDevicePermissionState';
 import {syncLocalVoiceStateWithServer} from '@app/features/voice/engine/VoiceMediaEngineBridge';
 import {
@@ -46,7 +47,6 @@ class LocalVoiceState implements LocalVoiceConnectionState {
 	selfVideo = false;
 	selfStream = false;
 	selfStreamAudio = false;
-	selfStreamAudioMute = false;
 	viewerStreamKeys: Array<string> = [];
 	hasUserSetMute = false;
 	hasUserSetDeaf = false;
@@ -115,10 +115,7 @@ class LocalVoiceState implements LocalVoiceConnectionState {
 				getSelfDeaf: false,
 				getSelfVideo: false,
 				getSelfStream: false,
-				getSelfStreamAudio: false,
-				getSelfStreamAudioMute: false,
 				getViewerStreamKeys: false,
-				hasViewerStreamKey: false,
 				getHasUserSetMute: false,
 				getHasUserSetDeaf: false,
 				getMutedByPermission: false,
@@ -130,7 +127,7 @@ class LocalVoiceState implements LocalVoiceConnectionState {
 			logger.error('Failed to hydrate LocalVoiceState from persistence', error);
 		});
 		this.initializePersistedDefaultSync();
-		this.initializePermissionSync();
+		initializeStore(this, () => this.initializePermissionSync());
 		this.initializeDevicePermissionSync();
 	}
 
@@ -297,11 +294,6 @@ class LocalVoiceState implements LocalVoiceConnectionState {
 		});
 	}
 
-	dispose(): void {
-		this._disposers.forEach((disposer) => disposer());
-		this._disposers = [];
-	}
-
 	private async initializePermissionSync(): Promise<void> {
 		try {
 			let defaultMuteInitialized = false;
@@ -441,14 +433,6 @@ class LocalVoiceState implements LocalVoiceConnectionState {
 		return this.getActiveStateForRead().selfStream;
 	}
 
-	getSelfStreamAudio(): boolean {
-		return this.selfStreamAudio;
-	}
-
-	getSelfStreamAudioMute(): boolean {
-		return this.selfStreamAudioMute;
-	}
-
 	getViewerStreamKeys(): Array<string> {
 		return this.getActiveStateForRead().viewerStreamKeys;
 	}
@@ -461,10 +445,6 @@ class LocalVoiceState implements LocalVoiceConnectionState {
 				keys,
 			});
 		});
-	}
-
-	hasViewerStreamKey(key: string): boolean {
-		return this.getActiveStateForRead().viewerStreamKeys.includes(key);
 	}
 
 	getHasUserSetMute(): boolean {
@@ -490,42 +470,6 @@ class LocalVoiceState implements LocalVoiceConnectionState {
 		runInAction(() => {
 			this.transitionLocalState({type: 'deaf.toggle', activeConnectionId: this.getActiveConnectionId()});
 			logger.debug('User toggled self deaf', {newSelfDeaf: this.getSelfDeaf(), hasUserSetDeaf: true});
-		});
-	}
-
-	toggleSelfVideo(): void {
-		runInAction(() => {
-			this.transitionLocalState({type: 'video.toggle', activeConnectionId: this.getActiveConnectionId()});
-			logger.debug('User toggled self video', {selfVideo: this.getSelfVideo()});
-		});
-	}
-
-	toggleSelfStream(): void {
-		runInAction(() => {
-			this.transitionLocalState({type: 'stream.toggle', activeConnectionId: this.getActiveConnectionId()});
-			logger.debug('User toggled self stream', {selfStream: this.getSelfStream()});
-		});
-	}
-
-	toggleSelfStreamAudio(): void {
-		runInAction(() => {
-			this.selfStreamAudio = !this.selfStreamAudio;
-			logger.debug('User toggled self stream audio', {selfStreamAudio: this.selfStreamAudio});
-		});
-	}
-
-	toggleSelfStreamAudioMute(): void {
-		runInAction(() => {
-			this.selfStreamAudioMute = !this.selfStreamAudioMute;
-			logger.debug('User toggled self stream audio mute', {selfStreamAudioMute: this.selfStreamAudioMute});
-		});
-	}
-
-	clearUserSetMute(): void {
-		runInAction(() => {
-			if (!this.getActiveStateForRead().hasUserSetMute) return;
-			this.transitionLocalState({type: 'mute.clearUserSet', activeConnectionId: this.getActiveConnectionId()});
-			logger.debug('Cleared hasUserSetMute flag');
 		});
 	}
 
@@ -562,22 +506,6 @@ class LocalVoiceState implements LocalVoiceConnectionState {
 			this.selfStreamAudio = enabled;
 			logger.debug('Self stream audio updated', {enabled});
 		});
-	}
-
-	updateSelfStreamAudioMute(muted: boolean): void {
-		runInAction(() => {
-			this.selfStreamAudioMute = muted;
-			logger.debug('Self stream audio mute updated', {muted});
-		});
-	}
-
-	resetUserPreferences(): void {
-		runInAction(() => {
-			this.transitionLocalState({type: 'preferences.reset'});
-			this.selfStreamAudio = false;
-			this.selfStreamAudioMute = false;
-		});
-		logger.info('Reset user voice preferences');
 	}
 
 	seedConnectionState(

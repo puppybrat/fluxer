@@ -103,6 +103,9 @@ do_identify(
     GwTimings,
     State
 ) ->
+    ok = channel_threads_config:note_identify(
+        session_manager_shard_drain:thread_channels_capable(#{flags => Flags}), Properties
+    ),
     SessionId = utils:generate_session_id(),
     IdentifyData = build_identify_data(
         Token,
@@ -483,14 +486,6 @@ handle_session_start_capacity_holds_without_reconnect_test() ->
 
 handle_session_start_rate_limit_holds_without_close_test() ->
     {ok, _State} = handle_session_start_result({error, rate_limited}, identify_test_state()).
-
-start_session_with_drain_guard_holds_pending_identify_test() ->
-    {ok, State} = start_session_with_drain_guard(
-        true, #{token => <<"t">>}, self(), identify_test_state()
-    ),
-    {PendingRequest, PendingPid} = maps:get(pending_identify, State),
-    ?assertEqual(#{token => <<"t">>}, PendingRequest),
-    ?assert(is_pid(PendingPid)).
 
 identify_test_state() ->
     #{

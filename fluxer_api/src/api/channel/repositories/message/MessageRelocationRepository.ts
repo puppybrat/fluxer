@@ -66,7 +66,7 @@ import {
  * applies LIMIT after clustering order, so this was never a Postgres-shim-only artifact.
  *
  * Note that `channel_message_buckets` was never involved in discovery and still is not: the
- * bucket list comes from `BucketUtils.makeBuckets(startMessageId, endMessageId)`, which is pure
+ * bucket list comes from `bucketRange(startMessageId, endMessageId)`, which is pure
  * arithmetic on the two snowflakes. That table is only WRITTEN here (dest index upkeep, source
  * empty-bucket cleanup) and read once in `reconcileSourceChannelState` AFTER a successful move.
  * Discovery is therefore independent of that index's correctness, by construction.
@@ -86,6 +86,18 @@ import {
  *    written into message row keys; discovery misses whole partitions if those ever diverge.
  */
 const MAX_RELOCATION_MESSAGES = 500;
+
+// Every bucket from the start id's to the end id's, inclusive. Upstream dropped
+// `BucketUtils.makeBuckets` as unused (93d1f8af4), so the range is built here from `makeBucket`.
+function bucketRange(startId: bigint, endId: bigint): Array<number> {
+	const startBucket = BucketUtils.makeBucket(startId);
+	const endBucket = BucketUtils.makeBucket(endId);
+	const range: Array<number> = [];
+	for (let bucket = startBucket; bucket <= endBucket; bucket += 1) {
+		range.push(bucket);
+	}
+	return range;
+}
 
 const FETCH_MESSAGES_IN_BUCKET_RANGE = Messages.select({
 	where: [
@@ -153,7 +165,7 @@ export class MessageRelocationRepository {
 			return {movedCount: 0};
 		}
 
-		const buckets = BucketUtils.makeBuckets(startMessageId, endMessageId);
+		const buckets = bucketRange(startMessageId, endMessageId);
 
 		// Phase 1 — discovery. Every in-range row is collected before anything is mutated so the
 		// size of the operation is known up front: an oversized range has to abort cleanly rather

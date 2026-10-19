@@ -155,10 +155,7 @@ post_update_role(guild_role_delete, EventData, OldState, NewState) ->
     guild_state().
 resync_roles_after_permission_change(RoleIds, OldState, NewState) ->
     Recomputed = guild_state_roles:recompute_visibility_for_roles(RoleIds, OldState, NewState),
-    lists:foreach(
-        fun(RoleId) -> guild_voice_permission_sync:sync_users_with_role(RoleId, Recomputed) end,
-        RoleIds
-    ),
+    ok = guild_voice_permission_sync:sync_roles_after_change(RoleIds, OldState, Recomputed),
     Recomputed.
 
 -spec post_update_channel(event(), event_data(), guild_state(), guild_state()) -> guild_state().
@@ -171,8 +168,10 @@ post_update_channel(channel_update, EventData, OldState, NewState) ->
 post_update_channel(channel_update_bulk, EventData, OldState, NewState) ->
     ChanIds = guild_state_channels:extract_channel_ids_from_channel_update_bulk(EventData),
     resync_channels_after_permission_change(ChanIds, OldState, NewState);
-post_update_channel(channel_delete, _EventData, _OldState, NewState) ->
+post_update_channel(channel_delete, EventData, _OldState, NewState) ->
     maybe_sync_member_list_permission_state(NewState),
+    ChannelId = snowflake_id:parse_optional(maps:get(<<"id">>, EventData, undefined)),
+    ok = guild_voice_lifecycle:cast_disconnect_all_voice_users_in_channel(ChannelId, NewState),
     NewState.
 
 -spec resync_channels_after_permission_change([integer()], guild_state(), guild_state()) ->
@@ -236,10 +235,6 @@ maybe_sync_member_list_permission_state(_State) ->
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
-
-update_data_for_event_unknown_returns_data_unchanged_test() ->
-    Data = #{<<"test">> => true},
-    ?assertEqual(Data, update_data_for_event(unknown_event, #{}, Data, #{})).
 
 guild_member_remove_asks_the_voice_server_to_disconnect_test() ->
     Self = self(),

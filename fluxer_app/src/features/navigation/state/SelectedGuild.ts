@@ -2,6 +2,7 @@
 
 import Navigation from '@app/features/navigation/state/Navigation';
 import {makePersistent} from '@app/features/platform/utils/MobXPersistence';
+import {initializeStore} from '@app/features/platform/utils/StoreInitialization';
 import {ME} from '@fluxer/constants/src/AppConstants';
 import {makeAutoObservable, reaction} from 'mobx';
 
@@ -15,7 +16,7 @@ class SelectedGuild {
 
 	constructor() {
 		makeAutoObservable(this, {}, {autoBind: true});
-		void this.initPersistence();
+		initializeStore(this, () => this.initPersistence());
 	}
 
 	private async initPersistence(): Promise<void> {
@@ -46,21 +47,6 @@ class SelectedGuild {
 			return null;
 		}
 		return guildId;
-	}
-
-	selectGuild(guildId: string, _forceSync = false): void {
-		if (!guildId) {
-			return;
-		}
-		this.setGuild(guildId, {forceNonce: true});
-	}
-
-	syncCurrentGuild(): void {
-		this.bumpNonce();
-	}
-
-	deselectGuild(): void {
-		this.clearSelection();
 	}
 
 	private applyNavigationGuild(guildId: string): void {

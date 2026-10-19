@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {BUILD_CHANNEL} from '@electron/common/BuildChannel';
+import {DESKTOP_APP_NAME} from '@electron/common/DesktopIdentity';
+import {checkForUpdatesFromShell} from '@electron/main/DesktopUpdatePrompt';
 import {onLocaleChange, t} from '@electron/main/MainI18n';
 import {openExternalDeduped} from '@electron/main/OpenExternal';
 import {buildTroubleshootingMenuItems} from '@electron/main/Troubleshooting';
@@ -9,9 +10,17 @@ import {type BaseWindow, BrowserWindow, Menu, type MenuItem, type MenuItemConstr
 
 const MACOS_HELP_MENU_TITLE_AUTODETECT_OPT_OUT = '\u200C';
 
+function checkForUpdatesItem(): MenuItemConstructorOptions {
+	return {
+		label: t('desktop.appMenu.checkForUpdates'),
+		click: () => {
+			void checkForUpdatesFromShell();
+		},
+	};
+}
+
 function buildTemplate(): Array<MenuItemConstructorOptions> {
-	const isCanary = BUILD_CHANNEL === 'canary';
-	const appName = isCanary ? 'Fluxer Canary' : 'Fluxer';
+	const appName = DESKTOP_APP_NAME;
 	const isMac = process.platform === 'darwin';
 	const template: Array<MenuItemConstructorOptions> = [];
 	if (isMac) {
@@ -22,6 +31,7 @@ function buildTemplate(): Array<MenuItemConstructorOptions> {
 					role: 'about',
 					label: t('desktop.appMenu.about', {appName}),
 				},
+				checkForUpdatesItem(),
 				{type: 'separator'},
 				{
 					label: t('desktop.appMenu.preferences'),
@@ -199,6 +209,7 @@ function buildTemplate(): Array<MenuItemConstructorOptions> {
 			? `${t('desktop.appMenu.help')}${MACOS_HELP_MENU_TITLE_AUTODETECT_OPT_OUT}`
 			: t('desktop.appMenu.help'),
 		submenu: [
+			...(isMac ? [] : [checkForUpdatesItem(), {type: 'separator' as const}]),
 			{
 				label: t('desktop.appMenu.website'),
 				click: async () => {
@@ -215,7 +226,7 @@ function buildTemplate(): Array<MenuItemConstructorOptions> {
 			{
 				label: t('desktop.appMenu.reportIssue'),
 				click: async () => {
-					await openExternalDeduped('https://github.com/fluxerapp/fluxer/issues');
+					await openExternalDeduped('https://feedback.fluxer.com');
 				},
 			},
 			{type: 'separator'},

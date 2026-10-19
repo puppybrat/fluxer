@@ -9,8 +9,8 @@
     find_everyone_viewable_text_channel/2,
     sort_channels_for_ordering/1,
     derive_member_view/4,
+    member_view/4,
     sanitize_voice_state/1,
-    voice_members_from_states/2,
     merge_members/2
 ]).
 
@@ -20,6 +20,14 @@
 -type guild_member() :: map().
 -type user_id() :: integer().
 -type guild_id() :: integer().
+
+-type member_view_cache() :: #{
+    inputs := tuple(),
+    exceptions := sets:set(user_id()),
+    views := #{term() => #{integer() => true}}
+}.
+
+-define(MEMBER_VIEW_CACHE_LIMIT, 512).
 
 -export_type([guild_state/0, guild_data_map/0, channel_list/0, guild_member/0, user_id/0]).
 
@@ -66,23 +74,87 @@ derive_member_view(_UserId, undefined, _State, _Channels) ->
     {[], null};
 derive_member_view(UserId, Member, State, Channels) ->
     Filtered = filter_viewable_channels(UserId, Member, State, Channels),
+    JoinedAt = maps:get(<<"joined_at">>, Member, null),
+    {with_missing_parents(Filtered, Channels), JoinedAt}.
+
+-spec member_view(user_id(), guild_member(), guild_state(), channel_list()) ->
+    {channel_list(), guild_state()}.
+member_view(UserId, Member, State, Channels) ->
+    #{exceptions := Exceptions, views := Views} = Cache = member_view_cache(State),
+    RolesKey = maps:get(<<"roles">>, Member, []),
+    case {sets:is_element(UserId, Exceptions), maps:find(RolesKey, Views)} of
+        {true, _} ->
+            {Viewable, _JoinedAt} = derive_member_view(UserId, Member, State, Channels),
+            {Viewable, State#{member_view_cache => Cache}};
+        {false, {ok, ViewableIds}} ->
+            Filtered = [C || C <- Channels, maps:is_key(channel_id(C), ViewableIds)],
+            {with_missing_parents(Filtered, Channels), State#{member_view_cache => Cache}};
+        {false, error} ->
+            Filtered = filter_viewable_channels(UserId, Member, State, Channels),
+            ViewableIds = maps:from_keys(channel_ids(Filtered), true),
+            NewCache = Cache#{views := put_member_view(RolesKey, ViewableIds, Views)},
+            {with_missing_parents(Filtered, Channels), State#{member_view_cache => NewCache}}
+    end.
+
+-spec member_view_cache(guild_state()) -> member_view_cache().
+member_view_cache(State) ->
+    Inputs = member_view_inputs(State),
+    case maps:get(member_view_cache, State, undefined) of
+        #{inputs := CachedInputs} = Cache when CachedInputs =:= Inputs ->
+            Cache;
+        _ ->
+            #{
+                inputs => Inputs,
+                exceptions => guild_maintenance:viewable_exceptions(State),
+                views => #{}
+            }
+    end.
+
+-spec member_view_inputs(guild_state()) -> tuple().
+member_view_inputs(State) ->
+    Data = guild_data_index:ensure_data_map(State),
+    {
+        maps:get(id, State, undefined),
+        maps:get(<<"id">>, State, undefined),
+        maps:get(virtual_channel_access, State, undefined),
+        maps:get(<<"guild">>, Data, undefined),
+        maps:get(<<"roles">>, Data, undefined),
+        maps:get(<<"role_index">>, Data, undefined),
+        maps:get(role_perms_cache, Data, undefined),
+        maps:get(overwrite_perms_cache, Data, undefined),
+        maps:get(<<"channels">>, Data, undefined),
+        maps:map(fun channel_view_inputs/2, guild_data_index:channel_index(Data))
+    }.
+
+-spec channel_view_inputs(integer(), term()) -> term().
+channel_view_inputs(_ChannelId, Channel) when is_map(Channel) ->
+    {
+        maps:get(<<"id">>, Channel, undefined),
+        maps:get(<<"type">>, Channel, undefined),
+        maps:get(<<"parent_id">>, Channel, undefined),
+        maps:get(<<"permission_overwrites">>, Channel, undefined)
+    };
+channel_view_inputs(_ChannelId, Channel) ->
+    Channel.
+
+-spec put_member_view(term(), #{integer() => true}, #{term() => #{integer() => true}}) ->
+    #{term() => #{integer() => true}}.
+put_member_view(RolesKey, ViewableIds, Views) when
+    map_size(Views) >= ?MEMBER_VIEW_CACHE_LIMIT
+->
+    #{RolesKey => ViewableIds};
+put_member_view(RolesKey, ViewableIds, Views) ->
+    Views#{RolesKey => ViewableIds}.
+
+-spec with_missing_parents(channel_list(), channel_list()) -> channel_list().
+with_missing_parents(Filtered, Channels) ->
     FilteredIds = sets:from_list(channel_ids(Filtered)),
     MissingParentIds = find_missing_parent_ids(Filtered, FilteredIds),
-    ExtraCategories = collect_extra_categories(MissingParentIds, Channels),
-    JoinedAt = maps:get(<<"joined_at">>, Member, null),
-    {Filtered ++ ExtraCategories, JoinedAt}.
+    Filtered ++ collect_extra_categories(MissingParentIds, Channels).
 
 -spec sanitize_voice_state(map()) -> map().
 sanitize_voice_state(VS) ->
     voice_state_utils:sanitize_voice_state_for_broadcast(VS).
-
--spec voice_members_from_states([map()], [guild_member()]) -> [guild_member()].
-voice_members_from_states(VoiceStates, Members) ->
-    MemberIndex = build_member_index(Members),
-    lists:filtermap(
-        fun(VoiceState) -> resolve_voice_member(VoiceState, MemberIndex) end,
-        VoiceStates
-    ).
 
 -spec merge_members([guild_member()], [guild_member()]) -> [guild_member()].
 merge_members(Primary, Secondary) ->
@@ -154,7 +226,7 @@ select_first_viewable(Channel, GuildId, BasePerms) ->
 -spec check_viewable(integer() | undefined, integer() | undefined, map(), integer(), integer()) ->
     integer() | null.
 check_viewable(ChannelType, ChannelId, Channel, GuildId, BasePerms) when
-    is_integer(ChannelId), ChannelType =:= 0 orelse ChannelType =:= 2
+    is_integer(ChannelId), ChannelType =:= 0 orelse ChannelType =:= 2 orelse ChannelType =:= 5
 ->
     case permission_bits:has(BasePerms, constants:administrator_permission()) of
         true -> ChannelId;
@@ -186,42 +258,6 @@ role_permissions_for_id_fold(Role, GuildId, Acc) ->
     case safe_snowflake_id(maps:get(<<"id">>, Role, undefined)) of
         GuildId -> permission_bits:parse(maps:get(<<"permissions">>, Role, undefined));
         _ -> Acc
-    end.
-
--spec resolve_voice_member(map(), #{integer() => guild_member()}) ->
-    {true, guild_member()} | false.
-resolve_voice_member(VoiceState, MemberIndex) ->
-    case maps:get(<<"member">>, VoiceState, undefined) of
-        Member when is_map(Member), map_size(Member) > 0 -> {true, Member};
-        _ -> resolve_voice_member_by_id(VoiceState, MemberIndex)
-    end.
-
--spec resolve_voice_member_by_id(map(), #{integer() => guild_member()}) ->
-    {true, guild_member()} | false.
-resolve_voice_member_by_id(VoiceState, MemberIndex) ->
-    case voice_state_utils:voice_state_user_id(VoiceState) of
-        undefined -> false;
-        UserId -> resolve_indexed_voice_member(UserId, MemberIndex)
-    end.
-
--spec resolve_indexed_voice_member(integer(), #{integer() => guild_member()}) ->
-    {true, guild_member()} | false.
-resolve_indexed_voice_member(UserId, MemberIndex) ->
-    case maps:get(UserId, MemberIndex, undefined) of
-        undefined -> false;
-        Member -> {true, Member}
-    end.
-
--spec build_member_index([guild_member()]) -> #{integer() => guild_member()}.
-build_member_index(Members) ->
-    lists:foldl(fun add_member_to_index/2, #{}, Members).
-
--spec add_member_to_index(guild_member(), #{integer() => guild_member()}) ->
-    #{integer() => guild_member()}.
-add_member_to_index(Member, Acc) ->
-    case member_user_id(Member) of
-        undefined -> Acc;
-        UserId -> Acc#{UserId => Member}
     end.
 
 -spec member_user_id(guild_member()) -> integer() | undefined.

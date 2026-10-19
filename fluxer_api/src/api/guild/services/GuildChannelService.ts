@@ -2,17 +2,20 @@
 
 import type {ChannelID, GuildID, UserID} from '@app/api/BrandedTypes';
 import {mapChannelToResponse} from '@app/api/channel/ChannelMappers';
-import type {IChannelRepository} from '@app/api/channel/IChannelRepository';
+import type {ChannelRepository} from '@app/api/channel/ChannelRepository';
+import {withThreadParentFieldsMany} from '@app/api/channel/services/thread/ThreadParentSettings';
+import {SYSTEM_THREAD_VIEWER, type ThreadViewer, viewerActive} from '@app/api/experiment/ChannelThreadsGate';
 import type {GuildAuditLogService} from '@app/api/guild/GuildAuditLogService';
-import type {IGuildRepositoryAggregate} from '@app/api/guild/repositories/IGuildRepositoryAggregate';
+import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import {ChannelOperationsService} from '@app/api/guild/services/channel/ChannelOperationsService';
 import {createGuildMfaEnforcer} from '@app/api/guild/services/GuildMfaEnforcement';
+import {maskChannelResponseThreadBits} from '@app/api/guild/services/ThreadPermissionBits';
 import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {ISnowflakeService} from '@app/api/infrastructure/ISnowflakeService';
 import type {UserCacheService} from '@app/api/infrastructure/UserCacheService';
 import type {LimitConfigService} from '@app/api/limits/LimitConfigService';
 import type {RequestCache} from '@app/api/middleware/RequestCacheMiddleware';
-import type {IUserRepository} from '@app/api/user/IUserRepository';
+import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import {MissingPermissionsError} from '@fluxer/errors/src/domains/core/MissingPermissionsError';
 import {UnknownGuildError} from '@fluxer/errors/src/domains/guild/UnknownGuildError';
@@ -24,15 +27,15 @@ export class GuildChannelService {
 	private readonly channelOps: ChannelOperationsService;
 
 	constructor(
-		private readonly channelRepository: IChannelRepository,
-		guildRepository: IGuildRepositoryAggregate,
+		private readonly channelRepository: ChannelRepository,
+		guildRepository: GuildRepository,
 		private readonly userCacheService: UserCacheService,
 		private readonly gatewayService: IGatewayService,
 		cacheService: ICacheService,
 		snowflakeService: ISnowflakeService,
 		guildAuditLogService: GuildAuditLogService,
 		limitConfigService: LimitConfigService,
-		private readonly userRepository: IUserRepository,
+		private readonly userRepository: UserRepository,
 	) {
 		this.channelOps = new ChannelOperationsService(
 			channelRepository,
@@ -50,6 +53,7 @@ export class GuildChannelService {
 		userId: UserID;
 		guildId: GuildID;
 		requestCache: RequestCache;
+		viewer?: ThreadViewer;
 	}): Promise<Array<ChannelResponse>> {
 		try {
 			await this.gatewayService.getGuildData({guildId: params.guildId, userId: params.userId});
@@ -63,9 +67,14 @@ export class GuildChannelService {
 			guildId: params.guildId,
 			userId: params.userId,
 		});
-		const channels = await this.channelRepository.listGuildChannels(params.guildId);
-		const viewableChannels = channels.filter((channel) => viewableChannelIds.includes(channel.id));
-		return Promise.all(
+		const channels = await this.channelRepository.channelData.listGuildChannels(params.guildId, 'enrolled');
+		const viewer = params.viewer;
+		const viewableChannels = channels.filter(
+			(channel) =>
+				viewableChannelIds.includes(channel.id) &&
+				(!channel.isThreadOnly() || !viewer || viewerActive(viewer, params.guildId)),
+		);
+		const responses = await Promise.all(
 			viewableChannels.map((channel) => {
 				return mapChannelToResponse({
 					channel,
@@ -75,6 +84,17 @@ export class GuildChannelService {
 				});
 			}),
 		);
+		return maskChannelResponseThreadBits(
+			params.guildId,
+			viewer,
+			await withThreadParentFieldsMany(
+				this.channelRepository.threads,
+				params.guildId,
+				viewableChannels,
+				responses,
+				viewer ?? SYSTEM_THREAD_VIEWER,
+			),
+		);
 	}
 
 	async createChannel(
@@ -83,6 +103,8 @@ export class GuildChannelService {
 			guildId: GuildID;
 			data: ChannelCreateRequest;
 			requestCache: RequestCache;
+			clientFeatures?: ReadonlySet<string>;
+			viewer?: ThreadViewer;
 		},
 		auditLogReason?: string | null,
 	): Promise<ChannelResponse> {
@@ -91,7 +113,9 @@ export class GuildChannelService {
 			guildId: params.guildId,
 			permission: Permissions.MANAGE_CHANNELS,
 		});
-		return this.channelOps.createChannel(params, auditLogReason);
+		const response = await this.channelOps.createChannel(params, auditLogReason);
+		const [masked] = await maskChannelResponseThreadBits(params.guildId, params.viewer, [response]);
+		return masked;
 	}
 
 	async updateChannelPositions(
@@ -106,6 +130,8 @@ export class GuildChannelService {
 				lockPermissions: boolean;
 			}>;
 			requestCache: RequestCache;
+			clientFeatures?: ReadonlySet<string>;
+			viewer?: ThreadViewer;
 		},
 		auditLogReason?: string | null,
 	): Promise<void> {
@@ -120,6 +146,8 @@ export class GuildChannelService {
 			updates: params.updates,
 			requestCache: params.requestCache,
 			auditLogReason: auditLogReason ?? null,
+			clientFeatures: params.clientFeatures,
+			viewer: params.viewer,
 		});
 	}
 

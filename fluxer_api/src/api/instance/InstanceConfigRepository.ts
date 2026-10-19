@@ -6,11 +6,31 @@ import type {APIConfig, BlueskyOAuthConfig, BlueskyOAuthKeyConfig} from '@app/ap
 import {executeConditional, fetchMany, fetchOne, upsertOne} from '@app/api/database/CassandraQueryExecution';
 import {Db, type PreparedQuery} from '@app/api/database/CassandraTypes';
 import type {InstanceConfigurationRow} from '@app/api/database/types/InstanceConfigTypes';
+import {syncChannelThreadsConfig} from '@app/api/experiment/ChannelThreadsGate';
+import type {IStorageService} from '@app/api/infrastructure/IStorageService';
+import {
+	type AccountIdentity,
+	resolveAccountIdentity,
+	type StoredAccountIdentity,
+	setCachedAccountIdentity,
+} from '@app/api/instance/AccountIdentityModeCache';
+import {
+	BRANDING_ASSET_FIELDS,
+	type BrandingAssetField,
+	brandingAssetReferenceFromAnyUrl,
+	brandingAssetStorageKey,
+	isBrandingAssetReference,
+	mapBrandingAssets,
+	resolveBrandingAsset,
+	toStoredBrandingAsset,
+} from '@app/api/instance/BrandingAssetReferences';
 import {
 	getDefaultDateOfBirthCollection,
 	setCachedDateOfBirthCollection,
 } from '@app/api/instance/DateOfBirthCollectionCache';
 import {InstanceConfigCache} from '@app/api/instance/InstanceConfigCache';
+import {setCachedConfiguredLegalUrls} from '@app/api/instance/LegalUrls';
+import {getDefaultProductName, setCachedProductName} from '@app/api/instance/ProductName';
 import {normalizeSsoAllowedEmailDomains} from '@app/api/instance/SsoConfigValidation';
 import {Logger} from '@app/api/Logger';
 import {isLimitConfigSnapshot} from '@app/api/limits/LimitConfigValidation';
@@ -20,9 +40,15 @@ import {
 	isStripeServiceable,
 	setStoredBillingConfig,
 } from '@app/api/stripe/BillingConfigCache';
-import {InstanceConfiguration} from '@app/api/Tables';
+import {InstanceConfiguration, Users} from '@app/api/Tables';
 import {DEFAULT_DECAY_CONSTANTS, DEFAULT_RENEWAL_CONSTANTS} from '@app/api/utils/AttachmentDecay';
 import {isJsonRecord} from '@app/api/utils/JsonBoundaryUtils';
+import {
+	type AccountIdentityMode,
+	AccountIdentityModes,
+	type TagStyle,
+	TagStyles,
+} from '@fluxer/constants/src/AccountIdentityConstants';
 import {APIErrorCodes} from '@fluxer/constants/src/ApiErrorCodes';
 import {ConflictError} from '@fluxer/errors/src/domains/core/ConflictError';
 import {ServiceUnavailableError} from '@fluxer/errors/src/domains/core/ServiceUnavailableError';
@@ -38,6 +64,11 @@ import {
 	CaptchaConfigSchema,
 	type CaptchaConfigUpdateRequest,
 } from '@fluxer/schema/src/domains/admin/CaptchaSchemas';
+import {
+	type ChannelThreadsConfig,
+	type CompiledChannelThreadsConfig,
+	everyoneChannelThreadsConfig,
+} from '@fluxer/schema/src/domains/admin/ChannelThreadsSchemas';
 import {
 	type DomainMigrationConfig,
 	DomainMigrationConfigSchema,
@@ -57,6 +88,7 @@ import {
 	PushRelayConfigSchema,
 	toLegacyPushServiceDeliveryWire,
 } from '@fluxer/schema/src/domains/admin/PushRelaySchemas';
+import {type VoiceP2pConfig, VoiceP2pConfigSchema} from '@fluxer/schema/src/domains/admin/VoiceP2pSchemas';
 import {
 	type ExperimentDeliveryConfig,
 	ExperimentDeliveryConfigSchema,
@@ -78,7 +110,9 @@ import {z} from 'zod';
 const GATEWAY_ROLLOUT_CONFIG_KEY = 'gateway_rollout_config';
 const PUSH_RELAY_CONFIG_KEY = 'push_service_delivery_config';
 const DOMAIN_MIGRATION_CONFIG_KEY = 'domain_migration_config';
+const VOICE_P2P_CONFIG_KEY = 'voice_p2p_config';
 const CAPTCHA_CONFIG_KEY = 'captcha_config';
+const CHANNEL_THREADS_CONFIG_KEY = 'channel_threads_config';
 const EXPERIMENT_DELIVERY_CONFIG_KEY = 'experiment_delivery_config';
 const REGISTRATION_CONFIG_KEY = 'registration_config';
 const REGISTRATION_URLS_KEY = 'registration_urls';
@@ -90,6 +124,7 @@ const LIMIT_CONFIG_KEY = 'limit_config';
 const INSTANCE_INTEGRATIONS_CONFIG_KEY = 'instance_integrations_config';
 const INSTANCE_MEDIA_CONFIG_KEY = 'instance_media_config';
 const INSTANCE_BILLING_CONFIG_KEY = 'instance_billing_config';
+const ACCOUNT_IDENTITY_CONFIG_KEY = 'account_identity_config';
 export const INSTANCE_CONFIG_REFRESH_CHANNEL = 'instance-config-refresh';
 export const REGISTRATION_PENDING_APPROVAL_TRAIT = 'registration_pending_approval';
 export const REGISTRATION_REJECTED_TRAIT = 'registration_rejected';
@@ -122,7 +157,7 @@ type InstanceBrandingPatch = Partial<Omit<InstanceBranding, 'premium_product_nam
 
 export type InstanceBillingConfig = StoredBillingConfig;
 
-export type InstanceBillingPriceSetPatch = Partial<NonNullable<StoredBillingConfig['prices']>[string]>;
+type InstanceBillingPriceSetPatch = Partial<NonNullable<StoredBillingConfig['prices']>[string]>;
 
 export interface InstanceBillingConfigPatch {
 	enabled?: boolean | null;
@@ -173,6 +208,7 @@ export interface InstancePolicyConfig {
 	direct_messages_disabled: boolean;
 	direct_messages_locked: boolean;
 	premium_mode: InstancePremiumMode;
+	guild_create_access: boolean;
 	gif_enabled: boolean | null;
 	youtube_enabled: boolean | null;
 	bluesky_enabled: boolean | null;
@@ -341,6 +377,7 @@ const FETCH_CONFIG_QUERY = InstanceConfiguration.selectCql({
 	limit: 1,
 });
 const FETCH_ALL_CONFIG_QUERY = InstanceConfiguration.selectCql();
+const FETCH_ANY_USER_QUERY = Users.selectCql({columns: ['user_id'], limit: 1, unordered: true});
 const FETCH_LIMIT_CONFIG_INPUTS_QUERY = InstanceConfiguration.selectCql({
 	where: InstanceConfiguration.where.in('key', 'keys'),
 });
@@ -369,14 +406,14 @@ function normalizeOptionalPublicString(value: string | null | undefined, fallbac
 	return value === undefined ? fallback : normalizeOptionalString(value);
 }
 
-export function getDefaultPremiumProductName(): string {
+function getDefaultPremiumProductName(): string {
 	return Config.instance.selfHosted ? 'Premium' : 'Plutonium';
 }
 
 function getDefaultAppPublicConfig(): InstanceAppPublicConfig {
 	return {
 		branding: {
-			product_name: Config.instance.branding.productName || 'Fluxer',
+			product_name: getDefaultProductName(),
 			icon_url: normalizeOptionalString(Config.instance.branding.iconUrl),
 			symbol_url: normalizeOptionalString(Config.instance.branding.symbolUrl),
 			logo_url: normalizeOptionalString(Config.instance.branding.logoUrl),
@@ -394,6 +431,7 @@ function getDefaultAppPublicConfig(): InstanceAppPublicConfig {
 		legal: {
 			terms_url: null,
 			privacy_url: null,
+			guidelines_url: null,
 		},
 		registration: {
 			collect_date_of_birth: getDefaultDateOfBirthCollection(),
@@ -406,7 +444,9 @@ type StoredConfigSection =
 	| 'gateway rollout'
 	| 'push relay'
 	| 'domain migration'
+	| 'voice p2p'
 	| 'captcha'
+	| 'channel threads'
 	| 'experiment delivery'
 	| 'instance policy'
 	| 'integrations'
@@ -416,7 +456,8 @@ type StoredConfigSection =
 	| 'registration URLs'
 	| 'pending registrations'
 	| 'SSO flags'
-	| 'SSO allowed domains';
+	| 'SSO allowed domains'
+	| 'account identity';
 
 function parseStoredConfigValue(raw: string | null, section: StoredConfigSection): unknown {
 	if (raw === null) return {};
@@ -528,6 +569,62 @@ function checkStoredConfig(section: StoredConfigSection, decode: () => unknown):
 	readStoredConfigOrDefault(section, decode, () => null);
 }
 
+export type AccountIdentityDecisionSource = 'new_instance' | 'existing_instance' | 'setup';
+
+const StoredAccountIdentityConfigSchema = z.object({
+	mode: z.enum([AccountIdentityModes.EMAIL, AccountIdentityModes.USERNAME]),
+	tag_style: z.enum([TagStyles.NONE, 'zero_first', TagStyles.RANDOM]).optional(),
+	unique_usernames: z.boolean().optional(),
+	decided_at: z.string(),
+	source: z.enum(['new_instance', 'existing_instance', 'setup']),
+});
+
+type StoredAccountIdentityConfig = z.infer<typeof StoredAccountIdentityConfigSchema>;
+
+function parseStoredAccountIdentityConfig(raw: string | null): StoredAccountIdentityConfig | null {
+	if (raw === null) return null;
+	return validateStoredConfig(
+		StoredAccountIdentityConfigSchema,
+		parseStoredConfigValue(raw, 'account identity'),
+		'account identity',
+	);
+}
+
+function readStoredAccountIdentity(raw: string | null): StoredAccountIdentity | null {
+	return readStoredConfigOrDefault(
+		'account identity',
+		() => {
+			const stored = parseStoredAccountIdentityConfig(raw);
+			return stored ? {mode: stored.mode, tagStyle: readStoredTagStyle(stored)} : null;
+		},
+		() => null,
+	);
+}
+
+function readStoredAccountIdentitySource(raw: string | null): AccountIdentityDecisionSource | null {
+	return readStoredConfigOrDefault(
+		'account identity',
+		() => parseStoredAccountIdentityConfig(raw)?.source ?? null,
+		() => null,
+	);
+}
+
+function readStoredTagStyle(stored: StoredAccountIdentityConfig): TagStyle {
+	if (stored.mode === AccountIdentityModes.USERNAME) return TagStyles.NONE;
+	if (stored.tag_style === 'zero_first') return TagStyles.NONE;
+	if (stored.tag_style) return stored.tag_style;
+	return stored.unique_usernames === true ? TagStyles.NONE : TagStyles.RANDOM;
+}
+
+function serialiseAccountIdentity(identity: StoredAccountIdentity, source: AccountIdentityDecisionSource): string {
+	return JSON.stringify({
+		mode: identity.mode,
+		tag_style: identity.tagStyle,
+		decided_at: new Date().toISOString(),
+		source,
+	});
+}
+
 function decodeGatewayRolloutConfig(value: unknown): GatewayRolloutConfig {
 	const input =
 		isJsonRecord(value) &&
@@ -567,8 +664,19 @@ function parseStoredDomainMigrationConfig(raw: string | null): DomainMigrationCo
 	return parseStoredConfigOrDefault(DomainMigrationConfigSchema, raw, 'domain migration');
 }
 
+function parseStoredVoiceP2pConfig(raw: string | null): VoiceP2pConfig {
+	return parseStoredConfigOrDefault(VoiceP2pConfigSchema, raw, 'voice p2p');
+}
+
 function parseStoredCaptchaConfig(raw: string | null): CaptchaConfig {
 	return parseStoredConfigOrDefault(CaptchaConfigSchema, raw, 'captcha');
+}
+
+const StoredChannelThreadsVersionSchema = z.object({config_version: z.number().int().min(0)});
+
+function parseStoredChannelThreadsConfig(raw: string | null): ChannelThreadsConfig {
+	const stored = StoredChannelThreadsVersionSchema.safeParse(readStoredConfigValue(raw, 'channel threads'));
+	return everyoneChannelThreadsConfig(stored.success ? stored.data.config_version : 0);
 }
 
 function parseStoredExperimentDeliveryConfig(raw: string | null): ExperimentDeliveryConfig {
@@ -597,9 +705,24 @@ const StoredInstanceAppPublicSchema = InstanceAppPublicSchema.extend({
 });
 
 function parseStoredAppPublicConfig(raw: string | null): InstanceAppPublicConfig {
-	return buildAppPublicConfig(
-		salvageStoredConfig(StoredInstanceAppPublicSchema, readStoredConfigValue(raw, 'app public'), 'app public'),
+	return resolveAppPublicConfig(
+		buildAppPublicConfig(
+			salvageStoredConfig(StoredInstanceAppPublicSchema, readStoredConfigValue(raw, 'app public'), 'app public'),
+		),
 	);
+}
+
+function resolveAppPublicConfig(config: InstanceAppPublicConfig): InstanceAppPublicConfig {
+	return {
+		...config,
+		branding: mapBrandingAssets(config.branding, (value) =>
+			resolveBrandingAsset(value ?? null, Config.endpoints.media),
+		),
+	};
+}
+
+function toStoredBranding<T extends Partial<Record<BrandingAssetField, string | null>>>(branding: T): T {
+	return mapBrandingAssets(branding, (value) => toStoredBrandingAsset(value, Config.endpoints.media));
 }
 
 function buildAppPublicConfig(config: z.infer<typeof StoredInstanceAppPublicSchema>): InstanceAppPublicConfig {
@@ -629,6 +752,7 @@ function buildAppPublicConfig(config: z.infer<typeof StoredInstanceAppPublicSche
 		legal: {
 			terms_url: normalizeOptionalPublicString(legal.terms_url, defaults.legal.terms_url),
 			privacy_url: normalizeOptionalPublicString(legal.privacy_url, defaults.legal.privacy_url),
+			guidelines_url: normalizeOptionalPublicString(legal.guidelines_url, defaults.legal.guidelines_url),
 		},
 		registration: {
 			collect_date_of_birth: registration.collect_date_of_birth ?? defaults.registration.collect_date_of_birth,
@@ -647,6 +771,7 @@ const StoredInstancePolicySchema = z.object({
 	direct_messages_disabled: InstancePolicyUpdateSchema.shape.direct_messages_disabled.default(false),
 	direct_messages_locked: z.boolean().default(false),
 	premium_mode: InstancePolicyUpdateSchema.shape.premium_mode.default('everyone'),
+	guild_create_access: InstancePolicyUpdateSchema.shape.guild_create_access.default(true),
 	gif_enabled: InstancePolicyServiceUpdateSchema.shape.gif_enabled.default(null),
 	youtube_enabled: InstancePolicyServiceUpdateSchema.shape.youtube_enabled.default(null),
 	bluesky_enabled: InstancePolicyServiceUpdateSchema.shape.bluesky_enabled.default(null),
@@ -1232,7 +1357,9 @@ export class InstanceConfigRepository {
 		);
 		parseStoredPushRelayConfig(snapshot.get(PUSH_RELAY_CONFIG_KEY) ?? null);
 		parseStoredDomainMigrationConfig(snapshot.get(DOMAIN_MIGRATION_CONFIG_KEY) ?? null);
+		parseStoredVoiceP2pConfig(snapshot.get(VOICE_P2P_CONFIG_KEY) ?? null);
 		parseStoredCaptchaConfig(snapshot.get(CAPTCHA_CONFIG_KEY) ?? null);
+		syncChannelThreadsConfig(snapshot.get(CHANNEL_THREADS_CONFIG_KEY) ?? null, parseStoredChannelThreadsConfig);
 		parseStoredExperimentDeliveryConfig(snapshot.get(EXPERIMENT_DELIVERY_CONFIG_KEY) ?? null);
 		parseStoredInstancePolicyConfig(snapshot.get(INSTANCE_POLICY_CONFIG_KEY) ?? null);
 		checkStoredConfig('registration', () =>
@@ -1263,6 +1390,9 @@ export class InstanceConfigRepository {
 		setStoredBillingConfig(parseStoredInstanceBillingConfig(snapshot.get(INSTANCE_BILLING_CONFIG_KEY) ?? null));
 		const appPublic = parseStoredAppPublicConfig(snapshot.get(APP_PUBLIC_CONFIG_KEY) ?? null);
 		setCachedDateOfBirthCollection(appPublic.registration.collect_date_of_birth);
+		setCachedConfiguredLegalUrls(appPublic.legal);
+		setCachedProductName(appPublic.branding.product_name);
+		setCachedAccountIdentity(readStoredAccountIdentity(snapshot.get(ACCOUNT_IDENTITY_CONFIG_KEY) ?? null));
 	}
 
 	private async publishRefresh(sourceId: string): Promise<void> {
@@ -1280,6 +1410,8 @@ export class InstanceConfigRepository {
 	}
 
 	clearCacheForTesting(): void {
+		setCachedAccountIdentity(null);
+		syncChannelThreadsConfig(null, parseStoredChannelThreadsConfig);
 		const shutdown = this.shutdown();
 		this.configCache = this.createConfigCache(shutdown);
 		void shutdown.catch((error) => {
@@ -1293,6 +1425,131 @@ export class InstanceConfigRepository {
 
 	async markAdminBootstrapped(): Promise<void> {
 		await this.setConfig(ADMIN_BOOTSTRAP_KEY, 'true');
+	}
+
+	async getAccountIdentity(): Promise<AccountIdentity> {
+		if (!Config.instance.selfHosted) return resolveAccountIdentity(null);
+		const stored = readStoredAccountIdentity(await this.getConfig(ACCOUNT_IDENTITY_CONFIG_KEY));
+		setCachedAccountIdentity(stored);
+		return resolveAccountIdentity(stored);
+	}
+
+	async getAccountIdentityMode(): Promise<AccountIdentityMode> {
+		return (await this.getAccountIdentity()).mode;
+	}
+
+	async getTagStyle(): Promise<TagStyle> {
+		return (await this.getAccountIdentity()).tagStyle;
+	}
+
+	async usesUniqueUsernames(): Promise<boolean> {
+		return (await this.getTagStyle()) === TagStyles.NONE;
+	}
+
+	async isAccountIdentityLocked(): Promise<boolean> {
+		if (!Config.instance.selfHosted) return true;
+		if (Config.instance.setup.configured) return true;
+		if (readStoredAccountIdentitySource(await this.getConfig(ACCOUNT_IDENTITY_CONFIG_KEY)) === 'existing_instance') {
+			return true;
+		}
+		const appPublic = await this.getAppPublicConfig();
+		if (appPublic.setup.configured) return true;
+		if (await this.isAdminBootstrapped()) return true;
+		return await this.hasAnyUser();
+	}
+
+	async setAccountIdentityMode(
+		mode: AccountIdentityMode,
+		source: AccountIdentityDecisionSource,
+		tagStyle: TagStyle = TagStyles.NONE,
+	): Promise<void> {
+		if (!Config.instance.selfHosted) {
+			throw new Error('The account identity mode is fixed on the hosted service');
+		}
+		const identity: StoredAccountIdentity = {
+			mode,
+			tagStyle: mode === AccountIdentityModes.USERNAME ? TagStyles.NONE : tagStyle,
+		};
+		const value = serialiseAccountIdentity(identity, source);
+		const cache = this.configCache;
+		await this.compareAndSetStoredValue(cache, ACCOUNT_IDENTITY_CONFIG_KEY, () => ({value, result: undefined}));
+		setCachedAccountIdentity(identity);
+		await this.publishRefresh(cache.sourceId);
+	}
+
+	async ensureAccountIdentityMode(): Promise<void> {
+		if (!Config.instance.selfHosted) return;
+		const cache = this.configCache;
+		let identity: StoredAccountIdentity;
+		let source: AccountIdentityDecisionSource;
+		try {
+			if ((await this.fetchConfigForWrite(ACCOUNT_IDENTITY_CONFIG_KEY)) !== null) return;
+			const existing = await this.hasExistingInstanceSignals();
+			const defaultMode = (await this.hasEmailDeliverySignal())
+				? AccountIdentityModes.EMAIL
+				: AccountIdentityModes.USERNAME;
+			const mode = existing ? AccountIdentityModes.EMAIL : (Config.instance.accountIdentity ?? defaultMode);
+			if (!existing && mode === AccountIdentityModes.USERNAME && Config.instance.tagStyle === TagStyles.RANDOM) {
+				Logger.warn('FLUXER_TAG_STYLE=random only applies to email sign-in, username sign-in always uses no tags');
+			}
+			identity = {
+				mode,
+				tagStyle: existing
+					? TagStyles.RANDOM
+					: mode === AccountIdentityModes.USERNAME
+						? TagStyles.NONE
+						: (Config.instance.tagStyle ?? TagStyles.NONE),
+			};
+			source = existing ? 'existing_instance' : 'new_instance';
+		} catch (error) {
+			Logger.error({error}, 'Could not decide the account identity mode, leaving it on email until the next boot');
+			return;
+		}
+		const value = serialiseAccountIdentity(identity, source);
+		try {
+			const {written} = await this.compareAndSetStoredValue(cache, ACCOUNT_IDENTITY_CONFIG_KEY, (raw) => ({
+				value: raw === null ? value : null,
+				result: undefined,
+			}));
+			if (!written) {
+				setCachedAccountIdentity(
+					readStoredAccountIdentity(await this.fetchConfigFromDatabase(ACCOUNT_IDENTITY_CONFIG_KEY)),
+				);
+				return;
+			}
+			setCachedAccountIdentity(identity);
+			Logger.info({mode: identity.mode, tag_style: identity.tagStyle, source}, 'Stamped the account identity mode');
+			await this.publishRefresh(cache.sourceId);
+		} catch (error) {
+			Logger.error({error}, 'Could not store the account identity mode, leaving it on email until the next boot');
+		}
+	}
+
+	private async hasExistingInstanceSignals(): Promise<boolean> {
+		if (Config.instance.setup.configured) return true;
+		const [adminBootstrapped, appPublicRaw] = await Promise.all([
+			this.fetchConfigFromDatabase(ADMIN_BOOTSTRAP_KEY),
+			this.fetchConfigFromDatabase(APP_PUBLIC_CONFIG_KEY),
+		]);
+		if (adminBootstrapped === 'true') return true;
+		const appPublic = parseStoredConfigValue(appPublicRaw, 'app public');
+		const setupConfigured = isJsonRecord(appPublic) && isJsonRecord(appPublic.setup) && appPublic.setup.configured;
+		if (setupConfigured === true) return true;
+		return await this.hasAnyUser();
+	}
+
+	private async hasEmailDeliverySignal(): Promise<boolean> {
+		if (Config.email.enabled) return true;
+		const integrations = parseStoredConfigValue(
+			await this.fetchConfigFromDatabase(INSTANCE_INTEGRATIONS_CONFIG_KEY),
+			'integrations',
+		);
+		return isJsonRecord(integrations) && isJsonRecord(integrations.email) && integrations.email.enabled === true;
+	}
+
+	private async hasAnyUser(): Promise<boolean> {
+		const rows = await fetchMany<{user_id: bigint}>(FETCH_ANY_USER_QUERY, {});
+		return rows.length > 0;
 	}
 
 	async getGatewayRolloutConfig(): Promise<GatewayRolloutConfig> {
@@ -1346,6 +1603,21 @@ export class InstanceConfigRepository {
 		);
 	}
 
+	async getVoiceP2pConfig(): Promise<VoiceP2pConfig> {
+		const raw = await this.getConfig(VOICE_P2P_CONFIG_KEY);
+		return parseStoredVoiceP2pConfig(raw);
+	}
+
+	async setVoiceP2pConfig(config: VoiceP2pConfig): Promise<void> {
+		await this.updateVoiceP2pConfig(() => config);
+	}
+
+	updateVoiceP2pConfig(update: (current: VoiceP2pConfig) => VoiceP2pConfig): Promise<VoiceP2pConfig> {
+		return this.updateStoredConfig(VOICE_P2P_CONFIG_KEY, (raw) =>
+			validateStoredConfig(VoiceP2pConfigSchema, update(parseStoredVoiceP2pConfig(raw)), 'voice p2p'),
+		);
+	}
+
 	async getCaptchaConfig(): Promise<CaptchaConfig> {
 		const raw = await this.getConfig(CAPTCHA_CONFIG_KEY);
 		return parseStoredCaptchaConfig(raw);
@@ -1355,6 +1627,20 @@ export class InstanceConfigRepository {
 		return this.updateStoredConfig(CAPTCHA_CONFIG_KEY, (raw) =>
 			validateStoredConfig(CaptchaConfigSchema, {...parseStoredCaptchaConfig(raw), ...patch}, 'captcha'),
 		);
+	}
+
+	async getChannelThreadsConfig(): Promise<ChannelThreadsConfig> {
+		return (await this.getCompiledChannelThreadsConfig()).config;
+	}
+
+	async getCompiledChannelThreadsConfig(): Promise<CompiledChannelThreadsConfig> {
+		const raw = await this.getConfig(CHANNEL_THREADS_CONFIG_KEY);
+		return syncChannelThreadsConfig(raw, parseStoredChannelThreadsConfig);
+	}
+
+	async refreshChannelThreadsConfig(): Promise<CompiledChannelThreadsConfig> {
+		const raw = await this.fetchConfigFromDatabase(CHANNEL_THREADS_CONFIG_KEY);
+		return syncChannelThreadsConfig(raw, parseStoredChannelThreadsConfig);
 	}
 
 	async getExperimentDeliveryConfig(): Promise<ExperimentDeliveryConfig> {
@@ -1402,6 +1688,8 @@ export class InstanceConfigRepository {
 		const raw = await this.getConfig(APP_PUBLIC_CONFIG_KEY);
 		const config = parseStoredAppPublicConfig(raw);
 		setCachedDateOfBirthCollection(config.registration.collect_date_of_birth);
+		setCachedConfiguredLegalUrls(config.legal);
+		setCachedProductName(config.branding.product_name);
 		return config;
 	}
 
@@ -1427,8 +1715,8 @@ export class InstanceConfigRepository {
 				StoredInstanceAppPublicSchema,
 				{
 					branding: {
-						...current.branding,
-						...(config.branding ?? {}),
+						...toStoredBranding(current.branding),
+						...toStoredBranding(config.branding ?? {}),
 						premium_product_name: premiumProductName,
 					},
 					setup: {
@@ -1446,11 +1734,68 @@ export class InstanceConfigRepository {
 				},
 				'app public',
 			);
-			return {value: JSON.stringify(merged), result: buildAppPublicConfig(merged)};
+			return {value: JSON.stringify(merged), result: resolveAppPublicConfig(buildAppPublicConfig(merged))};
 		});
 		await this.publishRefresh(cache.sourceId);
 		setCachedDateOfBirthCollection(next.registration.collect_date_of_birth);
+		setCachedConfiguredLegalUrls(next.legal);
+		setCachedProductName(next.branding.product_name);
 		return next;
+	}
+
+	async normalizeStoredBrandingAssets(storageService: IStorageService): Promise<number> {
+		const cache = this.configCache;
+		await cache.getSnapshot();
+		cache.assertActive();
+		const raw = await this.fetchConfigFromDatabase(APP_PUBLIC_CONFIG_KEY);
+		if (raw === null) return 0;
+		const stored = salvageStoredConfig(
+			StoredInstanceAppPublicSchema,
+			readStoredConfigValue(raw, 'app public'),
+			'app public',
+		);
+		const rewrites = new Map<string, string>();
+		for (const field of BRANDING_ASSET_FIELDS) {
+			const value = stored.branding?.[field];
+			if (typeof value !== 'string' || isBrandingAssetReference(value) || rewrites.has(value)) continue;
+			const reference = toStoredBrandingAsset(value, Config.endpoints.media);
+			if (reference !== value && typeof reference === 'string') {
+				rewrites.set(value, reference);
+				continue;
+			}
+			const candidate = brandingAssetReferenceFromAnyUrl(value);
+			if (candidate === null) continue;
+			const metadata = await storageService.getObjectMetadata(
+				Config.s3.buckets.cdn,
+				brandingAssetStorageKey(candidate),
+			);
+			if (metadata !== null) {
+				rewrites.set(value, candidate);
+			}
+		}
+		if (rewrites.size === 0) return 0;
+		const {result} = await this.compareAndSetStoredValue(cache, APP_PUBLIC_CONFIG_KEY, (current) => {
+			const latest = salvageStoredConfig(
+				StoredInstanceAppPublicSchema,
+				readStoredConfigValue(current, 'app public'),
+				'app public',
+			);
+			if (!latest.branding) return {value: null, result: 0};
+			let changed = 0;
+			const branding = mapBrandingAssets(latest.branding, (value) => {
+				const rewrite = typeof value === 'string' ? rewrites.get(value) : undefined;
+				if (rewrite === undefined) return value;
+				changed++;
+				return rewrite;
+			});
+			if (changed === 0) return {value: null, result: 0};
+			const next = validateStoredConfig(StoredInstanceAppPublicSchema, {...latest, branding}, 'app public');
+			return {value: JSON.stringify(next), result: changed};
+		});
+		if (result > 0) {
+			await this.publishRefresh(cache.sourceId);
+		}
+		return result;
 	}
 
 	async getInstancePolicyConfig(): Promise<InstancePolicyConfig> {
@@ -1562,10 +1907,6 @@ export class InstanceConfigRepository {
 		};
 	}
 
-	async isAttachmentDecayEnabled(): Promise<boolean> {
-		return (await this.getEffectiveAttachmentDecayConfig()).enabled;
-	}
-
 	async getInstanceMediaAdminConfig(): Promise<InstanceMediaAdminConfig> {
 		const [media, attachmentDecay] = await Promise.all([
 			this.getInstanceMediaConfig(),
@@ -1617,9 +1958,10 @@ export class InstanceConfigRepository {
 			fromName,
 			smtp,
 		};
+		const usernameMode = (await this.getAccountIdentityMode()) === AccountIdentityModes.USERNAME;
 		return {
 			...next,
-			enabled: next.enabled && hasCompleteSmtpConfig(next),
+			enabled: !usernameMode && next.enabled && hasCompleteSmtpConfig(next),
 		};
 	}
 
@@ -1773,6 +2115,7 @@ export class InstanceConfigRepository {
 			single_community: policy.single_community_enabled,
 			single_community_guild_id: policy.single_community_enabled ? policy.single_community_guild_id : null,
 			direct_messages_disabled: policy.direct_messages_disabled,
+			guild_create_access: policy.guild_create_access,
 		};
 	}
 

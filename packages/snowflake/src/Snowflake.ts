@@ -132,10 +132,6 @@ export class SnowflakeGenerator {
 		return snowflake;
 	}
 
-	getWorkerId(): number {
-		return Number(this.workerId);
-	}
-
 	private waitUntilNextTimestamp(): bigint {
 		let timestamp = getTimestampFromNow(this.now);
 		while (timestamp <= this.lastTimestamp) {
@@ -149,14 +145,6 @@ let defaultGenerator: SnowflakeGenerator | null = null;
 
 export function createSnowflakeGenerator(options: SnowflakeGeneratorOptions = {}): SnowflakeGenerator {
 	return new SnowflakeGenerator(options);
-}
-
-export function setDefaultSnowflakeGenerator(options: SnowflakeGeneratorOptions = {}): void {
-	defaultGenerator = createSnowflakeGenerator(options);
-}
-
-export function resetDefaultSnowflakeGenerator(): void {
-	defaultGenerator = null;
 }
 
 export function generateSnowflake(workerIdOrOptions?: number | SnowflakeGeneratorOptions): bigint {

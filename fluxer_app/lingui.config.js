@@ -14,6 +14,6 @@ export default {
 			exclude: ['**/node_modules/**', '**/*.d.ts', '**/*.test.*', '**/*.spec.*', '**/testing/**'],
 		},
 	],
-	format: formatter(),
+	format: formatter({lineNumbers: false}),
 	compileNamespace: 'es',
 };

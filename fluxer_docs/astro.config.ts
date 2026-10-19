@@ -161,13 +161,20 @@ export default defineConfig({
 				},
 				{
 					label: 'Self-hosting',
-					items: ['operator/get-started', 'operator/configuration', 'operator/reverse-proxy', 'operator/upgrading'],
+					items: [
+						'operator/get-started',
+						'operator/sign-in',
+						'operator/configuration',
+						'operator/reverse-proxy',
+						'operator/upgrading',
+					],
 				},
 				{
 					label: 'Topics',
 					items: [
 						'http-api/errors',
 						'topics/rate-limits',
+						'topics/announcement-channels',
 						'http-api/permissions',
 						'topics/captcha',
 						'topics/uploads',
@@ -196,7 +203,6 @@ export default defineConfig({
 						'http-api/users/settings-protobuf',
 						'http-api/users/email-and-password',
 						'http-api/users/mfa',
-						'http-api/users/phone-verification',
 						'http-api/users/relationships',
 						'http-api/users/notes',
 						'http-api/users/private-channels',
@@ -211,6 +217,9 @@ export default defineConfig({
 					items: [
 						'http-api/channels',
 						'http-api/messages',
+						'http-api/threads',
+						'http-api/thread-members',
+						'http-api/forums',
 						'http-api/read-states',
 						'http-api/memes',
 						'http-api/gifs',
@@ -237,7 +246,13 @@ export default defineConfig({
 				},
 				{
 					label: 'Commerce',
-					items: ['http-api/billing', 'http-api/premium', 'http-api/gifts', 'http-api/donations'],
+					items: [
+						'http-api/billing',
+						'http-api/premium',
+						'http-api/in-app-purchases',
+						'http-api/gifts',
+						'http-api/donations',
+					],
 				},
 				{
 					label: 'Client surfaces',
@@ -254,6 +269,7 @@ export default defineConfig({
 						'gateway/commands',
 						'gateway/events',
 						'gateway/event-filtering',
+						'gateway/threads',
 						'gateway/limits-and-rate-limits',
 						'gateway/opcodes-and-close-codes',
 					],
@@ -274,7 +290,13 @@ export default defineConfig({
 				},
 				{
 					label: 'Voice',
-					items: ['voice', 'http-api/calls', 'http-api/streams', 'http-api/entrance-sounds'],
+					items: [
+						'voice',
+						'http-api/calls',
+						'http-api/peer-to-peer-voice',
+						'http-api/streams',
+						'http-api/entrance-sounds',
+					],
 				},
 				{
 					label: 'Admin API',
@@ -283,6 +305,7 @@ export default defineConfig({
 						'admin-api/api-keys',
 						'admin-api/users',
 						'admin-api/guilds',
+						'admin-api/threads',
 						'admin-api/applications',
 						'admin-api/reports',
 						'admin-api/messages',

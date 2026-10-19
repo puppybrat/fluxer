@@ -2,9 +2,9 @@
 
 import {showChannelDeleteFailedModal} from '@app/features/app/components/alerts/ChannelDeleteFailedModal';
 import {ConfirmModal} from '@app/features/app/components/dialogs/ConfirmModal';
+import {ChannelSettingsModal} from '@app/features/app/components/dialogs/LoadableSettingsModals';
 import * as ChannelCommands from '@app/features/channel/commands/ChannelCommands';
 import {CategoryCreateModal} from '@app/features/channel/components/modals/CategoryCreateModal';
-import {ChannelSettingsModal} from '@app/features/channel/components/modals/ChannelSettingsModal';
 import type {Channel} from '@app/features/channel/models/Channel';
 import Channels from '@app/features/channel/state/Channels';
 import {DELETE_CATEGORY_DESCRIPTOR} from '@app/features/channel/utils/ChannelMessageDescriptors';
@@ -109,7 +109,7 @@ export interface CategoryMenuData {
 	state: CategoryMenuState;
 }
 
-export interface CategoryMenuHandlers {
+interface CategoryMenuHandlers {
 	handleMarkAsRead: () => void;
 	handleToggleCollapse: () => void;
 	handleToggleCollapseAll: () => void;
@@ -122,7 +122,7 @@ export interface CategoryMenuHandlers {
 	handleResetMatureContentAgreeState: () => void;
 }
 
-export interface CategoryMenuState {
+interface CategoryMenuState {
 	hasUnread: boolean;
 	isCollapsed: boolean;
 	allCategoriesCollapsed: boolean;
@@ -211,12 +211,15 @@ export function useCategoryMenuData(category: Channel, options: CategoryMenuData
 			handleEditCategory: () => {
 				ModalCommands.pushAfterBottomSheetClose(
 					onClose,
-					modal(() => (
-						<ChannelSettingsModal
-							channelId={category.id}
-							data-flx="ui.action-menu.items.category-menu-data.handle-edit-category.channel-settings-modal"
-						/>
-					)),
+					modal(
+						() => (
+							<ChannelSettingsModal
+								channelId={category.id}
+								data-flx="ui.action-menu.items.category-menu-data.handle-edit-category.channel-settings-modal"
+							/>
+						),
+						'channel-settings',
+					),
 				);
 			},
 			handleDeleteCategory: () => {

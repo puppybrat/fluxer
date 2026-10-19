@@ -65,17 +65,17 @@
 
 .inputGroupDefault {
 	min-height: 2.75rem;
-	padding-left: 1rem;
+	padding-inline-start: 1rem;
 }
 
 .inputGroupCompact {
 	min-height: 2.125rem;
-	padding-left: 0.625rem;
+	padding-inline-start: 0.625rem;
 }
 
 .inputGroupCompactOverlay {
 	min-height: 1.125rem;
-	padding-left: 0;
+	padding-inline-start: 0;
 	background-color: transparent;
 	border-color: transparent;
 	border-width: 0;
@@ -112,6 +112,10 @@
 	user-select: none;
 }
 
+.inputGroupDisabled .input {
+	cursor: not-allowed;
+}
+
 .inputDefault {
 	font-size: 0.875rem;
 	line-height: 1.25rem;
@@ -142,6 +146,10 @@
 	caret-color: transparent;
 }
 
+.inputWithValueOverlay::selection {
+	background: transparent;
+}
+
 .inputWithValueOverlay::placeholder {
 	color: transparent;
 }
@@ -164,8 +172,8 @@
 .valueOverlay {
 	position: absolute;
 	top: 50%;
-	left: 1rem;
-	right: 2.25rem;
+	inset-inline-start: 1rem;
+	inset-inline-end: 2.25rem;
 	display: flex;
 	min-width: 0;
 	align-items: center;
@@ -178,7 +186,7 @@
 }
 
 .valueOverlayWithClear {
-	right: 4rem;
+	inset-inline-end: 4rem;
 }
 
 .valueOverlayDefault {
@@ -187,14 +195,14 @@
 }
 
 .valueOverlayCompact {
-	left: 0.625rem;
+	inset-inline-start: 0.625rem;
 	font-size: 0.8125rem;
 	line-height: 1.125rem;
 }
 
 .valueOverlayCompactOverlay {
-	left: 0;
-	right: 0;
+	inset-inline-start: 0;
+	inset-inline-end: 0;
 	font-weight: 500;
 	font-size: 0.625rem;
 	line-height: 0.75rem;
@@ -229,7 +237,7 @@
 	flex-shrink: 0;
 	align-items: center;
 	gap: 0.125rem;
-	padding-right: 0.375rem;
+	padding-inline-end: 0.375rem;
 }
 
 .clearButton,
@@ -461,6 +469,9 @@
 .itemRendered .itemText {
 	box-sizing: border-box;
 	width: 100%;
+}
+
+.itemRendered:has(.itemIndicator:not(.itemIndicatorHidden)) .itemText {
 	padding-inline-end: 1.5rem;
 }
 

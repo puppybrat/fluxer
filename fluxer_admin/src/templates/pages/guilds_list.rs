@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use crate::utils::plural::count_noun;
 use crate::{
     api::types::GuildInfo,
     config::AdminConfig,
@@ -14,13 +15,12 @@ use crate::{
         },
         layout::admin_layout,
     },
-    utils::forms::parse_comma_separated,
+    utils::{forms::parse_comma_separated, user_tag::user_tag},
 };
 use maud::{Markup, html};
 
 pub struct GuildsListParams {
     pub q: String,
-    pub ids: String,
     pub requested_ids: Vec<String>,
     pub limit: u32,
     pub page: u32,
@@ -37,7 +37,6 @@ impl GuildsListParams {
         Self {
             q: q.unwrap_or_default().trim().to_owned(),
             requested_ids: parse_comma_separated(&ids),
-            ids: ids.trim().to_owned(),
             limit: match limit.unwrap_or(50) {
                 25 => 25,
                 100 => 100,
@@ -97,7 +96,7 @@ pub fn guilds_list_page(
             } @else if let Some(count) = result_state.total {
                 (page_header_with_actions("Guilds", None, html! {
                     p class="text-sm font-normal text-neutral-500" {
-                        "Found " (count) " results (showing "
+                        "Found " (count_noun(count, "result", "results")) " (showing "
                         (result_state.guilds.map(|guilds| guilds.len()).unwrap_or_default())
                         ")"
                     }
@@ -270,7 +269,7 @@ fn owner_display(guild: &GuildInfo) -> String {
     let Some(discriminator) = guild.owner_discriminator.as_deref() else {
         return guild.owner_id.clone();
     };
-    let tag = format!("{username}#{discriminator}");
+    let tag = user_tag(username, discriminator, false);
     if let Some(global_name) = guild
         .owner_global_name
         .as_deref()

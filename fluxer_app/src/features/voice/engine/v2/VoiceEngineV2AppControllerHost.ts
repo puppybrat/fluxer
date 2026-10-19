@@ -27,11 +27,6 @@ export interface VoiceEngineV2AppControllerHostOptions {
 	resourceQueuesCap?: number;
 }
 
-export interface VoiceEngineV2AppControllerHostView {
-	snapshot: VoiceEngineV2Snapshot;
-	model: VoiceEngineV2Model;
-}
-
 export interface VoiceEngineV2AppControllerHostWaitOptions {
 	description?: string;
 	staleCompletion?: 'reject' | 'resolve';
@@ -92,7 +87,6 @@ function buildWaitTimeout(description: string, pending: ReadonlySet<VoiceEngineV
 export class VoiceEngineV2AppControllerHost {
 	readonly controller: VoiceEngineV2Controller;
 	private readonly runtime: VoiceEngineV2Runtime;
-	private readonly runtimeDiagnosticsDisposer: () => void;
 
 	constructor(options: VoiceEngineV2AppControllerHostOptions) {
 		this.runtime = new VoiceEngineV2Runtime(new VoiceEngineV2HostPortImplementation(options.ports), {
@@ -102,7 +96,7 @@ export class VoiceEngineV2AppControllerHost {
 			...(options.resourceQueuesCap !== undefined ? {resourceQueuesCap: options.resourceQueuesCap} : {}),
 		});
 		this.controller = new VoiceEngineV2Controller(this.runtime);
-		this.runtimeDiagnosticsDisposer = this.runtime.subscribeDiagnostics((diagnostic) => {
+		this.runtime.subscribeDiagnostics((diagnostic) => {
 			logger.warn('Voice engine v2 runtime rejected a command at queue cap', {
 				queue: diagnostic.queue,
 				cap: diagnostic.cap,
@@ -121,13 +115,6 @@ export class VoiceEngineV2AppControllerHost {
 		return this.controller.model;
 	}
 
-	get view(): VoiceEngineV2AppControllerHostView {
-		return {
-			snapshot: this.snapshot,
-			model: this.model,
-		};
-	}
-
 	subscribe(listener: VoiceEngineV2RuntimeListener): () => void {
 		return this.controller.subscribe(listener);
 	}
@@ -142,19 +129,6 @@ export class VoiceEngineV2AppControllerHost {
 
 	isOperationPending(operationId: VoiceEngineV2OperationId): boolean {
 		return this.runtime.isOperationPending(operationId);
-	}
-
-	dispatchAndWait(
-		event: VoiceEngineV2Event,
-		options: VoiceEngineV2AppControllerHostWaitOptions = {},
-	): Promise<VoiceEngineV2Transition> {
-		let transition: VoiceEngineV2Transition | null = null;
-		return this.runAndWait(() => {
-			transition = this.dispatch(event);
-		}, options).then(() => {
-			if (transition === null) throw new Error('VoiceEngineV2AppControllerHost.dispatchAndWait did not dispatch');
-			return transition;
-		});
 	}
 
 	runAndWait(action: () => void, options: VoiceEngineV2AppControllerHostWaitOptions = {}): Promise<void> {
@@ -219,11 +193,6 @@ export class VoiceEngineV2AppControllerHost {
 		if (!isSucceededTerminalEvent(event)) return;
 		pending.delete(operationId);
 		if (pending.size === 0) settle();
-	}
-
-	dispose(): void {
-		this.runtimeDiagnosticsDisposer();
-		this.controller.dispose();
 	}
 }
 

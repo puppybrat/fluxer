@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {registerAdminControllers} from '@app/api/admin/controllers/index';
-import {getActivityJetStream} from '@app/api/app/APILifecycle';
 import {AttachmentController} from '@app/api/attachment/AttachmentController';
 import {AuthController} from '@app/api/auth/AuthController';
 import {OriginHandoffController} from '@app/api/auth/OriginHandoffController';
@@ -30,13 +29,14 @@ import {ReadStateController} from '@app/api/read_state/ReadStateController';
 import {ReportController} from '@app/api/report/ReportController';
 import {InternalRpcController} from '@app/api/rpc/InternalRpcController';
 import {SearchController} from '@app/api/search/controllers/SearchController';
+import {StoreBillingController} from '@app/api/store_billing/StoreBillingController';
 import {StripeController} from '@app/api/stripe/StripeController';
 import {TestHarnessController} from '@app/api/test/TestHarnessController';
 import {ThemeController} from '@app/api/theme/ThemeController';
 import type {HonoApp} from '@app/api/types/HonoEnv';
 import {UnfurlController} from '@app/api/unfurl/UnfurlController';
 import {UserController} from '@app/api/user/controllers/UserController';
-import {installSmsWebhookForwarder} from '@app/api/webhook/SmsWebhookForwarder';
+import {VoiceP2pConnectionReportController} from '@app/api/voice/VoiceP2pConnectionReportController';
 import {WebhookController} from '@app/api/webhook/WebhookController';
 
 export function registerControllers(routes: HonoApp, config: APIConfig): void {
@@ -70,7 +70,8 @@ export function registerControllers(routes: HonoApp, config: APIConfig): void {
 		TestHarnessController(routes);
 	}
 	UserController(routes);
-	installSmsWebhookForwarder(routes, getActivityJetStream);
+	VoiceP2pConnectionReportController(routes);
+	StoreBillingController(routes);
 	WebhookController(routes);
 	OAuth2Controller(routes);
 	OAuth2ApplicationsController(routes);

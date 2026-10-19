@@ -3,6 +3,7 @@
 import {type ChannelGroup, organizeChannels} from '@app/features/app/components/layout/utils/ChannelOrganization';
 import type {Channel} from '@app/features/channel/models/Channel';
 import {ChannelTypes} from '@fluxer/constants/src/ChannelConstants';
+import {THREAD_ONLY_CHANNEL_TYPES} from '@fluxer/constants/src/ThreadConstants';
 import {describe, expect, it} from 'vitest';
 
 function channel(id: string, type: number, position: number, parentId: string | null = null): Channel {
@@ -11,6 +12,8 @@ function channel(id: string, type: number, position: number, parentId: string | 
 		type,
 		position,
 		parentId,
+		// Upstream's isTextChannel classifies forum and media parents through the model method.
+		isThreadOnly: () => THREAD_ONLY_CHANNEL_TYPES.has(type),
 	} as Channel;
 }
 

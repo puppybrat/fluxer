@@ -12,19 +12,24 @@ import DomainMovedNotice from '@app/features/app/domain_migration/DomainMovedNot
 import {isClientReconnecting} from '@app/features/app/state/ClientReadiness';
 import Initialization from '@app/features/app/state/Initialization';
 import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
-import Updater from '@app/features/app/state/Updater';
+import Accounts from '@app/features/auth/state/Accounts';
 import Authentication from '@app/features/auth/state/Authentication';
 import Channels from '@app/features/channel/state/Channels';
 import DeveloperOptions from '@app/features/devtools/state/DeveloperOptions';
 import GatewayConnection from '@app/features/gateway/transport/GatewayConnection';
 import * as NotificationUtils from '@app/features/notification/utils/NotificationUtils';
-import NativePermission from '@app/features/permissions/system/state/NativePermission';
 import {resolvePriceAnnouncementCampaign} from '@app/features/premium/config/PriceAnnouncementCampaign';
 import PremiumState from '@app/features/premium/state/PremiumState';
-import {canServiceStripeSubscriptions, shouldShowPremiumFeatures} from '@app/features/premium/utils/PremiumUtils';
+import {getPremiumGraceEndDate} from '@app/features/premium/utils/PremiumGrace';
+import {
+	canServiceStripeSubscriptions,
+	getStoreOwnedSubscription,
+	shouldShowPremiumFeatures,
+} from '@app/features/premium/utils/PremiumUtils';
 import StreamerMode from '@app/features/streamer_mode/state/StreamerMode';
+import WindowsFont, {WINDOWS_FONT_CHANGED_AT_MS} from '@app/features/theme/state/WindowsFont';
 import Nagbar from '@app/features/ui/state/Nagbar';
-import {hasUnavailableElectronNativeContext, isDesktop} from '@app/features/ui/utils/NativeUtils';
+import {hasUnavailableElectronNativeContext, isDesktop, isNativeWindows} from '@app/features/ui/utils/NativeUtils';
 import {isStandalonePwa} from '@app/features/ui/utils/PwaUtils';
 import StatusPage from '@app/features/user/state/StatusPage';
 import Users from '@app/features/user/state/Users';
@@ -47,7 +52,7 @@ function sortNagbarsByPriority(a: NagbarState, b: NagbarState): number {
 	return a.priority - b.priority;
 }
 
-export function selectVisibleNagbars(nagbars: Array<NagbarState>): Array<NagbarState> {
+function selectVisibleNagbars(nagbars: Array<NagbarState>): Array<NagbarState> {
 	const visibleNagbars = nagbars.filter((nagbar) => nagbar.visible).sort(sortNagbarsByPriority);
 	const pinned = visibleNagbars.filter((nagbar) => nagbar.type === NagbarType.BUILD_ENVIRONMENT);
 	const selectable = visibleNagbars.filter((nagbar) => nagbar.type !== NagbarType.BUILD_ENVIRONMENT);
@@ -117,14 +122,11 @@ export const useNagbarConditions = (): NagbarConditions => {
 		if (!showPremium || !canServiceSubscription) return false;
 		if (nagbarState.forceHidePremiumGracePeriod) return false;
 		if (nagbarState.forcePremiumGracePeriod) return true;
-		if (!user?.premiumUntil || user.premiumType === 2 || premiumWillCancel) return false;
+		if (!user?.premiumUntil || !user.premiumGraceEndsAt || !user.premiumBillingCycle || user.premiumType === 2) {
+			return false;
+		}
 		const now = new Date();
-		const expiryDate = new Date(user.premiumUntil);
-		const gracePeriodMs = 3 * MS_PER_DAY;
-		const graceEndDate = user.premiumGraceEndsAt
-			? new Date(user.premiumGraceEndsAt)
-			: new Date(expiryDate.getTime() + gracePeriodMs);
-		const isInGracePeriod = now > expiryDate && now <= graceEndDate;
+		const isInGracePeriod = now > new Date(user.premiumUntil) && now <= new Date(user.premiumGraceEndsAt);
 		return isInGracePeriod && !nagbarState.premiumGracePeriodDismissed;
 	})();
 	const canShowPremiumExpired = (() => {
@@ -134,11 +136,8 @@ export const useNagbarConditions = (): NagbarConditions => {
 		if (!user?.premiumUntil || user.premiumType === 2 || premiumWillCancel) return false;
 		const now = new Date();
 		const expiryDate = new Date(user.premiumUntil);
-		const gracePeriodMs = 3 * MS_PER_DAY;
 		const expiredStateDurationMs = 30 * MS_PER_DAY;
-		const graceEndDate = user.premiumGraceEndsAt
-			? new Date(user.premiumGraceEndsAt)
-			: new Date(expiryDate.getTime() + gracePeriodMs);
+		const graceEndDate = getPremiumGraceEndDate(expiryDate, user.premiumGraceEndsAt);
 		const expiredStateEndDate = new Date(graceEndDate.getTime() + expiredStateDurationMs);
 		const isExpired = now > graceEndDate;
 		const showExpiredState = isExpired && now <= expiredStateEndDate;
@@ -173,6 +172,7 @@ export const useNagbarConditions = (): NagbarConditions => {
 		if (isSelfHosted) return false;
 		if (!hasPurchaseReadyAccount) return false;
 		if (!premiumState || !priceAnnouncementCampaign) return false;
+		if (getStoreOwnedSubscription(premiumState)) return false;
 		const listPriceSwitch = premiumState.billing.list_price_switch ?? null;
 		if (!listPriceSwitch?.available || listPriceSwitch.pending) return false;
 		if (listPriceSwitch.currency !== priceAnnouncementCampaign.currency) return false;
@@ -257,10 +257,14 @@ export const useNagbarConditions = (): NagbarConditions => {
 			startupVoiceSessionRestoreSnapshotKey && startupVoiceSessionRestoreSnapshotKey === voiceSessionRestoreSnapshotKey,
 		);
 	})();
-	const canShowLinuxInputAccess = NativePermission.shouldShowLinuxInputAccessNagbar;
 	const canShowSoftwareEncoder = SoftwareEncoderWarning.showWarning;
 	const canShowStreamerMode = StreamerMode.shouldShowNagbar;
-	const canShowDesktopUpdateReady = Updater.shouldShowUpdateReadyNagbar;
+	const canShowWindowsFont =
+		isNativeWindows() &&
+		user != null &&
+		user.createdAt.getTime() < WINDOWS_FONT_CHANGED_AT_MS &&
+		!WindowsFont.useFluxerSans &&
+		!WindowsFont.nagbarDismissed;
 	const canShowDomainMoved = nagbarState.forceHideDomainMoved
 		? false
 		: nagbarState.forceDomainMoved
@@ -301,12 +305,17 @@ export const useNagbarConditions = (): NagbarConditions => {
 			? false
 			: nagbarState.forceUnclaimedAccount
 				? true
-				: Boolean(user && !user.isClaimed()),
+				: Boolean(!Accounts.isSwitching && user && !user.isClaimed()),
 		userNeedsVerification: nagbarState.forceHideEmailVerification
 			? false
 			: nagbarState.forceEmailVerification
 				? true
 				: Boolean(RuntimeConfig.emailsEnabled && user?.isClaimed() && !user.verified),
+		canShowAccountLimited: nagbarState.forceHideAccountLimited
+			? false
+			: nagbarState.forceAccountLimited
+				? true
+				: user?.accountLimited === true,
 		canShowDesktopNotification: nagbarState.forceHideDesktopNotification
 			? false
 			: nagbarState.forceDesktopNotification
@@ -323,11 +332,10 @@ export const useNagbarConditions = (): NagbarConditions => {
 		canShowVisionaryMfa,
 		canShowVoiceSessionRestore,
 		needsTermsAcceptance,
-		canShowLinuxInputAccess,
 		canShowSoftwareEncoder,
 		canShowStreamerMode,
-		canShowDesktopUpdateReady,
 		canShowDomainMoved,
+		canShowWindowsFont,
 	};
 };
 export const useActiveNagbars = (conditions: NagbarConditions): Array<NagbarState> => {
@@ -373,6 +381,12 @@ export const useActiveNagbars = (conditions: NagbarConditions): Array<NagbarStat
 				type: NagbarType.EMAIL_VERIFICATION,
 				priority: -3,
 				visible: conditions.userNeedsVerification,
+				dismissible: false,
+			},
+			{
+				type: NagbarType.ACCOUNT_LIMITED,
+				priority: -3.75,
+				visible: conditions.canShowAccountLimited,
 				dismissible: false,
 			},
 			{
@@ -436,12 +450,6 @@ export const useActiveNagbars = (conditions: NagbarConditions): Array<NagbarStat
 				dismissible: true,
 			},
 			{
-				type: NagbarType.LINUX_INPUT_ACCESS,
-				priority: 8.5,
-				visible: conditions.canShowLinuxInputAccess,
-				dismissible: true,
-			},
-			{
 				type: NagbarType.DESKTOP_DOWNLOAD,
 				priority: 9,
 				visible: conditions.canShowDesktopDownload,
@@ -460,15 +468,15 @@ export const useActiveNagbars = (conditions: NagbarConditions): Array<NagbarStat
 				dismissible: true,
 			},
 			{
-				type: NagbarType.DESKTOP_UPDATE_READY,
-				priority: -1.5,
-				visible: conditions.canShowDesktopUpdateReady,
-				dismissible: true,
-			},
-			{
 				type: NagbarType.DOMAIN_MOVED,
 				priority: 3,
 				visible: conditions.canShowDomainMoved,
+				dismissible: true,
+			},
+			{
+				type: NagbarType.WINDOWS_FONT,
+				priority: 4.5,
+				visible: conditions.canShowWindowsFont,
 				dismissible: true,
 			},
 		];

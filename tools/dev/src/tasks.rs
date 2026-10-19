@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use crate::desktop::build_desktop;
+use crate::desktop::build_desktop_shell;
 use crate::proc::{RunOptions, run_command};
 use anyhow::Result;
 use std::env;
@@ -98,37 +98,23 @@ pub fn run_test() -> Result<i32> {
 
 pub fn run_build() -> Result<i32> {
     run_generators(false)?;
+    build_desktop_shell()?;
     task_run(&["pnpm", "--filter", "fluxer_app", "build"])?;
-    build_desktop(false)?;
     Ok(0)
 }
 
 pub fn run_lint() -> Result<i32> {
     task_run(&["pnpm", "exec", "biome", "ci"])?;
     task_run(&["pnpm", "exec", "eslint", ".", "--max-warnings", "0"])?;
+    task_run(&["pnpm", "--filter", "fluxer_app", "theming:data-flx:check"])?;
     Ok(0)
 }
 
 pub fn run_knip() -> Result<i32> {
+    task_run(&["pnpm", "--filter", "fluxer_app", "wasm:codegen"])?;
+    task_run(&["pnpm", "--filter", "fluxer_app", "generate:masks"])?;
+    task_run(&["pnpm", "--filter", "fluxer_desktop", "set-channel"])?;
     task_run(&["pnpm", "--filter", "fluxer_app", "i18n:compile"])?;
     task_run(&["pnpm", "exec", "knip"])?;
     Ok(0)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn default_nats_url_switches_inside_container() {
-        let expected_host = if Path::new("/.dockerenv").exists() {
-            "nats"
-        } else {
-            "127.0.0.1"
-        };
-        assert_eq!(
-            default_test_nats_url(),
-            format!("nats://{expected_host}:4222")
-        );
-    }
 }

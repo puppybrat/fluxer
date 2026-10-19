@@ -227,7 +227,7 @@ export function CastController(app: HonoApp) {
 			let scopedAncestorChain: Array<string> = [];
 			if (channel_id !== undefined) {
 				const channelRepository = ctx.get('channelRepository');
-				const channel = await channelRepository.findUnique(createChannelID(BigInt(channel_id)));
+				const channel = await channelRepository.channelData.findUnique(createChannelID(BigInt(channel_id)));
 				if (!channel || channel.guildId?.toString() !== guildId.toString()) {
 					throw new BadRequestError({
 						code: APIErrorCodes.INVALID_REQUEST,
@@ -238,7 +238,7 @@ export function CastController(app: HonoApp) {
 				scopedAncestorChain = await buildAncestorChain(
 					channel.parentId ? channel.parentId.toString() : null,
 					async (ancestorChannelId) => {
-						const ancestor = await channelRepository.findUnique(createChannelID(BigInt(ancestorChannelId)));
+						const ancestor = await channelRepository.channelData.findUnique(createChannelID(BigInt(ancestorChannelId)));
 						return ancestor?.parentId ? ancestor.parentId.toString() : null;
 					},
 				);

@@ -2,11 +2,12 @@
 
 import type {UserRow} from '@app/api/database/types/UserTypes';
 import {mapGuildMemberToResponse} from '@app/api/guild/GuildModel';
-import type {IGuildRepositoryAggregate} from '@app/api/guild/repositories/IGuildRepositoryAggregate';
+import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import {emitActivity} from '@app/api/infrastructure/activity/ActivityEvents';
 import type {IDiscriminatorService} from '@app/api/infrastructure/DiscriminatorService';
 import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {UserCacheService} from '@app/api/infrastructure/UserCacheService';
+import {getCachedTagStyle} from '@app/api/instance/AccountIdentityModeCache';
 import {Logger} from '@app/api/Logger';
 import type {RequestCache} from '@app/api/middleware/RequestCacheMiddleware';
 import type {User} from '@app/api/models/User';
@@ -18,15 +19,16 @@ import {
 	timeRpcStepSync,
 } from '@app/api/rpc/RpcTimings';
 import type {UserData} from '@app/api/rpc/RpcTypes';
-import type {IUserRepository} from '@app/api/user/IUserRepository';
+import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import {createPremiumClearPatch, shouldStripExpiredPremium} from '@app/api/user/UserHelpers';
 import {mapUserToPrivateResponse} from '@app/api/user/UserMappers';
+import {TagStyles} from '@fluxer/constants/src/AccountIdentityConstants';
 import {PremiumFlags, UserFlags} from '@fluxer/constants/src/UserConstants';
 import type {RpcSessionTimings} from '@fluxer/schema/src/domains/rpc/RpcSchemas';
 
-interface SessionStartUserRepository extends Pick<IUserRepository, 'patchUpsert'> {}
+interface SessionStartUserRepository extends Pick<UserRepository, 'patchUpsert' | 'updateFlags'> {}
 
-interface SessionStartGuildRepository extends Pick<IGuildRepositoryAggregate, 'getMember' | 'upsertMember'> {}
+interface SessionStartGuildRepository extends Pick<GuildRepository, 'getMember' | 'upsertMember'> {}
 
 interface SessionStartUserCacheService
 	extends Pick<UserCacheService, 'getUserPartialResponse' | 'setUserPartialResponseFromUserInBackground'> {}
@@ -52,7 +54,6 @@ interface ProcessSessionStartParams {
 
 interface ProcessSessionStartResult {
 	user: User;
-	flagsToUpdate: bigint | null;
 	timings: RpcSessionTimings;
 }
 
@@ -70,12 +71,17 @@ export class RpcSessionStartService {
 			{
 				user_id: startedUser.id.toString(),
 				is_bot: startedUser.isBot,
-				has_verified_phone: startedUser.hasVerifiedPhone,
 				flags: startedUser.flags.toString(),
-				suspicious_flags: startedUser.suspiciousActivityFlags ?? 0,
 				has_ever_paid: startedUser.hasEverPurchased,
 			},
-			{ip: clientIp, country: geoipCountryIso, ua: null, locale: null, channel: 'other', request_id: null},
+			{
+				ip: clientIp,
+				country: geoipCountryIso,
+				ua: null,
+				locale: startedUser.locale,
+				channel: 'other',
+				request_id: null,
+			},
 		);
 		timings.timeSync('clear_expired_custom_status', () => {
 			const userSettings = userData.settings;
@@ -86,7 +92,7 @@ export class RpcSessionStartService {
 				userData.settings = clearedSettings;
 			}
 		});
-		let flagsToUpdate: bigint | null = null;
+		let needsSessionStartedFlag = false;
 		let premiumFlagsToUpdate: number | null = null;
 		let hadPremium = false;
 		let isPremium = false;
@@ -94,7 +100,7 @@ export class RpcSessionStartService {
 		let hasBeenSanitized = false;
 		timings.timeSync('compute_session_and_premium_flags', () => {
 			if (!(user.flags & UserFlags.HAS_SESSION_STARTED)) {
-				flagsToUpdate = (flagsToUpdate ?? user.flags) | UserFlags.HAS_SESSION_STARTED;
+				needsSessionStartedFlag = true;
 			}
 			hadPremium = user.premiumType != null && user.premiumType > 0;
 			isPremium = user.isPremium();
@@ -119,7 +125,11 @@ export class RpcSessionStartService {
 				}
 			});
 		}
-		if (!isPremium && (user.premiumFlags & PremiumFlags.DISCRIMINATOR) !== 0) {
+		if (
+			!isPremium &&
+			(user.premiumFlags & PremiumFlags.DISCRIMINATOR) !== 0 &&
+			getCachedTagStyle() === TagStyles.RANDOM
+		) {
 			const resetDiscriminatorSteps: RpcTimingSteps = {};
 			const resetDiscriminatorStartedAtNs = startRpcTiming();
 			try {
@@ -236,11 +246,24 @@ export class RpcSessionStartService {
 			});
 			timings.record('sanitize_expired_premium_perks', sanitizePremiumStartedAtNs, sanitizePremiumSteps);
 		}
+		if (needsSessionStartedFlag) {
+			await timings.time('persist_session_started_flag', async () => {
+				try {
+					const updatedUser = await this.deps.userRepository.updateFlags(
+						user.id,
+						(flags) => flags | UserFlags.HAS_SESSION_STARTED,
+					);
+					if (updatedUser) {
+						user = updatedUser;
+						userData.user = updatedUser;
+					}
+				} catch (error) {
+					Logger.warn({userId: user.id, error}, 'Failed to persist the session started flag');
+				}
+			});
+		}
 		const flagPatch: Partial<UserRow> = {};
 		timings.timeSync('build_session_flag_patch', () => {
-			if (flagsToUpdate !== null && flagsToUpdate !== user.flags) {
-				flagPatch.flags = flagsToUpdate;
-			}
 			if (premiumFlagsToUpdate !== null && premiumFlagsToUpdate !== user.premiumFlags) {
 				flagPatch.premium_flags = premiumFlagsToUpdate;
 			}
@@ -258,6 +281,6 @@ export class RpcSessionStartService {
 				}
 			});
 		}
-		return {user, flagsToUpdate, timings: timings.finalize()};
+		return {user, timings: timings.finalize()};
 	}
 }

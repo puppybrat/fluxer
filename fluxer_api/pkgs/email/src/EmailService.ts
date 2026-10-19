@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {createLogger} from '@fluxer/logger/src/Logger';
-import type {IEmailI18nService} from '@pkgs/email/src/EmailI18nService';
 import type {EmailConfig, IEmailProvider, UserBouncedEmailChecker} from '@pkgs/email/src/EmailProviderTypes';
-import type {EmailTemplateVariables} from '@pkgs/email/src/email_i18n/EmailI18nTypes';
+import {getEmailTemplate} from '@pkgs/email/src/email_i18n/EmailI18n';
+import type {
+	EmailLegalLinks,
+	EmailTemplateVariables,
+	ReportReceivedTargetKind,
+} from '@pkgs/email/src/email_i18n/EmailI18nTypes';
 import type {EmailTemplateKey} from '@pkgs/email/src/email_i18n/EmailI18nTypes.generated';
 import type {IEmailService} from '@pkgs/email/src/IEmailService';
 import {ms} from 'itty-time';
@@ -21,20 +25,27 @@ function optionalReason(reason: string | null): string | null {
 	return reason?.trim() || null;
 }
 
+function legalLinkVariables(config: EmailConfig): {
+	termsUrl: string | null;
+	guidelinesUrl: string | null;
+	legalLinks: EmailLegalLinks;
+} {
+	const {termsUrl, guidelinesUrl} = config;
+	const legalLinks = termsUrl ? (guidelinesUrl ? 'both' : 'terms') : guidelinesUrl ? 'guidelines' : 'none';
+	return {termsUrl, guidelinesUrl, legalLinks};
+}
+
 export class EmailService implements IEmailService {
 	private readonly config: EmailConfig;
-	private readonly emailI18n: IEmailI18nService;
 	private readonly provider: IEmailProvider | null;
 	private readonly bouncedEmailChecker: UserBouncedEmailChecker | null;
 
 	constructor(
 		config: EmailConfig,
-		emailI18n: IEmailI18nService,
 		provider: IEmailProvider | null = null,
 		bouncedEmailChecker: UserBouncedEmailChecker | null = null,
 	) {
 		this.config = config;
-		this.emailI18n = emailI18n;
 		this.provider = provider;
 		this.bouncedEmailChecker = bouncedEmailChecker;
 	}
@@ -79,19 +90,6 @@ export class EmailService implements IEmailService {
 		});
 	}
 
-	async sendAccountDisabledForSuspiciousActivityEmail(
-		email: string,
-		username: string,
-		reason: string | null,
-		locale: string | null = null,
-	): Promise<boolean> {
-		return this.sendTemplatedEmail(email, 'account_disabled_suspicious', locale, {
-			username,
-			reason: optionalReason(reason),
-			forgotUrl: `${this.config.appBaseUrl}/forgot`,
-		});
-	}
-
 	async sendAccountTempBannedEmail(
 		email: string,
 		username: string,
@@ -105,8 +103,8 @@ export class EmailService implements IEmailService {
 			reason: optionalReason(reason),
 			durationHours,
 			bannedUntil,
-			termsUrl: `${this.config.marketingBaseUrl}/terms`,
-			guidelinesUrl: `${this.config.marketingBaseUrl}/guidelines`,
+			...legalLinkVariables(this.config),
+			appeals_email: this.config.appealsEmail,
 		});
 	}
 
@@ -121,8 +119,8 @@ export class EmailService implements IEmailService {
 			username,
 			reason: optionalReason(reason),
 			deletionDate,
-			termsUrl: `${this.config.marketingBaseUrl}/terms`,
-			guidelinesUrl: `${this.config.marketingBaseUrl}/guidelines`,
+			...legalLinkVariables(this.config),
+			appeals_email: this.config.appealsEmail,
 		});
 	}
 
@@ -146,6 +144,7 @@ export class EmailService implements IEmailService {
 			username,
 			reason: optionalReason(reason),
 			deletionDate,
+			safety_email: this.config.safetyEmail,
 		});
 	}
 
@@ -160,6 +159,7 @@ export class EmailService implements IEmailService {
 			username,
 			reason: optionalReason(reason),
 			deletionDate,
+			safety_email: this.config.safetyEmail,
 		});
 	}
 
@@ -168,7 +168,10 @@ export class EmailService implements IEmailService {
 		username: string,
 		locale: string | null = null,
 	): Promise<boolean> {
-		return this.sendTemplatedEmail(email, 'account_deletion_cancelled', locale, {username});
+		return this.sendTemplatedEmail(email, 'account_deletion_cancelled', locale, {
+			username,
+			safety_email: this.config.safetyEmail,
+		});
 	}
 
 	async sendUnbanNotification(
@@ -191,6 +194,7 @@ export class EmailService implements IEmailService {
 			username,
 			deletionDate,
 			reason: optionalReason(reason),
+			appeals_email: this.config.appealsEmail,
 		});
 	}
 
@@ -206,6 +210,7 @@ export class EmailService implements IEmailService {
 			deletionDate,
 			lastActiveDate,
 			loginUrl: `${this.config.appBaseUrl}/login`,
+			support_email: this.config.supportEmail,
 		});
 	}
 
@@ -225,6 +230,7 @@ export class EmailService implements IEmailService {
 			totalMessages,
 			fileSizeMB,
 			expiresAt,
+			support_email: this.config.supportEmail,
 		});
 	}
 
@@ -233,7 +239,10 @@ export class EmailService implements IEmailService {
 		username: string,
 		locale: string | null = null,
 	): Promise<boolean> {
-		return this.sendTemplatedEmail(email, 'gift_chargeback_notification', locale, {username});
+		return this.sendTemplatedEmail(email, 'gift_chargeback_notification', locale, {
+			username,
+			support_email: this.config.supportEmail,
+		});
 	}
 
 	async sendReportResolvedEmail(
@@ -248,7 +257,31 @@ export class EmailService implements IEmailService {
 			reportId,
 			publicComment,
 			hasComment: publicComment ? 'yes' : 'no',
+			safety_email: this.config.safetyEmail,
 		});
+	}
+
+	async sendDsaReportResolvedEmail(
+		email: string,
+		reportId: string,
+		publicComment: string,
+		locale: string | null = null,
+	): Promise<boolean> {
+		return this.sendTemplatedEmail(email, 'dsa_report_resolved', locale, {
+			reportId,
+			publicComment,
+			hasComment: publicComment ? 'yes' : 'no',
+			appeals_email: this.config.appealsEmail,
+		});
+	}
+
+	async sendReportReceivedEmail(
+		email: string,
+		reportId: string,
+		targetKind: ReportReceivedTargetKind,
+		locale: string | null = null,
+	): Promise<boolean> {
+		return this.sendTemplatedEmail(email, 'report_received', locale, {reportId, targetKind});
 	}
 
 	async sendDsaReportVerificationCode(
@@ -258,13 +291,6 @@ export class EmailService implements IEmailService {
 		locale: string | null = null,
 	): Promise<boolean> {
 		return this.sendTemplatedEmail(email, 'dsa_report_verification', locale, {code, expiresAt});
-	}
-
-	async sendRegistrationApprovedEmail(email: string, username: string, locale: string | null = null): Promise<boolean> {
-		return this.sendTemplatedEmail(email, 'registration_approved', locale, {
-			username,
-			channelsUrl: `${this.config.appBaseUrl}/channels/@me`,
-		});
 	}
 
 	async sendPasswordChangeVerification(
@@ -365,7 +391,7 @@ export class EmailService implements IEmailService {
 		locale: string | null,
 		variables: EmailTemplateVariables[T],
 	): Promise<boolean> {
-		const result = this.emailI18n.getTemplate(templateKey, locale, variables);
+		const result = getEmailTemplate(templateKey, locale, variables, this.config.productName);
 		if (!result.ok) {
 			logger.error({key: templateKey, locale: result.locale, error: result.error}, 'Failed to resolve email template');
 			return false;
@@ -388,6 +414,7 @@ export class EmailService implements IEmailService {
 		return this.provider.sendEmail({
 			to: email,
 			from: {email: this.config.fromEmail, name: this.config.fromName},
+			...(this.config.replyTo ? {replyTo: this.config.replyTo} : {}),
 			subject,
 			text: body,
 		});

@@ -2,6 +2,7 @@
 
 import {useBottomSheetBackHandler} from '@app/features/app/hooks/useBottomSheetBackHandler';
 import {CLOSE_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
+import {useAccountTransitionDismissal} from '@app/features/platform/hooks/useAccountTransitionDismissal';
 import {resolvePortalHost, usePortalHost} from '@app/features/ui/overlay/PortalHostContext';
 import styles from '@app/features/ui/sheet/Sheet.module.css';
 import OverlayStack from '@app/features/ui/state/OverlayStack';
@@ -653,6 +654,7 @@ const RootComponent: React.FC<RootProps> = ({
 		if (!isMounted) return undefined;
 		return lockDocumentScroll();
 	}, [isMounted]);
+	useAccountTransitionDismissal(isOpen, onClose);
 	useEffect(() => {
 		if (!isOpen) return undefined;
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -898,16 +900,6 @@ const SheetTitleContent: React.FC<TitleProps> = ({children, as: Component = 'h2'
 	);
 };
 
-interface SubtitleProps {
-	children: React.ReactNode;
-}
-
-export const Subtitle: React.FC<SubtitleProps> = ({children}) => (
-	<p className={styles.subtitle} data-flx="ui.sheet.sheet.subtitle.subtitle">
-		{children}
-	</p>
-);
-
 interface ContentProps {
 	children: React.ReactNode;
 	padding?: 'none' | 'md';
@@ -929,51 +921,6 @@ export const Content: React.FC<ContentProps> = ({children, padding = 'md', scrol
 			{children}
 		</div>
 	</div>
-);
-
-interface SectionProps {
-	children: React.ReactNode;
-	className?: string;
-}
-
-export const Section: React.FC<SectionProps> = ({children, className}) => (
-	<div className={clsx(styles.section, className)} data-flx="ui.sheet.sheet.section.section">
-		{children}
-	</div>
-);
-
-interface FooterProps {
-	children: React.ReactNode;
-	border?: boolean;
-	className?: string;
-}
-
-export const Footer: React.FC<FooterProps> = ({children, border = true, className}) => (
-	<div
-		className={clsx(styles.footer, !border && styles.footerNoBorder, className)}
-		data-flx="ui.sheet.sheet.footer.footer"
-	>
-		{children}
-	</div>
-);
-
-interface ActionsProps {
-	children: React.ReactNode;
-	className?: string;
-}
-
-export const Actions: React.FC<ActionsProps> = ({children, className}) => (
-	<div className={clsx(styles.actions, className)} data-flx="ui.sheet.sheet.actions.actions">
-		{children}
-	</div>
-);
-
-interface DividerProps {
-	className?: string;
-}
-
-export const Divider: React.FC<DividerProps> = ({className}) => (
-	<div className={clsx(styles.divider, className)} aria-hidden="true" data-flx="ui.sheet.sheet.divider.divider" />
 );
 
 interface CloseButtonProps {

@@ -1,6 +1,11 @@
 # syntax=docker/dockerfile:1.7
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+FROM alpine:3.24 AS spellcheck-dictionaries
+RUN apk add --no-cache curl
+COPY fluxer_static/fetch-spellcheck-dictionaries.sh fluxer_static/spellcheck-dictionaries.sha256 /src/
+RUN sh /src/fetch-spellcheck-dictionaries.sh /dictionaries
+
 FROM caddy:2.11-alpine
 
 ARG BUILD_VERSION=""
@@ -9,7 +14,7 @@ ARG SOURCE_DATE=""
 
 LABEL org.opencontainers.image.title="fluxer-static"
 LABEL org.opencontainers.image.description="Self-hostable static asset bundle for Fluxer"
-LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later AND CC-BY-SA-4.0 AND CC-BY-4.0"
 LABEL org.opencontainers.image.vendor="Fluxer"
 LABEL org.opencontainers.image.url="https://fluxer.app"
 LABEL org.opencontainers.image.documentation="https://docs.fluxer.app"
@@ -20,12 +25,12 @@ LABEL org.opencontainers.image.created="${SOURCE_DATE}"
 LABEL app.fluxer.build-version="${BUILD_VERSION}"
 
 COPY fluxer_static/Caddyfile /etc/caddy/Caddyfile
+COPY --chown=65532:65532 fluxer_static/LICENSE fluxer_static/THIRD_PARTY_LICENSES.md /srv/fluxer-static/
 COPY --chown=65532:65532 fluxer_static/avatars /srv/fluxer-static/avatars
 COPY --chown=65532:65532 fluxer_static/badges /srv/fluxer-static/badges
 COPY --chown=65532:65532 fluxer_static/desktop /srv/fluxer-static/desktop
-COPY --chown=65532:65532 fluxer_static/embeds /srv/fluxer-static/embeds
+COPY --chown=65532:65532 --from=spellcheck-dictionaries /dictionaries /srv/fluxer-static/desktop/spellcheck/dictionaries
 COPY --chown=65532:65532 fluxer_static/emoji /srv/fluxer-static/emoji
-COPY --chown=65532:65532 fluxer_static/libs /srv/fluxer-static/libs
 COPY --chown=65532:65532 fluxer_static/web /srv/fluxer-static/web
 
 RUN setcap -r /usr/bin/caddy \

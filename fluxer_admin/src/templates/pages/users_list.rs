@@ -22,7 +22,10 @@ use crate::{
         },
         layout::admin_layout,
     },
-    utils::bigint::format_discriminator,
+    utils::{
+        bigint::format_discriminator,
+        user_tag::{unique_usernames, user_tag},
+    },
 };
 use maud::{Markup, html};
 
@@ -30,7 +33,6 @@ pub struct UserListParams {
     pub q: String,
     pub email: String,
     pub ip: String,
-    pub ids: String,
     pub requested_ids: Vec<String>,
     pub limit: u32,
     pub page: u32,
@@ -51,7 +53,6 @@ impl UserListParams {
             email: email.unwrap_or_default().trim().to_owned(),
             ip: ip.unwrap_or_default().trim().to_owned(),
             requested_ids: parse_ids_query(&ids),
-            ids: ids.trim().to_owned(),
             limit: match limit.unwrap_or(25) {
                 50 => 50,
                 100 => 100,
@@ -103,6 +104,7 @@ pub fn users_list_page(
     results: Option<&[AdminUser]>,
     has_more: bool,
     can_view_email: bool,
+    username_sign_in: bool,
     premium_badge_name: Option<&str>,
     is_htmx: bool,
 ) -> Markup {
@@ -127,7 +129,7 @@ pub fn users_list_page(
                 p class="mb-1 text-xs text-neutral-500" {
                     "For example, type " span class="font-mono" { "*" } " in to search for all users."
                 }
-                (search_form(base, params))
+                (search_form(base, params, !username_sign_in))
             }
             (results_markup)
         }
@@ -153,15 +155,20 @@ fn parse_ids_query(ids_query: &str) -> Vec<String> {
     ids
 }
 
-fn search_form(base: &str, params: &UserListParams) -> Markup {
+fn search_form(base: &str, params: &UserListParams, show_email_search: bool) -> Markup {
     let action = format!("{base}/users");
+    let placeholder = if unique_usernames() {
+        "Search by user ID, username, or Stripe ID..."
+    } else {
+        "Search by user ID, username, tag#0000, or Stripe ID..."
+    };
     html! {
         form method="get" action=(&action)
             class="flex flex-col gap-3 sm:flex-row sm:items-center" {
             div class="flex flex-1 flex-col gap-2 sm:flex-row" {
                 div class="flex-1" {
                     input id="search-q" type="text" name="q" value=(params.q)
-                        placeholder="Search by user ID, username, tag#0000, or Stripe ID..."
+                        placeholder=(placeholder)
                         class={(FORM_CONTROL_CLASS) " " (FORM_SEARCH_INPUT_SIZE_CLASS)}
                         hx-get=(&action)
                         hx-trigger="input changed delay:300ms, search"
@@ -170,16 +177,18 @@ fn search_form(base: &str, params: &UserListParams) -> Markup {
                         hx-include="closest form"
                         hx-swap="outerHTML";
                 }
-                div class="flex-1" {
-                    input id="search-email" type="text" name="email" value=(params.email)
-                        placeholder="Exact email address..."
-                        class={(FORM_CONTROL_CLASS) " " (FORM_SEARCH_INPUT_SIZE_CLASS)}
-                        hx-get=(&action)
-                        hx-trigger="input changed delay:300ms, search"
-                        hx-target="#users-results"
-                        hx-push-url="true"
-                        hx-include="closest form"
-                        hx-swap="outerHTML";
+                @if show_email_search {
+                    div class="flex-1" {
+                        input id="search-email" type="text" name="email" value=(params.email)
+                            placeholder="Exact email address..."
+                            class={(FORM_CONTROL_CLASS) " " (FORM_SEARCH_INPUT_SIZE_CLASS)}
+                            hx-get=(&action)
+                            hx-trigger="input changed delay:300ms, search"
+                            hx-target="#users-results"
+                            hx-push-url="true"
+                            hx-include="closest form"
+                            hx-swap="outerHTML";
+                    }
                 }
                 div class="flex-1" {
                     input id="search-ip" type="text" name="ip" value=(params.ip)
@@ -349,7 +358,7 @@ fn render_users_table(
                                             @if user.global_name.as_deref().map(|n| !n.trim().is_empty()).unwrap_or(false) {
                                                 (display_name)
                                             } @else {
-                                                (user.username) "#" (format_discriminator(&user.discriminator))
+                                                (user_tag(&user.username, &format_discriminator(&user.discriminator), user.bot))
                                             }
                                         }
                                         (user_profile_badges(
@@ -364,7 +373,7 @@ fn render_users_table(
                                     }
                                     @if user.global_name.as_deref().map(|n| !n.trim().is_empty()).unwrap_or(false) {
                                         p class="text-xs font-normal text-neutral-500" {
-                                            (user.username) "#" (format_discriminator(&user.discriminator))
+                                            (user_tag(&user.username, &format_discriminator(&user.discriminator), user.bot))
                                         }
                                     }
                                 }

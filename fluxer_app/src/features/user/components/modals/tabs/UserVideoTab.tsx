@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-	MACOS_CAMERA_PERMISSION_NAME,
-	MACOS_PRIVACY_AND_SECURITY_SETTINGS_NAME,
-	MACOS_SYSTEM_SETTINGS_NAME,
-	PREMIUM_PRODUCT_NAME,
-	PRODUCT_NAME,
-} from '@app/features/app/config/I18nDisplayConstants';
+import RuntimeConfig from '@app/features/app/state/RuntimeConfig';
+
 import {GET_PREMIUM_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import {ComponentBus} from '@app/features/platform/utils/ComponentBus';
 import * as PremiumModalCommands from '@app/features/premium/commands/PremiumModalCommands';
-import {shouldShowPremiumFeatures} from '@app/features/premium/utils/PremiumUtils';
+import {getPremiumProductName, shouldShowPremiumFeatures} from '@app/features/premium/utils/PremiumUtils';
 import {remFromPx} from '@app/features/theme/layout/RemFromPx';
 import {Button} from '@app/features/ui/button/Button';
 import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
@@ -43,7 +38,7 @@ import {buildSettingsDeviceOptions} from '@app/features/voice/utils/SettingsDevi
 import {hasHigherVideoQuality} from '@app/features/voice/utils/VideoQualityEntitlement';
 import {resolveEffectiveDeviceId} from '@app/features/voice/utils/VoiceDeviceManager';
 import type {I18n} from '@lingui/core';
-import {msg} from '@lingui/core/macro';
+import {msg, ph} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {CrownIcon, GearIcon} from '@phosphor-icons/react';
 import {observer} from 'mobx-react-lite';
@@ -233,14 +228,14 @@ export const VideoTab: React.FC<VideoTabProps> = observer(
 							</div>
 							<p className={styles.deviceNoticeDescription} data-flx="user.video-tab.device-notice-description">
 								{permissionStatus === 'denied' ? (
-									<Trans>
-										Allow {PRODUCT_NAME} to access your camera in {MACOS_SYSTEM_SETTINGS_NAME} →{' '}
-										{MACOS_PRIVACY_AND_SECURITY_SETTINGS_NAME} → {MACOS_CAMERA_PERMISSION_NAME}.
+									<Trans comment="Shown in video settings on the macOS app when camera access is denied. {ph({PRODUCT_NAME: RuntimeConfig.productName})} is the app name. Keep 'System Settings', 'Privacy & Security' and the permission name as macOS shows them in this language.">
+										Allow {ph({PRODUCT_NAME: RuntimeConfig.productName})} to access your camera in System Settings →
+										Privacy & Security → Camera.
 									</Trans>
 								) : permissionStatus === 'granted' ? (
 									<Trans>Connect a camera and try again.</Trans>
 								) : (
-									i18n._(PRODUCT_NEEDS_CAMERA_ACCESS_DESCRIPTOR, {productName: PRODUCT_NAME})
+									i18n._(PRODUCT_NEEDS_CAMERA_ACCESS_DESCRIPTOR, {productName: RuntimeConfig.productName})
 								)}
 							</p>
 						</div>
@@ -318,7 +313,7 @@ export const VideoTab: React.FC<VideoTabProps> = observer(
 									data-flx="user.video-tab.premium-icon"
 								/>
 								<span className={styles.premiumTitle} data-flx="user.video-tab.premium-title">
-									{i18n._(UNLOCK_HD_SCREEN_SHARE_DESCRIPTOR, {premiumProductName: PREMIUM_PRODUCT_NAME})}
+									{i18n._(UNLOCK_HD_SCREEN_SHARE_DESCRIPTOR, {premiumProductName: getPremiumProductName()})}
 								</span>
 							</div>
 							<p className={styles.premiumDescription} data-flx="user.video-tab.premium-description">
@@ -333,7 +328,7 @@ export const VideoTab: React.FC<VideoTabProps> = observer(
 								onClick={() => PremiumModalCommands.open()}
 								data-flx="user.video-tab.button.open"
 							>
-								{i18n._(GET_PREMIUM_DESCRIPTOR, {premiumProductName: PREMIUM_PRODUCT_NAME})}
+								{i18n._(GET_PREMIUM_DESCRIPTOR, {premiumProductName: getPremiumProductName()})}
 							</Button>
 						</div>
 					)}
@@ -355,7 +350,7 @@ export const VideoTab: React.FC<VideoTabProps> = observer(
 								className={styles.frameRateIcon}
 								data-flx="user.video-tab.frame-rate-icon"
 							/>
-							{i18n._(HIGH_FRAME_RATE_REQUIRES_PREMIUM_DESCRIPTOR, {premiumProductName: PREMIUM_PRODUCT_NAME})}
+							{i18n._(HIGH_FRAME_RATE_REQUIRES_PREMIUM_DESCRIPTOR, {premiumProductName: getPremiumProductName()})}
 						</div>
 					)}
 					{!hasHigherQuality && !showPremium && (
@@ -385,7 +380,7 @@ export const VideoTab: React.FC<VideoTabProps> = observer(
 							/>
 							{i18n._(SCREEN_SHARE_TIER_LIMITED_DESCRIPTOR, {
 								frameRate: screenShareState.frameRate,
-								premiumProductName: PREMIUM_PRODUCT_NAME,
+								premiumProductName: getPremiumProductName(),
 								resolution: getScreenShareResolutionLabel(i18n, screenShareState.resolution),
 								savedFrameRate: screenShareState.saved.frameRate,
 								savedResolution: getScreenShareResolutionLabel(i18n, screenShareState.saved.resolution),

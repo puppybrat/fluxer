@@ -49,7 +49,7 @@ export type CassandraParam =
 	| Record<string, unknown>
 	| null;
 export type CassandraParams = Record<string, CassandraParam>;
-export type KvAction = 'select' | 'count' | 'insert' | 'upsert' | 'delete' | 'patch' | 'batch';
+type KvAction = 'select' | 'count' | 'insert' | 'upsert' | 'delete' | 'patch' | 'batch';
 
 export interface KvTableSpec<Row extends object = Record<string, unknown>> {
 	name: string;
@@ -91,6 +91,7 @@ export interface KvQueryMeta<Row extends object = Record<string, unknown>> {
 	where?: ReadonlyArray<WhereExpr<Row>>;
 	orderBy?: OrderBy<Row>;
 	limit?: number;
+	unordered?: boolean;
 	columns?: ReadonlyArray<ColumnName<Row>>;
 	patch?: Partial<Record<ColumnName<Row>, DbOp<unknown>>>;
 	patchKeys?: ReadonlyArray<ColumnName<Row>>;
@@ -197,6 +198,7 @@ export interface Table<Row extends object, PK extends ColumnName<Row>, PartKey e
 		where?: WhereExpr<Row> | ReadonlyArray<WhereExpr<Row>>;
 		orderBy?: OrderBy<Row>;
 		limit?: number;
+		unordered?: boolean;
 	}): string;
 	select(opts?: {
 		columns?: ReadonlyArray<ColumnName<Row>>;

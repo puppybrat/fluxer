@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {ResettableStates} from '@app/features/app/state/ResettableStates';
 import GatewayConnection from '@app/features/gateway/transport/GatewayConnection';
 import {makeAutoObservable} from 'mobx';
 
-export interface ChannelMemberCounts {
+interface ChannelMemberCounts {
 	memberCount: number;
 	onlineCount: number;
 	fetchedAt: number;
@@ -171,4 +172,6 @@ class ChannelMemberCount {
 	}
 }
 
-export default new ChannelMemberCount();
+const channelMemberCount = new ChannelMemberCount();
+ResettableStates.register(channelMemberCount, channelMemberCount.handleSessionInvalidated);
+export default channelMemberCount;

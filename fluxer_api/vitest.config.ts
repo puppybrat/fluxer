@@ -23,15 +23,20 @@ const configuredMaxWorkers = parseParallelInteger(process.env.API_TEST_MAX_WORKE
 const configuredMaxConcurrency = parseParallelInteger(process.env.API_TEST_MAX_CONCURRENCY, configuredMaxWorkers);
 
 const MODULE_REGISTRY_TEST_FILES = [
-	'src/api/gif/GifRequestCountry.test.ts',
+	'src/api/channel/tests/MessageCrosspostFanout.test.ts',
+	'src/api/experiment/tests/ExperimentController.test.ts',
 	'src/api/stripe/tests/StripeCheckoutCountryEnforcement.test.ts',
 	'src/api/stripe/tests/StripeNordicCurrencies.test.ts',
+	'src/api/worker/tests/CrosspostTasks.test.ts',
+	'src/api/search/tests/ThreadSearchScopeCap.test.ts',
+	'src/api/search/ThreadSearchScope.test.ts',
+	'src/api/worker/tests/HandleMentionsThread.test.ts',
+	'src/api/search/tests/GuildSearchThreadScope.test.ts',
+	'src/api/worker/tasks/HarvestUserData.test.ts',
+	'src/api/voice/tests/VoiceP2pConnectionReports.test.ts',
 ];
 
-const INSTANCE_POLICY_TEST_FILES = [
-	'src/api/admin/tests/InstanceConfigPendingRegistrationApproval.test.ts',
-	'src/api/instance/tests/SingleCommunityService.test.ts',
-];
+const INSTANCE_POLICY_TEST_FILES = ['src/api/admin/tests/InstanceConfigPendingRegistrationApproval.test.ts'];
 
 const sharedExclude = [
 	...configDefaults.exclude,
@@ -50,6 +55,7 @@ const sharedTestConfig = {
 	testTimeout: 40000,
 	hookTimeout: 20000,
 	maxConcurrency: configuredMaxConcurrency,
+	execArgv: ['--no-experimental-webstorage', '--disable-warning=ExperimentalWarning'],
 };
 
 export default defineConfig({

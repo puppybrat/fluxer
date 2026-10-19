@@ -2,12 +2,11 @@
 
 use crate::{
     byte_budget::{BudgetedBytes, ByteBudget, ByteReservation},
-    http_headers, range, response_body_limit,
+    response_body_limit,
     storage::StorageError,
 };
 use bytes::Bytes;
 use futures_util::{Stream, StreamExt as _};
-use http::{HeaderMap, StatusCode, header};
 use parking_lot::Mutex;
 use std::{
     io,
@@ -58,15 +57,6 @@ impl ReadBufferBudget {
     }
 }
 
-fn provider_status_error(status: StatusCode) -> StorageError {
-    if status == StatusCode::NOT_FOUND {
-        return StorageError::ObjectChanged;
-    }
-    StorageError::ObjectStorage(anyhow::anyhow!(
-        "object storage provider rejected a read with status {status}"
-    ))
-}
-
 pub(super) async fn read_response_bytes(
     mut response: reqwest::Response,
     expected_length: usize,
@@ -80,22 +70,17 @@ pub(super) async fn read_response_bytes(
     body.try_reserve_exact(expected_length)
         .map_err(|_| StorageError::BufferAllocationFailed)?;
     buffer_budget.grow_to(body.capacity())?;
-    let mut chunks_read = 0_u64;
-    let chunks_max = response_body_limit::response_body_chunk_limit(expected_length as u64);
+    let mut empty_chunks_remaining =
+        response_body_limit::response_body_chunk_limit(expected_length as u64);
     while let Some(chunk) = response.chunk().await? {
-        if chunk.len() > response_body_limit::RESPONSE_BODY_TRANSPORT_CHUNK_BYTES_MAX {
-            return Err(StorageError::ObjectStorage(anyhow::anyhow!(
-                "object storage response transport chunk exceeded its byte bound"
-            )));
-        }
-        chunks_read = chunks_read
-            .checked_add(1)
-            .filter(|chunks| *chunks <= chunks_max)
-            .ok_or_else(|| {
+        if chunk.is_empty() {
+            empty_chunks_remaining = empty_chunks_remaining.checked_sub(1).ok_or_else(|| {
                 StorageError::ObjectStorage(anyhow::anyhow!(
-                    "object storage response exceeded its chunk limit"
+                    "object storage response exceeded its empty chunk limit"
                 ))
             })?;
+            continue;
+        }
         let next_length = body
             .len()
             .checked_add(chunk.len())
@@ -141,73 +126,6 @@ pub(super) async fn read_exact_bytes(
         Bytes::from(body),
         buffer_budget.into_reservation(),
     ))
-}
-
-pub(super) struct StreamResponseValidation<'a> {
-    pub(super) status: StatusCode,
-    pub(super) headers: &'a HeaderMap,
-    pub(super) total_length: u64,
-    pub(super) expected_length: u64,
-    pub(super) byte_range: Option<range::ByteRange>,
-}
-
-pub(super) fn validate_stream_response(
-    validation: StreamResponseValidation<'_>,
-) -> Result<(), StorageError> {
-    let StreamResponseValidation {
-        status,
-        headers,
-        total_length,
-        expected_length,
-        byte_range,
-    } = validation;
-    if !status.is_success() {
-        return Err(provider_status_error(status));
-    }
-    let content_length = http_headers::parse_content_length(headers).ok_or_else(|| {
-        StorageError::ObjectStorage(anyhow::anyhow!(
-            "object storage provider omitted a single valid Content-Length"
-        ))
-    })?;
-    if content_length != expected_length {
-        return Err(StorageError::ObjectChanged);
-    }
-    match byte_range {
-        None if status == StatusCode::OK && expected_length == total_length => Ok(()),
-        Some(range) if status == StatusCode::PARTIAL_CONTENT => {
-            let mut content_ranges = headers.get_all(header::CONTENT_RANGE).iter();
-            let content_range = content_ranges.next().and_then(|value| value.to_str().ok());
-            if content_ranges.next().is_some() {
-                return Err(StorageError::ObjectStorage(anyhow::anyhow!(
-                    "object storage provider returned multiple Content-Range values"
-                )));
-            }
-            let actual = range::parse_content_range(content_range).ok_or_else(|| {
-                StorageError::ObjectStorage(anyhow::anyhow!(
-                    "object storage provider returned an invalid Content-Range"
-                ))
-            })?;
-            let total_length =
-                usize::try_from(total_length).map_err(|_| StorageError::StreamTooLong)?;
-            if actual.start != range.start
-                || actual.end != range.end
-                || actual.size != Some(total_length)
-            {
-                return Err(StorageError::ObjectChanged);
-            }
-            Ok(())
-        }
-        Some(range)
-            if status == StatusCode::OK
-                && range.start == 0
-                && range.end.checked_add(1) == usize::try_from(total_length).ok() =>
-        {
-            Ok(())
-        }
-        _ => Err(StorageError::ObjectStorage(anyhow::anyhow!(
-            "object storage provider returned an unexpected successful status {status}"
-        ))),
-    }
 }
 
 pub(super) type ByteStream =
@@ -559,7 +477,7 @@ fn exact_stream(
     expected_length: u64,
     end: ExactStreamEnd,
 ) -> impl Stream<Item = Result<Bytes, std::io::Error>> + Send + 'static {
-    // Only a chunk that carries no bytes needs a count bound. The byte accounting below already
+    // Only a chunk with no bytes needs a count bound. The byte accounting below already
     // bounds every other chunk, and counting them all aborts a legitimate transfer whenever the
     // transport hands over reads smaller than the assumed average chunk size.
     let empty_chunks_remaining = response_body_limit::response_body_chunk_limit(expected_length);

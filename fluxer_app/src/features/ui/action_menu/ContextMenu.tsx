@@ -40,7 +40,7 @@ export type ContextMenuActionEvent =
 	| {
 			readonly shiftKey?: boolean;
 	  };
-export type ContextMenuActionHandler = {bivarianceHack(event: ContextMenuActionEvent): void}['bivarianceHack'];
+type ContextMenuActionHandler = {bivarianceHack(event: ContextMenuActionEvent): void}['bivarianceHack'];
 
 function stopHoverEventWhenWindowCannotUseHover(event: React.SyntheticEvent): void {
 	const eventRoot = (event.currentTarget as HTMLElement | null)?.ownerDocument?.documentElement;
@@ -67,7 +67,7 @@ const CONTEXT_MENU_EDGE_PADDING = 12;
 const CONTEXT_MENU_OFFSET = 4;
 const SUBMENU_OFFSET = 10;
 
-const textValueFromNode = (node: React.ReactNode): string => {
+export const textValueFromNode = (node: React.ReactNode): string => {
 	if (typeof node === 'string') return node;
 	if (typeof node === 'number') return String(node);
 	if (Array.isArray(node)) return node.map(textValueFromNode).join('');
@@ -288,7 +288,7 @@ const RootContextMenuInner: React.FC<RootContextMenuProps> = observer(({contextM
 	);
 });
 
-export const RootContextMenu: React.FC<RootContextMenuProps> = observer(({contextMenu}) => {
+const RootContextMenu: React.FC<RootContextMenuProps> = observer(({contextMenu}) => {
 	return <RootContextMenuInner contextMenu={contextMenu} data-flx="ui.action-menu.context-menu.root-inner" />;
 });
 

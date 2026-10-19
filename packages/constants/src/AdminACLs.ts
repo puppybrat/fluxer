@@ -43,9 +43,7 @@ export const AdminACLs = {
 	BULK_DELETE_USERS: 'bulk:delete:users',
 	BULK_DELETE_USER_MESSAGES: 'bulk:delete:user_messages',
 	BULK_UPDATE_GUILD_FEATURES: 'bulk:update:guild_features',
-	BULK_UPDATE_SUSPICIOUS_ACTIVITY: 'bulk:update:suspicious_activity',
 	BULK_UPDATE_USER_FLAGS: 'bulk:update:user_flags',
-	CSAM_SUBMIT_NCMEC: 'csam:submit_ncmec',
 	DISCOVERY_REMOVE: 'discovery:remove',
 	DISCOVERY_REVIEW: 'discovery:review',
 	GATEWAY_MEMORY_STATS: 'gateway:memory_stats',
@@ -73,13 +71,15 @@ export const AdminACLs = {
 	MESSAGE_DELETE: 'message:delete',
 	MESSAGE_LOOKUP: 'message:lookup',
 	MESSAGE_SHRED: 'message:shred',
+	REPORT_DELETE: 'report:delete',
 	REPORT_RESOLVE: 'report:resolve',
 	REPORT_VIEW: 'report:view',
 	REPORT_VIEW_REPORTER_PII: 'report:view:reporter_pii',
 	SYSTEM_DM_SEND: 'system_dm:send',
 	USER_CANCEL_BULK_MESSAGE_DELETION: 'user:cancel:bulk_message_deletion',
+	USER_CREATE_PASSWORD_RESET_LINK: 'user:create:password_reset_link',
+	USER_DELETE_RECOVERY_KIT: 'user:delete:recovery_kit',
 	USER_DELETE: 'user:delete',
-	USER_DISABLE_SUSPICIOUS: 'user:disable:suspicious',
 	USER_LIST_DM_CHANNELS: 'user:list:dm_channels',
 	USER_LIST_GUILDS: 'user:list:guilds',
 	USER_LIST_RELATIONSHIPS: 'user:list:relationships',
@@ -96,9 +96,7 @@ export const AdminACLs = {
 	USER_UPDATE_EMAIL: 'user:update:email',
 	USER_UPDATE_FLAGS: 'user:update:flags',
 	USER_UPDATE_MFA: 'user:update:mfa',
-	USER_UPDATE_PHONE: 'user:update:phone',
 	USER_UPDATE_PROFILE: 'user:update:profile',
-	USER_UPDATE_SUSPICIOUS_ACTIVITY: 'user:update:suspicious_activity',
 	USER_UPDATE_TRAITS: 'user:update:traits',
 	USER_UPDATE_USERNAME: 'user:update:username',
 	VOICE_REGION_CREATE: 'voice:region:create',
@@ -110,3 +108,9 @@ export const AdminACLs = {
 	VOICE_SERVER_LIST: 'voice:server:list',
 	VOICE_SERVER_UPDATE: 'voice:server:update',
 } as const;
+
+const KNOWN_ADMIN_ACLS: ReadonlySet<string> = new Set(Object.values(AdminACLs));
+
+export function filterKnownAdminACLs(acls: Iterable<string>): Array<string> {
+	return Array.from(acls).filter((acl) => KNOWN_ADMIN_ACLS.has(acl));
+}

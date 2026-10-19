@@ -88,6 +88,10 @@ export const GuildRateLimitConfigs = {
 		bucket: 'guild:cast:owner_accounts::guild_id',
 		config: {limit: 30, windowMs: ms('10 seconds')},
 	} as RouteRateLimitConfig,
+	GUILD_THREADS_ACTIVE: {
+		bucket: 'guild:threads:active::guild_id',
+		config: {limit: 5, windowMs: ms('10 seconds')},
+	} as RouteRateLimitConfig,
 	GUILD_CHANNEL_CREATE: {
 		bucket: 'guild:channel:create::guild_id',
 		config: {limit: 10, windowMs: ms('1 minute')},
@@ -95,10 +99,6 @@ export const GuildRateLimitConfigs = {
 	GUILD_CHANNEL_POSITIONS: {
 		bucket: 'guild:channel:positions::guild_id',
 		config: {limit: 30, windowMs: ms('10 seconds')},
-	} as RouteRateLimitConfig,
-	GUILD_SEARCH: {
-		bucket: 'guild:search::guild_id',
-		config: {limit: 20, windowMs: ms('10 seconds')},
 	} as RouteRateLimitConfig,
 	GUILD_AUDIT_LOGS: {
 		bucket: 'guild:audit_logs::guild_id',

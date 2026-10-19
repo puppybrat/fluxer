@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {AdminRepository} from '@app/api/admin/AdminRepository';
-import type {BannedIpEntry, BannedIpKind} from '@app/api/admin/IAdminRepository';
+import {AdminRepository, type BannedIpEntry, type BannedIpKind} from '@app/api/admin/AdminRepository';
 import {isIpBanExempt} from '@app/api/ban/IpBanExemptions';
 import {IP_BAN_REFRESH_CHANNEL} from '@app/api/constants/IpBan';
 import {sharedListHas} from '@app/api/infrastructure/activity/SharedLists';
+import {resolveContactEmails} from '@app/api/instance/ContactEmails';
+import {getInstanceProductName} from '@app/api/instance/ProductName';
 import {Logger} from '@app/api/Logger';
 import type {HonoEnv} from '@app/api/types/HonoEnv';
 import {readOptionalEnv} from '@app/api/utils/IntegerOptions';
@@ -127,7 +128,7 @@ class IpBanCache {
 		const sameIpDecisionKey = getSameIpDecisionKey(parsed.canonical);
 		if (sameIpDecisionKey) {
 			const decisionCount = this.sameIpDecisionBans.get(sameIpDecisionKey);
-			if (decisionCount) {
+			if (decisionCount && this.isActive(decisionCount)) {
 				return {
 					ipAddress: parsed.canonical,
 					matchedEntry: sameIpDecisionKey,
@@ -137,7 +138,7 @@ class IpBanCache {
 		}
 		const singleMap = this.singleIpBans[parsed.family];
 		const single = singleMap.get(parsed.canonical);
-		if (single) {
+		if (single && this.isActive(single.count)) {
 			return {
 				ipAddress: parsed.canonical,
 				matchedEntry: parsed.canonical,
@@ -146,7 +147,7 @@ class IpBanCache {
 		}
 		const rangeMap = this.rangeIpBans[parsed.family];
 		for (const [canonical, range] of rangeMap.entries()) {
-			if (parsed.value >= range.start && parsed.value <= range.end) {
+			if (parsed.value >= range.start && parsed.value <= range.end && this.isActive(range.count)) {
 				return {
 					ipAddress: parsed.canonical,
 					matchedEntry: canonical,
@@ -230,6 +231,13 @@ class IpBanCache {
 			count.temporary -= 1;
 		}
 		return count.permanent <= 0 && count.temporary <= 0;
+	}
+
+	private isActive(count: IpBanCount): boolean {
+		if (count.permanent > 0 || !count.temporaryExpiresAt) {
+			return true;
+		}
+		return count.temporaryExpiresAt.getTime() > Date.now();
 	}
 
 	private resolveCount(count: IpBanCount): {
@@ -328,10 +336,17 @@ export const IpBanMiddleware = createMiddleware<HonoEnv>(async (ctx, next) => {
 			ipAddress: match.ipAddress,
 			kind: match.kind,
 			expiresAt: match.expiresAt,
+			appealEmail: resolveContactEmails().supportEmail,
+			productName: getInstanceProductName(),
 		});
 	}
 	if (clientIp && !isIpBanExempt(clientIp) && sharedListHas('ip_blocked', clientIp)) {
-		throw new IpBannedError({ipAddress: clientIp, kind: 'permanent'});
+		throw new IpBannedError({
+			ipAddress: clientIp,
+			kind: 'permanent',
+			appealEmail: resolveContactEmails().supportEmail,
+			productName: getInstanceProductName(),
+		});
 	}
 	await next();
 });

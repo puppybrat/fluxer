@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type {ApiContext} from '@app/api/ApiContext';
-import {EMAIL_CLEARABLE_SUSPICIOUS_ACTIVITY_FLAGS} from '@app/api/auth/AuthEmail';
 import type {SudoVerificationResult} from '@app/api/auth/services/SudoVerificationService';
-import type {IConnectionRepository} from '@app/api/connection/IConnectionRepository';
-import type {IGuildRepositoryAggregate} from '@app/api/guild/repositories/IGuildRepositoryAggregate';
+import type {ConnectionRepository} from '@app/api/connection/ConnectionRepository';
+import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import type {GuildService} from '@app/api/guild/services/GuildService';
 import {GuildMemberSearchIndexService} from '@app/api/guild/services/member/GuildMemberSearchIndexService';
 import type {IDiscriminatorService} from '@app/api/infrastructure/DiscriminatorService';
@@ -15,15 +14,16 @@ import {Logger} from '@app/api/Logger';
 import type {LimitConfigService} from '@app/api/limits/LimitConfigService';
 import type {AuthSession} from '@app/api/models/AuthSession';
 import type {User} from '@app/api/models/User';
-import type {IUserAccountRepository} from '@app/api/user/repositories/IUserAccountRepository';
-import type {IUserChannelRepository} from '@app/api/user/repositories/IUserChannelRepository';
-import type {IUserRelationshipRepository} from '@app/api/user/repositories/IUserRelationshipRepository';
-import type {IUserSettingsRepository} from '@app/api/user/repositories/IUserSettingsRepository';
+import {enqueueStripeCustomerEmailSync} from '@app/api/stripe/StripeCustomer';
+import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import {UserAccountLifecycleService} from '@app/api/user/services/UserAccountLifecycleService';
 import {UserAccountLookupService} from '@app/api/user/services/UserAccountLookupService';
 import {UserAccountNotesService} from '@app/api/user/services/UserAccountNotesService';
 import {UserAccountProfileService} from '@app/api/user/services/UserAccountProfileService';
-import {UserAccountSecurityService} from '@app/api/user/services/UserAccountSecurityService';
+import {
+	type AuthSessionReplacement,
+	UserAccountSecurityService,
+} from '@app/api/user/services/UserAccountSecurityService';
 import {UserAccountSettingsService} from '@app/api/user/services/UserAccountSettingsService';
 import {UserAccountUpdatePropagator} from '@app/api/user/services/UserAccountUpdatePropagator';
 import type {UserContactChangeLogService} from '@app/api/user/services/UserContactChangeLogService';
@@ -42,11 +42,10 @@ interface UpdateUserParams {
 	emailVerifiedViaToken?: boolean;
 }
 
-interface UserAccountRepository
-	extends IUserAccountRepository,
-		IUserSettingsRepository,
-		IUserRelationshipRepository,
-		IUserChannelRepository {}
+interface UpdateUserResult {
+	user: User;
+	authSessionReplacement: AuthSessionReplacement | null;
+}
 
 export class UserAccountService {
 	readonly lookupService: UserAccountLookupService;
@@ -56,8 +55,8 @@ export class UserAccountService {
 	readonly notesService: UserAccountNotesService;
 	readonly lifecycleService: UserAccountLifecycleService;
 	readonly updatePropagator: UserAccountUpdatePropagator;
-	private readonly userAccountRepository: UserAccountRepository;
-	private readonly guildRepository: IGuildRepositoryAggregate;
+	private readonly userAccountRepository: UserRepository;
+	private readonly guildRepository: GuildRepository;
 	private readonly searchIndexService: GuildMemberSearchIndexService;
 
 	constructor(
@@ -65,11 +64,11 @@ export class UserAccountService {
 		userCacheService: UserCacheService,
 		guildService: GuildService,
 		entityAssetService: EntityAssetService,
-		guildRepository: IGuildRepositoryAggregate,
+		guildRepository: GuildRepository,
 		discriminatorService: IDiscriminatorService,
 		kvDeletionQueue: KVAccountDeletionQueueService,
 		private readonly contactChangeLogService: UserContactChangeLogService,
-		connectionRepository: IConnectionRepository,
+		connectionRepository: ConnectionRepository,
 		readonly limitConfigService: LimitConfigService,
 	) {
 		const {
@@ -138,7 +137,7 @@ export class UserAccountService {
 		});
 	}
 
-	async update(params: UpdateUserParams): Promise<User> {
+	async update(params: UpdateUserParams): Promise<UpdateUserResult> {
 		const {user, oldAuthSession, data, request, sudoContext, emailVerifiedViaToken = false} = params;
 		const profileResult = await this.profileService.processProfileUpdates({user, data});
 		const securityResult = await this.securityService.processSecurityUpdates({user, data, sudoContext});
@@ -146,10 +145,6 @@ export class UserAccountService {
 			...securityResult.updates,
 			...profileResult.updates,
 		};
-		if (securityResult.updates.flags !== undefined && securityResult.updates.flags !== null) {
-			const profileFlags = profileResult.updates.flags ?? user.flags;
-			updates.flags = profileFlags | (securityResult.updates.flags & ~user.flags);
-		}
 		const securityPremiumFlags = securityResult.updates.premium_flags;
 		if (securityPremiumFlags !== undefined && securityPremiumFlags !== null) {
 			const profilePremiumFlags = profileResult.updates.premium_flags ?? user.premiumFlags;
@@ -158,12 +153,6 @@ export class UserAccountService {
 		const emailChanged = data.email !== undefined;
 		if (emailChanged) {
 			updates.email_verified = !!emailVerifiedViaToken;
-			if (emailVerifiedViaToken && user.suspiciousActivityFlags !== null && user.suspiciousActivityFlags !== 0) {
-				const newFlags = user.suspiciousActivityFlags & ~EMAIL_CLEARABLE_SUSPICIOUS_ACTIVITY_FLAGS;
-				if (newFlags !== user.suspiciousActivityFlags) {
-					updates.suspicious_activity_flags = newFlags;
-				}
-			}
 		}
 		let updatedUser: User;
 		try {
@@ -174,6 +163,8 @@ export class UserAccountService {
 				'User profile update failed with unknown commit status; retaining uploaded assets',
 			);
 			throw error;
+		} finally {
+			await securityResult.metadata.usernameReservation?.release();
 		}
 		const finalizationSteps: Array<() => Promise<unknown>> = [
 			() =>
@@ -183,6 +174,7 @@ export class UserAccountService {
 					reason: 'user_requested',
 					actorUserId: user.id,
 				}),
+			() => enqueueStripeCustomerEmailSync(this.apiContext.services.worker, user, updatedUser),
 			async () => {
 				try {
 					await this.profileService.commitAssetChanges(profileResult);
@@ -206,14 +198,21 @@ export class UserAccountService {
 				}
 			},
 		];
+		let authSessionReplacement: AuthSessionReplacement | null = null;
 		if (securityResult.metadata.invalidateAuthSessions) {
 			finalizationSteps.push(
-				() => this.securityService.invalidateAndRecreateSessions({user, oldAuthSession, request}),
+				async () => {
+					authSessionReplacement = await this.securityService.invalidateAndRecreateSessions({
+						user,
+						oldAuthSession,
+						request,
+					});
+				},
 				() => this.userAccountRepository.deleteAllPasswordResetTokens(user.id),
 			);
 		}
 		await runAllInOrder(finalizationSteps, 'Failed to finalize user update');
-		return updatedUser;
+		return {user: updatedUser, authSessionReplacement};
 	}
 
 	private async reindexGuildMembersForUser(updatedUser: User): Promise<void> {

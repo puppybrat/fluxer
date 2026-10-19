@@ -14,9 +14,9 @@ export interface MediaEngineFacadePendingSessionRestore extends MediaEngineFacad
 	restoreStream: boolean;
 }
 
-export type MediaEngineFacadeLocalCleanupReason = 'disconnect' | 'channelMove' | 'logout' | 'cleanup' | null;
+type MediaEngineFacadeLocalCleanupReason = 'disconnect' | 'channelMove' | 'logout' | 'cleanup' | null;
 
-export interface MediaEngineFacadeMachineContext {
+interface MediaEngineFacadeMachineContext {
 	activeConnection: MediaEngineFacadeConnectionTarget | null;
 	pendingUserMove: MediaEngineFacadeConnectionTarget | null;
 	pendingSessionRestore: MediaEngineFacadePendingSessionRestore | null;
@@ -51,9 +51,6 @@ export type MediaEngineFacadeEvent =
 	| {type: 'cleanup.cleanupStarted'}
 	| {type: 'cleanup.reset'}
 	| {type: 'cleanup.complete'};
-
-export type MediaEngineFacadeStateValue = 'idle' | 'disconnecting' | 'channelMoving' | 'loggingOut' | 'cleaningUp';
-
 export type MediaEngineFacadeConnectRequestDecision =
 	| {type: 'noop'; reason: 'same-channel'}
 	| {type: 'start'}
@@ -95,7 +92,10 @@ export type MediaEngineFacadeGatewayErrorDecision =
 			showUnavailableToast: boolean;
 			disconnectReason: 'server' | null;
 			toast: 'timed-out' | 'connection-limit' | 'unclaimed-account' | null;
+			p2pRefusal: MediaEngineFacadeP2pRefusal | null;
 	  };
+
+export type MediaEngineFacadeP2pRefusal = 'consent-required' | 'unavailable' | 'channel-full';
 
 export interface MediaEngineFacadeDeferredDisconnectInput {
 	connectionId: string;
@@ -113,7 +113,7 @@ export interface MediaEngineFacadeServerVoiceStateRemovalInput {
 	connecting: boolean;
 }
 
-export function createInitialMediaEngineFacadeContext(): MediaEngineFacadeMachineContext {
+function createInitialMediaEngineFacadeContext(): MediaEngineFacadeMachineContext {
 	return {
 		activeConnection: null,
 		pendingUserMove: null,
@@ -183,7 +183,7 @@ function resetAll(localCleanupReason: MediaEngineFacadeLocalCleanupReason): Medi
 	};
 }
 
-export const mediaEngineFacadeStateMachine = setup({
+const mediaEngineFacadeStateMachine = setup({
 	types: {} as {
 		context: MediaEngineFacadeMachineContext;
 		events: MediaEngineFacadeEvent;
@@ -350,10 +350,6 @@ export function transitionMediaEngineFacadeSnapshot(
 	return transition(mediaEngineFacadeStateMachine, snapshot, event)[0] as MediaEngineFacadeSnapshot;
 }
 
-export function getMediaEngineFacadeStateValue(snapshot: MediaEngineFacadeSnapshot): MediaEngineFacadeStateValue {
-	return snapshot.value as MediaEngineFacadeStateValue;
-}
-
 export function selectMediaEngineConnectRequestDecision(
 	snapshot: MediaEngineFacadeSnapshot,
 	target: MediaEngineFacadeConnectionTarget & {
@@ -418,6 +414,8 @@ const voiceGatewayErrorCodes = new Set<GatewayErrorCode>([
 	GatewayErrorCodes.VOICE_MISSING_CONNECTION_ID,
 	GatewayErrorCodes.VOICE_TOKEN_FAILED,
 	GatewayErrorCodes.VOICE_UNCLAIMED_ACCOUNT,
+	GatewayErrorCodes.VOICE_P2P_CONSENT_REQUIRED,
+	GatewayErrorCodes.VOICE_P2P_UNAVAILABLE,
 ]);
 
 const unavailableGatewayErrorCodes = new Set<GatewayErrorCode>([
@@ -437,6 +435,14 @@ const preConnectAbortGatewayErrorCodes = new Set<GatewayErrorCode>([
 	GatewayErrorCodes.VOICE_CONNECTION_LIMIT_REACHED,
 	GatewayErrorCodes.VOICE_MEMBER_TIMED_OUT,
 	GatewayErrorCodes.VOICE_UNCLAIMED_ACCOUNT,
+	GatewayErrorCodes.VOICE_P2P_CONSENT_REQUIRED,
+	GatewayErrorCodes.VOICE_P2P_UNAVAILABLE,
+]);
+
+const p2pRefusalsByGatewayErrorCode = new Map<GatewayErrorCode, MediaEngineFacadeP2pRefusal>([
+	[GatewayErrorCodes.VOICE_P2P_CONSENT_REQUIRED, 'consent-required'],
+	[GatewayErrorCodes.VOICE_P2P_UNAVAILABLE, 'unavailable'],
+	[GatewayErrorCodes.VOICE_CHANNEL_FULL, 'channel-full'],
 ]);
 
 export function selectMediaEngineGatewayErrorDecision(
@@ -463,6 +469,7 @@ export function selectMediaEngineGatewayErrorDecision(
 				showUnavailableToast: unavailableChannelId !== null,
 				disconnectReason: null,
 				toast: null,
+				p2pRefusal: null,
 			};
 		}
 		if (unavailableChannelId && input.channelId === unavailableChannelId) {
@@ -488,6 +495,7 @@ export function selectMediaEngineGatewayErrorDecision(
 		showUnavailableToast: unavailableChannelId !== null,
 		disconnectReason,
 		toast,
+		p2pRefusal: p2pRefusalsByGatewayErrorCode.get(input.code) ?? null,
 	};
 }
 

@@ -120,7 +120,6 @@ export interface SearchableUser {
 	premiumType: number | null;
 	emailVerified: boolean;
 	emailBounced: boolean;
-	suspiciousActivityFlags: number;
 	acls: Array<string>;
 	createdAt: number;
 	lastActiveAt: number | null;
@@ -139,7 +138,6 @@ export interface UserSearchFilters {
 	isTempBanned?: boolean;
 	isPendingDeletion?: boolean;
 	hasAcl?: Array<string>;
-	minSuspiciousActivityFlags?: number;
 	createdAtGreaterThanOrEqual?: number;
 	createdAtLessThanOrEqual?: number;
 	sortBy?: 'createdAt' | 'lastActiveAt' | 'relevance';
@@ -153,8 +151,10 @@ export interface SearchableReport {
 	status: number;
 	reportType: number;
 	category: string;
+	reason: string | null;
 	additionalInfo: string | null;
 	reportedUserId: string | null;
+	reportedWebhookId: string | null;
 	reportedGuildId: string | null;
 	reportedGuildName: string | null;
 	reportedMessageId: string | null;
@@ -172,9 +172,12 @@ export interface ReportSearchFilters {
 	status?: number;
 	reportType?: number;
 	category?: string;
+	reason?: string;
 	reportedUserId?: string;
+	reportedWebhookId?: string;
 	reportedGuildId?: string;
 	reportedMessageId?: string;
+	reportedChannelId?: string;
 	guildContextId?: string;
 	resolvedByAdminId?: string;
 	isResolved?: boolean;
@@ -235,5 +238,40 @@ export interface GuildMemberSearchFilters {
 	userCreatedAtLte?: number;
 	isBot?: boolean;
 	sortBy?: 'joinedAt' | 'relevance';
+	sortOrder?: 'asc' | 'desc';
+}
+
+export interface SearchableThread {
+	id: string;
+	guildId: string;
+	parentId: string;
+	type: number;
+	name: string;
+	ownerId: string | null;
+	archived: boolean;
+	locked: boolean;
+	appliedTagIds: Array<string>;
+	createdAt: number;
+	idSequence: number;
+	lastMessageAt: number;
+	archivedAt: number;
+}
+
+export interface ThreadSearchCursor {
+	createdAt: number;
+	idSequence: number;
+}
+
+export interface ThreadSearchFilters {
+	guildId: string;
+	parentId: string;
+	publicOnly?: boolean;
+	privateThreadIds?: Array<string>;
+	archived?: boolean;
+	tagIds?: Array<string>;
+	tagSetting?: 'match_some' | 'match_all';
+	after?: ThreadSearchCursor;
+	before?: ThreadSearchCursor;
+	sortBy?: 'last_message_time' | 'archive_time' | 'relevance' | 'creation_time';
 	sortOrder?: 'asc' | 'desc';
 }

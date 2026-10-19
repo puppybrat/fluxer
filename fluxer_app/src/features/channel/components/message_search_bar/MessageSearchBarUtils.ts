@@ -39,7 +39,7 @@ export function filterRequiresValue(filter: SearchFilterOption): boolean {
 
 export const PLAINTEXT_SUGGESTION_FILTER_KEYS: ReadonlyArray<string> = ['from', 'in', 'mentions'];
 export const PLAINTEXT_SUGGESTIONS_PER_FILTER = 3;
-export const INLINE_FILTER_KEYS: ReadonlyArray<string> = ['from', 'in', 'has', 'mentions'];
+const INLINE_FILTER_KEYS: ReadonlyArray<string> = ['from', 'in', 'has', 'mentions'];
 
 export interface SearchFilterEligibility {
 	isInGuildChannel: boolean;
@@ -71,7 +71,7 @@ export function orderInlineFilterOptions(
 	return ordered;
 }
 
-export function listDiscoverableFilterOptions(
+function listDiscoverableFilterOptions(
 	options: ReadonlyArray<SearchFilterOption>,
 	eligibility: SearchFilterEligibility,
 ): Array<SearchFilterOption> {
@@ -114,14 +114,14 @@ export function resolveMessageSearchCurrentWord({value, cursorPosition}: Message
 	return value.slice(wordStart, boundedCursorPosition);
 }
 
-export interface TokenInsertionResult {
+interface TokenInsertionResult {
 	newText: string;
 	newCursorPos: number;
 	insertedDisplay: string;
 	insertedLength: number;
 }
 
-export interface TokenInsertionInput {
+interface TokenInsertionInput {
 	textBeforeCursor: string;
 	textAfterCursor: string;
 	lastWordStart: number;
@@ -133,12 +133,12 @@ export interface TokenInsertionInput {
 const SEARCH_TOKEN_QUOTE_TRIGGER = /[\\" ]/;
 const SEARCH_TOKEN_ESCAPE = /[\\"]/g;
 
-export function quoteSearchTokenValue(value: string): string {
+function quoteSearchTokenValue(value: string): string {
 	if (!SEARCH_TOKEN_QUOTE_TRIGGER.test(value)) return value;
 	return `"${value.replace(SEARCH_TOKEN_ESCAPE, (match) => `\\${match}`)}"`;
 }
 
-export function computeTokenInsertion({
+function computeTokenInsertion({
 	textBeforeCursor,
 	textAfterCursor,
 	lastWordStart,
@@ -234,6 +234,7 @@ export function replaceSearchTokenAtCursor(input: SearchTokenReplacementInput): 
 	};
 }
 
+// Fork: kept for the cached-member fallback in useMessageSearchAutocomplete (upstream removed it as unused).
 export function deduplicateMembers(members: Array<GuildMember>): Array<GuildMember> {
 	const seen = new Set<string>();
 	const result: Array<GuildMember> = [];
@@ -283,8 +284,8 @@ export function isUserFilterKey(filterKey: string): boolean {
 	}
 }
 
-export type DmChannelSuggestionMode = 'none' | 'current' | 'open' | 'all';
-export type GuildChannelSuggestionMode = 'none' | 'current_guild' | 'all_guilds';
+type DmChannelSuggestionMode = 'none' | 'current' | 'open' | 'all';
+type GuildChannelSuggestionMode = 'none' | 'current_guild' | 'all_guilds';
 
 export interface ChannelSuggestionSearchPlan {
 	dmMode: DmChannelSuggestionMode;
@@ -377,7 +378,7 @@ export function getUserGuildSearchPlan(
 	};
 }
 
-export type MemberSearchBoosters = Record<string, number>;
+type MemberSearchBoosters = Record<string, number>;
 
 export function buildUserSearchBoosters(
 	channel: Channel | undefined,

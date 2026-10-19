@@ -15,14 +15,31 @@ import {
 	resolveMessageVariables,
 } from '@fluxer/errors/src/error_handling/ErrorIntrospection';
 import {createJsonErrorResponse} from '@fluxer/errors/src/error_handling/ErrorResponse';
+import {resolveRoutePattern} from '@fluxer/errors/src/error_handling/RoutePattern';
 import {FluxerError} from '@fluxer/errors/src/FluxerError';
 import {ErrorCodeToI18nKey} from '@fluxer/errors/src/i18n/ErrorCodeMappings';
 import {getErrorMessageUnsafe} from '@fluxer/errors/src/i18n/ErrorI18n';
 import type {ErrorI18nKey} from '@fluxer/errors/src/i18n/ErrorI18nMessages';
-import type {BaseHonoEnv, ErrorI18nService} from '@fluxer/hono_types/src/HonoTypes';
 import {createLogger} from '@fluxer/logger/src/Logger';
 import type {Context} from 'hono';
 import {HTTPException} from 'hono/http-exception';
+
+interface ErrorI18nService {
+	getMessage(
+		key: string,
+		locale: string | null | undefined,
+		variables?: Record<string, unknown>,
+		fallbackMessage?: string,
+	): string;
+}
+
+export interface BaseHonoEnv {
+	Variables: {
+		errorI18nService?: ErrorI18nService;
+		requestLocale?: string;
+		requestId?: string;
+	};
+}
 
 const logger = createLogger('errors');
 const LOCALE_LOOKUP = new Map<string, string>(Object.values(Locales).map((locale) => [locale.toLowerCase(), locale]));
@@ -281,7 +298,7 @@ function logErrorResponse<E extends BaseHonoEnv>(err: Error, resolved: ResolvedE
 		err,
 		status,
 		method: ctx.req.method,
-		path: ctx.req.path,
+		path: resolveRoutePattern(ctx),
 		requestId: ctx.get('requestId'),
 	};
 	if (resolved.unexpected) {

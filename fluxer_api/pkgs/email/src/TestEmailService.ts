@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type {ITestEmailService, SentEmailRecord} from '@pkgs/email/src/ITestEmailService';
+import type {ReportReceivedTargetKind} from '@pkgs/email/src/email_i18n/EmailI18nTypes';
+import type {IEmailService} from '@pkgs/email/src/IEmailService';
+
+export interface SentEmailRecord {
+	to: string;
+	type: string;
+	timestamp: Date;
+	metadata: Record<string, string>;
+}
 
 function maskToken(token: string): string {
 	if (token.length <= 8) {
@@ -11,7 +19,7 @@ function maskToken(token: string): string {
 
 const noopLogger = {info: (_message: string) => {}};
 
-export class TestEmailService implements ITestEmailService {
+export class TestEmailService implements IEmailService {
 	private readonly sentEmails: Array<SentEmailRecord> = [];
 	private readonly logger: {
 		info: (message: string) => void;
@@ -67,16 +75,6 @@ export class TestEmailService implements ITestEmailService {
 			`IP authorization email sent to ${email} for user ${username}, IP: ${ipAddress}, location: ${location}`,
 		);
 		return this.record(email, 'ip_authorization', {token: authorizationToken, ip: ipAddress, location});
-	}
-
-	async sendAccountDisabledForSuspiciousActivityEmail(
-		email: string,
-		username: string,
-		reason: string | null,
-		_locale?: string | null,
-	): Promise<boolean> {
-		this.logger.info(`Account disabled email sent to ${email} for user ${username}, reason: ${reason ?? 'none'}`);
-		return this.record(email, 'account_disabled_suspicious', {reason: reason ?? ''});
 	}
 
 	async sendAccountTempBannedEmail(
@@ -238,6 +236,26 @@ export class TestEmailService implements ITestEmailService {
 		return this.record(email, 'report_resolved', {report_id: reportId, public_comment: publicComment});
 	}
 
+	async sendDsaReportResolvedEmail(
+		email: string,
+		reportId: string,
+		publicComment: string,
+		_locale?: string | null,
+	): Promise<boolean> {
+		this.logger.info(`DSA report resolved email sent to ${email}, report: ${reportId}`);
+		return this.record(email, 'dsa_report_resolved', {report_id: reportId, public_comment: publicComment});
+	}
+
+	async sendReportReceivedEmail(
+		email: string,
+		reportId: string,
+		targetKind: ReportReceivedTargetKind,
+		_locale?: string | null,
+	): Promise<boolean> {
+		this.logger.info(`Report received email sent to ${email}, report: ${reportId}`);
+		return this.record(email, 'report_received', {report_id: reportId, target_kind: targetKind});
+	}
+
 	async sendDsaReportVerificationCode(
 		email: string,
 		code: string,
@@ -246,11 +264,6 @@ export class TestEmailService implements ITestEmailService {
 	): Promise<boolean> {
 		this.logger.info(`DSA report verification code sent to ${email}, code: ${maskToken(code)}`);
 		return this.record(email, 'dsa_report_verification', {code, expires_at: expiresAt.toISOString()});
-	}
-
-	async sendRegistrationApprovedEmail(email: string, username: string, _locale?: string | null): Promise<boolean> {
-		this.logger.info(`Registration approved email sent to ${email} for user ${username}`);
-		return this.record(email, 'registration_approved');
 	}
 
 	async sendPasswordChangeVerification(

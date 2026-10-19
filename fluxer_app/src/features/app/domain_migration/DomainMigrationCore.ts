@@ -3,7 +3,6 @@
 import type {RuntimeConfigSnapshot} from '@app/features/app/state/RuntimeConfig';
 import type {StoredAccount} from '@app/features/auth/state/AccountStorage';
 import {isIOSMobileOrTabletUserAgent} from '@app/features/platform/notifications/NotificationAlertOptions';
-import {PASSKEY_MIGRATION_RP_ID} from '@fluxer/constants/src/PasskeyConstants';
 import type {DomainMigrationDiscoveryResponse} from '@fluxer/schema/src/domains/admin/DomainMigrationSchemas';
 import {experimentBucket} from '@fluxer/schema/src/domains/experiment/ExperimentBucket';
 
@@ -12,7 +11,7 @@ export const DOMAIN_MIGRATION_SOURCE_TO_TARGET: Readonly<Record<string, string>>
 	'https://web.canary.fluxer.app': 'https://canary.fluxer.com',
 };
 
-export const DOMAIN_MIGRATION_TARGET_TO_SOURCE: Readonly<Record<string, string>> = Object.fromEntries(
+const DOMAIN_MIGRATION_TARGET_TO_SOURCE: Readonly<Record<string, string>> = Object.fromEntries(
 	Object.entries(DOMAIN_MIGRATION_SOURCE_TO_TARGET).map(([source, target]) => [target, source]),
 );
 
@@ -22,23 +21,23 @@ export const DOMAIN_MIGRATION_PENDING_KEY = 'fluxer:domain-migration:pending';
 export const DOMAIN_MIGRATION_INTENT_KEY = 'fluxer:domain-migration:intent';
 export const DOMAIN_MIGRATION_NOTIFICATIONS_KEY = 'fluxer:domain-migration:notifications';
 export const DOMAIN_MIGRATION_MOVED_DISMISSED_KEY = 'fluxer:domain-migration:moved-dismissed-at';
-export const DOMAIN_MIGRATION_ENROLLED_KEY = 'fluxer:domain-migration:enrolled';
-export const DOMAIN_MIGRATION_PROBED_AT_KEY = 'fluxer:domain-migration:probed-at';
+const DOMAIN_MIGRATION_ENROLLED_KEY = 'fluxer:domain-migration:enrolled';
+const DOMAIN_MIGRATION_PROBED_AT_KEY = 'fluxer:domain-migration:probed-at';
 export const DOMAIN_MIGRATION_IMPORT_KEY = 'fluxer:domain-migration:import';
-export const DOMAIN_MIGRATION_DEVICES_KEY = 'fluxer:domain-migration:devices';
+const DOMAIN_MIGRATION_DEVICES_KEY = 'fluxer:domain-migration:devices';
 export const DOMAIN_MIGRATION_STORAGE_KEY_PREFIXES: ReadonlyArray<string> = [DOMAIN_MIGRATION_MARKER_KEY];
 
 export const DOMAIN_MIGRATION_PAYLOAD_VERSION = 1;
 export const DOMAIN_MIGRATION_DEFAULT_NEXT_PATH = '/channels/@me';
 export const DOMAIN_MIGRATION_MAX_FAILED_ATTEMPTS = 3;
-export const DOMAIN_MIGRATION_FAILED_RETRY_DELAY_MS = 24 * 60 * 60 * 1000;
+const DOMAIN_MIGRATION_FAILED_RETRY_DELAY_MS = 24 * 60 * 60 * 1000;
 export const DOMAIN_MIGRATION_PENDING_MAX_AGE_MS = 10 * 60 * 1000;
 export const DOMAIN_MIGRATION_CUSTOM_SOUNDS_MAX_BYTES = 4 * 1024 * 1024;
 export const DOMAIN_MIGRATION_THEME_ASSETS_MAX_BYTES = 2 * 1024 * 1024;
 export const DOMAIN_MIGRATION_MOVED_DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
-export const DOMAIN_MIGRATION_PROBE_INTERVAL_MS = 6 * 60 * 60 * 1000;
-export const DOMAIN_MIGRATION_IMPORT_STALE_MS = 2 * 60 * 1000;
-export const DOMAIN_MIGRATION_DEVICES_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const DOMAIN_MIGRATION_PROBE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const DOMAIN_MIGRATION_IMPORT_STALE_MS = 2 * 60 * 1000;
+const DOMAIN_MIGRATION_DEVICES_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const ONE_SHOT_ROUTE_PREFIXES: ReadonlyArray<string> = [
 	'/reset',
@@ -399,7 +398,6 @@ export interface DomainMigrationInstallSignals {
 	userAgent: string;
 	userAgentData: {brands?: ReadonlyArray<{brand: string}>; mobile?: boolean; platform?: string} | null;
 	maxTouchPoints: number;
-	electron: boolean;
 }
 
 const INSTALLED_DISPLAY_MODES: ReadonlySet<DomainMigrationDisplayMode> = new Set([
@@ -410,9 +408,6 @@ const CHROMIUM_USER_AGENT_PATTERN = /\b(?:Chrome|Chromium|CriOS|EdgA|Edg|OPR|Sam
 const ANDROID_USER_AGENT_PATTERN = /\bAndroid\b/u;
 
 export function classifyDomainMigrationInstallKind(signals: DomainMigrationInstallSignals): DomainMigrationInstallKind {
-	if (signals.electron) {
-		return 'none';
-	}
 	const installed = signals.navigatorStandalone || INSTALLED_DISPLAY_MODES.has(signals.displayMode);
 	if (!installed) {
 		return 'none';
@@ -443,22 +438,13 @@ export function classifyDomainMigrationInstallKind(signals: DomainMigrationInsta
 export interface DomainMigrationEnvironment {
 	installKind: DomainMigrationInstallKind;
 	electron: boolean;
-	electronMigrationVersion: number | null;
-	electronPasskeyRpIds: ReadonlyArray<string>;
 }
 
 export function environmentAllowsDomainMigration(environment: DomainMigrationEnvironment): boolean {
-	if (environment.installKind !== 'none' && environment.installKind !== 'chromium-desktop') {
+	if (environment.electron) {
 		return false;
 	}
-	if (environment.electron) {
-		return (
-			environment.electronMigrationVersion !== null &&
-			environment.electronMigrationVersion >= 1 &&
-			environment.electronPasskeyRpIds.includes(PASSKEY_MIGRATION_RP_ID)
-		);
-	}
-	return true;
+	return environment.installKind === 'none' || environment.installKind === 'chromium-desktop';
 }
 
 export function environmentMayForward(
@@ -579,7 +565,7 @@ export interface DomainMigrationCustomSound {
 	data: string;
 }
 
-export interface DomainMigrationThemeAsset {
+interface DomainMigrationThemeAsset {
 	id: string;
 	name: string;
 	mime_type: string;
@@ -597,11 +583,18 @@ export interface DomainMigrationThemeLibrary {
 	enabled_theme_ids: Array<string>;
 }
 
+export interface DomainMigrationAppStorageEntry {
+	user_id: string | null;
+	key: string;
+	value: string;
+}
+
 export interface DomainMigrationPayload {
 	version: typeof DOMAIN_MIGRATION_PAYLOAD_VERSION;
 	source_origin: string;
 	exported_at: number;
 	local_storage: Record<string, string>;
+	app_storage?: Array<DomainMigrationAppStorageEntry>;
 	accounts: Array<StoredAccount>;
 	custom_sounds?: Array<DomainMigrationCustomSound>;
 	theme_library?: DomainMigrationThemeLibrary;
@@ -624,6 +617,15 @@ function isStoredAccount(value: unknown): value is StoredAccount {
 		value.userId.length > 0 &&
 		(typeof value.token === 'string' || value.token === null) &&
 		typeof value.lastActive === 'number'
+	);
+}
+
+function isAppStorageEntry(value: unknown): value is DomainMigrationAppStorageEntry {
+	return (
+		isRecord(value) &&
+		(value.user_id === null || (typeof value.user_id === 'string' && value.user_id.length > 0)) &&
+		typeof value.key === 'string' &&
+		typeof value.value === 'string'
 	);
 }
 
@@ -699,8 +701,10 @@ export function parseDomainMigrationPayload(value: unknown, expectedSource: stri
 		return null;
 	}
 	const mediaDevices = Array.isArray(value.media_devices) ? value.media_devices.filter(isMediaDevice) : [];
+	const appStorage = Array.isArray(value.app_storage) ? value.app_storage.filter(isAppStorageEntry) : [];
 	return {
 		...(value as unknown as DomainMigrationPayload),
+		app_storage: appStorage.length > 0 ? appStorage : undefined,
 		media_devices: mediaDevices.length > 0 ? mediaDevices : undefined,
 	};
 }

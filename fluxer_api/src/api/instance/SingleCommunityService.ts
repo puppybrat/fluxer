@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {createGuildID, type GuildID, type UserID} from '@app/api/BrandedTypes';
-import type {GuildDataService} from '@app/api/guild/services/GuildDataService';
+import type {GuildOperationsService} from '@app/api/guild/services/data/GuildOperationsService';
 import type {GuildMemberService} from '@app/api/guild/services/GuildMemberService';
 import type {InstanceConfigRepository} from '@app/api/instance/InstanceConfigRepository';
 import {Logger} from '@app/api/Logger';
@@ -13,7 +13,7 @@ import {UnknownGuildError} from '@fluxer/errors/src/domains/guild/UnknownGuildEr
 export class SingleCommunityService {
 	constructor(
 		private readonly instanceConfigRepository: InstanceConfigRepository,
-		private readonly guildDataService: GuildDataService,
+		private readonly guildOperations: GuildOperationsService,
 		private readonly guildMemberService: GuildMemberService,
 	) {}
 
@@ -35,6 +35,7 @@ export class SingleCommunityService {
 				userId,
 				guildId,
 				skipGuildLimitCheck: true,
+				skipAccountLimitCheck: true,
 				joinSourceType: JoinSourceTypes.ADMIN_FORCE_ADD,
 				requestCache,
 			});
@@ -65,7 +66,7 @@ export class SingleCommunityService {
 		}
 		const guildId = createGuildID(BigInt(rawGuildId));
 		try {
-			await this.guildDataService.getGuildSystem(guildId);
+			await this.guildOperations.getGuildSystem(guildId);
 			return guildId;
 		} catch (error) {
 			if (error instanceof UnknownGuildError) return null;
@@ -74,7 +75,7 @@ export class SingleCommunityService {
 	}
 
 	async createStockCommunity(params: {owner: User; name: string}): Promise<GuildID> {
-		const guild = await this.guildDataService.createGuild({user: params.owner, data: {name: params.name}});
+		const guild = await this.guildOperations.createGuild({user: params.owner, data: {name: params.name}});
 		const guildId = createGuildID(BigInt(guild.id));
 		await this.instanceConfigRepository.setInstancePolicyConfig({
 			single_community_enabled: true,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type {UserRow} from '@app/api/database/types/UserTypes';
-import type {IDonationRepository} from '@app/api/donation/IDonationRepository';
+import type {DonationRepository} from '@app/api/donation/DonationRepository';
 import type {Donor} from '@app/api/donation/models/Donor';
 import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {KVAccountDeletionQueueService} from '@app/api/infrastructure/KVAccountDeletionQueueService';
@@ -11,9 +11,10 @@ import {getBillingRepository} from '@app/api/middleware/ServiceRegistry';
 import type {GiftCode} from '@app/api/models/GiftCode';
 import type {User} from '@app/api/models/User';
 import {extractId} from '@app/api/stripe/StripeUtils';
+import {shouldBlockFurtherPurchases} from '@app/api/stripe/services/RefundAllowance';
 import type {StripeGiftReversalHandler} from '@app/api/stripe/services/StripeGiftReversalHandler';
 import type {StripePaymentFraudService} from '@app/api/stripe/services/StripePaymentFraudService';
-import type {IUserRepository} from '@app/api/user/IUserRepository';
+import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import {clearPendingDeletion} from '@app/api/user/services/PendingDeletionCoordinator';
 import {mapUserToPrivateResponse} from '@app/api/user/UserMappers';
 import {DeletionReasons} from '@fluxer/constants/src/Core';
@@ -26,11 +27,11 @@ export const REFUND_ALLOWANCE_CLAIM_PREFIX = 'refund-allowance';
 
 export class StripeDisputeWebhookHandler {
 	constructor(
-		private userRepository: IUserRepository,
+		private userRepository: UserRepository,
 		private userCacheService: UserCacheService,
 		private emailService: IEmailService,
 		private gatewayService: IGatewayService,
-		private donationRepository: IDonationRepository,
+		private donationRepository: DonationRepository,
 		private kvDeletionQueue: KVAccountDeletionQueueService,
 		private giftReversalHandler: StripeGiftReversalHandler,
 		private paymentFraudService: StripePaymentFraudService,
@@ -236,9 +237,25 @@ export class StripeDisputeWebhookHandler {
 			return;
 		}
 		const isFirstRefund = !user.firstRefundAt;
-		const patch: Partial<UserRow> = isFirstRefund
-			? {first_refund_at: new Date()}
-			: {premium_flags: user.premiumFlags | PremiumFlags.PURCHASE_DISABLED};
+		let patch: Partial<UserRow>;
+		let countedRefundIds: Array<string> = [];
+		if (isFirstRefund) {
+			patch = {first_refund_at: new Date()};
+		} else {
+			const outcome = await shouldBlockFurtherPurchases(user, this.userRepository);
+			countedRefundIds = outcome.countedRefundIds;
+			if (!outcome.blocked) {
+				for (const claimKey of claimedKeys) {
+					await getBillingRepository().webhookEvents.markProcessed(claimKey);
+				}
+				Logger.info(
+					{userId: user.id, chargeId: charge.id, paymentIntentId, countedRefundIds},
+					'Refund redelivered after the allowance claim expired; not counting it twice',
+				);
+				return;
+			}
+			patch = {premium_flags: user.premiumFlags | PremiumFlags.PURCHASE_DISABLED};
+		}
 		let updatedUser: User;
 		try {
 			updatedUser = await this.userRepository.patchUpsert(user.id, patch, user.toRow());
@@ -253,7 +270,7 @@ export class StripeDisputeWebhookHandler {
 		}
 		await this.dispatchUser(updatedUser);
 		Logger.debug(
-			{userId: user.id, chargeId: charge.id, paymentIntentId},
+			{userId: user.id, chargeId: charge.id, paymentIntentId, countedRefundIds},
 			isFirstRefund
 				? 'First refund recorded - 30 day self-serve refund cooldown applied'
 				: 'Second refund recorded - permanent purchase block applied',

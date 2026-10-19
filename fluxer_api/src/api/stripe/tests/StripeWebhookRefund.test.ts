@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import crypto from 'node:crypto';
 import {createTestAccount} from '@app/api/auth/tests/AuthTestUtils';
 import {createUserID} from '@app/api/BrandedTypes';
 import {Config} from '@app/api/Config';
-import {setupSyncStripeWebhookWorker} from '@app/api/stripe/tests/StripeWebhookTestUtils';
+import {sendStripeWebhook, setupSyncStripeWebhookWorker} from '@app/api/stripe/tests/StripeWebhookTestUtils';
 import {type ApiTestHarness, createApiTestHarness} from '@app/api/test/ApiTestHarness';
-import {createMockWebhookPayload, type StripeWebhookEventData} from '@app/api/test/msw/handlers/StripeApiHandlers';
 import {server} from '@app/api/test/msw/server';
 import {createBuilder} from '@app/api/test/TestRequestBuilder';
 import {UserRepository} from '@app/api/user/repositories/UserRepository';
@@ -30,25 +28,6 @@ describe('Stripe Webhook Refund', () => {
 	beforeEach(async () => {
 		await harness.resetData();
 	});
-	function createWebhookSignature(payload: string, timestamp: number, secret: string): string {
-		const signedPayload = `${timestamp}.${payload}`;
-		const signature = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
-		return `t=${timestamp},v1=${signature}`;
-	}
-	async function sendWebhook(eventData: StripeWebhookEventData): Promise<{
-		received: boolean;
-	}> {
-		const {payload, timestamp} = createMockWebhookPayload(eventData);
-		const signature = createWebhookSignature(payload, timestamp, Config.stripe.webhookSecret!);
-		return createBuilder<{
-			received: boolean;
-		}>(harness, '')
-			.post('/stripe/webhook')
-			.header('stripe-signature', signature)
-			.header('content-type', 'application/json')
-			.body(payload)
-			.execute();
-	}
 	function useRefundListHandler(chargeId: string, refunds: Array<Record<string, unknown>> = []): void {
 		server.use(
 			http.get(
@@ -88,7 +67,7 @@ describe('Stripe Webhook Refund', () => {
 				completed_at: new Date(),
 			});
 			useRefundListHandler('ch_test_refund_123');
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
@@ -105,23 +84,14 @@ describe('Stripe Webhook Refund', () => {
 			expect(updatedPayment).not.toBeNull();
 			expect(updatedPayment!.status).toBe('refunded');
 		});
-		test('applies permanent purchase block on second refund', async () => {
-			const account = await createTestAccount(harness);
-			const userId = createUserID(BigInt(account.userId));
-			const {UserRepository} = await import('@app/api/user/repositories/UserRepository');
-			const userRepository = new UserRepository();
-			const firstRefundDate = new Date('2024-01-01');
-			await userRepository.patchUpsert(
-				userId,
-				{
-					first_refund_at: firstRefundDate,
-				},
-				(await userRepository.findUnique(userId))!.toRow(),
-			);
+		async function seedRefundedPayment(
+			userId: ReturnType<typeof createUserID>,
+			suffix: string,
+		): Promise<{paymentIntentId: string; chargeId: string}> {
 			const {PaymentRepository} = await import('@app/api/user/repositories/PaymentRepository');
 			const paymentRepository = new PaymentRepository();
-			const paymentIntentId = 'pi_test_refund_second_456';
-			const checkoutSessionId = 'cs_test_refund_second_456';
+			const paymentIntentId = `pi_test_refund_${suffix}`;
+			const checkoutSessionId = `cs_test_refund_${suffix}`;
 			await paymentRepository.createPayment({
 				checkout_session_id: checkoutSessionId,
 				user_id: userId,
@@ -136,14 +106,41 @@ describe('Stripe Webhook Refund', () => {
 				payment_intent_id: paymentIntentId,
 				completed_at: new Date(),
 			});
-			useRefundListHandler('ch_test_refund_456');
-			await sendWebhook({
+			return {paymentIntentId, chargeId: `ch_test_refund_${suffix}`};
+		}
+		test('applies permanent purchase block when a second distinct refund exists', async () => {
+			const account = await createTestAccount(harness);
+			const userId = createUserID(BigInt(account.userId));
+			const {UserRepository} = await import('@app/api/user/repositories/UserRepository');
+			const userRepository = new UserRepository();
+			const firstRefundDate = new Date('2024-01-01');
+			await userRepository.patchUpsert(
+				userId,
+				{first_refund_at: firstRefundDate},
+				(await userRepository.findUnique(userId))!.toRow(),
+			);
+			const {paymentIntentId, chargeId} = await seedRefundedPayment(userId, 'second_456');
+			const nowSeconds = Math.floor(Date.now() / 1000);
+			const earlier = {
+				id: 're_test_refund_second_456_1',
+				object: 'refund',
+				charge: chargeId,
+				payment_intent: paymentIntentId,
+				amount: 1200,
+				currency: 'usd',
+				status: 'succeeded',
+				created: nowSeconds - 600,
+				metadata: {},
+			};
+			const latest = {...earlier, id: 're_test_refund_second_456_2', amount: 1300, created: nowSeconds};
+			await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
-						id: 'ch_test_refund_456',
+						id: chargeId,
 						payment_intent: paymentIntentId,
 						amount_refunded: 2500,
+						refunds: {object: 'list', has_more: false, url: `/v1/charges/${chargeId}/refunds`, data: [earlier, latest]},
 					},
 				},
 			});
@@ -154,6 +151,45 @@ describe('Stripe Webhook Refund', () => {
 			const updatedPayment = await userRepository.getPaymentByPaymentIntent(paymentIntentId);
 			expect(updatedPayment).not.toBeNull();
 			expect(updatedPayment!.status).toBe('refunded');
+		});
+		test('does not block purchases when one refund is redelivered after the allowance claim expired', async () => {
+			const account = await createTestAccount(harness);
+			const userId = createUserID(BigInt(account.userId));
+			const {UserRepository} = await import('@app/api/user/repositories/UserRepository');
+			const userRepository = new UserRepository();
+			const firstRefundDate = new Date('2024-01-01');
+			await userRepository.patchUpsert(
+				userId,
+				{first_refund_at: firstRefundDate},
+				(await userRepository.findUnique(userId))!.toRow(),
+			);
+			const {paymentIntentId, chargeId} = await seedRefundedPayment(userId, 'replay_789');
+			const onlyRefund = {
+				id: 're_test_refund_replay_789',
+				object: 'refund',
+				charge: chargeId,
+				payment_intent: paymentIntentId,
+				amount: 2500,
+				currency: 'usd',
+				status: 'succeeded',
+				created: Math.floor(Date.now() / 1000),
+				metadata: {},
+			};
+			await sendStripeWebhook(harness, {
+				type: 'charge.refunded',
+				data: {
+					object: {
+						id: chargeId,
+						payment_intent: paymentIntentId,
+						amount_refunded: 2500,
+						refunds: {object: 'list', has_more: false, url: `/v1/charges/${chargeId}/refunds`, data: [onlyRefund]},
+					},
+				},
+			});
+			const updatedUser = await userRepository.findUnique(userId);
+			expect(updatedUser).not.toBeNull();
+			expect(updatedUser!.firstRefundAt).toEqual(firstRefundDate);
+			expect(updatedUser!.premiumFlags & PremiumFlags.PURCHASE_DISABLED).toBe(0);
 		});
 		test('counts a refund once when the same charge.refunded event is redelivered', async () => {
 			const account = await createTestAccount(harness);
@@ -202,8 +238,8 @@ describe('Stripe Webhook Refund', () => {
 					},
 				},
 			};
-			await sendWebhook({...chargeEvent, id: 'evt_test_refund_retry_1'});
-			await sendWebhook({...chargeEvent, id: 'evt_test_refund_retry_2'});
+			await sendStripeWebhook(harness, {...chargeEvent, id: 'evt_test_refund_retry_1'});
+			await sendStripeWebhook(harness, {...chargeEvent, id: 'evt_test_refund_retry_2'});
 			const updatedUser = await userRepository.findUnique(userId);
 			expect(updatedUser!.firstRefundAt).not.toBeNull();
 			expect(updatedUser!.premiumFlags & PremiumFlags.PURCHASE_DISABLED).toBe(0);
@@ -255,17 +291,17 @@ describe('Stripe Webhook Refund', () => {
 				},
 			};
 			useRefundListHandler(chargeId);
-			await sendWebhook({...chargeEvent, id: 'evt_test_refund_late_record_1'});
+			await sendStripeWebhook(harness, {...chargeEvent, id: 'evt_test_refund_late_record_1'});
 			const afterFallback = await userRepository.findUnique(userId);
 			expect(afterFallback!.firstRefundAt).not.toBeNull();
 			expect(afterFallback!.premiumFlags & PremiumFlags.PURCHASE_DISABLED).toBe(0);
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				id: 'evt_test_refund_late_record_2',
 				type: 'refund.created',
 				data: {object: refund},
 			});
 			useRefundListHandler(chargeId, [refund]);
-			await sendWebhook({...chargeEvent, id: 'evt_test_refund_late_record_3'});
+			await sendStripeWebhook(harness, {...chargeEvent, id: 'evt_test_refund_late_record_3'});
 			const afterRecord = await userRepository.findUnique(userId);
 			expect(afterRecord!.firstRefundAt!.getTime()).toBe(afterFallback!.firstRefundAt!.getTime());
 			expect(afterRecord!.premiumFlags & PremiumFlags.PURCHASE_DISABLED).toBe(0);
@@ -307,7 +343,7 @@ describe('Stripe Webhook Refund', () => {
 					metadata: {rejection_reason: 'duplicate_active_subscription'},
 				},
 			]);
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
@@ -358,7 +394,7 @@ describe('Stripe Webhook Refund', () => {
 					metadata: {rejection_reason: 'localized_card_country_mismatch'},
 				},
 			]);
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
@@ -438,11 +474,11 @@ describe('Stripe Webhook Refund', () => {
 					},
 				},
 			};
-			await sendWebhook({...chargeEvent, id: 'evt_test_refund_mixed_1'});
+			await sendStripeWebhook(harness, {...chargeEvent, id: 'evt_test_refund_mixed_1'});
 			const afterFirst = await userRepository.findUnique(userId);
 			expect(afterFirst!.firstRefundAt).not.toBeNull();
 			expect(afterFirst!.premiumFlags & PremiumFlags.PURCHASE_DISABLED).toBe(0);
-			await sendWebhook({...chargeEvent, id: 'evt_test_refund_mixed_2'});
+			await sendStripeWebhook(harness, {...chargeEvent, id: 'evt_test_refund_mixed_2'});
 			const afterRetry = await userRepository.findUnique(userId);
 			expect(afterRetry!.firstRefundAt!.getTime()).toBe(afterFirst!.firstRefundAt!.getTime());
 			expect(afterRetry!.premiumFlags & PremiumFlags.PURCHASE_DISABLED).toBe(0);
@@ -507,11 +543,14 @@ describe('Stripe Webhook Refund', () => {
 				amount: 1300,
 				created: nowSeconds,
 			};
-			await sendWebhook({...chargeEventWithRefunds([firstRefund]), id: 'evt_test_refund_ladder_1'});
+			await sendStripeWebhook(harness, {...chargeEventWithRefunds([firstRefund]), id: 'evt_test_refund_ladder_1'});
 			const afterFirst = await userRepository.findUnique(userId);
 			expect(afterFirst!.firstRefundAt).not.toBeNull();
 			expect(afterFirst!.premiumFlags & PremiumFlags.PURCHASE_DISABLED).toBe(0);
-			await sendWebhook({...chargeEventWithRefunds([firstRefund, secondRefund]), id: 'evt_test_refund_ladder_2'});
+			await sendStripeWebhook(harness, {
+				...chargeEventWithRefunds([firstRefund, secondRefund]),
+				id: 'evt_test_refund_ladder_2',
+			});
 			const afterSecond = await userRepository.findUnique(userId);
 			expect(afterSecond!.premiumFlags & PremiumFlags.PURCHASE_DISABLED).toBe(PremiumFlags.PURCHASE_DISABLED);
 		});
@@ -527,7 +566,7 @@ describe('Stripe Webhook Refund', () => {
 				(await userRepository.findUnique(userId))!.toRow(),
 			);
 			useRefundListHandler('ch_test_refund_sub_789');
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
@@ -560,7 +599,7 @@ describe('Stripe Webhook Refund', () => {
 				subscriptionCancelAt: null,
 			});
 			useRefundListHandler('ch_test_refund_donation_101');
-			const result = await sendWebhook({
+			const result = await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
@@ -613,7 +652,7 @@ describe('Stripe Webhook Refund', () => {
 				})
 				.execute();
 			useRefundListHandler('ch_test_refund_gift_multi_123');
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
@@ -667,7 +706,7 @@ describe('Stripe Webhook Refund', () => {
 				.execute();
 			expect(redeemerBefore.premium_type).toBe(UserPremiumTypes.SUBSCRIPTION);
 			useRefundListHandler('ch_test_refund_stripe_cus_only');
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
@@ -706,7 +745,7 @@ describe('Stripe Webhook Refund', () => {
 				})
 				.execute();
 			useRefundListHandler('ch_test_refund_gift_override_123');
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'charge.refunded',
 				data: {
 					object: {
@@ -740,7 +779,7 @@ describe('Stripe Webhook Refund', () => {
 					HttpResponse.json({id: params.id, object: 'subscription', status: 'canceled'}),
 				),
 			);
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'refund.updated',
 				data: {
 					object: {
@@ -764,7 +803,7 @@ describe('Stripe Webhook Refund', () => {
 			const account = await createTestAccount(harness);
 			const userId = createUserID(BigInt(account.userId));
 			const userRepository = new UserRepository();
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'refund.updated',
 				data: {
 					object: {
@@ -789,7 +828,7 @@ describe('Stripe Webhook Refund', () => {
 			const account = await createTestAccount(harness);
 			const userId = createUserID(BigInt(account.userId));
 			const userRepository = new UserRepository();
-			await sendWebhook({
+			await sendStripeWebhook(harness, {
 				type: 'refund.failed',
 				data: {
 					object: {

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {type ChannelID, createMessageID, type MessageID, type UserID} from '@app/api/BrandedTypes';
+import {type ChannelID, createMessageID, type UserID} from '@app/api/BrandedTypes';
 import {mapChannelToResponse} from '@app/api/channel/ChannelMappers';
-import type {IChannelRepository} from '@app/api/channel/IChannelRepository';
+import type {ChannelRepository} from '@app/api/channel/ChannelRepository';
 import {DMPermissionValidator} from '@app/api/channel/services/DMPermissionValidator';
 import {buildBroadcastMessageData} from '@app/api/channel/services/message/MessageGatewayDispatch';
 import {incrementDmMentionCounts} from '@app/api/channel/services/message/ReadStateHelpers';
-import type {IGuildRepositoryAggregate} from '@app/api/guild/repositories/IGuildRepositoryAggregate';
+import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import type {CallData, IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {ISnowflakeService} from '@app/api/infrastructure/ISnowflakeService';
 import type {IVoiceRoomStore} from '@app/api/infrastructure/IVoiceRoomStore';
@@ -14,7 +14,8 @@ import type {UserCacheService} from '@app/api/infrastructure/UserCacheService';
 import type {RequestCache} from '@app/api/middleware/RequestCacheMiddleware';
 import type {Channel} from '@app/api/models/Channel';
 import type {ReadStateService} from '@app/api/read_state/ReadStateService';
-import type {IUserRepository} from '@app/api/user/IUserRepository';
+import {assertMayStartConversation} from '@app/api/user/NewConversationLimit';
+import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import type {VoiceAccessContext, VoiceAvailabilityService} from '@app/api/voice/VoiceAvailabilityService';
 import {AUTOMATIC_VOICE_REGION_ID, ChannelTypes, MessageTypes} from '@fluxer/constants/src/ChannelConstants';
 import {IncomingCallFlags, RelationshipTypes} from '@fluxer/constants/src/UserConstants';
@@ -30,9 +31,9 @@ export class CallService {
 	private dmPermissionValidator: DMPermissionValidator;
 
 	constructor(
-		private channelRepository: IChannelRepository,
-		private userRepository: IUserRepository,
-		private guildRepository: IGuildRepositoryAggregate,
+		private channelRepository: ChannelRepository,
+		private userRepository: UserRepository,
+		private guildRepository: GuildRepository,
 		private gatewayService: IGatewayService,
 		private userCacheService: UserCacheService,
 		private snowflakeService: ISnowflakeService,
@@ -50,7 +51,7 @@ export class CallService {
 		ringable: boolean;
 		silent?: boolean;
 	}> {
-		const channel = await this.channelRepository.findUnique(channelId);
+		const channel = await this.channelRepository.channelData.findUnique(channelId);
 		if (!channel) throw new UnknownChannelError();
 		if (channel.type !== ChannelTypes.DM && channel.type !== ChannelTypes.GROUP_DM) {
 			throw new InvalidChannelTypeForCallError();
@@ -147,7 +148,7 @@ export class CallService {
 		latitude?: string;
 		longitude?: string;
 	}): Promise<CallData> {
-		const channel = await this.channelRepository.findUnique(channelId);
+		const channel = await this.channelRepository.channelData.findUnique(channelId);
 		if (!channel) throw new UnknownChannelError();
 		if (channel.type !== ChannelTypes.DM && channel.type !== ChannelTypes.GROUP_DM) {
 			throw new InvalidChannelTypeForCallError();
@@ -168,6 +169,16 @@ export class CallService {
 			const dmRecipientIds = recipientIds.filter((id) => id !== userId);
 			if (dmRecipientIds.length === 1) {
 				await this.dmPermissionValidator.validate({senderId: userId, recipientId: dmRecipientIds[0]});
+				const caller = await this.userRepository.findUnique(userId);
+				if (caller) {
+					await assertMayStartConversation({
+						user: caller,
+						targetId: dmRecipientIds[0]!,
+						users: this.userRepository,
+						messages: this.channelRepository.messages,
+						channel,
+					});
+				}
 			}
 		}
 		const existingCall = await this.gatewayService.getCall(channelId);
@@ -180,7 +191,7 @@ export class CallService {
 		const selectedRegion = region && region !== AUTOMATIC_VOICE_REGION_ID ? region : AUTOMATIC_VOICE_REGION_ID;
 		const allRecipients = Array.from(new Set([userId, ...Array.from(channel.recipientIds)]));
 		const messageId = createMessageID(await this.snowflakeService.generateForChannel(channelId));
-		await this.channelRepository.upsertMessage({
+		await this.channelRepository.messages.upsertMessage({
 			channel_id: channelId,
 			bucket: BucketUtils.makeBucket(messageId),
 			message_id: messageId,
@@ -247,7 +258,7 @@ export class CallService {
 				emitGateway: false,
 			});
 		}
-		const message = await this.channelRepository.getMessage(channelId, messageId);
+		const message = await this.channelRepository.messages.getMessage(channelId, messageId);
 		if (message) {
 			const messageResponse = await buildBroadcastMessageData({
 				channel,
@@ -275,7 +286,7 @@ export class CallService {
 		latitude?: string;
 		longitude?: string;
 	}): Promise<void> {
-		const channel = await this.channelRepository.findUnique(channelId);
+		const channel = await this.channelRepository.channelData.findUnique(channelId);
 		if (!channel) throw new UnknownChannelError();
 		if (channel.type !== ChannelTypes.DM && channel.type !== ChannelTypes.GROUP_DM) {
 			throw new InvalidChannelTypeForCallError();
@@ -315,7 +326,7 @@ export class CallService {
 		latitude?: string;
 		longitude?: string;
 	}): Promise<void> {
-		const channel = await this.channelRepository.findUnique(channelId);
+		const channel = await this.channelRepository.channelData.findUnique(channelId);
 		if (!channel) throw new UnknownChannelError();
 		if (channel.type !== ChannelTypes.DM && channel.type !== ChannelTypes.GROUP_DM) {
 			throw new InvalidChannelTypeForCallError();
@@ -336,6 +347,16 @@ export class CallService {
 			const dmRecipientIds = Array.from(channel.recipientIds).filter((id) => id !== userId);
 			if (dmRecipientIds.length === 1) {
 				await this.dmPermissionValidator.validate({senderId: userId, recipientId: dmRecipientIds[0]});
+				const caller = await this.userRepository.findUnique(userId);
+				if (caller) {
+					await assertMayStartConversation({
+						user: caller,
+						targetId: dmRecipientIds[0]!,
+						users: this.userRepository,
+						messages: this.channelRepository.messages,
+						channel,
+					});
+				}
 			}
 		}
 		const callerRequestedNoRing = recipients !== undefined && recipients.length === 0;
@@ -451,7 +472,7 @@ export class CallService {
 		channelId: ChannelID;
 		recipients?: Array<UserID>;
 	}): Promise<void> {
-		const channel = await this.channelRepository.findUnique(channelId);
+		const channel = await this.channelRepository.channelData.findUnique(channelId);
 		if (!channel) throw new UnknownChannelError();
 		if (channel.type !== ChannelTypes.DM && channel.type !== ChannelTypes.GROUP_DM) {
 			throw new InvalidChannelTypeForCallError();
@@ -522,33 +543,5 @@ export class CallService {
 				throw InputValidationError.fromCode('recipients', ValidationErrorCodes.USER_NOT_IN_CHANNEL);
 			}
 		}
-	}
-
-	async updateCallMessageEnded({
-		channelId,
-		messageId,
-		participants,
-		endedTimestamp,
-	}: {
-		channelId: ChannelID;
-		messageId: MessageID;
-		participants: Array<UserID>;
-		endedTimestamp: Date;
-	}): Promise<void> {
-		const message = await this.channelRepository.getMessage(channelId, messageId);
-		if (!message) {
-			return;
-		}
-		if (message.type !== MessageTypes.CALL) {
-			return;
-		}
-		const messageRow = message.toRow();
-		await this.channelRepository.upsertMessage({
-			...messageRow,
-			call: {
-				participant_ids: new Set(participants),
-				ended_timestamp: endedTimestamp,
-			},
-		});
 	}
 }

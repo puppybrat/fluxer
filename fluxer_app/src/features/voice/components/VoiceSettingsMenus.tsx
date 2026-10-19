@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {UserSettingsModal} from '@app/features/app/components/dialogs/LoadableSettingsModals';
+import Channels from '@app/features/channel/state/Channels';
 import * as VoiceStateCommands from '@app/features/devtools/commands/VoiceStateCommands';
 import {CAMERA_DESCRIPTOR} from '@app/features/i18n/utils/CommonMessageDescriptors';
 import Keybind from '@app/features/input/state/InputKeybind';
@@ -15,7 +17,6 @@ import * as ModalCommands from '@app/features/ui/commands/ModalCommands';
 import {modal} from '@app/features/ui/commands/ModalCommands';
 import {formatRoundedPercentage} from '@app/features/ui/utils/PercentageFormatting';
 import {AudioLevelMeter} from '@app/features/user/components/modals/tabs/components/AudioLevelMeter';
-import {UserSettingsModal} from '@app/features/user/components/modals/UserSettingsModal';
 import Users from '@app/features/user/state/Users';
 import * as CallCommands from '@app/features/voice/commands/CallCommands';
 import * as VoiceCallLayoutCommands from '@app/features/voice/commands/VoiceCallLayoutCommands';
@@ -30,6 +31,7 @@ import {
 	getPrimaryLocalMicrophonePublication,
 } from '@app/features/voice/engine/VoiceTrackPublicationUtils';
 import CallState from '@app/features/voice/state/CallState';
+import {isActiveVoiceChannelP2p} from '@app/features/voice/state/ChannelP2pStatus';
 import VoiceCallLayout from '@app/features/voice/state/VoiceCallLayout';
 import VoicePrompts from '@app/features/voice/state/VoicePrompts';
 import VoiceSettings from '@app/features/voice/state/VoiceSettings';
@@ -46,6 +48,7 @@ import {
 	VOICE_INPUT_VOLUME_DESCRIPTOR,
 	VOICE_OUTPUT_DEVICE_DESCRIPTOR,
 	VOICE_OUTPUT_VOLUME_DESCRIPTOR,
+	VOICE_P2P_SWITCH_TO_STANDARD_DESCRIPTOR,
 } from '@app/features/voice/utils/VoiceMessageDescriptors';
 import {getActiveVoiceProcessingMode, type VoiceProcessingMode} from '@app/features/voice/utils/VoiceProcessingProfile';
 import {VOICE_VOLUME_MAX_PERCENT} from '@app/features/voice/utils/VoiceVolumeUtils';
@@ -54,6 +57,7 @@ import type {RtcRegionResponse} from '@fluxer/schema/src/domains/channel/Channel
 import {msg} from '@lingui/core/macro';
 import {Trans, useLingui} from '@lingui/react/macro';
 import {
+	ArrowsLeftRightIcon,
 	CameraIcon,
 	ChartBarIcon,
 	EyeIcon,
@@ -125,13 +129,16 @@ type VoiceVideoSettingsSection = 'audio' | 'video';
 export function openVoiceVideoSettings(onClose: () => void, section?: VoiceVideoSettingsSection): void {
 	ModalCommands.pushAfterBottomSheetClose(
 		onClose,
-		modal(() => (
-			<UserSettingsModal
-				initialTab="voice_video"
-				initialSubtab={section}
-				data-flx="voice.voice-settings-menus.open-voice-video-settings.user-settings-modal"
-			/>
-		)),
+		modal(
+			() => (
+				<UserSettingsModal
+					initialTab="voice_video"
+					initialSubtab={section}
+					data-flx="voice.voice-settings-menus.open-voice-video-settings.user-settings-modal"
+				/>
+			),
+			'user-settings',
+		),
 	);
 }
 
@@ -449,38 +456,36 @@ interface VoiceDeviceSettingsMenuProps {
 	onClose: () => void;
 }
 
-export const VoiceDeviceSettingsMenu: React.FC<VoiceDeviceSettingsMenuProps> = observer(
-	({devices, deviceType, onClose}) => {
-		const isInput = deviceType === 'input';
-		return (
-			<>
-				<MenuGroup data-flx="voice.voice-settings-menus.voice-device-settings-menu.menu-group">
-					<VoiceAudioDeviceSubmenu
-						devices={devices}
-						deviceType={deviceType}
-						data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-audio-device-submenu"
-					/>
-					{isInput && (
-						<VoiceInputProfileSubmenu data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-input-profile-submenu" />
-					)}
-				</MenuGroup>
-				<MenuGroup data-flx="voice.voice-settings-menus.voice-device-settings-menu.menu-group--2">
-					{isInput ? (
-						<VoiceInputVolumeItems data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-input-volume-items" />
-					) : (
-						<VoiceOutputVolumeItem data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-output-volume-item" />
-					)}
-				</MenuGroup>
-				<MenuGroup data-flx="voice.voice-settings-menus.voice-device-settings-menu.menu-group--3">
-					<VoiceSettingsMenuItem
-						onClose={onClose}
-						data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-settings-menu-item"
-					/>
-				</MenuGroup>
-			</>
-		);
-	},
-);
+const VoiceDeviceSettingsMenu: React.FC<VoiceDeviceSettingsMenuProps> = observer(({devices, deviceType, onClose}) => {
+	const isInput = deviceType === 'input';
+	return (
+		<>
+			<MenuGroup data-flx="voice.voice-settings-menus.voice-device-settings-menu.menu-group">
+				<VoiceAudioDeviceSubmenu
+					devices={devices}
+					deviceType={deviceType}
+					data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-audio-device-submenu"
+				/>
+				{isInput && (
+					<VoiceInputProfileSubmenu data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-input-profile-submenu" />
+				)}
+			</MenuGroup>
+			<MenuGroup data-flx="voice.voice-settings-menus.voice-device-settings-menu.menu-group--2">
+				{isInput ? (
+					<VoiceInputVolumeItems data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-input-volume-items" />
+				) : (
+					<VoiceOutputVolumeItem data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-output-volume-item" />
+				)}
+			</MenuGroup>
+			<MenuGroup data-flx="voice.voice-settings-menus.voice-device-settings-menu.menu-group--3">
+				<VoiceSettingsMenuItem
+					onClose={onClose}
+					data-flx="voice.voice-settings-menus.voice-device-settings-menu.voice-settings-menu-item"
+				/>
+			</MenuGroup>
+		</>
+	);
+});
 
 interface VoiceInputSettingsMenuProps {
 	inputDevices: Array<MediaDeviceInfo>;
@@ -655,6 +660,9 @@ export const VoiceMoreOptionsMenu: React.FC<VoiceMoreOptionsMenuProps> = observe
 		(Users.currentUser?.isStaff() ?? false) &&
 		VoiceDebugEventSinkCommands.canOpenVoiceDebugEventSinkPopout();
 	const isDmVoiceCall = connectedChannelId != null && (MediaEngine.guildId ?? null) === null;
+	const connectedChannel = connectedChannelId != null ? Channels.getChannel(connectedChannelId) : undefined;
+	void MediaEngine.getAllVoiceStates();
+	const canSwitchToStandardCall = isActiveVoiceChannelP2p() && (isDmVoiceCall || !connectedChannel?.rtcP2p);
 	const currentRegion =
 		isDmVoiceCall && connectedChannelId
 			? (CallState.getCall(connectedChannelId)?.region ?? AUTOMATIC_VOICE_REGION_ID)
@@ -845,6 +853,24 @@ export const VoiceMoreOptionsMenu: React.FC<VoiceMoreOptionsMenuProps> = observe
 				>
 					{i18n._(PRIORITIZE_SPEAKERS_DESCRIPTOR)}
 				</CheckboxItem>
+				{canSwitchToStandardCall && (
+					<MenuItem
+						icon={
+							<ArrowsLeftRightIcon
+								weight="fill"
+								className={styles.icon}
+								data-flx="voice.voice-settings-menus.voice-more-options-menu.icon.switch-to-standard-call"
+							/>
+						}
+						onClick={() => {
+							MediaEngine.switchToStandardCall();
+							onClose();
+						}}
+						data-flx="voice.voice-settings-menus.voice-more-options-menu.menu-item.switch-to-standard-call"
+					>
+						{i18n._(VOICE_P2P_SWITCH_TO_STANDARD_DESCRIPTOR)}
+					</MenuItem>
+				)}
 				{canOpenDebugEventSink && (
 					<MenuItem
 						icon={
@@ -875,12 +901,15 @@ export const VoiceMoreOptionsMenu: React.FC<VoiceMoreOptionsMenuProps> = observe
 					onClick={() => {
 						ModalCommands.pushAfterBottomSheetClose(
 							onClose,
-							modal(() => (
-								<UserSettingsModal
-									initialTab="voice_video"
-									data-flx="voice.voice-settings-menus.voice-more-options-menu.user-settings-modal"
-								/>
-							)),
+							modal(
+								() => (
+									<UserSettingsModal
+										initialTab="voice_video"
+										data-flx="voice.voice-settings-menus.voice-more-options-menu.user-settings-modal"
+									/>
+								),
+								'user-settings',
+							),
 						);
 					}}
 					data-flx="voice.voice-settings-menus.voice-more-options-menu.menu-item.close"

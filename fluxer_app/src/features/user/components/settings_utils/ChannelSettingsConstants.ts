@@ -3,9 +3,9 @@
 // LOCAL-ONLY: ChannelAppearanceTab is a local-only addition — exclude from upstream sync.
 import ChannelAppearanceTab from '@app/features/channel/components/modals/channel_tabs/ChannelAppearanceTab';
 import ChannelInvitesTab from '@app/features/channel/components/modals/channel_tabs/ChannelInvitesTab';
-import ChannelOverviewTab from '@app/features/channel/components/modals/channel_tabs/ChannelOverviewTab';
 import ChannelPermissionsTab from '@app/features/channel/components/modals/channel_tabs/ChannelPermissionsTab';
 import ChannelWebhooksTab from '@app/features/channel/components/modals/channel_tabs/ChannelWebhooksTab';
+import {ChannelOverviewTabForType} from '@app/features/forum/components/settings/ForumOverviewTab';
 import {Permissions} from '@fluxer/constants/src/ChannelConstants';
 import type {I18n, MessageDescriptor} from '@lingui/core';
 import {msg} from '@lingui/core/macro';
@@ -70,7 +70,7 @@ const CHANNEL_SETTINGS_TABS_DESCRIPTORS: Array<ChannelSettingsTabDescriptor> = [
 		category: 'channel_settings',
 		label: OVERVIEW_DESCRIPTOR,
 		icon: GearIcon,
-		component: ChannelOverviewTab,
+		component: ChannelOverviewTabForType,
 		permission: Permissions.MANAGE_CHANNELS,
 	},
 	{
@@ -116,7 +116,7 @@ export const CATEGORY_SETTINGS_LABEL_DESCRIPTOR = msg({
 	comment: 'Root label for category settings modal and settings search paths.',
 });
 
-export function getChannelSettingsTabLabel(i18n: I18n, tabType: ChannelSettingsTabType): string {
+function getChannelSettingsTabLabel(i18n: I18n, tabType: ChannelSettingsTabType): string {
 	const tab = CHANNEL_SETTINGS_TABS_DESCRIPTORS.find((candidate) => candidate.type === tabType);
 	return tab ? i18n._(tab.label) : '';
 }

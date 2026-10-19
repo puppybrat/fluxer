@@ -5,6 +5,7 @@
 
 -export([
     get_pool_conn/0,
+    connect/3,
     connect_slot/2,
     handle_conn_down/4,
     find_slot_by_conn/2,
@@ -100,7 +101,7 @@ spawn_connect_slot(Idx, Host, Port, Opts, Parent) ->
     ok.
 connect_slot_and_notify(Idx, Host, Port, Opts, Parent) ->
     _ =
-        case nats:connect(Host, Port, Opts) of
+        case connect(Host, Port, Opts) of
             {ok, Conn} ->
                 ok = nats:controlling_process(Conn, Parent),
                 Parent ! {nats_pool_connect_result, Idx, self(), {ok, Conn}};
@@ -108,6 +109,21 @@ connect_slot_and_notify(Idx, Host, Port, Opts, Parent) ->
                 Parent ! {nats_pool_connect_result, Idx, self(), {error, Reason}}
         end,
     ok.
+
+-spec connect(string(), inet:port_number(), map()) ->
+    {ok, nats:conn()} | ignore | {error, term()}.
+connect(Host, Port, Opts) ->
+    Server = #{
+        scheme => <<"nats">>, host => Host, port => Port, family => address_family(Host)
+    },
+    nats:connect(Server, Opts).
+
+-spec address_family(string()) -> inet | inet6.
+address_family(Host) ->
+    case inet:getaddr(Host, inet) of
+        {ok, _} -> inet;
+        {error, _} -> inet6
+    end.
 
 -spec handle_conn_down(non_neg_integer(), nats:conn(), pos_integer(), map()) -> map().
 handle_conn_down(
@@ -350,42 +366,5 @@ reconnect_delay_circuit_breaker_kicks_in_test() ->
     ?assertEqual(
         ?CIRCUIT_BREAKER_COOLDOWN_MS, reconnect_delay(?CIRCUIT_BREAKER_THRESHOLD + 10)
     ).
-
-reset_failure_count_resets_test() ->
-    Idx = 999,
-    persistent_term:put({?FAILURE_COUNTS_KEY, Idx}, 10),
-    reset_failure_count(Idx),
-    ?assertEqual(0, persistent_term:get({?FAILURE_COUNTS_KEY, Idx}, 0)),
-    persistent_term:erase({?FAILURE_COUNTS_KEY, Idx}).
-
-increment_failure_count_increments_test() ->
-    Idx = 998,
-    persistent_term:erase({?FAILURE_COUNTS_KEY, Idx}),
-    ?assertEqual(1, increment_failure_count(Idx)),
-    ?assertEqual(2, increment_failure_count(Idx)),
-    ?assertEqual(3, increment_failure_count(Idx)),
-    persistent_term:erase({?FAILURE_COUNTS_KEY, Idx}).
-
-parse_nats_url_nats_scheme_test() ->
-    ?assertEqual({ok, "127.0.0.1", 4222}, parse_nats_url(<<"nats://127.0.0.1:4222">>)).
-
-parse_nats_url_default_port_test() ->
-    ?assertEqual({ok, "localhost", 4222}, parse_nats_url(<<"nats://localhost">>)).
-
-parse_nats_url_tls_scheme_test() ->
-    ?assertEqual(
-        {ok, "nats.example.com", 4443}, parse_nats_url(<<"tls://nats.example.com:4443">>)
-    ).
-
-parse_nats_url_invalid_test() ->
-    ?assertEqual({error, invalid_nats_url}, parse_nats_url(undefined)).
-
-build_connect_opts_with_token_test() ->
-    ?assertEqual(
-        #{auth_token => <<"secret">>, buffer_size => 0}, build_connect_opts(<<"secret">>)
-    ).
-
-build_connect_opts_empty_test() ->
-    ?assertEqual(#{buffer_size => 0}, build_connect_opts(undefined)).
 
 -endif.

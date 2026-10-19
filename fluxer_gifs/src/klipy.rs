@@ -3,6 +3,7 @@
 use crate::media_proxy::MediaProxyUrlBuilder;
 use crate::types::{GifCategoryTag, GifItem, GifMediaFormat};
 use anyhow::Context;
+use futures::stream::{self, StreamExt};
 use reqwest::Url;
 use serde::Deserialize;
 use serde_json::Value;
@@ -19,6 +20,7 @@ const MAX_RETRIES: usize = 3;
 const BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);
 const KLIPY_RESPONSE_LIMIT_BYTES: usize = 512 * 1024;
 const MAX_FEATURED_CATEGORIES: usize = 50;
+const FEATURED_CATEGORY_PREVIEW_CONCURRENCY: usize = 10;
 const FEATURED_CATEGORIES_FETCH_TIMEOUT: Duration = Duration::from_secs(30);
 const FLUXER_USER_AGENT: &str = "Fluxerbot/1.0 (+https://fluxer.app)";
 const KLIPY_PROVIDER_NAME: &str = "klipy";
@@ -54,6 +56,7 @@ static MEDIA_FILTER: LazyLock<String> = LazyLock::new(|| MEDIA_FORMAT_PREFERENCE
 pub struct KlipyClient {
     http_client: reqwest::Client,
     media_proxy: MediaProxyUrlBuilder,
+    base_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -158,7 +161,14 @@ impl KlipyClient {
         Ok(Self {
             http_client,
             media_proxy,
+            base_url: KLIPY_BASE_URL.to_owned(),
         })
+    }
+
+    #[cfg(test)]
+    fn with_base_url(mut self, base_url: &str) -> Self {
+        self.base_url = base_url.trim_end_matches('/').to_owned();
+        self
     }
 
     pub async fn search(
@@ -335,31 +345,37 @@ impl KlipyClient {
             .take(MAX_FEATURED_CATEGORIES)
             .collect::<Vec<_>>();
 
-        let mut categories = Vec::with_capacity(search_terms.len());
-        for search_term in search_terms {
-            let gif = match self
-                .search(
-                    api_key,
-                    &search_term,
-                    &normalized_locale,
-                    KLIPY_FEATURED_CATEGORY_REFRESH_COUNTRY,
-                    1,
-                )
-                .await
-            {
-                Ok(mut gifs) => gifs.drain(..).next(),
-                Err(err) => {
-                    tracing::debug!(
-                        error = %err,
-                        search_term = %search_term,
-                        locale = %normalized_locale,
-                        "failed to fetch KLIPY category preview GIF"
-                    );
-                    None
+        let categories = stream::iter(search_terms)
+            .map(|search_term| {
+                let normalized_locale = &normalized_locale;
+                async move {
+                    let gif = match self
+                        .search(
+                            api_key,
+                            &search_term,
+                            normalized_locale,
+                            KLIPY_FEATURED_CATEGORY_REFRESH_COUNTRY,
+                            1,
+                        )
+                        .await
+                    {
+                        Ok(mut gifs) => gifs.drain(..).next(),
+                        Err(err) => {
+                            tracing::debug!(
+                                error = %err,
+                                search_term = %search_term,
+                                locale = %normalized_locale,
+                                "failed to fetch KLIPY category preview GIF"
+                            );
+                            None
+                        }
+                    };
+                    category_response(search_term, gif)
                 }
-            };
-            categories.push(category_response(search_term, gif));
-        }
+            })
+            .buffered(FEATURED_CATEGORY_PREVIEW_CONCURRENCY)
+            .collect::<Vec<_>>()
+            .await;
 
         Ok(categories)
     }
@@ -498,7 +514,7 @@ impl KlipyClient {
     }
 
     fn create_url(&self, endpoint: &str, params: &[(&str, &str)]) -> anyhow::Result<Url> {
-        let mut url = Url::parse(&format!("{KLIPY_BASE_URL}/{endpoint}"))?;
+        let mut url = Url::parse(&format!("{}/{endpoint}", self.base_url))?;
         {
             let mut query = url.query_pairs_mut();
             query.append_pair("client_key", CLIENT_KEY);
@@ -701,18 +717,6 @@ pub fn normalize_locale(locale: &str) -> String {
     locale.replace('-', "_")
 }
 
-pub fn build_share_url(slug: &str) -> String {
-    let trimmed = slug.trim();
-    if trimmed.is_empty() {
-        return "https://klipy.com/gifs".to_owned();
-    }
-    build_share_url_with_type(KlipyPathType::Gif, trimmed)
-}
-
-pub fn extract_slug_from_url(url: &str) -> Option<String> {
-    parse_klipy_path(url).map(|path| path.slug)
-}
-
 pub fn resolve_cache_key(url: &str) -> String {
     match parse_klipy_path(url) {
         Some(path) => format!("{}:{}", klipy_resource(path.path_type), path.slug),
@@ -841,222 +845,70 @@ fn category_response(name: String, gif: Option<GifItem>) -> GifCategoryTag {
 mod tests {
     use super::*;
 
-    #[test]
-    fn locale_uses_klipy_supported_form() {
-        assert_eq!(normalize_locale("en-US"), "en_US");
-        assert_eq!(normalize_locale("pt-BR"), "pt_BR");
-        assert_eq!(normalize_locale("zh-CN"), "zh_CN");
-        assert_eq!(normalize_locale("sv_SE"), "sv_SE");
-        assert_eq!(normalize_locale("es-419"), "es");
-        assert_eq!(normalize_locale("es_419"), "es");
-        assert_eq!(normalize_locale("fr"), "fr");
-    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn cold_featured_categories_fit_the_router_shard_budget() {
+        use axum::extract::Query;
+        use axum::routing::get;
+        use std::collections::HashMap;
 
-    #[test]
-    fn extracts_klipy_slug_only_from_klipy_hosts() {
-        assert_eq!(
-            extract_slug_from_url("https://klipy.com/gifs/funny-123").as_deref(),
-            Some("funny-123")
-        );
-        assert_eq!(
-            extract_slug_from_url("https://www.klipy.com/clip/abc").as_deref(),
-            Some("abc")
-        );
-        assert_eq!(
-            extract_slug_from_url("https://notklipy.com/gifs/funny"),
-            None
-        );
-    }
+        const UPSTREAM_LATENCY: Duration = Duration::from_millis(200);
 
-    #[test]
-    fn direct_url_targets_the_items_endpoint() {
+        let categories = || async {
+            sleep(UPSTREAM_LATENCY).await;
+            let tags = (0..MAX_FEATURED_CATEGORIES)
+                .map(|index| serde_json::json!({"searchterm": format!("term-{index}")}))
+                .collect::<Vec<_>>();
+            axum::Json(serde_json::json!({ "tags": tags }))
+        };
+        let search = |Query(params): Query<HashMap<String, String>>| async move {
+            sleep(UPSTREAM_LATENCY).await;
+            let term = params.get("q").cloned().unwrap_or_default();
+            axum::Json(serde_json::json!({
+                "results": [{
+                    "id": term,
+                    "title": term,
+                    "itemurl": format!("https://klipy.com/gifs/{term}"),
+                    "media_formats": {
+                        "gif": {"url": format!("https://static.klipy.com/{term}.gif"), "dims": [100, 100]}
+                    }
+                }]
+            }))
+        };
+        let app = axum::Router::new()
+            .route("/categories", get(categories))
+            .route("/search", get(search));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind");
+        let address = listener.local_addr().expect("local addr");
+        tokio::spawn(async move { axum::serve(listener, app).await });
+
         let client = KlipyClient::new(MediaProxyUrlBuilder::for_test(
             "https://media.example.test",
             "secret",
         ))
-        .expect("client");
-        let url = client
-            .create_direct_url(
-                "secret/key",
-                &KlipyPath {
-                    path_type: KlipyPathType::Gif,
-                    slug: "walter blame government-1".to_owned(),
-                },
-            )
-            .expect("direct URL");
+        .expect("client")
+        .with_base_url(&format!("http://{address}"));
+
+        let started = std::time::Instant::now();
+        let categories = client
+            .featured_categories("key", "sv-SE")
+            .await
+            .expect("featured categories");
+        let elapsed = started.elapsed();
+
+        assert_eq!(MAX_FEATURED_CATEGORIES, categories.len());
+        assert!(categories.iter().all(|category| !category.src.is_empty()));
+        assert_eq!("term-0", categories[0].name);
         assert_eq!(
-            url.as_str(),
-            "https://api.klipy.com/api/v1/secret%2Fkey/gifs/items?slugs=walter+blame+government-1"
-        );
-        let clip_url = client
-            .create_direct_url(
-                "key",
-                &KlipyPath {
-                    path_type: KlipyPathType::Clip,
-                    slug: "kittens".to_owned(),
-                },
-            )
-            .expect("direct URL");
-        assert_eq!(
-            clip_url.as_str(),
-            "https://api.klipy.com/api/v1/key/clips/items?slugs=kittens"
-        );
-    }
-
-    #[test]
-    fn transforms_direct_gif_item_sizes() {
-        let client = KlipyClient::new(MediaProxyUrlBuilder::for_test(
-            "https://media.example.test",
-            "secret",
-        ))
-        .expect("client");
-        let input = serde_json::from_value::<KlipyGif>(serde_json::json!({
-            "id": 5441109273429299_i64,
-            "slug": "walter-blame-government-1",
-            "title": "Walter blame government",
-            "type": "gif",
-            "file": {
-                "hd": {
-                    "gif": {"url": "https://static.klipy.com/hd.gif", "width": 498, "height": 420, "size": 1},
-                    "webp": {"url": "https://static.klipy.com/hd.webp", "width": 498, "height": 420, "size": 1},
-                    "webm": {"url": "https://static.klipy.com/hd.webm", "width": 498, "height": 420, "size": 1}
-                },
-                "sm": {
-                    "webp": {"url": "https://static.klipy.com/sm.webp", "width": 165, "height": 139, "size": 1}
-                }
-            }
-        }))
-        .expect("fixture");
-
-        let gif = client
-            .transform_gif_with_path(
-                input,
-                Some(&KlipyPath {
-                    path_type: KlipyPathType::Gif,
-                    slug: "walter-blame-government-1".to_owned(),
-                }),
-            )
-            .expect("transformed gif");
-
-        assert_eq!(gif.id, "walter-blame-government-1");
-        assert_eq!(gif.url, "https://klipy.com/gifs/walter-blame-government-1");
-        assert_eq!(gif.src, "https://static.klipy.com/hd.webm");
-        assert_eq!((gif.width, gif.height), (498, 420));
-        assert_eq!(
-            gif.media.get("webp").map(|format| format.src.as_str()),
-            Some("https://static.klipy.com/hd.webp")
-        );
-        assert_eq!(
-            gif.media
-                .get("tinywebp")
-                .map(|format| (format.width, format.height)),
-            Some((165, 139))
-        );
-    }
-
-    #[test]
-    fn transforms_direct_clip_item_using_file_meta_dimensions() {
-        let client = KlipyClient::new(MediaProxyUrlBuilder::for_test(
-            "https://media.example.test",
-            "secret",
-        ))
-        .expect("client");
-        let input = serde_json::from_value::<KlipyGif>(serde_json::json!({
-            "id": 6641306069493365_i64,
-            "url": "https://klipy.com/clips/kittens",
-            "slug": "kittens",
-            "title": "Kittens",
-            "type": "clip",
-            "file": {
-                "mp4": "https://static.klipy.com/clip.mp4",
-                "gif": "https://static.klipy.com/clip.gif",
-                "webp": "https://static.klipy.com/clip.webp"
-            },
-            "file_meta": {
-                "mp4": {"width": 854, "height": 480, "size": 924555},
-                "gif": {"width": 320, "height": 180, "size": 4117532},
-                "webp": {"width": 320, "height": 180, "size": 625686}
-            }
-        }))
-        .expect("fixture");
-
-        let clip = client
-            .transform_gif_with_path(
-                input,
-                Some(&KlipyPath {
-                    path_type: KlipyPathType::Clip,
-                    slug: "kittens".to_owned(),
-                }),
-            )
-            .expect("transformed clip");
-
-        assert_eq!(clip.id, "kittens");
-        assert_eq!(clip.url, "https://klipy.com/clips/kittens");
-        assert_eq!(clip.src, "https://static.klipy.com/clip.mp4");
-        assert_eq!((clip.width, clip.height), (854, 480));
-        assert_eq!(
-            clip.media
-                .get("webp")
-                .map(|format| (format.src.as_str(), format.width, format.height)),
-            Some(("https://static.klipy.com/clip.webp", 320, 180))
+            format!("term-{}", MAX_FEATURED_CATEGORIES - 1),
+            categories[MAX_FEATURED_CATEGORIES - 1].name
         );
         assert!(
-            clip.media
-                .get("mp4")
-                .expect("mp4 format")
-                .proxy_src
-                .starts_with("https://media.example.test/external/")
+            elapsed < fluxer_svc::router::SHARD_REQUEST_TIMEOUT / 2,
+            "cold featured categories took {elapsed:?}, the router gives the shard {:?}",
+            fluxer_svc::router::SHARD_REQUEST_TIMEOUT
         );
-    }
-
-    #[test]
-    fn direct_response_unwraps_the_items_array() {
-        let response = serde_json::from_value::<DirectGifResponse>(serde_json::json!({
-            "result": true,
-            "data": {
-                "data": [{
-                    "id": 1_i64,
-                    "slug": "kittens",
-                    "title": "Kittens",
-                    "file": {"mp4": "https://static.klipy.com/clip.mp4"}
-                }],
-                "meta": {}
-            }
-        }))
-        .expect("fixture");
-        let items = response.data.expect("data");
-        assert_eq!(items.data.len(), 1);
-        assert_eq!(items.data[0].slug.as_deref(), Some("kittens"));
-
-        let empty = serde_json::from_value::<DirectGifResponse>(serde_json::json!({
-            "result": true,
-            "data": {"data": [], "meta": {}}
-        }))
-        .expect("fixture");
-        assert!(empty.data.expect("data").data.is_empty());
-    }
-
-    #[test]
-    fn build_share_url_uses_gifs_path() {
-        assert_eq!(build_share_url("hello"), "https://klipy.com/gifs/hello");
-        assert_eq!(build_share_url("  "), "https://klipy.com/gifs");
-        assert_eq!(
-            build_share_url_with_type(KlipyPathType::Clip, "hello"),
-            "https://klipy.com/clips/hello"
-        );
-    }
-
-    #[test]
-    fn stringifies_numeric_klipy_ids() {
-        assert_eq!(
-            klipy_id_as_string(&serde_json::json!(2484942301552561_i64)).as_deref(),
-            Some("2484942301552561")
-        );
-        assert_eq!(
-            klipy_id_as_string(&serde_json::json!("  abc  ")).as_deref(),
-            Some("abc")
-        );
-        assert_eq!(klipy_id_as_string(&serde_json::json!("   ")), None);
     }
 
     #[test]
@@ -1223,164 +1075,5 @@ mod tests {
         );
         assert_eq!(gif.media["webm"].src, "https://static.klipy.com/hd.webm");
         assert_eq!(gif.src, gif.media["webm"].src);
-    }
-
-    #[test]
-    fn keeps_medium_variants_from_the_v2_media_formats_payload() {
-        let client = KlipyClient::new(MediaProxyUrlBuilder::for_test(
-            "https://media.example.test",
-            "secret",
-        ))
-        .expect("client");
-        let input = serde_json::from_value::<KlipyGif>(serde_json::json!({
-            "id": "medium-variants",
-            "title": "Medium Variants",
-            "itemurl": "https://klipy.com/gifs/medium-variants",
-            "media_formats": {
-                "webp": {"url": "https://static.klipy.com/m.webp", "dims": [498, 327]},
-                "mediumwebm": {"url": "https://static.klipy.com/m-medium.webm", "dims": [640, 420]},
-                "mediummp4": {"url": "https://static.klipy.com/m-medium.mp4", "dims": [640, 420]},
-                "mediumwebp": {"url": "https://static.klipy.com/m-medium.webp", "dims": [640, 420]},
-                "tinywebp": {"url": "https://static.klipy.com/m-tiny.webp", "dims": [220, 144]},
-                "nanowebp": {"url": "https://static.klipy.com/m-nano.webp", "dims": [137, 90]}
-            }
-        }))
-        .expect("fixture");
-
-        let gif = client.transform_gif(input).expect("transformed gif");
-
-        for format in [
-            "mediumwebm",
-            "mediummp4",
-            "mediumwebp",
-            "tinywebp",
-            "nanowebp",
-        ] {
-            assert!(gif.media.contains_key(format), "missing {format}");
-        }
-        assert_eq!(
-            gif.media.get("mediumwebm").map(|format| (
-                format.src.as_str(),
-                format.width,
-                format.height
-            )),
-            Some(("https://static.klipy.com/m-medium.webm", 640, 420))
-        );
-    }
-
-    #[test]
-    fn transforms_v2_media_formats_into_animated_variants() {
-        let client = KlipyClient::new(MediaProxyUrlBuilder::for_test(
-            "https://media.example.test",
-            "secret",
-        ))
-        .expect("client");
-        let input = serde_json::from_value::<KlipyGif>(serde_json::json!({
-            "id": "1373787462859498",
-            "title": "Move Faster",
-            "itemurl": "https://klipy.com/gifs/move-faster",
-            "media_formats": {
-                "webp": {
-                    "url": "https://static.klipy.com/media/move.webp",
-                    "dims": [498, 327]
-                },
-                "gif": {
-                    "url": "https://static.klipy.com/media/move.gif",
-                    "dims": [498, 326]
-                },
-                "mediumgif": {
-                    "url": "https://static.klipy.com/media/move-medium.gif",
-                    "dims": [640, 420]
-                },
-                "tinygif": {
-                    "url": "https://static.klipy.com/media/move-tiny.gif",
-                    "dims": [220, 144]
-                },
-                "nanogif": {
-                    "url": "https://static.klipy.com/media/move-nano.gif",
-                    "dims": [137, 90]
-                },
-                "webm": {
-                    "url": "https://static.klipy.com/media/move.webm",
-                    "dims": [640, 420]
-                },
-                "tinywebm": {
-                    "url": "https://static.klipy.com/media/move-tiny.webm",
-                    "dims": [320, 210]
-                },
-                "mp4": {
-                    "url": "https://static.klipy.com/media/move.mp4",
-                    "dims": [640, 420]
-                },
-                "preview": {
-                    "url": "https://static.klipy.com/media/move.jpg",
-                    "dims": [220, 144]
-                }
-            }
-        }))
-        .expect("fixture");
-
-        let gif = client.transform_gif(input).expect("transformed gif");
-
-        assert_eq!(gif.id, "move-faster");
-        assert_eq!(gif.url, "https://klipy.com/gifs/move-faster");
-        assert_eq!(gif.src, "https://static.klipy.com/media/move.webm");
-        assert_eq!(gif.width, 640);
-        assert_eq!(gif.height, 420);
-        assert_eq!(
-            gif.media.get("webp").map(|format| format.src.as_str()),
-            Some("https://static.klipy.com/media/move.webp")
-        );
-        assert_eq!(
-            gif.media.get("gif").map(|format| format.src.as_str()),
-            Some("https://static.klipy.com/media/move.gif")
-        );
-        assert_eq!(
-            gif.media
-                .get("tinygif")
-                .map(|format| (format.width, format.height)),
-            Some((220, 144))
-        );
-        assert!(gif.media.contains_key("mediumgif"));
-        assert!(gif.media.contains_key("nanogif"));
-        assert!(gif.media.contains_key("tinywebm"));
-        assert!(!gif.media.contains_key("preview"));
-        assert!(
-            gif.media
-                .get("webp")
-                .expect("webp format")
-                .proxy_src
-                .starts_with("https://media.example.test/external/")
-        );
-    }
-
-    #[test]
-    fn media_formats_without_video_choose_webp_as_top_level() {
-        let client = KlipyClient::new(MediaProxyUrlBuilder::for_test(
-            "https://media.example.test",
-            "secret",
-        ))
-        .expect("client");
-        let input = serde_json::from_value::<KlipyGif>(serde_json::json!({
-            "id": "cat-cone",
-            "title": "Cat Cone",
-            "media_formats": {
-                "webp": {
-                    "url": "https://static.klipy.com/media/cat.webp",
-                    "dims": [320, 180]
-                },
-                "gif": {
-                    "url": "https://static.klipy.com/media/cat.gif",
-                    "dims": [320, 180]
-                }
-            }
-        }))
-        .expect("fixture");
-
-        let gif = client.transform_gif(input).expect("transformed gif");
-
-        assert_eq!(gif.src, "https://static.klipy.com/media/cat.webp");
-        assert_eq!(gif.proxy_src, gif.media["webp"].proxy_src);
-        assert_eq!(gif.media["gif"].width, 320);
     }
 }

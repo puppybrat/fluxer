@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type {DesktopAccountStorageAPI} from '@fluxer/desktop_ipc/src/AccountContract';
+import type {DesktopHandoffAPI} from '@fluxer/desktop_ipc/src/BrowserHandoffContract';
+import type {DesktopCapabilityManifest} from '@fluxer/desktop_ipc/src/CapabilityManifest';
+import type {NativeGatewayTransportAPI} from '@fluxer/desktop_ipc/src/GatewayTransportContract';
+import type {DesktopKnownInstanceStorageAPI} from '@fluxer/desktop_ipc/src/KnownInstanceContract';
+import type {DesktopLegacyHarvest} from '@fluxer/desktop_ipc/src/LegacyHarvestContract';
+import type {DesktopLocalAppUploadProgress} from '@fluxer/desktop_ipc/src/LocalAppRouteContract';
+import type {DesktopRuntimeConfigAPI} from '@fluxer/desktop_ipc/src/LocalAppRuntimeContract';
+import type {DesktopModuleAPI, DesktopUpdateAPI} from '@fluxer/desktop_ipc/src/ModuleContract';
+import type {DesktopStorageAPI} from '@fluxer/desktop_ipc/src/StorageContract';
 import type {VoiceEngineV2BridgeHardwareEncoderApi} from '@fluxer/voice_engine_v2/bridge';
 import type {AuthenticationResponseJSON, RegistrationResponseJSON} from '@simplewebauthn/browser';
 
@@ -76,6 +86,7 @@ export interface DesktopWindowBehaviorSettings {
 	showTrayIcon: boolean;
 	minimizeToTray: boolean;
 	closeToTray: boolean;
+	startMinimized?: boolean;
 	useNativeTitleBar: boolean;
 	activeUseNativeTitleBar: boolean;
 	rememberWindowState: boolean;
@@ -105,6 +116,14 @@ export interface ThemeDirectoryCssFile {
 	fileName: string;
 	path: string;
 	css: string;
+}
+
+export type ThemeLinkedFileError = 'not_allowed' | 'missing' | 'not_file' | 'too_large' | 'too_many' | 'read_failed';
+
+export interface ThemeLinkedFileChange {
+	path: string;
+	css?: string;
+	error?: ThemeLinkedFileError;
 }
 
 export type VoiceBackgroundMediaKind = 'static' | 'animated' | 'video';
@@ -237,6 +256,113 @@ export interface GlobalKeyHookRegisterOptions {
 	meta?: boolean;
 }
 
+export type GlobalShortcutsBackend = 'portal' | 'x11' | 'evdev' | 'windows' | 'macos' | 'none';
+
+export type GlobalShortcutsPortalState =
+	| 'unknown'
+	| 'probing'
+	| 'unsupported'
+	| 'not-set-up'
+	| 'binding'
+	| 'bound'
+	| 'declined'
+	| 'error';
+
+export interface GlobalShortcutsPortalShortcut {
+	action: string;
+	triggerDescription: string | null;
+}
+
+export interface GlobalShortcutsPortalStatus {
+	state: GlobalShortcutsPortalState;
+	version: number | null;
+	canConfigure: boolean;
+	canRecheck: boolean;
+	portalAppId: string | null;
+	shortcuts: Array<GlobalShortcutsPortalShortcut>;
+	error: string | null;
+	recovering: boolean;
+}
+
+export interface GlobalShortcutsLinuxStatus {
+	session: 'wayland' | 'x11' | 'unknown';
+	sandbox: 'flatpak' | 'none';
+	desktop: 'kde' | 'gnome' | 'hyprland' | 'other';
+	portal: GlobalShortcutsPortalStatus | null;
+	directInput: {available: boolean; enabled: boolean; locked: boolean};
+}
+
+export interface GlobalShortcutsStatus {
+	backend: GlobalShortcutsBackend;
+	platform: 'linux' | 'windows' | 'macos';
+	linux: GlobalShortcutsLinuxStatus | null;
+	hooksActive: boolean;
+	hookError: 'permission' | 'start-failed' | null;
+	supportsMouseButtons: boolean;
+	supportsModifierOnly: boolean;
+}
+
+export interface GlobalShortcutCombo {
+	code?: string;
+	key: string;
+	ctrl: boolean;
+	alt: boolean;
+	shift: boolean;
+	meta: boolean;
+	mouseButton?: number;
+	modifierOnly?: boolean;
+	bothSides?: boolean;
+}
+
+export interface GlobalShortcutBinding {
+	sourceId: string;
+	action: string;
+	combo: GlobalShortcutCombo;
+}
+
+export interface GlobalShortcutActionDefinition {
+	action: string;
+	description: string;
+	preferredCombo: GlobalShortcutCombo | null;
+}
+
+export interface GlobalShortcutsSyncPayload {
+	bindings: Array<GlobalShortcutBinding>;
+	actions: Array<GlobalShortcutActionDefinition>;
+}
+
+export interface GlobalShortcutEvent {
+	action: string;
+	sourceId: string;
+	phase: 'press' | 'release';
+}
+
+export interface GlobalShortcutCaptureEvent {
+	type: 'keydown' | 'keyup' | 'mousedown' | 'mouseup';
+	code: string | null;
+	key: string | null;
+	button: number | null;
+	ctrl: boolean;
+	alt: boolean;
+	shift: boolean;
+	meta: boolean;
+}
+
+export interface GlobalShortcutsApi {
+	sync(payload: GlobalShortcutsSyncPayload): Promise<void>;
+	setPaused(paused: boolean): Promise<void>;
+	getStatus(): Promise<GlobalShortcutsStatus>;
+	onStatus(callback: (status: GlobalShortcutsStatus) => void): () => void;
+	onEvent(callback: (event: GlobalShortcutEvent) => void): () => void;
+	setUp(): Promise<GlobalShortcutsStatus>;
+	configure(): Promise<void>;
+	setDirectInputEnabled(enabled: boolean): Promise<GlobalShortcutsStatus>;
+	recheck(): Promise<GlobalShortcutsStatus>;
+	startCapture(): Promise<number | null>;
+	stopCapture(captureId: number): Promise<void>;
+	onCapture(callback: (event: GlobalShortcutCaptureEvent) => void): () => void;
+}
+
 export interface DisplayMediaRequestInfo {
 	audioRequested: boolean;
 	videoRequested: boolean;
@@ -245,18 +371,14 @@ export interface DisplayMediaRequestInfo {
 
 export type DisplayMediaPortalSurfacePreference = 'window' | 'monitor';
 
+export type MediaAccessType = 'microphone' | 'camera' | 'screen' | 'audio-capture';
+export type MediaAccessStatus = 'granted' | 'denied' | 'not-determined' | 'restricted' | 'unknown';
+
 export interface UpdaterEvent {
-	type: 'checking' | 'available' | 'not-available' | 'error' | 'downloaded' | 'progress' | 'unsupported';
+	type: 'checking' | 'available' | 'not-available' | 'downloaded' | 'progress' | 'error' | 'unsupported';
 	context?: 'user' | 'background' | 'focus';
 	version?: string | null;
 	message?: string;
-	progress?: number;
-	percent?: number;
-	transferred?: number;
-	total?: number;
-	bytesPerSecond?: number;
-	downloadSize?: number | null;
-	downloadStarted?: boolean;
 	reason?: 'platform' | 'unpackaged' | 'managed-package';
 	downloadUrl?: string;
 	downloadOptions?: Array<UpdaterDownloadOption>;
@@ -338,15 +460,31 @@ export interface AppMetricsSnapshot {
 	freeMemoryMB: number;
 }
 
+interface DesktopLocalAppUploadAPI {
+	subscribe: (listener: (progress: DesktopLocalAppUploadProgress) => void) => () => void;
+}
+
+interface DesktopLocalAppInfo {
+	readonly origin: string;
+}
+
+interface DesktopLegacyHarvestAPI {
+	read: () => Promise<DesktopLegacyHarvest | null>;
+	markReplanted: () => Promise<void>;
+	discard: () => Promise<void>;
+}
+
 export interface ElectronAPI {
 	platform: 'darwin' | 'win32' | 'linux' | string;
-	buildChannel: 'stable' | 'canary';
+	buildChannel: 'stable' | 'canary' | 'development';
+	localDevelopmentInstanceUrl?: string | null;
+	offlineBuild?: boolean;
 	openExternal(url: string): Promise<void>;
 	downloadFile(url: string, suggestedName: string, sha256?: string | null): Promise<DownloadResult>;
 	onUpdaterEvent(callback: (event: UpdaterEvent) => void): () => void;
 	updaterCheck(context: 'user' | 'background'): Promise<void>;
-	updaterDownload(context: 'user' | 'background'): Promise<void>;
-	updaterInstall(): Promise<void>;
+	updaterDownload?(context: 'user' | 'background'): Promise<void>;
+	updaterInstall?(): Promise<void>;
 	getDesktopSources(
 		types: Array<'screen' | 'window'>,
 		requestId?: string,
@@ -369,6 +507,9 @@ export interface ElectronAPI {
 	readThemeLocalFiles?(paths: Array<string>): Promise<Array<ThemeLocalFileReadResult>>;
 	clearThemeLocalFiles?(): Promise<void>;
 	importThemeDirectory?(): Promise<Array<ThemeDirectoryCssFile>>;
+	pickThemeLinkedFiles?(options?: {multiple?: boolean}): Promise<Array<ThemeDirectoryCssFile>>;
+	watchThemeLinkedFiles?(paths: Array<string>): Promise<void>;
+	onThemeLinkedFileChange?(callback: (change: ThemeLinkedFileChange) => void): () => void;
 	cacheVoiceBackgroundMedia?(options: VoiceBackgroundMediaCacheRequest): Promise<VoiceBackgroundMediaCacheResult>;
 	readVoiceBackgroundMedia?(id: string): Promise<VoiceBackgroundMediaReadResult | null>;
 	deleteVoiceBackgroundMedia?(id: string): Promise<void>;
@@ -376,10 +517,7 @@ export interface ElectronAPI {
 	setDesktopDisableHardwareAcceleration?(
 		options: SetDesktopTroubleshootingDisableHardwareAccelerationOptions,
 	): Promise<DesktopTroubleshootingSettings>;
-	desktopTroubleshootingReload?(): Promise<void>;
-	desktopTroubleshootingResetAppData?(options?: {confirm?: boolean}): Promise<void>;
 	getStreamerModeCaptureAppStatus?(): Promise<StreamerModeCaptureAppStatus>;
-	popupHelpMenu?(): Promise<void>;
 	getInitialDeepLink(): Promise<string | null>;
 	onDeepLink(callback: (url: string) => void): () => void;
 	onTextareaContextMenu(callback: (params: TextareaContextMenuParams) => void): () => void;
@@ -392,7 +530,6 @@ export interface ElectronAPI {
 	onSpellcheckEngineResolved?(callback: (info: SpellcheckResolvedEngineInfo) => void): () => void;
 	spellcheckGetAvailableLanguages(): Promise<Array<string>>;
 	spellcheckGetBundledDictionaries?(): Promise<Array<SpellcheckBundledDictionary>>;
-	spellcheckSuggest?(word: string): Promise<Array<string>>;
 	spellcheckSetState(state: Partial<SpellcheckState>): Promise<SpellcheckState>;
 	autostartEnable(): Promise<void>;
 	autostartDisable(): Promise<void>;
@@ -400,7 +537,6 @@ export interface ElectronAPI {
 	autostartIsInitialized(): Promise<boolean>;
 	autostartMarkInitialized(): Promise<void>;
 	globalKeyHookStart(): Promise<boolean>;
-	globalKeyHookIsRunning?(): Promise<boolean>;
 	globalKeyHookStop(): Promise<void>;
 	globalKeyHookRegister?(options: GlobalKeyHookRegisterOptions): Promise<void>;
 	globalKeyHookUnregister?(id: string): Promise<void>;
@@ -416,11 +552,7 @@ export interface ElectronAPI {
 		readableEventDevices: number;
 		inInputGroup: boolean;
 	}>;
-	linuxEvdevGrantAccess?(): Promise<{
-		success: boolean;
-		needsRelogin: boolean;
-		error?: string;
-	}>;
+	globalShortcuts?: GlobalShortcutsApi;
 	onGlobalKeyEvent(callback: (event: GlobalKeyEvent) => void): () => void;
 	onGlobalMouseEvent(callback: (event: GlobalMouseEvent) => void): () => void;
 	checkInputMonitoringAccess(): Promise<boolean>;
@@ -428,12 +560,10 @@ export interface ElectronAPI {
 	requestInputMonitoringPermission?(): Promise<InputMonitoringPermissionStatus>;
 	getScreenRecordingPermissionStatus?(): Promise<InputMonitoringPermissionStatus>;
 	requestScreenRecordingPermission?(): Promise<InputMonitoringPermissionStatus>;
-	checkMediaAccess(
-		type: 'screen' | 'camera' | 'microphone' | 'audio-capture',
-	): Promise<'granted' | 'denied' | 'restricted' | 'not-determined'>;
-	requestMediaAccess(type: 'screen' | 'camera' | 'microphone' | 'audio-capture'): Promise<boolean>;
+	checkMediaAccess(type: MediaAccessType): Promise<Exclude<MediaAccessStatus, 'unknown'>>;
+	requestMediaAccess(type: MediaAccessType): Promise<boolean>;
 	openInputMonitoringSettings(): Promise<void>;
-	openMediaAccessSettings(type: 'screen' | 'camera' | 'microphone' | 'audio-capture'): Promise<void>;
+	openMediaAccessSettings(type: MediaAccessType): Promise<void>;
 	onDisplayMediaRequested?(callback: (requestId: string, info: DisplayMediaRequestInfo) => void): () => void;
 	getAccessibilitySupportEnabled?(): Promise<boolean>;
 	onAccessibilitySupportChanged?(callback: (enabled: boolean) => void): () => void;
@@ -446,7 +576,6 @@ export interface ElectronAPI {
 	setTrayRuntimeState?(state: Partial<TrayRuntimeStatePayload>): void;
 	acquireStreamingPriority?(): void;
 	releaseStreamingPriority?(): void;
-	resetStreamingPriority?(): void;
 	getStreamingPriorityDiagnostics?(): Promise<StreamingPriorityDiagnostics>;
 	onTrayAction?(callback: (payload: TrayActionPayload) => void): () => void;
 	clipboardWriteText?(text: string): Promise<void>;
@@ -461,6 +590,7 @@ export interface ElectronAPI {
 	onJumpListNewDm?(callback: () => void): () => void;
 	spellcheckReplaceMisspelling?(word: string): void;
 	spellcheckAddWordToDictionary?(word: string): void;
+	onWindowLiveResizeChange?(callback: (isResizing: boolean) => void): () => void;
 	onWindowMaximizeChange?(callback: (isMaximized: boolean) => void): () => void;
 	windowIsMaximized?(): Promise<boolean>;
 	focusThemeStudioPopout?(): Promise<boolean>;
@@ -474,12 +604,33 @@ export interface ElectronAPI {
 	windowMaximize?(): void;
 	windowClose?(): void;
 	passkeyIsSupported?(): Promise<boolean>;
-	passkeyRegister?(options: unknown, requestContext?: {pin?: string}): Promise<RegistrationResponseJSON>;
-	passkeyAuthenticate?(options: unknown, requestContext?: {pin?: string}): Promise<AuthenticationResponseJSON>;
+	passkeyRegister?(
+		options: unknown,
+		requestContext?: {pin?: string; instanceKey?: string},
+	): Promise<RegistrationResponseJSON>;
+	passkeyAuthenticate?(
+		options: unknown,
+		requestContext?: {pin?: string; instanceKey?: string},
+	): Promise<AuthenticationResponseJSON>;
 	virtmic?: VirtmicApi;
 	nativeAudio?: NativeAudioApi;
 	nativeScreenCapture?: NativeScreenCaptureApi;
+	capabilities?: DesktopCapabilityManifest;
+	desktopAccounts?: DesktopAccountStorageAPI;
+	desktopStorage?: DesktopStorageAPI;
+	desktopKnownInstances?: DesktopKnownInstanceStorageAPI;
+	desktopHandoff?: DesktopHandoffAPI;
 	voiceEngine?: VoiceEngineV2BridgeHardwareEncoderApi;
+	desktopRuntimeConfig?: DesktopRuntimeConfigAPI;
+	desktopLegacyHarvest?: DesktopLegacyHarvestAPI;
+	desktopModules?: DesktopModuleAPI;
+	desktopUpdate?: DesktopUpdateAPI;
+	reportLastRoute?: (routePath: string) => void;
+	notifyFirstContentPainted?: () => void;
+	localAppUpload?: DesktopLocalAppUploadAPI;
+	localApp?: DesktopLocalAppInfo;
+	nativeGatewayTransport?: NativeGatewayTransportAPI;
+	setZoomFactor(factor: number): void;
 }
 
 export type VirtmicUnavailableReason =
@@ -541,11 +692,6 @@ export interface VirtmicLinkOptions {
 	workaround?: boolean;
 }
 
-export interface VirtmicSystemLinkOptions extends VirtmicLinkOptions {
-	onlySpeakers?: boolean;
-	onlyDefaultSpeakers?: boolean;
-}
-
 export interface VirtmicApi {
 	getAvailability(): Promise<VirtmicAvailability>;
 	listTargets(options?: {granular?: boolean}): Promise<{
@@ -554,9 +700,6 @@ export interface VirtmicApi {
 		availability: VirtmicAvailability;
 	}>;
 	getRoutingGraph(): Promise<VirtmicRoutingGraphResult>;
-	startInclude(include: Array<VirtmicNode>, options?: VirtmicLinkOptions): Promise<boolean>;
-	startSystem(exclude: Array<VirtmicNode>, options?: VirtmicSystemLinkOptions): Promise<boolean>;
-	resolveWindowPid(sourceId: string): Promise<number | null>;
 	stop(): Promise<void>;
 }
 

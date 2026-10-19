@@ -4,7 +4,7 @@ import type {AdminRepository} from '@app/api/admin/AdminRepository';
 import {AdminAuditService} from '@app/api/admin/services/AdminAuditService';
 import type {ISessionTerminator} from '@app/api/auth/ISessionTerminator';
 import type {BillingRepository} from '@app/api/billing/repositories/BillingRepository';
-import type {IDonationRepository} from '@app/api/donation/IDonationRepository';
+import type {DonationRepository} from '@app/api/donation/DonationRepository';
 import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {ISnowflakeService} from '@app/api/infrastructure/ISnowflakeService';
 import type {KVAccountDeletionQueueService} from '@app/api/infrastructure/KVAccountDeletionQueueService';
@@ -12,10 +12,10 @@ import type {PremiumStateReconciliationQueueService} from '@app/api/infrastructu
 import type {UserCacheService} from '@app/api/infrastructure/UserCacheService';
 import {Logger} from '@app/api/Logger';
 import {OAuth2TokenRepository} from '@app/api/oauth/repositories/OAuth2TokenRepository';
+import type {StoreEntitlementService} from '@app/api/store_billing/StoreEntitlementService';
 import {getAcceptedWebhookSecrets} from '@app/api/stripe/BillingConfigCache';
 import type {ProductRegistry} from '@app/api/stripe/ProductRegistry';
 import type {AgeVerificationService} from '@app/api/stripe/services/AgeVerificationService';
-import type {StripeCheckoutService} from '@app/api/stripe/services/StripeCheckoutService';
 import {StripeCheckoutWebhookHandler} from '@app/api/stripe/services/StripeCheckoutWebhookHandler';
 import {StripeDisputeWebhookHandler} from '@app/api/stripe/services/StripeDisputeWebhookHandler';
 import {StripeGiftReversalHandler} from '@app/api/stripe/services/StripeGiftReversalHandler';
@@ -25,7 +25,7 @@ import type {StripePremiumService} from '@app/api/stripe/services/StripePremiumS
 import type {StripeRefundService} from '@app/api/stripe/services/StripeRefundService';
 import {StripeSubscriptionReconciler} from '@app/api/stripe/services/StripeSubscriptionReconciler';
 import {StripeSubscriptionWebhookHandler} from '@app/api/stripe/services/StripeSubscriptionWebhookHandler';
-import type {IUserRepository} from '@app/api/user/IUserRepository';
+import type {UserRepository} from '@app/api/user/repositories/UserRepository';
 import {StripeError} from '@fluxer/errors/src/domains/payment/StripeError';
 import {StripeWebhookNotAvailableError} from '@fluxer/errors/src/domains/payment/StripeWebhookNotAvailableError';
 import {StripeWebhookSignatureInvalidError} from '@fluxer/errors/src/domains/payment/StripeWebhookSignatureInvalidError';
@@ -46,8 +46,7 @@ export class StripeWebhookService {
 
 	constructor(
 		private stripe: Stripe | null,
-		private checkoutService: StripeCheckoutService,
-		userRepository: IUserRepository,
+		userRepository: UserRepository,
 		userCacheService: UserCacheService,
 		sessionTerminator: ISessionTerminator,
 		emailService: IEmailService,
@@ -56,7 +55,7 @@ export class StripeWebhookService {
 		cacheService: ICacheService,
 		giftService: StripeGiftService,
 		premiumService: StripePremiumService,
-		private donationRepository: IDonationRepository,
+		private donationRepository: DonationRepository,
 		kvDeletionQueue: KVAccountDeletionQueueService,
 		premiumStateReconciliationQueueService: PremiumStateReconciliationQueueService,
 		private ageVerificationService: AgeVerificationService | null,
@@ -64,6 +63,7 @@ export class StripeWebhookService {
 		snowflakeService: ISnowflakeService,
 		private billingRepository: BillingRepository,
 		private refundService: StripeRefundService,
+		storeEntitlementService: StoreEntitlementService | null = null,
 	) {
 		this.checkoutHandler = new StripeCheckoutWebhookHandler(
 			stripe,
@@ -80,8 +80,8 @@ export class StripeWebhookService {
 		const giftReversalHandler = new StripeGiftReversalHandler(
 			userRepository,
 			gatewayService,
-			premiumService,
 			premiumStateReconciliationQueueService,
+			storeEntitlementService,
 		);
 		const auditService = new AdminAuditService(adminRepository, snowflakeService);
 		this.paymentFraudService = new StripePaymentFraudService({
@@ -105,6 +105,7 @@ export class StripeWebhookService {
 			premiumStateReconciliationQueueService,
 			reconciler,
 			billingRepository,
+			storeEntitlementService,
 		);
 		this.disputeHandler = new StripeDisputeWebhookHandler(
 			userRepository,
@@ -171,10 +172,6 @@ export class StripeWebhookService {
 				);
 				if (checkoutSession.metadata?.verification_type === 'uk_age_verification' && this.ageVerificationService) {
 					await this.ageVerificationService.completeVerification(checkoutSession);
-					break;
-				}
-				if (checkoutSession.metadata?.setup_type === 'localized_card_preapproval') {
-					await this.checkoutService.completeLocalizedCardPreapproval(checkoutSession);
 					break;
 				}
 				await this.checkoutHandler.handleCheckoutSessionCompleted(checkoutSession);

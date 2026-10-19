@@ -9,9 +9,7 @@ import type {ChannelRepository} from '@app/api/channel/ChannelRepository';
 import type {ChannelService} from '@app/api/channel/services/ChannelService';
 import type {ConnectionRepository} from '@app/api/connection/ConnectionRepository';
 import {ConnectionService} from '@app/api/connection/ConnectionService';
-import type {NcmecSubmissionService} from '@app/api/csam/NcmecSubmissionService';
 import {DonationRepository} from '@app/api/donation/DonationRepository';
-import type {IDonationRepository} from '@app/api/donation/IDonationRepository';
 import type {FavoriteMemeRepository} from '@app/api/favorite_meme/FavoriteMemeRepository';
 import type {GuildAuditLogService} from '@app/api/guild/GuildAuditLogService';
 import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
@@ -38,7 +36,6 @@ import type {InviteService} from '@app/api/invite/InviteService';
 import {Logger} from '@app/api/Logger';
 import type {LimitConfigService} from '@app/api/limits/LimitConfigService';
 import {createGuildStackServices} from '@app/api/middleware/GuildStackServiceFactory';
-import {getIpInfoService} from '@app/api/middleware/ServiceMiddleware';
 import {
 	ensureVoiceResourcesInitialized,
 	getGatewayService,
@@ -76,7 +73,6 @@ import {
 	getKVActivityTracker,
 	getKVBulkMessageDeletionQueue,
 	getLimitConfigService,
-	getNcmecSubmissionService,
 	getOAuth2TokenRepository,
 	getPremiumStateReconciliationQueueService,
 	getPurgeQueue,
@@ -97,6 +93,8 @@ import type {OAuth2TokenRepository} from '@app/api/oauth/repositories/OAuth2Toke
 import type {ReadStateRepository} from '@app/api/read_state/ReadStateRepository';
 import type {ReadStateService} from '@app/api/read_state/ReadStateService';
 import type {ReportRepository} from '@app/api/report/ReportRepository';
+import type {StoreEntitlementService} from '@app/api/store_billing/StoreEntitlementService';
+import {createStoreEntitlementService} from '@app/api/store_billing/StoreEntitlementServiceFactory';
 import {getStripeClient} from '@app/api/stripe/StripeClient';
 import {PaymentRepository} from '@app/api/user/repositories/PaymentRepository';
 import type {UserRepository} from '@app/api/user/repositories/UserRepository';
@@ -106,6 +104,7 @@ import {UserHarvestRepository} from '@app/api/user/UserHarvestRepository';
 import type {UserPermissionUtils} from '@app/api/utils/UserPermissionUtils';
 import type {VoiceRepository} from '@app/api/voice/VoiceRepository';
 import type {VoiceTopology} from '@app/api/voice/VoiceTopology';
+import type {WebhookRepository} from '@app/api/webhook/WebhookRepository';
 import type {WorkerTaskName} from '@app/api/worker/WorkerLaneConfig';
 import type {ICacheService} from '@pkgs/cache/src/ICacheService';
 import type {IEmailService} from '@pkgs/email/src/IEmailService';
@@ -148,6 +147,7 @@ export interface WorkerDependencies {
 	emailService: IEmailService;
 	instanceConfigRepository: InstanceConfigRepository;
 	inviteService: InviteService;
+	webhookRepository: WebhookRepository;
 	workerService: IWorkerService<WorkerTaskName>;
 	unfurlerService: IUnfurlerService;
 	embedService: EmbedService;
@@ -164,10 +164,10 @@ export interface WorkerDependencies {
 	channelService: ChannelService;
 	guildAuditLogService: GuildAuditLogService;
 	contactChangeLogService: UserContactChangeLogService;
-	ncmecSubmissionService: NcmecSubmissionService;
-	donationRepository: IDonationRepository;
+	donationRepository: DonationRepository;
 	guildService: GuildService;
 	billingRepository: BillingRepository;
+	storeEntitlementService: StoreEntitlementService;
 	stripe: Stripe | null;
 }
 
@@ -192,6 +192,7 @@ export async function initializeWorkerDependencies(snowflakeService: ISnowflakeS
 	const instanceConfigRepository = getInstanceConfigRepository();
 	const limitConfigService = getLimitConfigService();
 	await instanceConfigRepository.initialize();
+	await instanceConfigRepository.ensureAccountIdentityMode();
 	await limitConfigService.initialize();
 	limitConfigService.setAsGlobalInstance();
 	const userCacheService = createUserCacheService();
@@ -202,7 +203,6 @@ export async function initializeWorkerDependencies(snowflakeService: ISnowflakeS
 	const connectionService = new ConnectionService(connectionRepository, gatewayService);
 	const mediaService = getMediaService();
 	const discriminatorService = getDiscriminatorService();
-	const ncmecSubmissionService = getNcmecSubmissionService();
 	const avatarService = getAvatarService();
 	const entityAssetService = getEntityAssetService();
 	await ensureVirusScanInitialized();
@@ -234,7 +234,6 @@ export async function initializeWorkerDependencies(snowflakeService: ISnowflakeS
 	}
 	const inviteRepository = getInviteRepository();
 	const webhookRepository = getWebhookRepository();
-	const ipInfoService = getIpInfoService();
 	const contactChangeLogService = getContactChangeLogService();
 	const apiContext = createApiContext();
 	const {channelService, guildService, inviteService} = createGuildStackServices({
@@ -260,9 +259,16 @@ export async function initializeWorkerDependencies(snowflakeService: ISnowflakeS
 		voiceRoomStore,
 		liveKitService,
 		voiceAvailabilityService,
-		ipInfoService,
 	});
-	const billingRepository = new BillingRepository(snowflakeService, kvClient);
+	const billingRepository = new BillingRepository(kvClient);
+	const storeEntitlementService = createStoreEntitlementService({
+		userRepository,
+		userCacheService,
+		gatewayService,
+		kvClient,
+		snowflakeService,
+		premiumStateReconciliationQueueService,
+	});
 	Logger.info('Worker dependencies initialized successfully');
 	return {
 		kvClient,
@@ -297,6 +303,7 @@ export async function initializeWorkerDependencies(snowflakeService: ISnowflakeS
 		emailService,
 		instanceConfigRepository,
 		inviteService,
+		webhookRepository,
 		workerService,
 		unfurlerService,
 		embedService,
@@ -314,9 +321,9 @@ export async function initializeWorkerDependencies(snowflakeService: ISnowflakeS
 		guildService,
 		donationRepository,
 		billingRepository,
+		storeEntitlementService,
 		guildAuditLogService,
 		contactChangeLogService,
-		ncmecSubmissionService,
 		get stripe() {
 			return getStripeClient();
 		},

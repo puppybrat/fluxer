@@ -6,6 +6,9 @@ import {HttpResponse, http, type RequestHandler} from 'msw';
 const STRIPE_API_BASE = 'https://api.stripe.com';
 
 interface CheckoutSessionParams {
+	adaptive_pricing?: {
+		enabled?: string;
+	};
 	billing_address_collection?: string;
 	customer?: string;
 	customer_email?: string;
@@ -60,9 +63,7 @@ interface StripeApiMockConfig {
 	charges?: Record<string, Partial<MockStripeCharge>>;
 	customers?: Record<string, Partial<MockStripeCustomer>>;
 	invoices?: Record<string, Partial<MockStripeInvoice> & {subscriptionId?: string}>;
-	paymentIntents?: Record<string, Partial<MockStripePaymentIntent>>;
 	paymentMethods?: Record<string, Partial<MockStripePaymentMethod>>;
-	setupIntents?: Record<string, Partial<MockStripeSetupIntent>>;
 	subscriptions?: Record<string, Partial<MockStripeSubscriptionState>>;
 	prices?: Record<string, MockStripePriceOverrides>;
 }
@@ -105,7 +106,7 @@ interface SubscriptionScheduleParams {
 	proration_behavior?: string;
 }
 
-export interface StripeApiMockSpies {
+interface StripeApiMockSpies {
 	createdCheckoutSessions: Array<CheckoutSessionParams>;
 	createdPortalSessions: Array<PortalSessionParams>;
 	createdCustomers: Array<{
@@ -322,6 +323,7 @@ interface MockStripeSubscriptionState {
 	latest_invoice: string | null;
 	status: 'active' | 'canceled' | 'incomplete' | 'past_due' | 'trialing';
 	schedule_id: string | null;
+	metadata: Record<string, string>;
 }
 
 interface MockStripeSubscriptionSchedule {
@@ -355,7 +357,12 @@ interface MockStripeSubscriptionSchedule {
 
 const PRICE_ID_CURRENCY_MARKERS = ['eur', 'brl', 'dkk', 'inr', 'nok', 'pln', 'sek', 'try'] as const;
 
+const ISK_PRICE_ID_PATTERN = /(?:^|_)isk(?:_|$)/;
+
 function inferPriceIdCurrency(normalizedPriceId: string): string {
+	if (ISK_PRICE_ID_PATTERN.test(normalizedPriceId)) {
+		return 'isk';
+	}
 	return PRICE_ID_CURRENCY_MARKERS.find((marker) => normalizedPriceId.includes(marker)) ?? 'usd';
 }
 
@@ -513,14 +520,6 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 					overrides.payment_method_details ?? createDefaultCharge(chargeId).payment_method_details,
 			});
 		}
-		for (const [paymentIntentId, overrides] of Object.entries(config.paymentIntents ?? {})) {
-			paymentIntentStore.set(paymentIntentId, {
-				...createDefaultPaymentIntent(paymentIntentId),
-				...overrides,
-				id: paymentIntentId,
-				object: 'payment_intent',
-			});
-		}
 		for (const [paymentMethodId, overrides] of Object.entries(config.paymentMethods ?? {})) {
 			const defaultPaymentMethod = createDefaultPaymentMethod(paymentMethodId, overrides.customer ?? 'cus_test_1');
 			paymentMethodStore.set(paymentMethodId, {
@@ -535,42 +534,6 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 					exp_year: overrides.card?.exp_year ?? defaultPaymentMethod.card.exp_year,
 					last4: overrides.card?.last4 ?? defaultPaymentMethod.card.last4,
 				},
-			});
-		}
-		for (const [setupIntentId, overrides] of Object.entries(config.setupIntents ?? {})) {
-			const defaultSetupIntent = createDefaultSetupIntent(setupIntentId);
-			const paymentMethodOverride = overrides.payment_method;
-			const paymentMethod =
-				typeof paymentMethodOverride === 'string' || paymentMethodOverride == null
-					? (paymentMethodOverride ?? defaultSetupIntent.payment_method)
-					: (() => {
-							const defaultPaymentMethod = createDefaultPaymentMethod(
-								paymentMethodOverride.id ?? `pm_${setupIntentId}`,
-							);
-							const mergedPaymentMethod: MockStripePaymentMethod = {
-								...defaultPaymentMethod,
-								...paymentMethodOverride,
-								id: paymentMethodOverride.id ?? `pm_${setupIntentId}`,
-								object: 'payment_method',
-								card: {
-									brand: paymentMethodOverride.card?.brand ?? defaultPaymentMethod.card.brand,
-									country: paymentMethodOverride.card?.country ?? defaultPaymentMethod.card.country,
-									exp_month: paymentMethodOverride.card?.exp_month ?? defaultPaymentMethod.card.exp_month,
-									exp_year: paymentMethodOverride.card?.exp_year ?? defaultPaymentMethod.card.exp_year,
-									last4: paymentMethodOverride.card?.last4 ?? defaultPaymentMethod.card.last4,
-								},
-							};
-							return mergedPaymentMethod;
-						})();
-			if (paymentMethod && typeof paymentMethod !== 'string') {
-				paymentMethodStore.set(paymentMethod.id, paymentMethod);
-			}
-			setupIntentStore.set(setupIntentId, {
-				...defaultSetupIntent,
-				...overrides,
-				id: setupIntentId,
-				object: 'setup_intent',
-				payment_method: paymentMethod,
 			});
 		}
 		for (const [customerId, overrides] of Object.entries(config.customers ?? {})) {
@@ -610,6 +573,7 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 			subscriptionStore.set(subscriptionId, {
 				...createDefaultSubscriptionState(),
 				...overrides,
+				metadata: {...overrides.metadata},
 			});
 		}
 	}
@@ -829,6 +793,7 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 			latest_invoice: null,
 			status: 'active',
 			schedule_id: null,
+			metadata: {},
 		};
 	}
 	function getOrCreateSubscriptionState(subscriptionId: string): MockStripeSubscriptionState {
@@ -893,7 +858,7 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 				? getPaymentMethod(subState.default_payment_method)
 				: null,
 			livemode: false,
-			metadata: {},
+			metadata: {...subState.metadata},
 			schedule: subState.schedule_id,
 			start_date: Math.floor(Date.now() / 1000) - 90 * 24 * 60 * 60,
 		};
@@ -1389,7 +1354,12 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 			}
 			spies.updatedSubscriptions.push({id: id as string, params: updateParams});
 			const subState = getOrCreateSubscriptionState(id as string);
-			if (updateParams.trial_end) {
+			if (updateParams.trial_end === 'now') {
+				const nowUnix = Math.floor(Date.now() / 1000);
+				subState.trial_end = null;
+				subState.current_period_start = nowUnix;
+				subState.current_period_end = nowUnix + (subState.interval === 'year' ? 365 : 30) * 24 * 60 * 60;
+			} else if (updateParams.trial_end) {
 				subState.trial_end = Number(updateParams.trial_end);
 			}
 			if ('cancel_at' in updateParams) {
@@ -1403,6 +1373,15 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 			}
 			if (typeof updateParams.default_payment_method === 'string') {
 				subState.default_payment_method = updateParams.default_payment_method;
+			}
+			if (updateParams.metadata && typeof updateParams.metadata === 'object') {
+				for (const [key, value] of Object.entries(updateParams.metadata as Record<string, string>)) {
+					if (value === '') {
+						delete subState.metadata[key];
+					} else {
+						subState.metadata[key] = value;
+					}
+				}
 			}
 			const updatedItem = Array.isArray(updateParams.items) ? updateParams.items[0] : null;
 			if (updatedItem && typeof updatedItem === 'object') {
@@ -1421,10 +1400,7 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 				}
 			}
 			subscriptionStore.set(id as string, subState);
-			return HttpResponse.json({
-				...mapSubscriptionStateToStripeSubscription(id as string, subState),
-				metadata: updateParams.metadata || {},
-			});
+			return HttpResponse.json(mapSubscriptionStateToStripeSubscription(id as string, subState));
 		}),
 		http.delete(`${STRIPE_API_BASE}/v1/subscriptions/:id`, ({params}) => {
 			const {id} = params;
@@ -1565,6 +1541,19 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 			const formData = await request.formData();
 			const updateParams = parseFormDataToObject(formData);
 			spies.updatedCustomers.push({id: customerId, params: updateParams});
+			if (config.customerShouldFail) {
+				return HttpResponse.json(
+					{
+						error: {
+							type: 'invalid_request_error',
+							message: 'No such customer',
+							code: 'resource_missing',
+							param: 'id',
+						},
+					},
+					{status: 404},
+				);
+			}
 			const customer = getCustomer(customerId);
 			const invoiceSettingsUpdate =
 				updateParams.invoice_settings && typeof updateParams.invoice_settings === 'object'
@@ -1572,6 +1561,7 @@ export function createStripeApiHandlers(config: StripeApiMockConfig = {}): Strip
 					: null;
 			const updatedCustomer: MockStripeCustomer = {
 				...customer,
+				email: typeof updateParams.email === 'string' ? updateParams.email : customer.email,
 				invoice_settings: invoiceSettingsUpdate
 					? {
 							...customer.invoice_settings,
@@ -1857,6 +1847,8 @@ export function createSubscriptionDeletedEvent(options: {
 	subscriptionId?: string;
 	customerId?: string;
 	endedAt?: number;
+	cancellationReason?: 'cancellation_requested' | 'payment_disputed' | 'payment_failed';
+	interval?: 'month' | 'year';
 }): StripeWebhookEventData {
 	const nowSeconds = Math.floor(Date.now() / 1000);
 	return {
@@ -1869,6 +1861,15 @@ export function createSubscriptionDeletedEvent(options: {
 				status: 'canceled',
 				canceled_at: nowSeconds,
 				ended_at: options.endedAt ?? nowSeconds,
+				...(options.cancellationReason ? {cancellation_details: {reason: options.cancellationReason}} : {}),
+				...(options.interval
+					? {
+							items: {
+								object: 'list',
+								data: [{object: 'subscription_item', price: {recurring: {interval: options.interval}}}],
+							},
+						}
+					: {}),
 			},
 		},
 	};

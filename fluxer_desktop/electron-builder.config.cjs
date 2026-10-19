@@ -1,21 +1,77 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-const isCanary = process.env.BUILD_CHANNEL === 'canary';
 const {execFile} = require('node:child_process');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const {promisify} = require('node:util');
 const execFileAsync = promisify(execFile);
+const CHANNELS = {
+	stable: {
+		productName: 'Fluxer',
+		linuxOptDirName: 'Fluxer',
+		artifactProductName: 'Fluxer',
+		appId: 'app.fluxer',
+		iconDirectory: 'icons-stable',
+		packageName: 'fluxer_desktop',
+		linuxPackageName: 'fluxer',
+		linuxDesktopId: 'app.fluxer.FluxerDesktop',
+		linuxComment: 'Instant messaging and VoIP',
+		protocolScheme: 'fluxer',
+		macEntitlements: 'build_resources/entitlements.mac.stable.plist',
+		notarize: true,
+		provisioningProfile: 'build_resources/profiles/Fluxer.provisionprofile',
+	},
+	canary: {
+		productName: 'Fluxer Canary',
+		linuxOptDirName: 'fluxer-canary',
+		artifactProductName: 'Fluxer-Canary',
+		appId: 'app.fluxer.canary',
+		iconDirectory: 'icons-canary',
+		packageName: 'fluxer_desktop_canary',
+		linuxPackageName: 'fluxer-canary',
+		linuxDesktopId: 'app.fluxer.FluxerDesktopCanary',
+		linuxComment: 'Canary build of Fluxer',
+		protocolScheme: 'fluxer',
+		macEntitlements: 'build_resources/entitlements.mac.canary.plist',
+		notarize: true,
+		provisioningProfile: 'build_resources/profiles/Fluxer_Canary.provisionprofile',
+	},
+	development: {
+		productName: 'Fluxer Development',
+		linuxOptDirName: 'fluxer-development',
+		artifactProductName: 'Fluxer-Development',
+		appId: 'app.fluxer.development',
+		iconDirectory: 'icons-development',
+		packageName: 'fluxer_desktop_development',
+		linuxPackageName: 'fluxer-development',
+		linuxDesktopId: 'app.fluxer.FluxerDesktopDevelopment',
+		linuxComment: 'Development build of Fluxer',
+		protocolScheme: 'fluxer-development',
+		macEntitlements: 'build_resources/entitlements.mac.development.plist',
+		notarize: false,
+		provisioningProfile: null,
+	},
+};
+const buildChannel = process.env.BUILD_CHANNEL || 'stable';
+const channel = CHANNELS[buildChannel];
+
+if (!channel) {
+	throw new Error(`Unsupported BUILD_CHANNEL: ${buildChannel}. Expected one of ${Object.keys(CHANNELS).join(', ')}`);
+}
+
+const isCanary = buildChannel === 'canary';
+const isStable = buildChannel === 'stable';
 const isLinuxBuild = process.argv.includes('--linux');
-const productName = isCanary ? 'Fluxer Canary' : 'Fluxer';
-const linuxOptDirName = isCanary ? 'fluxer-canary' : 'Fluxer';
+const productName = channel.productName;
+const linuxOptDirName = channel.linuxOptDirName;
 const installedProductName = isLinuxBuild ? linuxOptDirName : productName;
-const artifactProductName = isCanary ? 'Fluxer-Canary' : 'Fluxer';
-const appId = isCanary ? 'app.fluxer.canary' : 'app.fluxer';
-const iconDir = isCanary ? 'icons-canary' : 'icons-stable';
-const packageName = isCanary ? 'fluxer_desktop_canary' : 'fluxer_desktop';
-const linuxPackageName = isCanary ? 'fluxer-canary' : 'fluxer';
+const artifactProductName = channel.artifactProductName;
+const appId = channel.appId;
+const iconDir = channel.iconDirectory;
+const packageName = channel.packageName;
+const linuxPackageName = channel.linuxPackageName;
+const linuxDesktopId = channel.linuxDesktopId;
 const linuxDesktopActionIds = ['open-settings', 'new-dm'];
 const linuxDesktopActionList = `${linuxDesktopActionIds.join(';')};`;
 const linuxGlibcBaseline = Object.freeze({major: 2, minor: 35, patch: 0, name: 'GLIBC_2.35'});
@@ -32,12 +88,12 @@ const legacyLinuxStablePackageNames = {
 	'.deb': legacyLinuxStableDebPackageName,
 	'.rpm': legacyLinuxStableRpmPackageName,
 };
-const legacyLinuxStableDebFpmArgs = isCanary
-	? []
-	: ['--replaces', legacyLinuxStableDebPackageName, '--conflicts', legacyLinuxStableDebPackageName];
-const legacyLinuxStableRpmFpmArgs = isCanary
-	? []
-	: ['--replaces', legacyLinuxStableRpmPackageName, '--conflicts', legacyLinuxStableRpmPackageName];
+const legacyLinuxStableDebFpmArgs = isStable
+	? ['--replaces', legacyLinuxStableDebPackageName, '--conflicts', legacyLinuxStableDebPackageName]
+	: [];
+const legacyLinuxStableRpmFpmArgs = isStable
+	? ['--replaces', legacyLinuxStableRpmPackageName, '--conflicts', legacyLinuxStableRpmPackageName]
+	: [];
 const legacyLinuxCanaryOptDir = '/opt/Fluxer Canary';
 const legacyLinuxOptDirSweepScript = path.resolve(__dirname, 'packaging/linux/rpm-post-transaction.sh');
 const legacyLinuxOptDirRpmFpmArgs = isCanary ? ['--rpm-posttrans', legacyLinuxOptDirSweepScript] : [];
@@ -46,9 +102,6 @@ const isMacBuild = process.argv.includes('--mac');
 const isWindowsBuild = process.argv.includes('--win');
 const targetPlatform = isLinuxBuild ? 'linux' : isMacBuild ? 'darwin' : isWindowsBuild ? 'win32' : process.platform;
 const metadataName = isLinuxBuild ? linuxPackageName : packageName;
-const provisioningProfile = isCanary
-	? 'build_resources/profiles/Fluxer_Canary.provisionprofile'
-	: 'build_resources/profiles/Fluxer.provisionprofile';
 const supportedTargetArchs = ['x64', 'arm64'];
 const supportedMacTargetArchs = [...supportedTargetArchs, 'universal'];
 const electronArch = process.env.ELECTRON_ARCH;
@@ -80,6 +133,8 @@ const winTargets = [
 	},
 ];
 const fluxerNativePackages = [
+	'@fluxer/app-store',
+	'@fluxer/gateway-socket',
 	'@fluxer/mac-app-audio',
 	'@fluxer/mac-clipboard',
 	'@fluxer/mac-screen-capture',
@@ -90,11 +145,9 @@ const fluxerNativePackages = [
 	'@fluxer/win-game-capture',
 	'@fluxer/win-clipboard',
 	'@fluxer/win-shell',
-	'@fluxer/win-toast',
 	'@fluxer/windows-input-hook',
 	'@fluxer/linux-audio-capture',
 	'@fluxer/linux-portals',
-	'@fluxer/linux-screen-capture',
 	'@fluxer/linux-notifications',
 	'@fluxer/linux-evdev',
 	'@fluxer/linux-input-hook',
@@ -114,22 +167,24 @@ const fluxerNativePackagesByPlatform = {
 		'@fluxer/platform-info',
 		'@fluxer/webauthn',
 		'@fluxer/hardware-encoder',
+		'@fluxer/app-store',
+		'@fluxer/gateway-socket',
 	],
 	win32: [
 		'@fluxer/win-process-loopback',
 		'@fluxer/win-game-capture',
 		'@fluxer/win-clipboard',
 		'@fluxer/win-shell',
-		'@fluxer/win-toast',
 		'@fluxer/windows-input-hook',
 		'@fluxer/platform-info',
 		'@fluxer/webauthn',
 		'@fluxer/hardware-encoder',
+		'@fluxer/app-store',
+		'@fluxer/gateway-socket',
 	],
 	linux: [
 		'@fluxer/linux-audio-capture',
 		'@fluxer/linux-portals',
-		'@fluxer/linux-screen-capture',
 		'@fluxer/linux-notifications',
 		'@fluxer/linux-evdev',
 		'@fluxer/linux-input-hook',
@@ -137,6 +192,8 @@ const fluxerNativePackagesByPlatform = {
 		'@fluxer/platform-info',
 		'@fluxer/webauthn',
 		'@fluxer/hardware-encoder',
+		'@fluxer/app-store',
+		'@fluxer/gateway-socket',
 	],
 };
 const velopackNativeFiles = [
@@ -187,10 +244,6 @@ const nativeRuntimeFilePatterns = [
 	'node_modules/@fluxer/win-shell/index.js',
 	'node_modules/@fluxer/win-shell/loader-diagnostics.cjs',
 	'node_modules/@fluxer/win-shell/*.node',
-	'node_modules/@fluxer/win-toast/package.json',
-	'node_modules/@fluxer/win-toast/index.js',
-	'node_modules/@fluxer/win-toast/loader-diagnostics.cjs',
-	'node_modules/@fluxer/win-toast/*.node',
 	'node_modules/@fluxer/linux-audio-capture/package.json',
 	'node_modules/@fluxer/linux-audio-capture/index.js',
 	'node_modules/@fluxer/linux-audio-capture/loader-diagnostics.cjs',
@@ -199,12 +252,6 @@ const nativeRuntimeFilePatterns = [
 	'node_modules/@fluxer/linux-portals/index.js',
 	'node_modules/@fluxer/linux-portals/loader-diagnostics.cjs',
 	'node_modules/@fluxer/linux-portals/*.node',
-	'node_modules/@fluxer/linux-screen-capture/package.json',
-	'node_modules/@fluxer/linux-screen-capture/index.js',
-	'node_modules/@fluxer/linux-screen-capture/loader-diagnostics.cjs',
-	'node_modules/@fluxer/linux-screen-capture/*.node',
-	'node_modules/@fluxer/linux-screen-capture/THIRD_PARTY_OBS_VKCAPTURE.md',
-	'node_modules/@fluxer/linux-screen-capture/obs-vkcapture/**/*',
 	'node_modules/@fluxer/linux-notifications/package.json',
 	'node_modules/@fluxer/linux-notifications/index.js',
 	'node_modules/@fluxer/linux-notifications/loader-diagnostics.cjs',
@@ -245,6 +292,16 @@ const nativeRuntimeFilePatterns = [
 	'node_modules/@fluxer/hardware-encoder/index.js',
 	'node_modules/@fluxer/hardware-encoder/index.d.ts',
 	'node_modules/@fluxer/hardware-encoder/*.node',
+	'node_modules/@fluxer/app-store/package.json',
+	'node_modules/@fluxer/app-store/index.js',
+	'node_modules/@fluxer/app-store/pure.cjs',
+	'node_modules/@fluxer/app-store/loader-diagnostics.cjs',
+	'node_modules/@fluxer/app-store/*.node',
+	'node_modules/@fluxer/gateway-socket/package.json',
+	'node_modules/@fluxer/gateway-socket/index.js',
+	'node_modules/@fluxer/gateway-socket/pure.cjs',
+	'node_modules/@fluxer/gateway-socket/loader-diagnostics.cjs',
+	'node_modules/@fluxer/gateway-socket/*.node',
 	'node_modules/.pnpm/@fluxer+*/node_modules/@fluxer/*/loader-diagnostics.cjs',
 	'node_modules/.pnpm/@fluxer+*/node_modules/@fluxer/*/pure.cjs',
 	'node_modules/.pnpm/@fluxer+win-process-loopback@*/node_modules/@fluxer/win-process-loopback/*.node',
@@ -254,13 +311,9 @@ const nativeRuntimeFilePatterns = [
 	),
 	'node_modules/.pnpm/@fluxer+win-clipboard@*/node_modules/@fluxer/win-clipboard/*.node',
 	'node_modules/.pnpm/@fluxer+win-shell@*/node_modules/@fluxer/win-shell/*.node',
-	'node_modules/.pnpm/@fluxer+win-toast@*/node_modules/@fluxer/win-toast/*.node',
 	'node_modules/.pnpm/@fluxer+windows-input-hook@*/node_modules/@fluxer/windows-input-hook/*.node',
 	'node_modules/.pnpm/@fluxer+linux-audio-capture@*/node_modules/@fluxer/linux-audio-capture/*.node',
 	'node_modules/.pnpm/@fluxer+linux-portals@*/node_modules/@fluxer/linux-portals/*.node',
-	'node_modules/.pnpm/@fluxer+linux-screen-capture@*/node_modules/@fluxer/linux-screen-capture/*.node',
-	'node_modules/.pnpm/@fluxer+linux-screen-capture@*/node_modules/@fluxer/linux-screen-capture/THIRD_PARTY_OBS_VKCAPTURE.md',
-	'node_modules/.pnpm/@fluxer+linux-screen-capture@*/node_modules/@fluxer/linux-screen-capture/obs-vkcapture/**/*',
 	'node_modules/.pnpm/@fluxer+linux-notifications@*/node_modules/@fluxer/linux-notifications/*.node',
 	'node_modules/.pnpm/@fluxer+linux-evdev@*/node_modules/@fluxer/linux-evdev/*.node',
 	'node_modules/.pnpm/@fluxer+linux-input-hook@*/node_modules/@fluxer/linux-input-hook/*.node',
@@ -274,6 +327,8 @@ const nativeRuntimeFilePatterns = [
 	'node_modules/.pnpm/@fluxer+webauthn@*/node_modules/@fluxer/webauthn/*.node',
 	'node_modules/.pnpm/@fluxer+webauthn@*/node_modules/@fluxer/webauthn/*.so*',
 	'node_modules/.pnpm/@fluxer+hardware-encoder@*/node_modules/@fluxer/hardware-encoder/*.node',
+	'node_modules/.pnpm/@fluxer+app-store@*/node_modules/@fluxer/app-store/*.node',
+	'node_modules/.pnpm/@fluxer+gateway-socket@*/node_modules/@fluxer/gateway-socket/*.node',
 ];
 const nativeBuildArtifactExcludes = [
 	'!node_modules/@fluxer/**/src/**/*',
@@ -291,6 +346,7 @@ const nativeBuildArtifactExcludes = [
 ];
 const packagedRuntimeArtifactExcludes = [
 	'!dist/**/*.map',
+	'!dist/.build-in-progress',
 	'!node_modules/**/.cache/**/*',
 	'!node_modules/**/.github/**/*',
 	'!node_modules/**/.yarn/**/*',
@@ -331,20 +387,16 @@ const bundledDependencyExcludes = [
 	'!node_modules/xmlbuilder/**/*',
 ];
 const platformNativeRuntimeExcludes = platformNativeExcludes(targetPlatform, targetNativeArch);
-const platformRuntimeDependencyExcludes =
-	targetPlatform === 'darwin'
-		? []
-		: ['!node_modules/github-url-to-object/**/*', '!node_modules/ms/**/*', '!node_modules/update-electron-app/**/*'];
 const linuxDesktopEntry = {
 	Name: productName,
 	GenericName: 'Instant Messenger',
-	Comment: isCanary ? 'Canary build of Fluxer' : 'Instant messaging and VoIP',
+	Comment: channel.linuxComment,
 	Keywords: 'chat;im;messaging;messenger;voip;voice;video;call;',
 	Categories: 'Network;InstantMessaging;Chat;',
-	StartupWMClass: linuxPackageName,
+	StartupWMClass: linuxDesktopId,
 	StartupNotify: 'true',
 	SingleMainWindow: 'true',
-	MimeType: 'x-scheme-handler/fluxer;',
+	MimeType: `x-scheme-handler/${channel.protocolScheme};`,
 	'X-GNOME-UsesNotifications': 'true',
 };
 const linuxDesktopEntryWithActions = {
@@ -468,6 +520,14 @@ function expectedNativeRuntimeArtifactsForArch(platform, arch) {
 		packageName: '@fluxer/hardware-encoder',
 		relativePath: `hardware-encoder.${tag}.node`,
 	});
+	artifacts.push({
+		packageName: '@fluxer/app-store',
+		relativePath: `app-store.${tag}.node`,
+	});
+	artifacts.push({
+		packageName: '@fluxer/gateway-socket',
+		relativePath: `gateway-socket.${tag}.node`,
+	});
 	if (platform === 'darwin') {
 		artifacts.push({
 			packageName: '@fluxer/mac-app-audio',
@@ -512,10 +572,6 @@ function expectedNativeRuntimeArtifactsForArch(platform, arch) {
 			relativePath: `win-shell.${tag}.node`,
 		});
 		artifacts.push({
-			packageName: '@fluxer/win-toast',
-			relativePath: `win-toast.${tag}.node`,
-		});
-		artifacts.push({
 			packageName: '@fluxer/windows-input-hook',
 			relativePath: `windows-input-hook.${tag}.node`,
 		});
@@ -531,10 +587,6 @@ function expectedNativeRuntimeArtifactsForArch(platform, arch) {
 		artifacts.push({
 			packageName: '@fluxer/linux-portals',
 			relativePath: `linux-portals.${tag}.node`,
-		});
-		artifacts.push({
-			packageName: '@fluxer/linux-screen-capture',
-			relativePath: `linux-screen-capture.${tag}.node`,
 		});
 		artifacts.push({
 			packageName: '@fluxer/linux-notifications',
@@ -1007,11 +1059,91 @@ async function verifyLinuxGlibcCompatibility(context) {
 	);
 }
 
+const NATIVE_MODULE_PREFLIGHT_MODULES = require('./src/main/NativeModulePreflightModules.json');
+
+function packagedResourcesDir(context) {
+	if (context.electronPlatformName === 'darwin' || context.electronPlatformName === 'mas') {
+		return path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`, 'Contents', 'Resources');
+	}
+	return path.join(context.appOutDir, 'resources');
+}
+
+async function readAsarFileList(asarPath) {
+	const handle = await fs.open(asarPath, 'r');
+	try {
+		const prefix = Buffer.alloc(16);
+		await handle.read(prefix, 0, 16, 0);
+		const header = Buffer.alloc(prefix.readUInt32LE(12));
+		await handle.read(header, 0, header.length, 16);
+		const files = new Set();
+		const walk = (node, prefixPath) => {
+			for (const [name, child] of Object.entries(node.files ?? {})) {
+				const childPath = prefixPath ? `${prefixPath}/${name}` : name;
+				if (child.files) walk(child, childPath);
+				else files.add(childPath);
+			}
+		};
+		walk(JSON.parse(header.toString('utf8')), '');
+		return files;
+	} finally {
+		await handle.close();
+	}
+}
+
+async function verifyPreflightModulesPackaged(context) {
+	const platform = context.electronPlatformName === 'mas' ? 'darwin' : context.electronPlatformName;
+	const asarPath = path.join(packagedResourcesDir(context), 'app.asar');
+	const files = await readAsarFileList(asarPath);
+	const missing = [];
+	for (const spec of NATIVE_MODULE_PREFLIGHT_MODULES) {
+		if (!spec.platforms.includes(platform)) continue;
+		const manifestPath = `node_modules/${spec.name}/package.json`;
+		if (!files.has(manifestPath)) {
+			missing.push(spec.name);
+			continue;
+		}
+		const manifest = JSON.parse((await readAsarEntry(asarPath, manifestPath)).toString('utf8'));
+		const entry = path.posix.normalize(`node_modules/${spec.name}/${manifest.main ?? 'index.js'}`);
+		if (!files.has(entry)) {
+			missing.push(`${spec.name} (${entry})`);
+		}
+	}
+	if (missing.length > 0) {
+		throw new Error(
+			[
+				`The packaged app for ${platform} is missing native module(s) that the startup preflight requires:`,
+				...missing.map((entry) => `  - ${entry}`),
+				'Package them or remove them from src/main/NativeModulePreflightModules.json.',
+			].join('\n'),
+		);
+	}
+}
+
+async function readAsarEntry(asarPath, entryPath) {
+	const handle = await fs.open(asarPath, 'r');
+	try {
+		const prefix = Buffer.alloc(16);
+		await handle.read(prefix, 0, 16, 0);
+		const headerSize = prefix.readUInt32LE(4);
+		const header = Buffer.alloc(prefix.readUInt32LE(12));
+		await handle.read(header, 0, header.length, 16);
+		let node = JSON.parse(header.toString('utf8'));
+		for (const part of entryPath.split('/')) node = node.files[part];
+		if (node.unpacked) return await fs.readFile(path.join(`${asarPath}.unpacked`, ...entryPath.split('/')));
+		const data = Buffer.alloc(node.size);
+		await handle.read(data, 0, node.size, 8 + headerSize + Number(node.offset));
+		return data;
+	} finally {
+		await handle.close();
+	}
+}
+
 async function afterPack(context) {
 	await copyMissingPackagedNativeArtifacts(context);
 	await cleanupNativeBuildIntermediates(context);
 	await addLinuxLegacyBinarySymlink(context);
 	await verifyPackagedNativeArtifacts(context);
+	await verifyPreflightModulesPackaged(context);
 	await verifyLinuxGlibcCompatibility(context);
 }
 
@@ -1436,12 +1568,12 @@ async function verifyLinuxPackagesDeclareTheLegacyStableReplacement(buildResult)
 			...(replaces.includes(legacyName) ? ['replaces'] : []),
 			...(conflicts.includes(legacyName) ? ['conflicts'] : []),
 		];
-		if (isCanary && declared.length > 0) {
+		if (!isStable && declared.length > 0) {
 			violations.push({
 				artifactPath,
-				detail: `canary declares ${declared.join(' and ')} on ${legacyName}, which belongs to stable only`,
+				detail: `${buildChannel} declares ${declared.join(' and ')} on ${legacyName}, which belongs to stable only`,
 			});
-		} else if (!isCanary && declared.length !== 2) {
+		} else if (isStable && declared.length !== 2) {
 			violations.push({
 				artifactPath,
 				detail: `stable declares ${declared.join(' and ') || 'neither'} on ${legacyName}, expected both`,
@@ -1490,13 +1622,12 @@ module.exports = {
 		...packagedRuntimeArtifactExcludes,
 		...bundledDependencyExcludes,
 		...platformNativeRuntimeExcludes,
-		...platformRuntimeDependencyExcludes,
 	],
 	extraMetadata: {
 		main: 'dist/main/index.js',
 		name: metadataName,
 		...(process.env.VERSION ? {version: process.env.VERSION} : {}),
-		...(targetPlatform === 'linux' ? {desktopName: `${linuxPackageName}.desktop`} : {}),
+		...(targetPlatform === 'linux' ? {desktopName: `${linuxDesktopId}.desktop`} : {}),
 	},
 	extraResources: [
 		{
@@ -1522,22 +1653,23 @@ module.exports = {
 			to: 'badges',
 			filter: ['**/*'],
 		},
+		...(buildChannel === 'development' && targetPlatform === 'darwin'
+			? [{from: `build_resources/${iconDir}/_compiled/Assets.car`, to: 'Assets.car'}]
+			: []),
 	],
 	asar: {
 		smartUnpack: false,
 		unpack: [
 			'**/*.node',
+			'dist/renderer/**/*',
 			'node_modules/@fluxer/win-process-loopback/*.node',
 			...winGameCaptureTargetArchs.map(
 				(arch) => `node_modules/@fluxer/win-game-capture/win-game-capture.win32-${arch}-msvc.node`,
 			),
 			'node_modules/@fluxer/win-clipboard/*.node',
 			'node_modules/@fluxer/win-shell/*.node',
-			'node_modules/@fluxer/win-toast/*.node',
 			'node_modules/@fluxer/linux-audio-capture/*.node',
 			'node_modules/@fluxer/linux-portals/*.node',
-			'node_modules/@fluxer/linux-screen-capture/*.node',
-			'node_modules/@fluxer/linux-screen-capture/obs-vkcapture/**/*',
 			'node_modules/@fluxer/linux-notifications/*.node',
 			'node_modules/@fluxer/linux-evdev/*.node',
 			'node_modules/@fluxer/system-hunspell/*.node',
@@ -1552,6 +1684,8 @@ module.exports = {
 			'node_modules/@fluxer/platform-info/*.node',
 			'node_modules/@fluxer/webauthn/*.node',
 			'node_modules/@fluxer/webauthn/*.so*',
+			'node_modules/@fluxer/app-store/*.node',
+			'node_modules/@fluxer/gateway-socket/*.node',
 			'node_modules/.pnpm/@fluxer+win-process-loopback@*/node_modules/@fluxer/win-process-loopback/*.node',
 			...winGameCaptureTargetArchs.map(
 				(arch) =>
@@ -1559,12 +1693,9 @@ module.exports = {
 			),
 			'node_modules/.pnpm/@fluxer+win-clipboard@*/node_modules/@fluxer/win-clipboard/*.node',
 			'node_modules/.pnpm/@fluxer+win-shell@*/node_modules/@fluxer/win-shell/*.node',
-			'node_modules/.pnpm/@fluxer+win-toast@*/node_modules/@fluxer/win-toast/*.node',
 			'node_modules/.pnpm/@fluxer+windows-input-hook@*/node_modules/@fluxer/windows-input-hook/*.node',
 			'node_modules/.pnpm/@fluxer+linux-audio-capture@*/node_modules/@fluxer/linux-audio-capture/*.node',
 			'node_modules/.pnpm/@fluxer+linux-portals@*/node_modules/@fluxer/linux-portals/*.node',
-			'node_modules/.pnpm/@fluxer+linux-screen-capture@*/node_modules/@fluxer/linux-screen-capture/*.node',
-			'node_modules/.pnpm/@fluxer+linux-screen-capture@*/node_modules/@fluxer/linux-screen-capture/obs-vkcapture/**/*',
 			'node_modules/.pnpm/@fluxer+linux-notifications@*/node_modules/@fluxer/linux-notifications/*.node',
 			'node_modules/.pnpm/@fluxer+linux-evdev@*/node_modules/@fluxer/linux-evdev/*.node',
 			'node_modules/.pnpm/@fluxer+linux-input-hook@*/node_modules/@fluxer/linux-input-hook/*.node',
@@ -1578,6 +1709,8 @@ module.exports = {
 			'node_modules/.pnpm/@fluxer+platform-info@*/node_modules/@fluxer/platform-info/*.node',
 			'node_modules/.pnpm/@fluxer+webauthn@*/node_modules/@fluxer/webauthn/*.node',
 			'node_modules/.pnpm/@fluxer+webauthn@*/node_modules/@fluxer/webauthn/*.so*',
+			'node_modules/.pnpm/@fluxer+app-store@*/node_modules/@fluxer/app-store/*.node',
+			'node_modules/.pnpm/@fluxer+gateway-socket@*/node_modules/@fluxer/gateway-socket/*.node',
 		],
 	},
 	compression: 'normal',
@@ -1588,7 +1721,7 @@ module.exports = {
 		{
 			name: appId,
 			role: 'Viewer',
-			schemes: ['fluxer'],
+			schemes: [channel.protocolScheme],
 		},
 	],
 	beforePack: verifyNativePackageInputs,
@@ -1605,13 +1738,11 @@ module.exports = {
 		minimumSystemVersion: macOSMinimumSystemVersion,
 		icon: `build_resources/${iconDir}/_compiled/AppIcon.icns`,
 		darkModeSupport: true,
-		notarize: true,
+		notarize: channel.notarize,
 		sign: {
 			hardenedRuntime: true,
-			provisioningProfile,
-			entitlements: isCanary
-				? 'build_resources/entitlements.mac.canary.plist'
-				: 'build_resources/entitlements.mac.stable.plist',
+			...(channel.provisioningProfile ? {provisioningProfile: channel.provisioningProfile} : {}),
+			entitlements: channel.macEntitlements,
 			entitlementsInherit: 'build_resources/entitlements.mac.inherit.plist',
 		},
 		target: [
@@ -1630,6 +1761,9 @@ module.exports = {
 			NSAppleEventsUsageDescription: 'Fluxer needs access to Apple Events for automation features.',
 			NSAudioCaptureUsageDescription: 'Fluxer captures audio from the screen or window you choose to share.',
 			NSScreenCaptureUsageDescription: 'Fluxer captures the screen or window you choose to share.',
+			...(buildChannel === 'development' ? {CFBundleIconName: 'AppIcon'} : {}),
+			NSLocalNetworkUsageDescription:
+				'Fluxer needs local network access to reach a Fluxer instance you host on your own network. It never scans your network or connects to devices you have not pointed it at.',
 		},
 	},
 	dmg: {
@@ -1649,9 +1783,6 @@ module.exports = {
 	win: {
 		icon: `build_resources/${iconDir}/icon.ico`,
 		target: winTargets,
-	},
-	portable: {
-		artifactName: `${artifactProductName}-\${version}-portable-\${os}-\${arch}.\${ext}`,
 	},
 	linux: {
 		icon: `build_resources/${iconDir}/1024x1024.png`,

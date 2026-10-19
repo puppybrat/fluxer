@@ -251,22 +251,6 @@ impl AdminApiClient {
         Self::parse_response(response).await
     }
 
-    pub async fn put_void_with_reason(
-        &self,
-        path: &str,
-        body: Option<&serde_json::Value>,
-        audit_log_reason: Option<&str>,
-    ) -> ApiResult<()> {
-        let response = self
-            .send_json(Method::PUT, path, body, audit_log_reason)
-            .await?;
-        Self::parse_void_response(response).await
-    }
-
-    pub async fn delete_void(&self, path: &str, body: Option<&serde_json::Value>) -> ApiResult<()> {
-        self.delete_void_with_reason(path, body, None).await
-    }
-
     pub async fn delete_void_with_reason(
         &self,
         path: &str,
@@ -432,7 +416,7 @@ mod tests {
     use serde_json::{Value, json};
 
     #[test]
-    fn audit_log_reason_header_carries_utf8_bytes() {
+    fn audit_log_reason_header_keeps_utf8_bytes() {
         let reason = "§ 3 Regel – wiederholt 日本";
         let value = audit_log_reason_header(reason).expect("valid reason header");
         assert_eq!(value.as_bytes(), reason.as_bytes());

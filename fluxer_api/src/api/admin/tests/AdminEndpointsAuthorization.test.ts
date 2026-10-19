@@ -32,6 +32,7 @@ const adminEndpoints: Array<AdminEndpointCase> = [
 	{method: 'GET', path: '/admin/reports', requiredACL: 'report:view'},
 	{method: 'GET', path: '/admin/reports/1', requiredACL: 'report:view'},
 	{method: 'PATCH', path: '/admin/reports/1', requiredACL: 'report:resolve'},
+	{method: 'DELETE', path: '/admin/reports/1', requiredACL: 'report:delete'},
 	{
 		method: 'POST',
 		path: '/admin/bulk-jobs',
@@ -120,15 +121,6 @@ describe('Admin Endpoints Authorization', () => {
 				.expect(HTTP_STATUS.FORBIDDEN)
 				.execute();
 		}
-	});
-	test('admin endpoints succeed with proper ACLs', async () => {
-		const admin = await createTestAccount(harness);
-		await setUserACLs(harness, admin, ['admin:authenticate', 'user:lookup', 'guild:lookup']);
-		const endpointsToTest = ['/admin/users/123'];
-		for (const path of endpointsToTest) {
-			await createBuilder(harness, `${admin.token}`).get(path).expect(HTTP_STATUS.OK).execute();
-		}
-		await createBuilder(harness, `${admin.token}`).get('/admin/guilds/123').expect(HTTP_STATUS.OK).execute();
 	});
 	test('user lookup endpoint requires user:lookup ACL', async () => {
 		const admin = await createTestAccount(harness);

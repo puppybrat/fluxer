@@ -2,10 +2,11 @@
 
 import type {MessageID, UserID} from '@app/api/BrandedTypes';
 import {mapChannelToResponse} from '@app/api/channel/ChannelMappers';
-import type {IChannelRepositoryAggregate} from '@app/api/channel/repositories/IChannelRepositoryAggregate';
+import type {ChannelRepository} from '@app/api/channel/ChannelRepository';
 import {dispatchChannelEvent} from '@app/api/channel/services/ChannelGatewayDispatch';
 import {dispatchMessageCreateBroadcast} from '@app/api/channel/services/message/MessageGatewayDispatch';
 import {purgeMessageAttachments} from '@app/api/channel/services/message/MessageHelpers';
+import {withThreadParentFields} from '@app/api/channel/services/thread/ThreadParentSettings';
 import type {IPurgeQueue} from '@app/api/infrastructure/CachePurgeQueue';
 import type {IGatewayService} from '@app/api/infrastructure/IGatewayService';
 import type {IStorageService} from '@app/api/infrastructure/IStorageService';
@@ -16,7 +17,7 @@ import type {Message} from '@app/api/models/Message';
 
 export class ChannelUtilsService {
 	constructor(
-		private channelRepository: IChannelRepositoryAggregate,
+		private channelRepository: ChannelRepository,
 		private userCacheService: UserCacheService,
 		private storageService: IStorageService,
 		private gatewayService: IGatewayService,
@@ -48,12 +49,16 @@ export class ChannelUtilsService {
 
 	async dispatchChannelUpdate({channel, requestCache}: {channel: Channel; requestCache: RequestCache}): Promise<void> {
 		if (channel.guildId) {
-			const channelResponse = await mapChannelToResponse({
+			const channelResponse = await withThreadParentFields(
+				this.channelRepository.threads,
 				channel,
-				currentUserId: null,
-				userCacheService: this.userCacheService,
-				requestCache,
-			});
+				await mapChannelToResponse({
+					channel,
+					currentUserId: null,
+					userCacheService: this.userCacheService,
+					requestCache,
+				}),
+			);
 			await dispatchChannelEvent({
 				gatewayService: this.gatewayService,
 				channel,

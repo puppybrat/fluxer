@@ -6,10 +6,11 @@ import * as AuthSession from '@app/api/auth/AuthSession';
 import * as AuthUtility from '@app/api/auth/AuthUtility';
 import {createEmailRevertToken} from '@app/api/BrandedTypes';
 import type {User} from '@app/api/models/User';
+import {enqueueStripeCustomerEmailSync} from '@app/api/stripe/StripeCustomer';
 import {mapUserToPrivateResponse} from '@app/api/user/UserMappers';
+import {requireConfiguredClientIp} from '@app/api/utils/RequestClientIp';
 import {ValidationErrorCodes} from '@fluxer/constants/src/ValidationErrorCodes';
 import {InputValidationError} from '@fluxer/errors/src/domains/core/InputValidationError';
-import {requireClientIp} from '@fluxer/ip_utils/src/ClientIp';
 
 interface IssueEmailRevertTokenParams {
 	user: User;
@@ -44,7 +45,7 @@ export async function revertEmailChange(
 	user_id: string;
 	token: string;
 }> {
-	const {users, gateway, contactChangeLog, config} = ctx.services;
+	const {users, gateway, contactChangeLog, config, worker} = ctx.services;
 	const {token, password, request} = params;
 	const tokenData = await users.getEmailRevertToken(token);
 	if (!tokenData) {
@@ -79,13 +80,7 @@ export async function revertEmailChange(
 	await users.deleteAllWebAuthnCredentials(user.id);
 	await users.deleteAllAuthorizedIps(user.id);
 	await AuthSession.terminateAllUserSessions(ctx, user.id);
-	await users.createAuthorizedIp(
-		user.id,
-		requireClientIp(request, {
-			trustClientIpHeader: config.proxy.trust_client_ip_header,
-			clientIpHeaderName: config.proxy.client_ip_header,
-		}),
-	);
+	await users.createAuthorizedIp(user.id, requireConfiguredClientIp(request, config.proxy));
 	await gateway.dispatchPresence({
 		userId: updatedUser.id,
 		event: 'USER_UPDATE',
@@ -101,5 +96,6 @@ export async function revertEmailChange(
 		reason: 'user_requested',
 		actorUserId: user.id,
 	});
+	await enqueueStripeCustomerEmailSync(worker, user, updatedUser);
 	return {user_id: updatedUser.id.toString(), token: authToken};
 }

@@ -15,8 +15,6 @@ import {filterOAuth2ScopeSet, isOAuth2Scope, sortOAuth2Scopes} from '@app/api/oa
 import {ACCESS_TOKEN_TTL_SECONDS} from '@app/api/oauth/OAuth2TokenConstants';
 import {generateOAuthTokenSecret} from '@app/api/oauth/OAuthTokenSecret';
 import {ApplicationRepository} from '@app/api/oauth/repositories/ApplicationRepository';
-import type {IApplicationRepository} from '@app/api/oauth/repositories/IApplicationRepository';
-import type {IOAuth2TokenRepository} from '@app/api/oauth/repositories/IOAuth2TokenRepository';
 import {OAuth2TokenRepository} from '@app/api/oauth/repositories/OAuth2TokenRepository';
 import {isSignInRefused} from '@app/api/user/UserHelpers';
 import {mapUserToOAuthResponse} from '@app/api/user/UserMappers';
@@ -33,15 +31,15 @@ import {MissingClientSecretError} from '@fluxer/errors/src/domains/oauth/Missing
 import {MissingRedirectUriError} from '@fluxer/errors/src/domains/oauth/MissingRedirectUriError';
 
 interface OAuth2ServiceDeps {
-	applicationRepository?: IApplicationRepository;
-	oauth2TokenRepository?: IOAuth2TokenRepository;
+	applicationRepository?: ApplicationRepository;
+	oauth2TokenRepository?: OAuth2TokenRepository;
 }
 
 export {ACCESS_TOKEN_TTL_SECONDS};
 
 export class OAuth2Service {
-	private applications: IApplicationRepository;
-	private tokens: IOAuth2TokenRepository;
+	private applications: ApplicationRepository;
+	private tokens: OAuth2TokenRepository;
 
 	constructor(
 		private readonly apiContext: ApiContext,
@@ -304,7 +302,10 @@ export class OAuth2Service {
 			if (authCode.userId && !(await this.findActiveUser(authCode.userId))) {
 				throw new InvalidGrantError();
 			}
-			await this.tokens.deleteAuthorizationCode(code);
+			if (!(await this.tokens.consumeAuthorizationCode(code, authCode.applicationId))) {
+				Logger.debug({code_len: code.length}, 'OAuth2 tokenExchange: authorization code already redeemed');
+				throw new InvalidGrantError();
+			}
 			const res = await this.issueTokens({
 				application,
 				userId: authCode.userId,
@@ -328,7 +329,9 @@ export class OAuth2Service {
 		if (!(await this.findActiveUser(refresh.userId))) {
 			throw new InvalidGrantError();
 		}
-		await this.tokens.deleteRefreshToken(params.refreshToken!, refresh.applicationId, refresh.userId);
+		if (!(await this.tokens.consumeRefreshToken(params.refreshToken!, refresh.applicationId, refresh.userId))) {
+			throw new InvalidGrantError();
+		}
 		const res = await this.issueTokens({
 			application,
 			userId: refresh.userId,

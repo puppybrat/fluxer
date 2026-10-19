@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {accountOwnsActiveView} from '@app/features/auth/state/AccountViewOwnership';
 import ComposerInCharacter from '@app/features/cast/state/ComposerInCharacter';
 import type {Channel} from '@app/features/channel/models/Channel';
 import * as DraftCommands from '@app/features/messaging/commands/DraftCommands';
@@ -29,6 +30,7 @@ import {useLingui} from '@lingui/react/macro';
 import {useCallback} from 'react';
 
 interface UseMessageSubmissionOptions {
+	accountKey: string | null;
 	channel: Channel | null;
 	referencedMessage: Message | null;
 	replyingMessage: {messageId: string; mentioning: boolean} | null;
@@ -70,7 +72,12 @@ function isBlockedBySlowmode(channel: Channel): boolean {
 	return true;
 }
 
-export const useMessageSubmission = ({channel, referencedMessage, replyingMessage}: UseMessageSubmissionOptions) => {
+export const useMessageSubmission = ({
+	accountKey,
+	channel,
+	referencedMessage,
+	replyingMessage,
+}: UseMessageSubmissionOptions) => {
 	const {i18n} = useLingui();
 	const sendMessage = useCallback(
 		(
@@ -93,7 +100,7 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 					? favoriteMemeIdOrStickers
 					: undefined;
 			const currentUser = Users.getCurrentUser();
-			if (!channel || !currentUser) return false;
+			if (!channel || !currentUser || !accountOwnsActiveView(accountKey)) return false;
 			const hasNonTextContent =
 				hasAttachments ||
 				stickers.length > 0 ||
@@ -105,7 +112,7 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			if (!MessageCommands.reserveSend(channel.id, nonce)) return false;
 			const messageReference = MessageSubmitUtils.prepareMessageReference(channel.id, referencedMessage);
 			TypingUtils.handleOwnMessageSent(channel.id);
-			DraftCommands.deleteDraft(channel.id);
+			DraftCommands.deleteDraft(accountKey, channel.id);
 			MessageCommands.stopReply(channel.id);
 			const uploadingAttachments = MessageSubmitUtils.createUploadingAttachments(
 				MessageSubmitUtils.claimMessageAttachments(
@@ -172,7 +179,7 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			ComponentBus.dispatch('MESSAGE_SENT', {channelId: channel.id});
 			return true;
 		},
-		[channel?.id, i18n, referencedMessage, replyingMessage],
+		[accountKey, channel?.id, i18n, referencedMessage, replyingMessage],
 	);
 	const sendOptimisticMessage = useCallback(
 		(
@@ -187,7 +194,7 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 			},
 		) => {
 			const currentUser = Users.getCurrentUser();
-			if (!channel || !currentUser) return;
+			if (!channel || !currentUser || !accountOwnsActiveView(accountKey)) return;
 			if (isBlockedBySlowmode(channel)) return;
 			const nonce = SnowflakeUtils.fromTimestamp(Date.now());
 			if (!MessageCommands.reserveSend(channel.id, nonce)) return;
@@ -249,7 +256,7 @@ export const useMessageSubmission = ({channel, referencedMessage, replyingMessag
 				});
 			ComponentBus.dispatch('MESSAGE_SENT', {channelId: channel.id});
 		},
-		[channel?.id, referencedMessage, replyingMessage],
+		[accountKey, channel?.id, referencedMessage, replyingMessage],
 	);
 	return {sendMessage, sendOptimisticMessage};
 };

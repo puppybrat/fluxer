@@ -2,7 +2,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 import {Mutex} from '@livekit/mutex';
-import {DataPacket_Kind, DisconnectReason, Encryption_Type, SubscriptionError, TrackType} from '@livekit/protocol';
+import {
+	Codec,
+	DataPacket_Kind,
+	DisconnectReason,
+	Encryption_Type,
+	JoinResponse,
+	ParticipantInfo,
+	ParticipantInfo_State,
+	ParticipantPermission,
+	SpeakerInfo,
+	SubscriptionError,
+	TrackInfo,
+	TrackType,
+} from '@livekit/protocol';
 import {getLogger, LoggerNames, LogLevel, setLogExtension, setLogLevel} from './logger.ts';
 import * as attributes from './room/attribute-typings.ts';
 import DefaultReconnectPolicy from './room/DefaultReconnectPolicy.ts';
@@ -54,11 +67,14 @@ import {
 	supportsAV1,
 	supportsDynacast,
 	supportsH265,
+	supportsScalabilityMode,
 	supportsVideoCodec,
 	supportsVP9,
 } from './room/utils.ts';
 import {getBrowser} from './utils/browserParser.ts';
 
+export type {AddTrackRequest} from '@livekit/protocol';
+export {SignalClient, SignalConnectionState, type SignalOptions} from './api/SignalClient.ts';
 export type {BaseE2EEManager} from './e2ee/E2eeManager.ts';
 export * from './e2ee/index.ts';
 export {
@@ -79,7 +95,9 @@ export type * from './room/data-stream/outgoing/StreamWriter.ts';
 export type {DataTrackFrame} from './room/data-track/frame.ts';
 export * from './room/errors.ts';
 export * from './room/events.ts';
+export {type PCTransportManager, PCTransportState} from './room/PCTransportManager.ts';
 export type {DataChannelKind} from './room/RTCEngine.ts';
+export {default as RTCEngine, selectPublisherCodecPreferences} from './room/RTCEngine.ts';
 export {type PerformRpcParams, RpcError, type RpcInvocationData} from './room/rpc/index.ts';
 export * from './room/token-source/TokenSource.ts';
 export * from './room/token-source/types.ts';
@@ -126,6 +144,7 @@ export type {
 };
 export {
 	attributes,
+	Codec,
 	ConnectionQuality,
 	ConnectionState,
 	CriticalTimers,
@@ -149,6 +168,7 @@ export {
 	isSVCCodec,
 	isVideoCodec,
 	isVideoTrack,
+	JoinResponse,
 	LocalAudioTrack,
 	LocalDataTrack,
 	LocalParticipant,
@@ -159,7 +179,10 @@ export {
 	LogLevel,
 	Mutex,
 	Participant,
+	ParticipantInfo,
+	ParticipantInfo_State,
 	ParticipantKind,
+	ParticipantPermission,
 	RemoteAudioTrack,
 	RemoteDataTrack,
 	RemoteParticipant,
@@ -167,6 +190,7 @@ export {
 	RemoteTrackPublication,
 	RemoteVideoTrack,
 	Room,
+	SpeakerInfo,
 	SubscriptionError,
 	selectPreferredVideoCodec,
 	setLogExtension,
@@ -176,8 +200,10 @@ export {
 	supportsAV1,
 	supportsDynacast,
 	supportsH265,
+	supportsScalabilityMode,
 	supportsVideoCodec,
 	supportsVP9,
+	TrackInfo,
 	TrackPublication,
 	TrackType,
 };

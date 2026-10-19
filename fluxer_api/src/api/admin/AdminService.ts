@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type {ApiContext} from '@app/api/ApiContext';
-import type {IAdminRepository} from '@app/api/admin/IAdminRepository';
+import type {AdminRepository} from '@app/api/admin/AdminRepository';
 import {AdminApplicationService} from '@app/api/admin/services/AdminApplicationService';
 import {AdminAssetPurgeService} from '@app/api/admin/services/AdminAssetPurgeService';
 import {AdminAuditService} from '@app/api/admin/services/AdminAuditService';
@@ -16,10 +16,11 @@ import {AdminSearchService} from '@app/api/admin/services/AdminSearchService';
 import {AdminUserRelationshipService} from '@app/api/admin/services/AdminUserRelationshipService';
 import {AdminUserService} from '@app/api/admin/services/AdminUserService';
 import {AdminVoiceService} from '@app/api/admin/services/AdminVoiceService';
+import {ReporterResolutionNotifier} from '@app/api/admin/services/ReporterResolutionNotifier';
 import type {UserID} from '@app/api/BrandedTypes';
-import type {IChannelRepository} from '@app/api/channel/IChannelRepository';
+import type {ChannelRepository} from '@app/api/channel/ChannelRepository';
 import type {ChannelService} from '@app/api/channel/services/ChannelService';
-import type {IGuildRepositoryAggregate} from '@app/api/guild/repositories/IGuildRepositoryAggregate';
+import type {GuildRepository} from '@app/api/guild/repositories/GuildRepository';
 import type {GuildService} from '@app/api/guild/services/GuildService';
 import type {IDiscriminatorService} from '@app/api/infrastructure/DiscriminatorService';
 import type {EntityAssetService} from '@app/api/infrastructure/EntityAssetService';
@@ -28,19 +29,15 @@ import type {IStorageService} from '@app/api/infrastructure/IStorageService';
 import type {KVBulkMessageDeletionQueueService} from '@app/api/infrastructure/KVBulkMessageDeletionQueueService';
 import type {UserCacheService} from '@app/api/infrastructure/UserCacheService';
 import type {InviteRepository} from '@app/api/invite/InviteRepository';
-import type {IJobLedgerRepository} from '@app/api/jobs/IJobLedgerRepository';
 import {JobAdminService} from '@app/api/jobs/JobAdminService';
-import {
-	getGuildDiscoveryRepository,
-	getKVAccountDeletionQueue,
-	getNcmecSubmissionService,
-} from '@app/api/middleware/ServiceSingletons';
-import type {IApplicationRepository} from '@app/api/oauth/repositories/IApplicationRepository';
+import type {JobLedgerRepository} from '@app/api/jobs/JobLedgerRepository';
+import {getGuildDiscoveryRepository, getKVAccountDeletionQueue} from '@app/api/middleware/ServiceSingletons';
+import type {ApplicationRepository} from '@app/api/oauth/repositories/ApplicationRepository';
 import type {ReportService} from '@app/api/report/ReportService';
+import type {StoreEntitlementService} from '@app/api/store_billing/StoreEntitlementService';
 import type {UserService} from '@app/api/user/services/UserService';
 import type {VoiceRepository} from '@app/api/voice/VoiceRepository';
 import type {SendSystemDmResponse} from '@fluxer/schema/src/domains/admin/AdminSchemas';
-import type {IpInfoService} from '@pkgs/geoip/src/IpInfoService';
 import type Stripe from 'stripe';
 
 export class AdminService {
@@ -62,9 +59,9 @@ export class AdminService {
 
 	constructor(
 		private readonly apiContext: ApiContext,
-		private readonly guildRepository: IGuildRepositoryAggregate,
-		private readonly channelRepository: IChannelRepository,
-		private readonly adminRepository: IAdminRepository,
+		private readonly guildRepository: GuildRepository,
+		private readonly channelRepository: ChannelRepository,
+		private readonly adminRepository: AdminRepository,
 		private readonly inviteRepository: InviteRepository,
 		private readonly discriminatorService: IDiscriminatorService,
 		private readonly guildService: GuildService,
@@ -77,22 +74,29 @@ export class AdminService {
 		private readonly reportService: ReportService,
 		private readonly voiceRepository: VoiceRepository,
 		private readonly bulkMessageDeletionQueue: KVBulkMessageDeletionQueueService,
-		private readonly applicationRepository: IApplicationRepository,
+		private readonly applicationRepository: ApplicationRepository,
 		private readonly stripe: Stripe | null = null,
-		private readonly jobLedger: IJobLedgerRepository,
-		private readonly ipInfoService: IpInfoService,
+		private readonly jobLedger: JobLedgerRepository,
+		private readonly storeEntitlementService: StoreEntitlementService,
 	) {
 		const {users, gateway, worker, snowflake} = this.apiContext.services;
 		this.auditService = new AdminAuditService(this.adminRepository, snowflake, {
 			userRepository: users,
 			guildRepository: this.guildRepository,
-			channelRepository: this.channelRepository,
+			channelRepository: this.channelRepository.channelData,
 		});
 		this.banManagementService = new AdminBanManagementService({
 			apiContext: this.apiContext,
 			adminRepository: this.adminRepository,
 			auditService: this.auditService,
-			ipInfoService: this.ipInfoService,
+		});
+		const reporterResolutionNotifier = new ReporterResolutionNotifier({
+			apiContext: this.apiContext,
+			systemDm: {
+				channelService: this.channelService,
+				userChannelService: this.runtimeUserService.channelService,
+				userCacheService: this.userCacheService,
+			},
 		});
 		this.userService = new AdminUserService({
 			apiContext: this.apiContext,
@@ -107,6 +111,8 @@ export class AdminService {
 			bulkMessageDeletionQueue: this.bulkMessageDeletionQueue,
 			stripe: this.stripe,
 			reportService: this.reportService,
+			storeEntitlementService: this.storeEntitlementService,
+			reporterResolutionNotifier,
 		});
 		this.guildServiceAggregate = new AdminGuildService({
 			guildRepository: this.guildRepository,
@@ -130,7 +136,6 @@ export class AdminService {
 			channelRepository: this.channelRepository,
 			guildRepository: this.guildRepository,
 			auditService: this.auditService,
-			ncmecSubmissionService: getNcmecSubmissionService(),
 		});
 		this.messageShredService = new AdminMessageShredService({
 			apiContext: this.apiContext,
@@ -146,12 +151,10 @@ export class AdminService {
 			reportService: this.reportService,
 			guildRepository: this.guildRepository,
 			channelRepository: this.channelRepository,
-			channelService: this.channelService,
 			storageService: this.storageService,
 			auditService: this.auditService,
 			userCacheService: this.userCacheService,
-			userChannelService: this.runtimeUserService.channelService,
-			ncmecSubmissionService: getNcmecSubmissionService(),
+			reporterResolutionNotifier,
 		});
 		this.voiceService = new AdminVoiceService({
 			apiContext: this.apiContext,
@@ -178,20 +181,20 @@ export class AdminService {
 	}
 
 	async sendSystemDm(
-		data: {content: string; userIds: Array<string>},
+		data: {content: string; recipients: {kind: 'all'} | {kind: 'list'; userIds: Array<string>}},
 		adminUserId: UserID,
 		auditLogReason: string | null,
 	): Promise<SendSystemDmResponse> {
+		const recipientCount = data.recipients.kind === 'all' ? null : data.recipients.userIds.length;
 		await this.apiContext.services.worker.addJob(
 			'sendSystemDm',
-			{
-				content: data.content,
-				user_ids: data.userIds,
-			},
+			data.recipients.kind === 'all'
+				? {content: data.content, all_users: true}
+				: {content: data.content, user_ids: data.recipients.userIds},
 			{requireLedger: true},
 		);
 		const metadata = new Map<string, string>([
-			['recipient_count', data.userIds.length.toString()],
+			['recipient_count', recipientCount === null ? 'all' : recipientCount.toString()],
 			['content_length', data.content.length.toString()],
 		]);
 		await this.auditService.createAuditLog({
@@ -202,6 +205,6 @@ export class AdminService {
 			auditLogReason,
 			metadata,
 		});
-		return {recipient_count: data.userIds.length};
+		return {recipient_count: recipientCount};
 	}
 }

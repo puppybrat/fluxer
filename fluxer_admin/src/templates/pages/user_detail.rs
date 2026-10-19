@@ -15,7 +15,7 @@ use crate::{
         layout::admin_layout,
         pages::user_detail_tabs,
     },
-    utils::bigint::format_discriminator,
+    utils::{bigint::format_discriminator, user_tag::user_tag},
 };
 use maud::{Markup, html};
 
@@ -32,26 +32,6 @@ pub const USER_TABS: &[(&str, &str)] = &[
     ("archives", "Archives"),
     ("audit_logs", "Audit Logs"),
 ];
-
-pub fn user_detail_page(
-    config: &AdminConfig,
-    auth: &AuthContext,
-    user: Option<&AdminUser>,
-    user_id: &str,
-    premium_badge_name: Option<&str>,
-    is_htmx: bool,
-) -> Markup {
-    user_detail_with_tab(
-        config,
-        auth,
-        user,
-        user_id,
-        "overview",
-        None,
-        premium_badge_name,
-        is_htmx,
-    )
-}
 
 #[allow(clippy::too_many_arguments)]
 pub fn user_detail_with_tab(
@@ -163,7 +143,7 @@ fn render_user_detail(
                     ))
                 }
                 p class="break-words text-sm text-neutral-500" {
-                    (user.username) "#" (format_discriminator(&user.discriminator))
+                    (user_tag(&user.username, &format_discriminator(&user.discriminator), user.bot))
                 }
                 p class="break-all text-sm text-neutral-500" {
                     (user.id)

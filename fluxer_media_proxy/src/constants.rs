@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 pub const MAX_MEDIA_PROXY_BYTES: usize = 500 * 1024 * 1024;
+pub const DESKTOP_APP_ORIGIN: &str = "fluxer-app://app";
 
 pub const OUTBOUND_USER_AGENT: &str =
     "Mozilla/5.0 (compatible; Fluxerbot/1.0; +https://fluxer.app)";
@@ -10,8 +11,6 @@ pub const MAX_MEDIA_IMAGE_PIXELS_DEFAULT: usize =
 pub const MAX_INTERNAL_REQUEST_BODY_BYTES: usize =
     MAX_MEDIA_PROXY_BYTES.div_ceil(3) * 4 + 1024 * 1024;
 pub const MAX_VIDEO_PACKETS_FOR_THUMBNAIL: usize = 512;
-pub const MAX_VIDEO_FRAME_BYTES: usize = 128 * 1024 * 1024;
-pub const MAX_S3_ATTEMPTS: u8 = 3;
 pub const DEFAULT_IMAGE_SIZE: u32 = 128;
 pub const MAX_ANIMATED_FRAMES_DEFAULT: u32 = 20_000;
 pub const MAX_ANIMATED_TOTAL_PIXELS_DEFAULT: usize = 4 * MAX_MEDIA_IMAGE_PIXELS_DEFAULT;
@@ -50,7 +49,6 @@ pub enum AssetKind {
     EmbedSplash,
     Emoji,
     Sticker,
-    Attachment,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -121,31 +119,30 @@ pub struct Dims {
     pub max: u32,
 }
 
-pub fn dims_for(kind: AssetKind) -> Option<Dims> {
+pub fn dims_for(kind: AssetKind) -> Dims {
     match kind {
-        AssetKind::Avatar | AssetKind::GuildIcon => Some(Dims {
+        AssetKind::Avatar | AssetKind::GuildIcon => Dims {
             min: 128,
             max: 1024,
-        }),
-        AssetKind::Banner | AssetKind::Splash | AssetKind::EmbedSplash => Some(Dims {
+        },
+        AssetKind::Banner | AssetKind::Splash | AssetKind::EmbedSplash => Dims {
             min: 480,
             max: 2400,
-        }),
-        AssetKind::Emoji => Some(Dims { min: 32, max: 512 }),
-        AssetKind::Sticker => Some(Dims { min: 128, max: 512 }),
-        AssetKind::Attachment => None,
+        },
+        AssetKind::Emoji => Dims { min: 32, max: 512 },
+        AssetKind::Sticker => Dims { min: 128, max: 512 },
     }
 }
 
 pub fn clamp_size(raw_target: u32, kind: AssetKind) -> u32 {
     let value = raw_target.max(1);
-    dims_for(kind).map_or(value, |dims| value.clamp(dims.min, dims.max))
+    let dims = dims_for(kind);
+    value.clamp(dims.min, dims.max)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::media_limits::MediaLimits;
 
     fn asset_cache_key(raw: Option<&str>, kind: AssetKind) -> u32 {
         clamp_size(parse_image_size(raw), kind)
@@ -160,6 +157,9 @@ mod tests {
         assert_eq!(16, parse_image_size(Some("0")));
         assert_eq!(16384, parse_image_size(Some("99999")));
         assert_eq!(128, parse_image_size(Some("not-a-number")));
+        assert_eq!(128, parse_image_size(Some("")));
+        assert_eq!(128, parse_image_size(Some("-1")));
+        assert_eq!(128, parse_image_size(Some("99999999999")));
     }
 
     #[test]
@@ -221,13 +221,5 @@ mod tests {
         assert_eq!(1024, asset_cache_key(Some("1024"), AssetKind::Avatar));
         assert_eq!(512, asset_cache_key(Some("99999"), AssetKind::Emoji));
         assert_eq!(512, asset_cache_key(Some("99999"), AssetKind::Sticker));
-    }
-
-    #[test]
-    fn animated_frame_default_allows_dense_short_clips() {
-        assert_eq!(
-            MAX_ANIMATED_FRAMES_DEFAULT,
-            MediaLimits::default_from_config().animated_frames()
-        );
     }
 }

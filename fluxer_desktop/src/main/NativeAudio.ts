@@ -7,18 +7,16 @@ import type {
 	NativeAudioApplication,
 	NativeAudioAvailability,
 	NativeAudioEndReason,
-	NativeAudioRoutingGraphResult,
 	NativeAudioStartOptions,
 	NativeAudioStartResult,
 	VirtmicLinkOptions,
 	VirtmicNode,
-	VirtmicRoutingGraph,
 } from '@electron/common/Types';
 import {buildFluxerAudioExcludePatterns, isKnownFluxerAudioProcessPid} from '@electron/main/FluxerAudioIdentity';
 import {getNativeAudioMode} from '@electron/main/LaunchOptions';
 import {resolveVirtmicWindowPid} from '@electron/main/LinuxAudioCapture';
 import {parseWindowSourceToken as parseDesktopWindowSourceToken} from '@electron/main/LinuxAudioCaptureHelpers';
-import {getTccStatus} from '@electron/main/MacTcc';
+import {refreshTccStatus} from '@electron/main/MacTcc';
 import {
 	audioFrameDebugDetails,
 	isValidAudioFrame,
@@ -41,7 +39,6 @@ interface NativeCaptureInstance {
 	start(): Promise<void> | void;
 	stop(): Promise<void> | void;
 	setRoutingRule?: (target: {linuxRule: NonNullable<NativeAudioStartOptions['linuxRule']>}) => boolean;
-	routingGraph?: () => VirtmicRoutingGraph | null;
 }
 
 interface WindowsNativeAudioModule {
@@ -426,9 +423,9 @@ function loadNativeAudioAddon(): NativeAddonLoadResult {
 	return cachedLoadResult;
 }
 
-function getMacScreenPermissionStatus(): string | null {
+async function getMacScreenPermissionStatus(): Promise<string | null> {
 	try {
-		return getTccStatus('screen-recording');
+		return await refreshTccStatus('screen-recording');
 	} catch (error) {
 		logger.debug('Failed to read macOS screen capture status', error);
 		return null;
@@ -463,7 +460,7 @@ async function getNativeAudioAvailability(): Promise<NativeAudioAvailability> {
 				capabilities,
 			};
 		}
-		const screenPermissionStatus = getMacScreenPermissionStatus();
+		const screenPermissionStatus = await getMacScreenPermissionStatus();
 		if (screenPermissionStatus === 'denied' || screenPermissionStatus === 'restricted') {
 			return {
 				available: false,
@@ -860,32 +857,6 @@ async function startNativeAudioCapture(
 	};
 }
 
-function getNativeAudioRoutingGraph(sender: Electron.WebContents, captureId?: string): NativeAudioRoutingGraphResult {
-	const loadResult = loadNativeAudioAddon();
-	const availability = loadResult.availability;
-	if (loadResult.platform !== 'linux' || !availability.available) {
-		return {ok: false, graphs: [], availability};
-	}
-	const ownedIds = activeSessionIdsBySenderId.get(sender.id);
-	const candidateIds =
-		typeof captureId === 'string' && captureId
-			? ownedIds?.has(captureId)
-				? [captureId]
-				: []
-			: Array.from(ownedIds ?? []);
-	const graphs = candidateIds
-		.map((id) => {
-			const session = activeSessions.get(id);
-			if (!session || session.sender.id !== sender.id) return null;
-			return {
-				captureId: id,
-				graph: session.capture.routingGraph?.() ?? null,
-			};
-		})
-		.filter((entry): entry is {captureId: string; graph: VirtmicRoutingGraph | null} => entry !== null);
-	return {ok: true, graphs, availability};
-}
-
 export function registerNativeAudioHandlers(): void {
 	if (handlersRegistered) return;
 	handlersRegistered = true;
@@ -919,10 +890,6 @@ export function registerNativeAudioHandlers(): void {
 		}
 		await stopActiveSession(session, 'stopped');
 	});
-	ipcMain.handle(
-		'native-audio:get-routing-graph',
-		(event, captureId?: string): NativeAudioRoutingGraphResult => getNativeAudioRoutingGraph(event.sender, captureId),
-	);
 }
 
 export function cleanupNativeAudio(): void {
@@ -933,7 +900,6 @@ export function cleanupNativeAudio(): void {
 	ipcMain.removeHandler('native-audio:start');
 	ipcMain.removeHandler('native-audio:set-rule');
 	ipcMain.removeHandler('native-audio:stop');
-	ipcMain.removeHandler('native-audio:get-routing-graph');
 	handlersRegistered = false;
 	for (const session of [...activeSessions.values()]) {
 		stopActiveSession(session, 'stopped').catch((error) =>
