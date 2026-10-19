@@ -104,6 +104,22 @@ export function useCastOverviewTree(guildId: string | null | undefined): {
 				},
 			]),
 		);
+		// Threads are not in the guild channel list. A row scoped to a thread the client knows is
+		// flagged so the builder leaves it out instead of showing a raw-id root group (step 5a, D5).
+		for (const row of [...cast.primaries, ...cast.overrides]) {
+			const scopeId = row.channel_id;
+			if (scopeId == null || channelsById.has(scopeId)) continue;
+			const thread = Channels.getChannel(scopeId);
+			if (thread?.isThread()) {
+				channelsById.set(scopeId, {
+					id: scopeId,
+					name: thread.name ?? null,
+					parentId: thread.parentId,
+					isCategory: false,
+					isThread: true,
+				});
+			}
+		}
 		return buildCastOverviewTree({
 			characters: cast.characters,
 			primaries: cast.primaries,

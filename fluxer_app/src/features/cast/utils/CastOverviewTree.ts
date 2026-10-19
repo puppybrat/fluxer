@@ -70,6 +70,11 @@ export interface CastOverviewChannelInfo {
 	isCategory: boolean;
 	/** The sidebar ordering field. Optional exactly as Channel.position is; absent sorts as 0. */
 	position?: number | null;
+	/**
+	 * Set for a thread the client knows about. Threads inherit their parent chain's cast and get no
+	 * group of their own (step 5a, D5), so rows scoped to one are left out of the tree.
+	 */
+	isThread?: boolean;
 }
 
 interface BuildArgs {
@@ -209,7 +214,9 @@ function buildEntriesForScope(
  * renders as just its label and an Add button, which is how a scope gets its first override — build
  * the tree only from scopes that already have rows and there is no way in.
  *
- * Nothing is ever dropped. A parentId that resolves to no known category — stale, unsynced, or not a
+ * Nothing is ever dropped, except rows scoped to a known thread: threads inherit their parent chain's
+ * cast and have no group of their own (step 5a, D5), so such rows would otherwise surface as a root
+ * group named by a raw id. A parentId that resolves to no known category — stale, unsynced, or not a
  * category at all — is treated as absent and the group surfaces at root; a parent cycle is broken the
  * same way, leaving its members reachable at root rather than nested into each other forever.
  */
@@ -219,9 +226,11 @@ export function buildCastOverviewTree(args: BuildArgs): Array<CastOverviewGroup>
 	// The union of every channel in the guild AND every scope carrying rows. The second half is not
 	// redundant: cast rows can outlive the channel they point at (a deleted channel whose overrides
 	// were never cleaned up upstream), and enumerating the store alone would silently hide them.
-	const scopedIds = new Set<string>(channelsById.keys());
+	const scopedIds = new Set<string>(
+		[...channelsById].filter(([, info]) => !info.isThread).map(([channelId]) => channelId),
+	);
 	for (const row of [...primaries, ...overrides]) {
-		if (row.channel_id != null) {
+		if (row.channel_id != null && !channelsById.get(row.channel_id)?.isThread) {
 			scopedIds.add(row.channel_id);
 		}
 	}

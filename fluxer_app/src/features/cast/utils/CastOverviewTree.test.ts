@@ -250,6 +250,67 @@ describe('Cast Overview tree', () => {
 	});
 
 	/**
+	 * Step 5a, D5: threads inherit their parent chain's cast and get no group of their own. Rows scoped
+	 * to a thread (only reachable through the API) would otherwise surface as a root group named by a
+	 * raw id, so they are left out; rows for an unknown id still show, as for a deleted channel.
+	 */
+	describe('thread-scoped rows', () => {
+		const thread = (id: string, name: string, parentId: string): CastOverviewChannelInfo => ({
+			id,
+			name,
+			parentId,
+			isCategory: false,
+			isThread: true,
+		});
+
+		it('drops a group scoped to a known thread', () => {
+			const tree = buildCastOverviewTree({
+				characters: [character('c1', 'Rowan'), character('c2', 'Ash')],
+				primaries: [primary('c1', 'thread-1'), primary('c2', 'ch1')],
+				overrides: [override('c1', 'thread-1', {nickname: 'Ro'})],
+				channelsById: channels(cat('cat1', 'Story'), chan('ch1', 'scene', 'cat1'), thread('thread-1', 'aside', 'ch1')),
+			});
+			expect(tree.map(shape)).toEqual([
+				{kind: 'server', name: '', entries: [], children: []},
+				{
+					kind: 'category',
+					name: 'Story',
+					entries: [],
+					children: [{kind: 'channel', name: '#scene', entries: ['Ash:added'], children: []}],
+				},
+			]);
+			expect(allNames(tree)).not.toContain('thread-1');
+			expect(allNames(tree)).not.toContain('#aside');
+		});
+
+		it('still shows rows for an id the client does not know', () => {
+			const tree = buildCastOverviewTree({
+				characters: [character('c1', 'Rowan')],
+				primaries: [primary('c1', 'unknown-scope')],
+				overrides: [],
+				channelsById: channels(chan('ch1', 'scene', null)),
+			});
+			expect(tree.find((g) => g.scopeId === 'unknown-scope')?.entries.map((e) => e.name)).toEqual(['Rowan']);
+		});
+
+		it('leaves the tree unchanged for a known thread with no rows', () => {
+			const without = buildCastOverviewTree({
+				characters: [character('c1', 'Rowan')],
+				primaries: [primary('c1', 'ch1')],
+				overrides: [],
+				channelsById: channels(chan('ch1', 'scene', null)),
+			});
+			const withThread = buildCastOverviewTree({
+				characters: [character('c1', 'Rowan')],
+				primaries: [primary('c1', 'ch1')],
+				overrides: [],
+				channelsById: channels(chan('ch1', 'scene', null), thread('thread-1', 'aside', 'ch1')),
+			});
+			expect(withThread.map(shape)).toEqual(without.map(shape));
+		});
+	});
+
+	/**
 	 * Categories nest, so the tree has no depth limit. These cover the builder honouring a category's
 	 * own parentId — which it used to ignore, flattening every category to the root.
 	 */
